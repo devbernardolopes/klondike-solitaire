@@ -1,0 +1,34 @@
+/* render/themes/classic.css
+ * CSS custom properties for the "classic" theme (one basic default for now).
+ * TODO(next pass): additional themes (midnight, aqua, etc.) and dark/light variants.
+ */
+
+:root,
+.theme-classic {
+  /* Table / felt */
+  --felt-color: #1f7a4d;
+  --felt-color-dark: #176039;
+  --table-radius: 16px;
+
+  /* Card geometry */
+  --card-width: clamp(48px, 9vw, 84px);
+  --card-height: calc(var(--card-width) * 1.4);
+  --card-radius: 6px;
+  --card-face-bg: #fbfbf7;
+  --card-back-bg: repeating-linear-gradient(
+    45deg,
+    #2b4c8c,
+    #2b4c8c 6px,
+    #1e3a6b 6px,
+    #1e3a6b 12px
+  );
+  --card-border: 1px solid rgba(0, 0, 0, 0.25);
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+
+  /* Tableau fan offset for stacked cards */
+  --tableau-fan: clamp(14px, 2.4vw, 26px);
+
+  /* Text colors */
+  --card-text-red: #c0392b;
+  --card-text-black: #1a1a1a;
+}
