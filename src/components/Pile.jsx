@@ -23,8 +23,9 @@ export default function Pile({ loc, cards, fanned = false, onClick, label }) {
       style={{
         minWidth: 'var(--card-width)',
         minHeight: 'var(--card-height)',
-        display: 'flex',
-        flexDirection: 'column',
+        height: fanned
+          ? `calc(var(--card-height) + ${Math.max(cards.length - 1, 0)} * var(--tableau-fan))`
+          : 'var(--card-height)',
         position: 'relative',
         borderRadius: 'var(--card-radius)',
         border: isOver
@@ -54,11 +55,13 @@ export default function Pile({ loc, cards, fanned = false, onClick, label }) {
       {cards.map((card, i) => (
         <div
           key={card.id}
-          style={
-            fanned
-              ? { marginTop: i === 0 ? 0 : 'var(--tableau-fan)', marginLeft: 0 }
-              : {}
-          }
+          style={{
+            position: 'absolute',
+            top: fanned ? `calc(${i} * var(--tableau-fan))` : 0,
+            left: 0,
+            width: 'var(--card-width)',
+            zIndex: i,
+          }}
         >
           <CardView card={card} from={loc} zIndex={i} />
         </div>
