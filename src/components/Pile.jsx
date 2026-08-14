@@ -12,8 +12,9 @@ import CardView from './CardView.jsx';
  * @param {boolean} [props.fanned]      stack cards with a vertical offset (tableau)
  * @param {() => void} [props.onClick]   click handler (e.g. stock draw)
  * @param {string} [props.label]         placeholder label when empty
+ * @param {Set<string>} [props.hiddenIds] card ids to hide (e.g. while shown in a DragOverlay)
  */
-export default function Pile({ loc, cards, fanned = false, onClick, label }) {
+export default function Pile({ loc, cards, fanned = false, onClick, label, hiddenIds }) {
   const { setNodeRef, isOver } = useDroppable({ id: loc, data: { loc } });
 
   return (
@@ -63,7 +64,12 @@ export default function Pile({ loc, cards, fanned = false, onClick, label }) {
             zIndex: i,
           }}
         >
-          <CardView card={card} from={loc} zIndex={i} />
+          <CardView
+            card={card}
+            from={loc}
+            zIndex={i}
+            hidden={hiddenIds ? hiddenIds.has(card.id) : false}
+          />
         </div>
       ))}
     </div>

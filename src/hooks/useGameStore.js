@@ -5,7 +5,7 @@
 import { create } from 'zustand';
 import { deal } from '../core/dealer.js';
 import { applyMove, undo as coreUndo, redo as coreRedo } from '../core/moveEngine.js';
-import { canMoveToTableau, canMoveToFoundation } from '../core/rules.js';
+import { canMoveToTableau, canMoveToFoundation, getTableauRun } from '../core/rules.js';
 import { isWon } from '../core/winDetection.js';
 
 /**
@@ -60,26 +60,37 @@ export const useGameStore = create((set, get) => ({
     if (from === to) return false;
 
     const srcPile = readPile(state, from);
-    // Determine the run of cards being moved (top card only in this pass).
-    let moveIds;
+
+    // Determine the run of cards being moved.
+    //  - Tableau sources: any face-up card may lift the valid run beneath it
+    //    (a descending alternating-color sequence). getTableauRun validates it.
+    //  - Stock / waste / foundation sources: only the single top card moves.
+    let run;
     if (cardId) {
       const idx = srcPile.findIndex((c) => c.id === cardId);
       if (idx === -1) return false;
-      // only the top card (single-card move) is supported this pass
-      if (idx !== srcPile.length - 1) return false;
-      moveIds = [cardId];
+      if (from.startsWith('tableau')) {
+        run = getTableauRun(srcPile, cardId);
+        if (!run) return false;
+      } else {
+        if (idx !== srcPile.length - 1) return false;
+        run = [srcPile[idx]];
+      }
     } else {
       if (srcPile.length === 0) return false;
-      moveIds = [srcPile[srcPile.length - 1].id];
+      run = [srcPile[srcPile.length - 1]];
     }
 
-    const movingCard = srcPile[srcPile.length - moveIds.length];
+    // cardIds are ordered top→bottom, as expected by core/moveEngine.applyMoveCards.
+    const moveIds = run.map((c) => c.id).reverse();
+    const movingCard = run[0]; // bottom of the run is what lands on the destination
     if (!movingCard || !movingCard.faceUp) return false;
 
     const destPile = readPile(state, to);
+    // Foundations accept only a single card; tableau accepts a run.
     const valid =
       to.startsWith('foundation')
-        ? canMoveToFoundation(movingCard, destPile)
+        ? moveIds.length === 1 && canMoveToFoundation(movingCard, destPile)
         : canMoveToTableau(movingCard, destPile);
     if (!valid) return false;
 

@@ -31,6 +31,26 @@ export function isValidSequence(cards) {
 }
 
 /**
+ * Get the movable "run" starting at a specific face-up card in a tableau pile.
+ * The run is every card from `cardId` up to the top of the pile. Returns
+ * `null` if the card isn't found, is face-down, or the cards above it do not
+ * form a valid descending alternating-color sequence (in which case the run
+ * cannot be lifted together, per Klondike rules).
+ *
+ * @param {Array<{id:string, rank:number, suit:string, faceUp:boolean}>} pile  bottom→top
+ * @param {string} cardId
+ * @returns {Array<{id:string, rank:number, suit:string, faceUp:boolean}>|null}  bottom→top, or null
+ */
+export function getTableauRun(pile, cardId) {
+  const idx = pile.findIndex((c) => c.id === cardId);
+  if (idx === -1) return null;
+  const run = pile.slice(idx);
+  if (!run.every((c) => c.faceUp)) return null;
+  if (!isValidSequence(run)) return null;
+  return run;
+}
+
+/**
  * Can `card` be placed on the top of a tableau pile?
  * Target pile may be empty (any King allowed) or non-empty (must be descending + alt-color).
  *

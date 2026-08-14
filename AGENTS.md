@@ -59,7 +59,9 @@ A `redoStack` holds undone records so `redo()` can replay them.
 
 Thin `@dnd-kit` wrapper: `DndContext` + `PointerSensor`/`KeyboardSensor`. Card draggables
 carry `{ from, cardId }`; pile droppables carry `{ loc }`. On drop, calls `moveCard`.
-**Single top-card moves only** this pass.
+Supports multi-card run dragging: grabbing any face-up tableau card lifts the valid
+descending-alternating run beneath it (see `core/rules.js` `getTableauRun`); a `DragOverlay`
+renders the lifted run stacked with the tableau fan offset. Keyboard navigation is still TODO.
 
 ## What is IMPLEMENTED vs STUBBED (this pass)
 
@@ -69,7 +71,9 @@ carry `{ from, cardId }`; pile droppables carry `{ loc }`. On drop, calls `moveC
 - Project scaffolding: `package.json`, Vite, Tailwind v4, `index.html`, `main.jsx`.
 - `Board.jsx` responsive CSS-grid layout (stock/waste/foundations top row, 7 tableau columns)
   with correct initial deal (face-down + face-up). Cards are plain text-colored divs.
-- Single top-card drag-and-drop between valid piles via `rules.js`.
+- Single top-card **and** multi-card run drag-and-drop between valid piles via `rules.js`
+  (grabbing any face-up tableau card lifts the valid run beneath it; a `DragOverlay`
+  shows the run following the cursor).
 - Store: deal / draw / recycle / move / undo / redo.
 - Dexie schema, sound manager, leaderboard client (functional but local/mock).
 
@@ -82,14 +86,12 @@ carry `{ from, cardId }`; pile droppables carry `{ loc }`. On drop, calls `moveC
 - `api/leaderboard.js` — localStorage mock; no real backend.
 - `GSAP` animations — not imported anywhere yet.
 - Only one theme CSS (`classic.css`); theme/deck `<select>`s are no-ops in `App.jsx`.
-- **Multi-card tableau run dragging** — marked `// TODO: multi-card run dragging` in `useDragEngine.js`.
 - **Keyboard navigation** — referenced TODO in `useDragEngine.js`; focus/tabindex not attached.
 
 ## Where the next pass picks up
 
 1. Build the two deck renderers (atlas slicing / canvas drawing) and wire into `CardView`.
-2. Multi-card run dragging (drag a valid descending-alternating sequence together).
-3. Real Howler playback + sound files; settings-driven mute.
+2. Real Howler playback + sound files; settings-driven mute.
 4. GSAP deal/flip/win animations.
 5. Real leaderboard backend; persist games to Dexie on game-over.
 6. Theme system + accessible keyboard controls.

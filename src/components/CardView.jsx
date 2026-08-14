@@ -25,16 +25,9 @@ function rankLabel(rank) {
 /**
  * @param {object} props
  * @param {{ id: string, suit: string, rank: number, color: string, faceUp: boolean }} props.card
- * @param {string} props.from  pile locator the card currently lives in
  * @param {number} [props.zIndex]
  */
-export default function CardView({ card, from, zIndex = 0 }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: card.id,
-    data: { from, cardId: card.id },
-    disabled: !card.faceUp,
-  });
-
+export function CardFace({ card, zIndex = 0 }) {
   const base = {
     width: 'var(--card-width)',
     height: 'var(--card-height)',
@@ -48,12 +41,7 @@ export default function CardView({ card, from, zIndex = 0 }) {
   if (!card.faceUp) {
     return (
       <div
-        ref={setNodeRef}
-        style={{
-          ...base,
-          background: 'var(--card-back-bg)',
-          opacity: isDragging ? 0.4 : 1,
-        }}
+        style={{ ...base, background: 'var(--card-back-bg)' }}
         aria-label="face-down card"
       />
     );
@@ -61,9 +49,6 @@ export default function CardView({ card, from, zIndex = 0 }) {
 
   return (
     <div
-      ref={setNodeRef}
-      {...listeners}
-      {...attributes}
       style={{
         ...base,
         background: 'var(--card-face-bg)',
@@ -74,8 +59,6 @@ export default function CardView({ card, from, zIndex = 0 }) {
         padding: '4px 6px',
         fontWeight: 700,
         fontSize: 'clamp(12px, 2.4vw, 18px)',
-        cursor: 'grab',
-        opacity: isDragging ? 0.4 : 1,
         userSelect: 'none',
       }}
       aria-label={`${rankLabel(card.rank)} of ${card.suit}`}
@@ -84,6 +67,33 @@ export default function CardView({ card, from, zIndex = 0 }) {
     >
       <span>{rankLabel(card.rank)}</span>
       <span style={{ marginLeft: 2 }}>{SUIT_GLYPH[card.suit]}</span>
+    </div>
+  );
+}
+
+/**
+ * @param {object} props
+ * @param {{ id: string, suit: string, rank: number, color: string, faceUp: boolean }} props.card
+ * @param {string} props.from  pile locator the card currently lives in
+ * @param {number} [props.zIndex]
+ * @param {boolean} [props.hidden]  hide this card (e.g. while its run is shown in a DragOverlay)
+ */
+export default function CardView({ card, from, zIndex = 0, hidden = false }) {
+  const { attributes, listeners, setNodeRef } = useDraggable({
+    id: card.id,
+    data: { from, cardId: card.id },
+    disabled: !card.faceUp,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      style={{ visibility: hidden ? 'hidden' : 'visible', cursor: 'grab' }}
+      aria-label={`${rankLabel(card.rank)} of ${card.suit}`}
+    >
+      <CardFace card={card} zIndex={zIndex} />
     </div>
   );
 }
