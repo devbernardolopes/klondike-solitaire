@@ -2,7 +2,7 @@
 // Renders a single card. This pass uses a plain colored div with rank/suit text.
 // The real deck renderer (Sprite/Procedural) will plug in here later — see TODO.
 
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { useCardFaceFlip } from '../render/animation/useCardFaceFlip.js';
 import { useGameStore } from '../hooks/useGameStore.js';
