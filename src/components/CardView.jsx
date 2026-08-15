@@ -2,18 +2,12 @@
 // Renders a single card. This pass uses a plain colored div with rank/suit text.
 // The real deck renderer (Sprite/Procedural) will plug in here later — see TODO.
 
-import { useRef } from 'react';
+import { useMemo } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { useCardFaceFlip } from '../render/animation/useCardFaceFlip.js';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { isWon } from '../core/winDetection.js';
-
-const SUIT_GLYPH = {
-  hearts: '♥',
-  diamonds: '♦',
-  clubs: '♣',
-  spades: '♠',
-};
+import { getDeck } from '../render/deck/deckRegistry.js';
 
 const RANK_LABEL = {
   1: 'A',
@@ -45,32 +39,34 @@ export function CardFace({ card, zIndex = 0, innerRef }) {
     WebkitBackfaceVisibility: 'hidden',
   };
 
+  const faceImg = useMemo(
+    () => getDeck().renderCard(card.suit, card.rank),
+    [card.suit, card.rank],
+  );
+  const backImg = useMemo(() => getDeck().renderBack(), []);
+
   const front = (
     <div
       style={{
         ...base,
-        background: 'var(--card-face-bg)',
-        color: card.color === 'red' ? 'var(--card-text-red)' : 'var(--card-text-black)',
-        display: 'flex',
-        alignItems: 'flex-start',
-        justifyContent: 'flex-start',
-        padding: '4px 6px',
-        fontWeight: 700,
-        fontSize: 'clamp(12px, 2.4vw, 18px)',
+        backgroundImage: `url(${faceImg})`,
+        backgroundSize: '100% 100%',
+        backgroundRepeat: 'no-repeat',
         userSelect: 'none',
       }}
       aria-label={`${rankLabel(card.rank)} of ${card.suit}`}
-      // TODO(next pass): swap this text placeholder for the active deck renderer
-      // via getDeck(theme).renderCard(card.suit, card.rank) as a background-image.
-    >
-      <span>{rankLabel(card.rank)}</span>
-      <span style={{ marginLeft: 2 }}>{SUIT_GLYPH[card.suit]}</span>
-    </div>
+    />
   );
 
   const back = (
     <div
-      style={{ ...base, background: 'var(--card-back-bg)', transform: 'rotateY(180deg)' }}
+      style={{
+        ...base,
+        backgroundImage: `url(${backImg})`,
+        backgroundSize: '100% 100%',
+        backgroundRepeat: 'no-repeat',
+        transform: 'rotateY(180deg)',
+      }}
       aria-label="face-down card"
     />
   );
