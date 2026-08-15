@@ -1,6 +1,7 @@
 // components/Toolbar.jsx
 // New game, undo, theme/deck switchers. Stubs OK for switchers this pass.
 
+import pkg from '../../package.json';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useSound } from '../hooks/useSound.js';
 
@@ -65,6 +66,17 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange }) {
           {/* TODO(next pass): add real deck renderers */}
         </select>
       </label>
+
+      <span
+        style={{
+          color: '#fff',
+          fontSize: 13,
+          marginLeft: 'auto',
+          userSelect: 'none',
+        }}
+      >
+        Version v{pkg.version}
+      </span>
     </div>
   );
 }
