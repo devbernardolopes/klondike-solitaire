@@ -11,6 +11,7 @@ import Toolbar from './Toolbar.jsx';
 import Board from './Board.jsx';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { isWon } from '../core/winDetection.js';
+import { MotionDebugPanel } from '../render/animation/MotionDebugPanel.jsx';
 
 export default function App() {
   const [theme, setTheme] = useState('classic');
@@ -36,6 +37,7 @@ export default function App() {
         onDeckChange={() => {}}
       />
       <Board />
+      {import.meta.env.DEV && <MotionDebugPanel />}
       {won && (
         <div style={{ textAlign: 'center', color: '#fff', fontWeight: 700, padding: 12 }}>
           You won! 🎉

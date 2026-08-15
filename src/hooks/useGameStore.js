@@ -7,6 +7,30 @@ import { deal } from '../core/dealer.js';
 import { applyMove, undo as coreUndo, redo as coreRedo } from '../core/moveEngine.js';
 import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, DEST_ORDER } from '../core/rules.js';
 import { isWon } from '../core/winDetection.js';
+import { buildStandardDeck, shuffle } from '../core/Deck.js';
+import { createEmptyGameState } from '../core/GameState.js';
+import { Flip } from '../render/animation/gsapSetup.js';
+import { flipBridge } from '../render/animation/flipBridge.js';
+
+// Capture the current position/size of every card node before a state change so
+// the render-layer Flip hook can tween from old → new positions after React
+// re-renders (cards reparent between Pile components in the DOM tree).
+function captureFlip() {
+  flipBridge.current = Flip.getState('[data-card]');
+}
+
+// Build a transient "pre-deal" layout: all 52 shuffled cards sitting face-down
+// in the stock, every other pile empty. The real deal() runs on the next frame
+// so the deal animation flows through the same Flip pipeline. core/ is untouched
+// — this only composes its pure building blocks.
+function buildPreDealState(seed) {
+  const deck = shuffle(buildStandardDeck(), seed !== undefined ? seed : undefined);
+  const state = createEmptyGameState();
+  if (seed !== undefined) state.seed = seed;
+  state.stock = deck.map((c) => ({ ...c, faceUp: false }));
+  state.startedAt = Date.now();
+  return state;
+}
 
 // Delay (ms) between auto-complete move applications so the user sees cards
 // fly to the foundations one at a time. Not persisted in state.
@@ -38,14 +62,27 @@ export const useGameStore = create((set, get) => ({
   // Remembers the last auto-move destination per card id so repeated clicks
   // cycle through the valid slots in DEST_ORDER. Reset on new game / undo / redo.
   autoMoveState: {},
+  // UI-only bookkeeping tagging the kind of transition last applied, so the
+  // animation layer can pick the right motion config. Not part of core/GameState.
+  lastActionMeta: { type: 'move' },
 
   /**
    * Deal a fresh game. Optional seed for deterministic dealing/testing.
+   *
+   * Sequences through a transient "pre-deal" layout (all cards in stock) set
+   * instantly, then performs the real deal on the next animation frame so the
+   * deal stagger flows through the same Flip pipeline as every other transition.
+   *
    * @param {number} [seed]
    */
   dealNewGame: (seed) => {
     clearAutoCompleteTimer();
-    set({ state: deal(seed !== undefined ? { seed } : {}), redoStack: [], autoMoveState: {} });
+    const preDeal = buildPreDealState(seed !== undefined ? seed : undefined);
+    set({ state: preDeal, redoStack: [], autoMoveState: {}, lastActionMeta: { type: 'draw' } });
+    requestAnimationFrame(() => {
+      captureFlip();
+      set({ state: deal(seed !== undefined ? { seed } : {}), lastActionMeta: { type: 'deal' } });
+    });
   },
 
   /**
@@ -53,7 +90,8 @@ export const useGameStore = create((set, get) => ({
    */
   drawFromStock: () => {
     const { state, redoStack } = get();
-    set({ state: applyMove(state, { type: 'draw' }), redoStack });
+    captureFlip();
+    set({ state: applyMove(state, { type: 'draw' }), redoStack, lastActionMeta: { type: 'draw' } });
   },
 
   /**
@@ -61,7 +99,8 @@ export const useGameStore = create((set, get) => ({
    */
   recycleStock: () => {
     const { state, redoStack } = get();
-    set({ state: applyMove(state, { type: 'recycle' }), redoStack });
+    captureFlip();
+    set({ state: applyMove(state, { type: 'recycle' }), redoStack, lastActionMeta: { type: 'draw' } });
   },
 
   /**
@@ -73,7 +112,7 @@ export const useGameStore = create((set, get) => ({
    * @param {string} [cardId]  specific card id to move (must be a movable top card/run)
    * @returns {boolean} whether the move was applied
    */
-  moveCard: (from, to, cardId) => {
+  moveCard: (from, to, cardId, opts = {}) => {
     clearAutoCompleteTimer();
     const { state, redoStack } = get();
     if (from === to) return false;
@@ -114,7 +153,8 @@ export const useGameStore = create((set, get) => ({
     if (!valid) return false;
 
     const next = applyMove(state, { type: 'moveCards', from, to, cardIds: moveIds });
-    set({ state: next, redoStack: [] });
+    captureFlip();
+    set({ state: next, redoStack: [], lastActionMeta: { type: opts.metaType ?? 'move' } });
     return true;
   },
 
@@ -162,7 +202,7 @@ export const useGameStore = create((set, get) => ({
     }
 
     set({ autoMoveState: { ...autoMoveState, [cardId]: chosen } });
-    get().moveCard(from, chosen, cardId);
+    get().moveCard(from, chosen, cardId, { metaType: 'auto' });
     return true;
   },
 
@@ -193,7 +233,8 @@ export const useGameStore = create((set, get) => ({
         to: mv.to,
         cardIds: [mv.cardId],
       });
-      set({ state: next, redoStack: [], autoMoveState: {} });
+      captureFlip();
+      set({ state: next, redoStack: [], autoMoveState: {}, lastActionMeta: { type: 'auto' } });
       autoCompleteTimer = setTimeout(step, AUTO_COMPLETE_DELAY);
     };
     step();

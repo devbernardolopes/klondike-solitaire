@@ -3,9 +3,12 @@
 // using a responsive CSS grid. DnD context is wired here via useDragEngine.
 
 import { DndContext, DragOverlay } from '@dnd-kit/core';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useDragEngine } from '../hooks/useDragEngine.js';
+import { useCardMoveFlip } from '../render/animation/useCardMoveFlip.js';
+import { playWinCascade } from '../render/animation/winCascade.js';
+import { isWon } from '../core/winDetection.js';
 import Pile from './Pile.jsx';
 import { CardFace } from './CardView.jsx';
 
@@ -49,6 +52,18 @@ export default function Board() {
   const autoComplete = useGameStore((s) => s.autoComplete);
   const { sensors, onDragStart, onDragEnd, onDragCancel, activeRun } =
     useDragEngine();
+
+  // Plays Flip.from() after each pile-mutating state change so cards tween
+  // between piles even when they reparent across Pile components.
+  useCardMoveFlip();
+
+  // Win-state cascade: fire once on the false → true transition of isWon.
+  const won = isWon(state);
+  const wasWon = useRef(false);
+  useEffect(() => {
+    if (won && !wasWon.current) playWinCascade();
+    wasWon.current = won;
+  }, [won]);
 
   const onStockClick = () => {
     if (state.stock.length > 0) drawFromStock();

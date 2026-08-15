@@ -4,6 +4,7 @@
 
 import { useRef } from 'react';
 import { useDraggable } from '@dnd-kit/core';
+import { useCardFaceFlip } from '../render/animation/useCardFaceFlip.js';
 
 const SUIT_GLYPH = {
   hearts: '♥',
@@ -27,28 +28,22 @@ function rankLabel(rank) {
  * @param {object} props
  * @param {{ id: string, suit: string, rank: number, color: string, faceUp: boolean }} props.card
  * @param {number} [props.zIndex]
+ * @param {import('react').Ref<any>} [props.innerRef]  ref attached to the flip-inner node (for the 3D face flip)
  */
-export function CardFace({ card, zIndex = 0 }) {
+export function CardFace({ card, zIndex = 0, innerRef }) {
   const base = {
     width: 'var(--card-width)',
     height: 'var(--card-height)',
     borderRadius: 'var(--card-radius)',
     border: 'var(--card-border)',
     boxShadow: 'var(--card-shadow)',
-    position: 'relative',
-    zIndex,
+    position: 'absolute',
+    inset: 0,
+    backfaceVisibility: 'hidden',
+    WebkitBackfaceVisibility: 'hidden',
   };
 
-  if (!card.faceUp) {
-    return (
-      <div
-        style={{ ...base, background: 'var(--card-back-bg)' }}
-        aria-label="face-down card"
-      />
-    );
-  }
-
-  return (
+  const front = (
     <div
       style={{
         ...base,
@@ -68,6 +63,43 @@ export function CardFace({ card, zIndex = 0 }) {
     >
       <span>{rankLabel(card.rank)}</span>
       <span style={{ marginLeft: 2 }}>{SUIT_GLYPH[card.suit]}</span>
+    </div>
+  );
+
+  const back = (
+    <div
+      style={{ ...base, background: 'var(--card-back-bg)', transform: 'rotateY(180deg)' }}
+      aria-label="face-down card"
+    />
+  );
+
+  // The card is face-up by default (front showing). The face-flip hook rotates
+  // the inner container on a faceUp toggle; both faces stay mounted for the
+  // whole game so Flip node tracking is never broken.
+  return (
+    <div
+      className="card-flip-container"
+      style={{
+        width: 'var(--card-width)',
+        height: 'var(--card-height)',
+        position: 'relative',
+        perspective: '1000px',
+      }}
+    >
+      <div
+        className="card-flip-inner"
+        ref={innerRef}
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: '100%',
+          transformStyle: 'preserve-3d',
+          transform: card.faceUp ? 'rotateY(0deg)' : 'rotateY(180deg)',
+        }}
+      >
+        {front}
+        {back}
+      </div>
     </div>
   );
 }
@@ -91,6 +123,9 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
     data: { from, cardId: card.id },
     disabled: !card.faceUp,
   });
+
+  const flipRef = useRef(null);
+  useCardFaceFlip(flipRef, card.faceUp);
 
   const downPos = useRef(null);
 
@@ -125,7 +160,7 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
       }}
       aria-label={`${rankLabel(card.rank)} of ${card.suit}`}
     >
-      <CardFace card={card} zIndex={zIndex} />
+      <CardFace card={card} zIndex={zIndex} innerRef={flipRef} />
     </div>
   );
 }
