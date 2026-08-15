@@ -9,6 +9,31 @@
 import { colorOf } from './Card.js';
 
 /**
+ * Fixed priority order of all possible destination slots for an auto-move.
+ * Foundations come first (by index), then tableau columns (by index). The source
+ * slot is always excluded at lookup time.
+ * @type {string[]}
+ */
+export const DEST_ORDER = [
+  'foundation:0', 'foundation:1', 'foundation:2', 'foundation:3',
+  'tableau:0', 'tableau:1', 'tableau:2', 'tableau:3',
+  'tableau:4', 'tableau:5', 'tableau:6',
+];
+
+/**
+ * Read a pile array from a GameState by locator. Mirrors the store's readPile.
+ * @param {import('./GameState.js').GameState} state
+ * @param {string} loc
+ * @returns {Array<{id:string, suit:string, rank:number, color:string, faceUp:boolean}>}
+ */
+function pileAt(state, loc) {
+  if (loc === 'stock') return state.stock;
+  if (loc === 'waste') return state.waste;
+  const [kind, idx] = loc.split(':');
+  return kind === 'foundation' ? state.foundations[Number(idx)] : state.tableau[Number(idx)];
+}
+
+/**
  * Is a run of cards a valid descending, alternating-color sequence (a "tableau run")?
  * Empty array is considered a valid (trivially empty) run.
  *
@@ -48,6 +73,48 @@ export function getTableauRun(pile, cardId) {
   if (!run.every((c) => c.faceUp)) return null;
   if (!isValidSequence(run)) return null;
   return run;
+}
+
+/**
+ * Ordered list of valid destination locators for a one-click/tap auto-move of a
+ * card (plus the run beneath it, for tableau sources). Order follows DEST_ORDER
+ * (foundations first, then tableaus); the source slot is excluded.
+ *
+ * For waste/foundation sources only the top card is movable (a buried card there
+ * cannot legally move), so a non-top card yields no targets.
+ *
+ * @param {import('./GameState.js').GameState} state
+ * @param {string} from    source pile locator
+ * @param {string} cardId  the clicked card's id
+ * @returns {string[]} destination locators in DEST_ORDER priority
+ */
+export function getAutoMoveTargets(state, from, cardId) {
+  const src = pileAt(state, from);
+  let run;
+  if (from.startsWith('tableau')) {
+    run = getTableauRun(src, cardId);
+    if (!run) return [];
+  } else {
+    // waste / foundation: only the top card can move
+    if (src.length === 0 || src[src.length - 1].id !== cardId) return [];
+    run = [src[src.length - 1]];
+  }
+
+  const movingCard = run[0];
+  const targets = [];
+  for (const loc of DEST_ORDER) {
+    if (loc === from) continue;
+    // A card already on a foundation should not hop to another (empty) foundation;
+    // it only returns to a tableau. This keeps the cycle sensible (e.g. Ace on a
+    // foundation goes back onto its tableau pile rather than to foundation:1).
+    if (from.startsWith('foundation') && loc.startsWith('foundation')) continue;
+    const dest = pileAt(state, loc);
+    const valid = loc.startsWith('foundation')
+      ? run.length === 1 && canMoveToFoundation(movingCard, dest)
+      : canMoveToTableau(movingCard, dest);
+    if (valid) targets.push(loc);
+  }
+  return targets;
 }
 
 /**

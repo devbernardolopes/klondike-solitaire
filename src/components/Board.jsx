@@ -44,6 +44,7 @@ export default function Board() {
   const state = useGameStore((s) => s.state);
   const drawFromStock = useGameStore((s) => s.drawFromStock);
   const recycleStock = useGameStore((s) => s.recycleStock);
+  const autoMove = useGameStore((s) => s.autoMove);
   const { sensors, onDragStart, onDragEnd, onDragCancel, activeRun } =
     useDragEngine();
 
@@ -79,7 +80,7 @@ export default function Board() {
           label={state.stock.length === 0 ? '↻' : ''}
           hiddenIds={hiddenIds}
         />
-        <Pile loc="waste" cards={state.waste} label="W" hiddenIds={hiddenIds} />
+        <Pile loc="waste" cards={state.waste} label="W" hiddenIds={hiddenIds} onAutoMove={autoMove} />
         <div />
         {state.foundations.map((pile, i) => (
           <Pile
@@ -88,6 +89,7 @@ export default function Board() {
             cards={pile}
             label={`F${i + 1}`}
             hiddenIds={hiddenIds}
+            onAutoMove={autoMove}
           />
         ))}
 
@@ -100,6 +102,7 @@ export default function Board() {
             fanned
             label={`T${i + 1}`}
             hiddenIds={hiddenIds}
+            onAutoMove={autoMove}
           />
         ))}
       </div>

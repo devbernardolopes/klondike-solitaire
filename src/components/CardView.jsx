@@ -2,6 +2,7 @@
 // Renders a single card. This pass uses a plain colored div with rank/suit text.
 // The real deck renderer (Sprite/Procedural) will plug in here later — see TODO.
 
+import { useRef } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 
 const SUIT_GLYPH = {
@@ -77,19 +78,42 @@ export function CardFace({ card, zIndex = 0 }) {
  * @param {string} props.from  pile locator the card currently lives in
  * @param {number} [props.zIndex]
  * @param {boolean} [props.hidden]  hide this card (e.g. while its run is shown in a DragOverlay)
+ * @param {(cardId: string, from: string) => void} [props.onAutoMove]  invoked on a tap (no drag)
  */
-export default function CardView({ card, from, zIndex = 0, hidden = false }) {
+// Tap (click) detection that does not interfere with dnd-kit dragging: a pointer
+// movement below this distance is treated as a tap → auto-move; >= the PointerSensor
+// activation distance (8px) is a drag. Kept strictly below 8 to avoid overlap.
+const CLICK_DISTANCE = 6;
+
+export default function CardView({ card, from, zIndex = 0, hidden = false, onAutoMove }) {
   const { attributes, listeners, setNodeRef } = useDraggable({
     id: card.id,
     data: { from, cardId: card.id },
     disabled: !card.faceUp,
   });
 
+  const downPos = useRef(null);
+
+  const handlePointerDown = (e) => {
+    listeners?.onPointerDown?.(e);
+    downPos.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handlePointerUp = (e) => {
+    listeners?.onPointerUp?.(e);
+    if (!card.faceUp || !onAutoMove || !downPos.current) return;
+    const dx = e.clientX - downPos.current.x;
+    const dy = e.clientY - downPos.current.y;
+    if (Math.hypot(dx, dy) < CLICK_DISTANCE) onAutoMove(card.id, from);
+    downPos.current = null;
+  };
+
   return (
     <div
       ref={setNodeRef}
-      {...listeners}
       {...attributes}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
       style={{ visibility: hidden ? 'hidden' : 'visible', cursor: 'grab' }}
       aria-label={`${rankLabel(card.rank)} of ${card.suit}`}
     >

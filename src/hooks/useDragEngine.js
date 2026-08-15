@@ -43,7 +43,9 @@ export function useDragEngine() {
   const [activeRun, setActiveRun] = useState(null);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    // 8px threshold: a tap (< CLICK_DISTANCE in CardView) is an auto-move, while
+    // a deliberate drag (>= 8px) initiates a drag. Keeps click and drag separate.
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor),
     // TODO: attach focus/tabindex + key handlers for keyboard-driven drag (out of scope this pass).
   );

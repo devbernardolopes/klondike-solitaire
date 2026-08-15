@@ -74,6 +74,10 @@ renders the lifted run stacked with the tableau fan offset. Keyboard navigation 
 - Single top-card **and** multi-card run drag-and-drop between valid piles via `rules.js`
   (grabbing any face-up tableau card lifts the valid run beneath it; a `DragOverlay`
   shows the run following the cursor).
+- One-click / one-tap auto-move: tapping any face-up card sends it (and its tableau run,
+  if buried) to the next valid destination, cycling through candidates in slot order
+  (foundations first, then tableaus) — `rules.js` `getAutoMoveTargets` + store `autoMove`.
+  Tap detection is gated below the PointerSensor drag threshold so it never conflicts with DnD.
 - Store: deal / draw / recycle / move / undo / redo.
 - Dexie schema, sound manager, leaderboard client (functional but local/mock).
 

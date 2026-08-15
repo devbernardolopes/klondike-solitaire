@@ -5,7 +5,7 @@
 import { create } from 'zustand';
 import { deal } from '../core/dealer.js';
 import { applyMove, undo as coreUndo, redo as coreRedo } from '../core/moveEngine.js';
-import { canMoveToTableau, canMoveToFoundation, getTableauRun } from '../core/rules.js';
+import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, DEST_ORDER } from '../core/rules.js';
 import { isWon } from '../core/winDetection.js';
 
 /**
@@ -23,12 +23,15 @@ function readPile(s, loc) {
 export const useGameStore = create((set, get) => ({
   state: deal(),
   redoStack: [],
+  // Remembers the last auto-move destination per card id so repeated clicks
+  // cycle through the valid slots in DEST_ORDER. Reset on new game / undo / redo.
+  autoMoveState: {},
 
   /**
    * Deal a fresh game. Optional seed for deterministic dealing/testing.
    * @param {number} [seed]
    */
-  dealNewGame: (seed) => set({ state: deal(seed !== undefined ? { seed } : {}), redoStack: [] }),
+  dealNewGame: (seed) => set({ state: deal(seed !== undefined ? { seed } : {}), redoStack: [], autoMoveState: {} }),
 
   /**
    * Draw from stock to waste. No-op if stock is empty (UI should offer recycle).
@@ -105,7 +108,7 @@ export const useGameStore = create((set, get) => ({
     const history = state.moveHistory.slice();
     const last = history[history.length - 1];
     const next = coreUndo(state);
-    set({ state: next, redoStack: [...redoStack, last] });
+    set({ state: next, redoStack: [...redoStack, last], autoMoveState: {} });
   },
 
   redo: () => {
@@ -114,7 +117,35 @@ export const useGameStore = create((set, get) => ({
     const stack = redoStack.slice();
     const record = stack.pop();
     const next = coreRedo(state, record);
-    set({ state: next, redoStack: stack });
+    set({ state: next, redoStack: stack, autoMoveState: {} });
+  },
+
+  /**
+   * One-click / one-tap auto-move. Moves the clicked face-up card (and, for a
+   * tableau source, the valid run beneath it) to the next valid destination,
+   * cycling through candidates in DEST_ORDER on repeated clicks.
+   *
+   * @param {string} from    source pile locator
+   * @param {string} cardId  the clicked card's id
+   * @returns {boolean} whether a move was applied
+   */
+  autoMove: (from, cardId) => {
+    const { state, autoMoveState } = get();
+    const targets = getAutoMoveTargets(state, from, cardId);
+    if (targets.length === 0) return false;
+
+    const last = autoMoveState[cardId];
+    let chosen;
+    if (last) {
+      const li = DEST_ORDER.indexOf(last);
+      chosen = targets.find((t) => DEST_ORDER.indexOf(t) > li) ?? targets[0];
+    } else {
+      chosen = targets[0];
+    }
+
+    set({ autoMoveState: { ...autoMoveState, [cardId]: chosen } });
+    moveCard(from, chosen, cardId);
+    return true;
   },
 
   isWon: () => isWon(get().state),

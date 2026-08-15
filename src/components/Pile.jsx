@@ -13,8 +13,9 @@ import CardView from './CardView.jsx';
  * @param {() => void} [props.onClick]   click handler (e.g. stock draw)
  * @param {string} [props.label]         placeholder label when empty
  * @param {Set<string>} [props.hiddenIds] card ids to hide (e.g. while shown in a DragOverlay)
+ * @param {(cardId: string, from: string) => void} [props.onAutoMove]  tap-to-move handler for face-up cards
  */
-export default function Pile({ loc, cards, fanned = false, onClick, label, hiddenIds }) {
+export default function Pile({ loc, cards, fanned = false, onClick, label, hiddenIds, onAutoMove }) {
   const { setNodeRef, isOver } = useDroppable({ id: loc, data: { loc } });
 
   return (
@@ -69,6 +70,7 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
             from={loc}
             zIndex={i}
             hidden={hiddenIds ? hiddenIds.has(card.id) : false}
+            onAutoMove={onAutoMove}
           />
         </div>
       ))}
