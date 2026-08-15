@@ -5,6 +5,8 @@
 import { useRef } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { useCardFaceFlip } from '../render/animation/useCardFaceFlip.js';
+import { useGameStore } from '../hooks/useGameStore.js';
+import { isWon } from '../core/winDetection.js';
 
 const SUIT_GLYPH = {
   hearts: '♥',
@@ -118,10 +120,11 @@ export function CardFace({ card, zIndex = 0, innerRef }) {
 const CLICK_DISTANCE = 6;
 
 export default function CardView({ card, from, zIndex = 0, hidden = false, onAutoMove }) {
+  const won = useGameStore((s) => isWon(s.state));
   const { attributes, listeners, setNodeRef } = useDraggable({
     id: card.id,
     data: { from, cardId: card.id },
-    disabled: !card.faceUp,
+    disabled: !card.faceUp || won,
   });
 
   const flipRef = useRef(null);
@@ -136,7 +139,7 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
 
   const handlePointerUp = (e) => {
     listeners?.onPointerUp?.(e);
-    if (!card.faceUp || !onAutoMove || !downPos.current) return;
+    if (!card.faceUp || won || !onAutoMove || !downPos.current) return;
     const dx = e.clientX - downPos.current.x;
     const dy = e.clientY - downPos.current.y;
     if (Math.hypot(dx, dy) < CLICK_DISTANCE) onAutoMove(from, card.id);

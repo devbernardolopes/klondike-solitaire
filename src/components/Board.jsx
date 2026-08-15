@@ -66,6 +66,7 @@ export default function Board() {
   }, [won]);
 
   const onStockClick = () => {
+    if (won) return;
     if (state.stock.length > 0) drawFromStock();
     else if (state.waste.length > 0) recycleStock();
   };
@@ -79,6 +80,7 @@ export default function Board() {
   const DOUBLE_TAP_DISTANCE_TOUCH = 24;
   const lastTap = useRef(null);
   const handleBoardPointerUp = (e) => {
+    if (won) return;
     if (e.target.closest('[data-card]')) return;
     const now = Date.now();
     const tap = { x: e.clientX, y: e.clientY, t: now };
@@ -103,7 +105,7 @@ export default function Board() {
   return (
     <div
       onPointerUp={handleBoardPointerUp}
-      style={{ flex: 1, minHeight: '100%', width: '100%', touchAction: 'manipulation' }}
+      style={{ flex: 1, minHeight: '100%', width: '100%', touchAction: 'manipulation', overflow: 'hidden' }}
     >
     <DndContext
       sensors={sensors}

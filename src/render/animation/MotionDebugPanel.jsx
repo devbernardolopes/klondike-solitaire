@@ -16,6 +16,7 @@ export function MotionDebugPanel() {
     duration: { value: MOTION.win.duration, min: 0.1, max: 1.5, step: 0.01, onChange: (v) => (MOTION.win.duration = v) },
     stagger:  { value: MOTION.win.stagger,  min: 0,   max: 0.3, step: 0.01, onChange: (v) => (MOTION.win.stagger = v) },
     flyDistance: { value: MOTION.win.flyDistance, min: 200, max: 2000, step: 50, onChange: (v) => (MOTION.win.flyDistance = v) },
+    bottomMargin: { value: MOTION.win.bottomMargin, min: 0, max: 100, step: 1, onChange: (v) => (MOTION.win.bottomMargin = v) },
   });
   return null;
 }

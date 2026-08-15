@@ -90,6 +90,7 @@ export const useGameStore = create((set, get) => ({
    */
   drawFromStock: () => {
     const { state, redoStack } = get();
+    if (isWon(state)) return;
     captureFlip();
     set({ state: applyMove(state, { type: 'draw' }), redoStack, lastActionMeta: { type: 'draw' } });
   },
@@ -99,6 +100,7 @@ export const useGameStore = create((set, get) => ({
    */
   recycleStock: () => {
     const { state, redoStack } = get();
+    if (isWon(state)) return;
     captureFlip();
     set({ state: applyMove(state, { type: 'recycle' }), redoStack, lastActionMeta: { type: 'draw' } });
   },
@@ -115,6 +117,7 @@ export const useGameStore = create((set, get) => ({
   moveCard: (from, to, cardId, opts = {}) => {
     clearAutoCompleteTimer();
     const { state, redoStack } = get();
+    if (isWon(state)) return false;
     if (from === to) return false;
 
     const srcPile = readPile(state, from);
@@ -189,6 +192,7 @@ export const useGameStore = create((set, get) => ({
    */
   autoMove: (from, cardId) => {
     const { state, autoMoveState } = get();
+    if (isWon(state)) return false;
     const targets = getAutoMoveTargets(state, from, cardId);
     if (targets.length === 0) return false;
 
@@ -220,6 +224,7 @@ export const useGameStore = create((set, get) => ({
    */
   autoComplete: () => {
     if (autoCompleteTimer !== null) return false;
+    if (isWon(get().state)) return false;
     const step = () => {
       const cur = get().state;
       const mv = findFoundationMove(cur);
