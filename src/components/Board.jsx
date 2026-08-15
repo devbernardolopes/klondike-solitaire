@@ -78,6 +78,10 @@ export default function Board() {
   const hiddenIds = activeRun ? new Set(activeRun.map((c) => c.id)) : null;
 
   return (
+    <div
+      onPointerUp={handleBoardPointerUp}
+      style={{ flex: 1, minHeight: '100%', width: '100%' }}
+    >
     <DndContext
       sensors={sensors}
       onDragStart={onDragStart}
@@ -85,7 +89,6 @@ export default function Board() {
       onDragCancel={onDragCancel}
     >
       <div
-        onPointerUp={handleBoardPointerUp}
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(7, var(--card-width))',
@@ -134,5 +137,6 @@ export default function Board() {
         {activeRun ? <RunPreview cards={activeRun} /> : null}
       </DragOverlay>
     </DndContext>
+    </div>
   );
 }
