@@ -57,7 +57,11 @@ export default function Board() {
 
   // Double-tap / double-click detection on the board background only (not on a
   // card — cards keep their single-tap auto-move). Two taps within DOUBLE_TAP_MS
-  // and DOUBLE_TAP_DISTANCE trigger auto-complete.
+  // and a distance tolerance trigger auto-complete. Touch taps drift more than
+  // mouse clicks, so the tolerance is widened for touch input.
+  const DOUBLE_TAP_MS = 300;
+  const DOUBLE_TAP_DISTANCE_MOUSE = 6;
+  const DOUBLE_TAP_DISTANCE_TOUCH = 24;
   const lastTap = useRef(null);
   const handleBoardPointerUp = (e) => {
     if (e.target.closest('[data-card]')) return;
@@ -65,10 +69,14 @@ export default function Board() {
     const tap = { x: e.clientX, y: e.clientY, t: now };
     const prev = lastTap.current;
     lastTap.current = tap;
+    const maxDistance =
+      e.pointerType === 'touch'
+        ? DOUBLE_TAP_DISTANCE_TOUCH
+        : DOUBLE_TAP_DISTANCE_MOUSE;
     if (
       prev &&
-      now - prev.t < 300 &&
-      Math.hypot(tap.x - prev.x, tap.y - prev.y) < 6
+      now - prev.t < DOUBLE_TAP_MS &&
+      Math.hypot(tap.x - prev.x, tap.y - prev.y) < maxDistance
     ) {
       lastTap.current = null;
       autoComplete();
@@ -80,7 +88,7 @@ export default function Board() {
   return (
     <div
       onPointerUp={handleBoardPointerUp}
-      style={{ flex: 1, minHeight: '100%', width: '100%' }}
+      style={{ flex: 1, minHeight: '100%', width: '100%', touchAction: 'manipulation' }}
     >
     <DndContext
       sensors={sensors}
