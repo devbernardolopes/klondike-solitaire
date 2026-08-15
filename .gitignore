@@ -29,3 +29,6 @@ Thumbs.db
 
 # Coverage / test output (future)
 coverage/
+
+# Husky internal shim dir (keep .husky/<hook> files tracked)
+.husky/_
