@@ -54,6 +54,7 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange }) {
         Theme{' '}
         <select value={theme} onChange={(e) => onThemeChange(e.target.value)} style={{ ...btn }}>
           <option value="classic">Classic</option>
+          <option value="dark">Dark</option>
           {/* TODO(next pass): register more themes */}
         </select>
       </label>

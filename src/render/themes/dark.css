@@ -1,0 +1,35 @@
+/* render/themes/dark.css
+ * Full dark UI variant of the "classic" theme: dark felt, dark card faces,
+ * light suit text. Scoped to .theme-dark only (classic remains the :root default).
+ */
+
+.theme-dark {
+  /* Table / felt — deep blue-black */
+  --felt-color: #11151c;
+  --felt-color-dark: #0a0d12;
+  --table-radius: 16px;
+
+  /* Card geometry (same as classic) */
+  --card-width: clamp(48px, 9vw, 84px);
+  --card-height: calc(var(--card-width) * 1.4);
+  --card-radius: 6px;
+
+  /* Dark card face + dark pattern back */
+  --card-face-bg: #1e222b;
+  --card-back-bg: repeating-linear-gradient(
+    45deg,
+    #3a2a5c,
+    #3a2a5c 6px,
+    #2a1d45 6px,
+    #2a1d45 12px
+  );
+  --card-border: 1px solid rgba(255, 255, 255, 0.12);
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+
+  /* Tableau fan: the visible "peek" of each stacked card (rest overlaps beneath) */
+  --tableau-fan: clamp(18px, 3vw, 30px);
+
+  /* On dark faces, "black" suits become light; red is brightened for contrast */
+  --card-text-red: #ff6b6b;
+  --card-text-black: #e6e6e6;
+}

@@ -2,6 +2,7 @@
 // Root component. Composes Toolbar + Board. Loads the classic theme CSS.
 
 import '../render/themes/classic.css';
+import '../render/themes/dark.css';
 // Side-effect imports register the deck renderers with the registry.
 import '../render/deck/SpriteDeckRenderer.js';
 import '../render/deck/ProceduralDeckRenderer.js';
@@ -12,7 +13,7 @@ import { useGameStore } from '../hooks/useGameStore.js';
 import { isWon } from '../core/winDetection.js';
 
 export default function App() {
-  const [theme] = useState('classic');
+  const [theme, setTheme] = useState('classic');
   const [deck] = useState('procedural');
   // TODO(next pass): wire theme/deck selection into the settings store + renderer.
   const state = useGameStore((s) => s.state);
@@ -30,7 +31,7 @@ export default function App() {
     >
       <Toolbar
         theme={theme}
-        onThemeChange={() => {}}
+        onThemeChange={setTheme}
         deck={deck}
         onDeckChange={() => {}}
       />
