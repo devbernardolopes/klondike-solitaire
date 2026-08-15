@@ -6,19 +6,26 @@ import '../render/themes/dark.css';
 // Side-effect imports register the deck renderers with the registry.
 import '../render/deck/SpriteDeckRenderer.js';
 import '../render/deck/ProceduralDeckRenderer.js';
-import { useState } from 'react';
+import { useEffect } from 'react';
 import Toolbar from './Toolbar.jsx';
 import Board from './Board.jsx';
 import { useGameStore } from '../hooks/useGameStore.js';
+import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { isWon } from '../core/winDetection.js';
 import { MotionDebugPanel } from '../render/animation/MotionDebugPanel.jsx';
 
 export default function App() {
-  const [theme, setTheme] = useState('classic');
-  const [deck] = useState('procedural');
-  // TODO(next pass): wire theme/deck selection into the settings store + renderer.
+  const theme = useSettingsStore((s) => s.theme);
+  const deck = useSettingsStore((s) => s.deck);
+  const setTheme = useSettingsStore((s) => s.setTheme);
+  const setDeck = useSettingsStore((s) => s.setDeck);
+  const init = useSettingsStore((s) => s.init);
   const state = useGameStore((s) => s.state);
   const won = isWon(state);
+
+  useEffect(() => {
+    init();
+  }, [init]);
 
   return (
     <div
@@ -34,7 +41,7 @@ export default function App() {
         theme={theme}
         onThemeChange={setTheme}
         deck={deck}
-        onDeckChange={() => {}}
+        onDeckChange={setDeck}
       />
       <Board />
       {import.meta.env.DEV && <MotionDebugPanel />}

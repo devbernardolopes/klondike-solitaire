@@ -1,9 +1,13 @@
 // components/Pile.jsx
 // Generic pile: stock, waste, foundation, or tableau column.
 // Renders a droppable area; cards stack with a fan offset for tableau columns.
+// Also focusable for keyboard play: Enter on a focused pile moves the currently
+// selected card here (or draws from stock for the stock pile).
 
 import { useDroppable } from '@dnd-kit/core';
 import CardView from './CardView.jsx';
+import { useGameStore } from '../hooks/useGameStore.js';
+import { useUiStore, findCardLocator } from '../hooks/useUiStore.js';
 
 /**
  * @param {object} props
@@ -17,11 +21,62 @@ import CardView from './CardView.jsx';
  */
 export default function Pile({ loc, cards, fanned = false, onClick, label, hiddenIds, onAutoMove }) {
   const { setNodeRef, isOver } = useDroppable({ id: loc, data: { loc } });
+  const moveCard = useGameStore((s) => s.moveCard);
+  const drawFromStock = useGameStore((s) => s.drawFromStock);
+  const recycleStock = useGameStore((s) => s.recycleStock);
+  const selectedCardId = useUiStore((s) => s.selectedCardId);
+  const clearSelection = useUiStore((s) => s.clearSelection);
+  const setAnnounce = useUiStore((s) => s.setAnnounce);
+
+  const kind = loc.split(':')[0];
+  const pileName =
+    kind === 'stock'
+      ? 'Stock'
+      : kind === 'waste'
+        ? 'Waste'
+        : kind === 'foundation'
+          ? `Foundation ${Number(loc.split(':')[1]) + 1}`
+          : `Tableau ${Number(loc.split(':')[1]) + 1}`;
+
+  const handleKeyDown = (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    if (loc === 'stock') {
+      if (onClick) onClick();
+      return;
+    }
+    if (!selectedCardId) {
+      setAnnounce(`Select a card first to move it to ${pileName}`);
+      return;
+    }
+    const from = findCardLocator(useGameStore.getState().state, selectedCardId);
+    if (!from) {
+      clearSelection();
+      setAnnounce('Selected card is no longer available');
+      return;
+    }
+    const ok = moveCard(from, loc, selectedCardId);
+    if (ok) {
+      clearSelection();
+      setAnnounce(`Moved card to ${pileName}`);
+    } else {
+      setAnnounce(`Cannot move that card to ${pileName}`);
+    }
+  };
+
+  // Stock pile click draws (or recycles when empty); expose the same via keyboard.
+  const handleClick = () => {
+    if (onClick) onClick();
+  };
 
   return (
     <div
       ref={setNodeRef}
-      onClick={onClick}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+      role="button"
+      aria-label={`${pileName}${cards.length ? `, ${cards.length} cards` : ', empty'}`}
       style={{
         minWidth: 'var(--card-width)',
         minHeight: 'var(--card-height)',
@@ -35,6 +90,7 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
           : '1px solid rgba(255,255,255,0.18)',
         background: 'rgba(0,0,0,0.12)',
         cursor: onClick ? 'pointer' : 'default',
+        outlineOffset: 2,
       }}
       data-loc={loc}
     >

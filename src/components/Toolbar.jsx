@@ -76,7 +76,7 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange }) {
         Deck{' '}
         <select value={deck} onChange={(e) => onDeckChange(e.target.value)} style={{ ...btn }}>
           <option value="procedural">Procedural</option>
-          <option value="sprite">Sprite (stub)</option>
+          <option value="sprite">Sprite (atlas)</option>
           {/* TODO(next pass): add real deck renderers */}
         </select>
       </label>

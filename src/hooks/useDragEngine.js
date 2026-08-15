@@ -10,7 +10,6 @@ import {
   useSensor,
   useSensors,
   PointerSensor,
-  KeyboardSensor,
 } from '@dnd-kit/core';
 import { useGameStore } from './useGameStore.js';
 import { getTableauRun } from '../core/rules.js';
@@ -46,8 +45,10 @@ export function useDragEngine() {
     // 8px threshold: a tap (< CLICK_DISTANCE in CardView) is an auto-move, while
     // a deliberate drag (>= 8px) initiates a drag. Keeps click and drag separate.
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(KeyboardSensor),
-    // TODO: attach focus/tabindex + key handlers for keyboard-driven drag (out of scope this pass).
+    // Keyboard play is handled by explicit focusable cards/piles + the global
+    // shortcut handler in Board.jsx (rather than dnd-kit's KeyboardSensor), so
+    // Enter/Space on a focused card performs an auto-move and Enter on a focused
+    // pile moves the selected card there.
   );
 
   function onDragStart(event) {

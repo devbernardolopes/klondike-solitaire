@@ -6,6 +6,7 @@ import { DndContext, DragOverlay } from '@dnd-kit/core';
 import { useEffect, useRef } from 'react';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useDragEngine } from '../hooks/useDragEngine.js';
+import { useUiStore } from '../hooks/useUiStore.js';
 import { useCardMoveFlip } from '../render/animation/useCardMoveFlip.js';
 import { playWinCascade } from '../render/animation/winCascade.js';
 import { isWon } from '../core/winDetection.js';
@@ -50,6 +51,12 @@ export default function Board() {
   const recycleStock = useGameStore((s) => s.recycleStock);
   const autoMove = useGameStore((s) => s.autoMove);
   const autoComplete = useGameStore((s) => s.autoComplete);
+  const undo = useGameStore((s) => s.undo);
+  const redo = useGameStore((s) => s.redo);
+  const dealNewGame = useGameStore((s) => s.dealNewGame);
+  const clearSelection = useUiStore((s) => s.clearSelection);
+  const setAnnounce = useUiStore((s) => s.setAnnounce);
+  const announce = useUiStore((s) => s.announce);
   const { sensors, onDragStart, onDragEnd, onDragCancel, activeRun } =
     useDragEngine();
 
@@ -64,6 +71,53 @@ export default function Board() {
     if (won && !wasWon.current) playWinCascade();
     wasWon.current = won;
   }, [won]);
+
+  // Global keyboard shortcuts (single-letter, no modifiers). Cards and piles
+  // handle their own Enter/Space activation, so these never conflict with them.
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === 'n' || e.key === 'N') {
+        clearSelection();
+        setAnnounce('New game dealt');
+        dealNewGame();
+        return;
+      }
+      if (won) return;
+      switch (e.key.toLowerCase()) {
+        case 'd':
+          clearSelection();
+          if (useGameStore.getState().state.stock.length > 0) drawFromStock();
+          else if (useGameStore.getState().state.waste.length > 0) recycleStock();
+          setAnnounce('Drew from stock');
+          break;
+        case 'r':
+          clearSelection();
+          recycleStock();
+          setAnnounce('Recycled waste to stock');
+          break;
+        case 'u':
+          clearSelection();
+          undo();
+          setAnnounce('Undo');
+          break;
+        case 'e':
+          clearSelection();
+          redo();
+          setAnnounce('Redo');
+          break;
+        case 'a':
+          clearSelection();
+          autoComplete();
+          setAnnounce('Auto-completing to foundations');
+          break;
+        default:
+          break;
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [won, drawFromStock, recycleStock, undo, redo, autoComplete, dealNewGame, clearSelection, setAnnounce]);
 
   const onStockClick = () => {
     if (won) return;
@@ -107,6 +161,24 @@ export default function Board() {
       onPointerUp={handleBoardPointerUp}
       style={{ flex: 1, minHeight: '100%', width: '100%', touchAction: 'manipulation', overflow: 'hidden' }}
     >
+      {/* Screen-reader live region for keyboard/shortcut feedback. */}
+      <div
+        role="status"
+        aria-live="polite"
+        style={{
+          position: 'absolute',
+          width: 1,
+          height: 1,
+          padding: 0,
+          margin: -1,
+          overflow: 'hidden',
+          clip: 'rect(0 0 0 0)',
+          whiteSpace: 'nowrap',
+          border: 0,
+        }}
+      >
+        {announce}
+      </div>
     <DndContext
       sensors={sensors}
       onDragStart={onDragStart}

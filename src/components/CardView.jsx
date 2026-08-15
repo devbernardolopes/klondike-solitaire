@@ -6,6 +6,8 @@ import { useMemo, useRef } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { useCardFaceFlip } from '../render/animation/useCardFaceFlip.js';
 import { useGameStore } from '../hooks/useGameStore.js';
+import { useSettingsStore } from '../hooks/useSettingsStore.js';
+import { useUiStore } from '../hooks/useUiStore.js';
 import { isWon } from '../core/winDetection.js';
 import { getDeck } from '../render/deck/deckRegistry.js';
 
@@ -39,11 +41,12 @@ export function CardFace({ card, zIndex = 0, innerRef }) {
     WebkitBackfaceVisibility: 'hidden',
   };
 
+  const deck = useSettingsStore((s) => s.deck);
   const faceImg = useMemo(
-    () => getDeck().renderCard(card.suit, card.rank),
-    [card.suit, card.rank],
+    () => getDeck(deck).renderCard(card.suit, card.rank),
+    [card.suit, card.rank, deck],
   );
-  const backImg = useMemo(() => getDeck().renderBack(), []);
+  const backImg = useMemo(() => getDeck(deck).renderBack(), [deck]);
 
   const front = (
     <div
@@ -117,6 +120,10 @@ const CLICK_DISTANCE = 6;
 
 export default function CardView({ card, from, zIndex = 0, hidden = false, onAutoMove }) {
   const won = useGameStore((s) => isWon(s.state));
+  const selectedCardId = useUiStore((s) => s.selectedCardId);
+  const selectCard = useUiStore((s) => s.selectCard);
+  const clearSelection = useUiStore((s) => s.clearSelection);
+  const setAnnounce = useUiStore((s) => s.setAnnounce);
   const { attributes, listeners, setNodeRef } = useDraggable({
     id: card.id,
     data: { from, cardId: card.id },
@@ -142,12 +149,34 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
     downPos.current = null;
   };
 
+  // Keyboard: focusing a card selects it (highlight); Enter/Space performs the
+  // same one-tap auto-move as a pointer tap. The drag PointerSensor (threshold
+  // 8px) means a keyboard activation never triggers a drag.
+  const handleFocus = () => {
+    if (card.faceUp && !won) selectCard(card.id);
+  };
+  const handleKeyDown = (e) => {
+    if (!card.faceUp || won || !onAutoMove) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      clearSelection();
+      setAnnounce(`Auto-moved ${rankLabel(card.rank)} of ${card.suit}`);
+      onAutoMove(from, card.id);
+    }
+  };
+
+  const selected = selectedCardId === card.id;
+
   return (
     <div
       ref={setNodeRef}
       {...attributes}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
+      onFocus={handleFocus}
+      onKeyDown={handleKeyDown}
+      tabIndex={card.faceUp && !won ? 0 : -1}
+      role="button"
       data-card={card.id}
       style={{
         visibility: hidden ? 'hidden' : 'visible',
@@ -156,8 +185,11 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
         WebkitUserSelect: 'none',
         WebkitTouchCallout: 'none',
         userSelect: 'none',
+        outline: selected ? '3px solid var(--card-text-red, #ffd54a)' : 'none',
+        outlineOffset: 2,
       }}
-      aria-label={`${rankLabel(card.rank)} of ${card.suit}`}
+      aria-label={`${rankLabel(card.rank)} of ${card.suit}${card.faceUp ? '' : ' (face down)'}`}
+      aria-pressed={selected}
     >
       <CardFace card={card} zIndex={zIndex} innerRef={flipRef} />
     </div>
