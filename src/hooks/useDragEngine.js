@@ -87,6 +87,10 @@ export function useDragEngine() {
   }
 
   function onDragCancel() {
+    // TEMP DEBUG (touch-action race guard): if a card survives as hidden after a
+    // drag cancel even with touch-action:none in place, this log points to a
+    // state desync between activeRun cardIds and the pile's actual cards.
+    console.log('[useDragEngine] onDragCancel', { activeId, activeRun });
     setActiveId(null);
     setActiveRun(null);
   }

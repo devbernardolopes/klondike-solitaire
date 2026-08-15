@@ -115,7 +115,14 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       data-card={card.id}
-      style={{ visibility: hidden ? 'hidden' : 'visible', cursor: 'grab' }}
+      style={{
+        visibility: hidden ? 'hidden' : 'visible',
+        cursor: 'grab',
+        touchAction: 'none',
+        WebkitUserSelect: 'none',
+        WebkitTouchCallout: 'none',
+        userSelect: 'none',
+      }}
       aria-label={`${rankLabel(card.rank)} of ${card.suit}`}
     >
       <CardFace card={card} zIndex={zIndex} />
