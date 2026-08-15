@@ -1,9 +1,11 @@
 // components/Toolbar.jsx
 // New game, undo, theme/deck switchers. Stubs OK for switchers this pass.
 
+import { useState } from 'react';
 import pkg from '../../package.json';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useSound } from '../hooks/useSound.js';
+import ConfirmModal from './ConfirmModal.jsx';
 
 /**
  * @param {object} props
@@ -13,6 +15,7 @@ import { useSound } from '../hooks/useSound.js';
  * @param {(d: string) => void} props.onDeckChange
  */
 export default function Toolbar({ theme, onThemeChange, deck, onDeckChange }) {
+  const [confirmNewGame, setConfirmNewGame] = useState(false);
   const dealNewGame = useGameStore((s) => s.dealNewGame);
   const undo = useGameStore((s) => s.undo);
   const redo = useGameStore((s) => s.redo);
@@ -40,7 +43,7 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange }) {
         padding: '8px clamp(8px, 2vw, 20px)',
       }}
     >
-      <button style={btn} onClick={() => { dealNewGame(); play('deal'); }}>
+      <button style={btn} onClick={() => setConfirmNewGame(true)}>
         New Game
       </button>
       <button style={{ ...btn, opacity: canUndo ? 1 : 0.4 }} disabled={!canUndo} onClick={undo}>
@@ -78,6 +81,19 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange }) {
       >
         Version v{pkg.version}
       </span>
+
+      <ConfirmModal
+        open={confirmNewGame}
+        title="New Game"
+        message="Start a new game? Current progress will be lost."
+        confirmText="New Game"
+        onConfirm={() => {
+          setConfirmNewGame(false);
+          dealNewGame();
+          play('deal');
+        }}
+        onCancel={() => setConfirmNewGame(false)}
+      />
     </div>
   );
 }
