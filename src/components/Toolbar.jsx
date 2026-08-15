@@ -5,6 +5,7 @@ import { useState } from 'react';
 import pkg from '../../package.json';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useSound } from '../hooks/useSound.js';
+import { isWon } from '../core/winDetection.js';
 import ConfirmModal from './ConfirmModal.jsx';
 
 /**
@@ -21,6 +22,7 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange }) {
   const redo = useGameStore((s) => s.redo);
   const canUndo = useGameStore((s) => s.state.moveHistory.length > 0);
   const canRedo = useGameStore((s) => s.redoStack.length > 0);
+  const won = useGameStore((s) => isWon(s.state));
   const { play } = useSound();
 
   const btn = {
@@ -46,10 +48,18 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange }) {
       <button style={btn} onClick={() => setConfirmNewGame(true)}>
         New Game
       </button>
-      <button style={{ ...btn, opacity: canUndo ? 1 : 0.4 }} disabled={!canUndo} onClick={undo}>
+      <button
+        style={{ ...btn, opacity: won || !canUndo ? 0.4 : 1 }}
+        disabled={won || !canUndo}
+        onClick={undo}
+      >
         Undo
       </button>
-      <button style={{ ...btn, opacity: canRedo ? 1 : 0.4 }} disabled={!canRedo} onClick={redo}>
+      <button
+        style={{ ...btn, opacity: won || !canRedo ? 0.4 : 1 }}
+        disabled={won || !canRedo}
+        onClick={redo}
+      >
         Redo
       </button>
 
