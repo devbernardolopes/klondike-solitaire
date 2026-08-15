@@ -22,15 +22,19 @@ export const DEST_ORDER = [
 
 /**
  * Read a pile array from a GameState by locator. Mirrors the store's readPile.
+ * Returns `undefined` for an unrecognized locator (callers guard against this).
  * @param {import('./GameState.js').GameState} state
  * @param {string} loc
- * @returns {Array<{id:string, suit:string, rank:number, color:string, faceUp:boolean}>}
+ * @returns {Array<{id:string, suit:string, rank:number, color:string, faceUp:boolean}>|undefined}
  */
 function pileAt(state, loc) {
+  if (!state || !loc) return undefined;
   if (loc === 'stock') return state.stock;
   if (loc === 'waste') return state.waste;
-  const [kind, idx] = loc.split(':');
-  return kind === 'foundation' ? state.foundations[Number(idx)] : state.tableau[Number(idx)];
+  const [kind, idxStr] = loc.split(':');
+  if (kind === 'foundation') return state.foundations?.[Number(idxStr)];
+  if (kind === 'tableau') return state.tableau?.[Number(idxStr)];
+  return undefined;
 }
 
 /**
@@ -90,6 +94,7 @@ export function getTableauRun(pile, cardId) {
  */
 export function getAutoMoveTargets(state, from, cardId) {
   const src = pileAt(state, from);
+  if (!src) return [];
   let run;
   if (from.startsWith('tableau')) {
     run = getTableauRun(src, cardId);
@@ -109,6 +114,7 @@ export function getAutoMoveTargets(state, from, cardId) {
     // foundation goes back onto its tableau pile rather than to foundation:1).
     if (from.startsWith('foundation') && loc.startsWith('foundation')) continue;
     const dest = pileAt(state, loc);
+    if (!dest) continue;
     const valid = loc.startsWith('foundation')
       ? run.length === 1 && canMoveToFoundation(movingCard, dest)
       : canMoveToTableau(movingCard, dest);

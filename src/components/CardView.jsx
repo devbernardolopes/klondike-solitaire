@@ -104,7 +104,7 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
     if (!card.faceUp || !onAutoMove || !downPos.current) return;
     const dx = e.clientX - downPos.current.x;
     const dy = e.clientY - downPos.current.y;
-    if (Math.hypot(dx, dy) < CLICK_DISTANCE) onAutoMove(card.id, from);
+    if (Math.hypot(dx, dy) < CLICK_DISTANCE) onAutoMove(from, card.id);
     downPos.current = null;
   };
 
