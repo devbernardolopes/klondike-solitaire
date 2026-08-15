@@ -114,6 +114,7 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
       {...attributes}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
+      data-card={card.id}
       style={{ visibility: hidden ? 'hidden' : 'visible', cursor: 'grab' }}
       aria-label={`${rankLabel(card.rank)} of ${card.suit}`}
     >

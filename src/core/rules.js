@@ -157,3 +157,34 @@ export function canMoveToFoundation(card, foundation) {
   const top = foundation[foundation.length - 1];
   return card.suit === top.suit && card.rank === top.rank + 1;
 }
+
+/**
+ * Find the next single card that can be auto-moved onto a foundation from a
+ * "visible, top-most" source. Per the auto-complete rules this only considers
+ * the waste top and the face-up top card of each tableau column — never the
+ * stock (face-down / not visible) nor cards already on a foundation.
+ *
+ * @param {import('./GameState.js').GameState} state
+ * @returns {{ from: string, to: string, cardId: string }|null}
+ */
+export function findFoundationMove(state) {
+  const candidates = [];
+  if (state.waste.length > 0) {
+    candidates.push({ from: 'waste', card: state.waste[state.waste.length - 1] });
+  }
+  state.tableau.forEach((pile, i) => {
+    if (pile.length > 0 && pile[pile.length - 1].faceUp) {
+      candidates.push({ from: `tableau:${i}`, card: pile[pile.length - 1] });
+    }
+  });
+
+  for (const { from, card } of candidates) {
+    for (let i = 0; i < state.foundations.length; i++) {
+      const to = `foundation:${i}`;
+      if (canMoveToFoundation(card, state.foundations[i])) {
+        return { from, to, cardId: card.id };
+      }
+    }
+  }
+  return null;
+}

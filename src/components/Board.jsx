@@ -3,6 +3,7 @@
 // using a responsive CSS grid. DnD context is wired here via useDragEngine.
 
 import { DndContext, DragOverlay } from '@dnd-kit/core';
+import { useRef } from 'react';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useDragEngine } from '../hooks/useDragEngine.js';
 import Pile from './Pile.jsx';
@@ -45,12 +46,33 @@ export default function Board() {
   const drawFromStock = useGameStore((s) => s.drawFromStock);
   const recycleStock = useGameStore((s) => s.recycleStock);
   const autoMove = useGameStore((s) => s.autoMove);
+  const autoComplete = useGameStore((s) => s.autoComplete);
   const { sensors, onDragStart, onDragEnd, onDragCancel, activeRun } =
     useDragEngine();
 
   const onStockClick = () => {
     if (state.stock.length > 0) drawFromStock();
     else if (state.waste.length > 0) recycleStock();
+  };
+
+  // Double-tap / double-click detection on the board background only (not on a
+  // card — cards keep their single-tap auto-move). Two taps within DOUBLE_TAP_MS
+  // and DOUBLE_TAP_DISTANCE trigger auto-complete.
+  const lastTap = useRef(null);
+  const handleBoardPointerUp = (e) => {
+    if (e.target.closest('[data-card]')) return;
+    const now = Date.now();
+    const tap = { x: e.clientX, y: e.clientY, t: now };
+    const prev = lastTap.current;
+    lastTap.current = tap;
+    if (
+      prev &&
+      now - prev.t < 300 &&
+      Math.hypot(tap.x - prev.x, tap.y - prev.y) < 6
+    ) {
+      lastTap.current = null;
+      autoComplete();
+    }
   };
 
   const hiddenIds = activeRun ? new Set(activeRun.map((c) => c.id)) : null;
@@ -63,6 +85,7 @@ export default function Board() {
       onDragCancel={onDragCancel}
     >
       <div
+        onPointerUp={handleBoardPointerUp}
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(7, var(--card-width))',

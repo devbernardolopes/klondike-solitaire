@@ -5,8 +5,20 @@
 import { create } from 'zustand';
 import { deal } from '../core/dealer.js';
 import { applyMove, undo as coreUndo, redo as coreRedo } from '../core/moveEngine.js';
-import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, DEST_ORDER } from '../core/rules.js';
+import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, DEST_ORDER } from '../core/rules.js';
 import { isWon } from '../core/winDetection.js';
+
+// Delay (ms) between auto-complete move applications so the user sees cards
+// fly to the foundations one at a time. Not persisted in state.
+const AUTO_COMPLETE_DELAY = 140;
+let autoCompleteTimer = null;
+
+function clearAutoCompleteTimer() {
+  if (autoCompleteTimer !== null) {
+    clearTimeout(autoCompleteTimer);
+    autoCompleteTimer = null;
+  }
+}
 
 /**
  * Read a pile array from state by locator.
@@ -31,7 +43,10 @@ export const useGameStore = create((set, get) => ({
    * Deal a fresh game. Optional seed for deterministic dealing/testing.
    * @param {number} [seed]
    */
-  dealNewGame: (seed) => set({ state: deal(seed !== undefined ? { seed } : {}), redoStack: [], autoMoveState: {} }),
+  dealNewGame: (seed) => {
+    clearAutoCompleteTimer();
+    set({ state: deal(seed !== undefined ? { seed } : {}), redoStack: [], autoMoveState: {} });
+  },
 
   /**
    * Draw from stock to waste. No-op if stock is empty (UI should offer recycle).
@@ -59,6 +74,7 @@ export const useGameStore = create((set, get) => ({
    * @returns {boolean} whether the move was applied
    */
   moveCard: (from, to, cardId) => {
+    clearAutoCompleteTimer();
     const { state, redoStack } = get();
     if (from === to) return false;
 
@@ -103,6 +119,7 @@ export const useGameStore = create((set, get) => ({
   },
 
   undo: () => {
+    clearAutoCompleteTimer();
     const { state, redoStack } = get();
     if (state.moveHistory.length === 0) return;
     const history = state.moveHistory.slice();
@@ -112,6 +129,7 @@ export const useGameStore = create((set, get) => ({
   },
 
   redo: () => {
+    clearAutoCompleteTimer();
     const { state, redoStack } = get();
     if (redoStack.length === 0) return;
     const stack = redoStack.slice();
@@ -146,6 +164,40 @@ export const useGameStore = create((set, get) => ({
     set({ autoMoveState: { ...autoMoveState, [cardId]: chosen } });
     get().moveCard(from, chosen, cardId);
     return true;
+  },
+
+  /**
+   * Auto-complete: greedily move every visible, top-most card (waste top and
+   * face-up tableau tops) onto a valid foundation until no more such moves
+   * exist. Moves are applied one at a time with a small delay (see
+   * AUTO_COMPLETE_DELAY) so the user sees the cards arrive. Each move is a
+   * normal history entry, so Undo steps back through them individually.
+   *
+   * Only one auto-complete may run at a time; any user action (deal / move /
+   * undo / redo) cancels the in-progress animation via clearAutoCompleteTimer.
+   *
+   * @returns {boolean} whether at least one move was started
+   */
+  autoComplete: () => {
+    if (autoCompleteTimer !== null) return false;
+    const step = () => {
+      const cur = get().state;
+      const mv = findFoundationMove(cur);
+      if (!mv) {
+        autoCompleteTimer = null;
+        return;
+      }
+      const next = applyMove(cur, {
+        type: 'moveCards',
+        from: mv.from,
+        to: mv.to,
+        cardIds: [mv.cardId],
+      });
+      set({ state: next, redoStack: [], autoMoveState: {} });
+      autoCompleteTimer = setTimeout(step, AUTO_COMPLETE_DELAY);
+    };
+    step();
+    return autoCompleteTimer !== null;
   },
 
   isWon: () => isWon(get().state),
