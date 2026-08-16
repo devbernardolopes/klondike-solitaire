@@ -128,7 +128,10 @@ export default function Board() {
   const won = isWon(state);
   const wasWon = useRef(false);
   useEffect(() => {
-    if (won && !wasWon.current) playWinCascade();
+    if (won && !wasWon.current) {
+      clearSelection();
+      playWinCascade();
+    }
     wasWon.current = won;
   }, [won]);
 

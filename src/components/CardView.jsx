@@ -176,7 +176,7 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
     }
   };
 
-  const selected = selectedCardId === card.id;
+  const selected = selectedCardId === card.id && !won;
 
   return (
     <div
