@@ -46,7 +46,7 @@ function RunPreview({ cards, metrics }) {
   const offs = (cardH ? cards.map(() => fanUp) : null);
   const used = offs ? offs.slice(0, Math.max(0, cards.length - 1)).reduce((a, b) => a + b, 0) : 0;
   const natural = cardH ? cardH + used : 0;
-  const scale = avail > 0 && natural > avail ? Math.max(avail / natural, 0.3) : 1;
+  const scale = avail > 0 && natural > avail ? avail / natural : 1;
   const tops = [];
   let acc = 0;
   for (let i = 0; i < cards.length; i++) {
@@ -98,7 +98,7 @@ export default function Board() {
       const fanDown = measureVar('var(--tableau-fan-down)');
       const gap = measureVar('clamp(6px, 1.2vw, 14px)');
       const pad = measureVar('clamp(8px, 2vw, 20px)');
-      const avail = Math.max(0, board.clientHeight - cardH - gap - 2 * pad - 8);
+      const avail = Math.max(0, board.clientHeight - 2 * cardH - gap - 2 * pad - 8);
       setMetrics({ cardH, fanUp, fanDown, avail });
     };
     measure();

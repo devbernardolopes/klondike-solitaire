@@ -32,24 +32,62 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
   const kind = loc.split(':')[0];
 
   // Adaptive tableau spacing: each card's vertical offset depends on whether it
-  // is face-down (tight peek) or face-up (normal fan). The whole run is scaled
-  // down to fit the available column height, never below 30% (floor), so a very
-  // long pile stops before overflowing the screen but cards don't fully merge.
+  // is face-down (tight peek) or face-up (normal fan). The run compresses to fit
+  // the available column height: face-down peeks shrink first (they only need to
+  // read as a stack), then the face-up fan, with a final proportional guard that
+  // guarantees no overflow regardless of pile depth.
+  const FAN_DOWN_MIN = 3;     // px — face-down cards just need to read as "a stack"
+  const FAN_UP_SOFT_MIN = 14; // px — preferred floor so rank/suit stay legible
+
   let tops = null;
   let pileHeight = null;
   if (fanned && metrics && metrics.cardH) {
-    const { cardH, fanUp, fanDown, avail } = metrics;
-    const offs = cards.map((c) => (c.faceUp ? fanUp : fanDown));
-    const used = offs.slice(0, Math.max(0, cards.length - 1)).reduce((a, b) => a + b, 0);
-    const natural = cardH + used;
-    const scale = avail > 0 && natural > avail ? Math.max(avail / natural, 0.3) : 1;
+    const { cardH, fanUp: fanUpMax, fanDown: fanDownMax, avail } = metrics;
+    const offsetCount = Math.max(0, cards.length - 1);
+    let nDown = 0, nUp = 0;
+    for (let i = 0; i < offsetCount; i++) {
+      if (cards[i].faceUp) nUp++; else nDown++;
+    }
+
+    let fanDown = fanDownMax;
+    let fanUp = fanUpMax;
+    const naturalExtra = nDown * fanDownMax + nUp * fanUpMax;
+
+    if (avail > 0 && naturalExtra > avail) {
+      // Phase 1: compress face-down peeks toward their minimum first.
+      const savingsNeeded = naturalExtra - avail;
+      const maxDownSavings = nDown * (fanDownMax - FAN_DOWN_MIN);
+      if (nDown > 0 && maxDownSavings >= savingsNeeded) {
+        fanDown = fanDownMax - savingsNeeded / nDown;
+      } else {
+        fanDown = FAN_DOWN_MIN;
+        // Phase 2: face-down is maxed out — compress the face-up fan too.
+        const remaining = avail - nDown * FAN_DOWN_MIN;
+        const strictFanUp = nUp > 0 ? Math.max(remaining / nUp, 0) : fanUpMax;
+        // Prefer the legibility floor, but never let it cause overflow.
+        const withSoftFloor = Math.max(strictFanUp, FAN_UP_SOFT_MIN);
+        const fitsWithSoftFloor = nDown * FAN_DOWN_MIN + nUp * withSoftFloor <= avail;
+        fanUp = fitsWithSoftFloor ? withSoftFloor : strictFanUp;
+      }
+    }
+
+    // Absolute last-resort guard: if even the floors together somehow still
+    // don't fit (pathologically deep pile), scale both down proportionally.
+    // This is what actually guarantees "never overflow," full stop.
+    const finalExtra = nDown * fanDown + nUp * fanUp;
+    if (avail > 0 && finalExtra > avail) {
+      const guardScale = avail / finalExtra;
+      fanDown *= guardScale;
+      fanUp *= guardScale;
+    }
+
     tops = [];
     let acc = 0;
     for (let i = 0; i < cards.length; i++) {
       tops.push(acc);
-      if (i < cards.length - 1) acc += offs[i] * scale;
+      if (i < cards.length - 1) acc += cards[i].faceUp ? fanUp : fanDown;
     }
-    pileHeight = cardH + used * scale;
+    pileHeight = cardH + acc;
   }
   const pileName =
     kind === 'stock'
