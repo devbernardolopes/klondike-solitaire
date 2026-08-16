@@ -188,3 +188,33 @@ export function findFoundationMove(state) {
   }
   return null;
 }
+
+/**
+ * Is there any move currently available among visible cards (waste top and
+ * face-up tableau cards), to either a foundation or another tableau column?
+ * Does NOT count "stock has cards to draw" as a move — this is meant to be
+ * called specifically once the stock has been fully drawn through, to check
+ * whether anything besides cycling the stock again is possible.
+ *
+ * Note: this checks currently-visible cards only. A card buried earlier in a
+ * draw-1 pass that could have moved, but got buried under later draws, is not
+ * retroactively detected. This mirrors the heuristic most solitaire
+ * implementations use — exhaustive Klondike solvability checking is
+ * prohibitively expensive to run live.
+ *
+ * @param {import('./GameState.js').GameState} state
+ * @returns {boolean}
+ */
+export function hasAnyValidMove(state) {
+  if (state.waste.length > 0) {
+    const top = state.waste[state.waste.length - 1];
+    if (getAutoMoveTargets(state, 'waste', top.id).length > 0) return true;
+  }
+  for (let i = 0; i < state.tableau.length; i++) {
+    for (const card of state.tableau[i]) {
+      if (!card.faceUp) continue;
+      if (getAutoMoveTargets(state, `tableau:${i}`, card.id).length > 0) return true;
+    }
+  }
+  return false;
+}

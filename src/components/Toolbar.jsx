@@ -5,6 +5,7 @@ import { useState } from 'react';
 import pkg from '../../package.json';
 import { Plus, Undo2 } from 'lucide-react';
 import { useGameStore } from '../hooks/useGameStore.js';
+import { useUiStore } from '../hooks/useUiStore.js';
 import { useSound } from '../hooks/useSound.js';
 import { isWon } from '../core/winDetection.js';
 import ConfirmModal from './ConfirmModal.jsx';
@@ -23,6 +24,9 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange }) {
   const canUndo = useGameStore((s) => s.state.moveHistory.length > 0);
   const won = useGameStore((s) => isWon(s.state));
   const { play } = useSound();
+
+  const noMovesDialogOpen = useUiStore((s) => s.noMovesDialogOpen);
+  const setNoMovesDialogOpen = useUiStore((s) => s.setNoMovesDialogOpen);
 
   const btn = {
     padding: '6px 10px',
@@ -115,6 +119,22 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange }) {
           play('deal');
         }}
         onCancel={() => setConfirmNewGame(false)}
+      />
+
+      <ConfirmModal
+        open={noMovesDialogOpen}
+        title="No moves remaining"
+        message="There don't seem to be any more valid moves. You can undo your last move or start a new game."
+        confirmText="New Game"
+        cancelText="Undo Last Move"
+        onConfirm={() => {
+          setNoMovesDialogOpen(false);
+          dealNewGame();
+        }}
+        onCancel={() => {
+          setNoMovesDialogOpen(false);
+          undo();
+        }}
       />
     </>
   );

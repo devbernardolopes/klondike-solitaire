@@ -8,9 +8,13 @@ import { create } from 'zustand';
 export const useUiStore = create((set) => ({
   selectedCardId: null,
   announce: '',
+  noMovesDialogOpen: false,
 
   /** Mark a card as the keyboard-selected card. */
   selectCard: (id) => set({ selectedCardId: id }),
+
+  /** Show/hide the "no valid moves remaining" dialog. */
+  setNoMovesDialogOpen: (open) => set({ noMovesDialogOpen: open }),
 
   /** Clear the current selection (after a move or on new game). */
   clearSelection: () => set({ selectedCardId: null }),

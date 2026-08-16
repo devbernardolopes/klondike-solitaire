@@ -5,12 +5,13 @@
 import { create } from 'zustand';
 import { deal } from '../core/dealer.js';
 import { applyMove, undo as coreUndo, redo as coreRedo } from '../core/moveEngine.js';
-import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, DEST_ORDER } from '../core/rules.js';
+import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, hasAnyValidMove, DEST_ORDER } from '../core/rules.js';
 import { isWon } from '../core/winDetection.js';
 import { buildStandardDeck, shuffle } from '../core/Deck.js';
 import { createEmptyGameState } from '../core/GameState.js';
 import { Flip } from '../render/animation/gsapSetup.js';
 import { flipBridge } from '../render/animation/flipBridge.js';
+import { useUiStore } from './useUiStore.js';
 
 // Capture the current position/size of every card node before a state change so
 // the render-layer Flip hook can tween from old → new positions after React
@@ -77,6 +78,7 @@ export const useGameStore = create((set, get) => ({
    */
   dealNewGame: (seed) => {
     clearAutoCompleteTimer();
+    useUiStore.getState().setNoMovesDialogOpen(false);
     const preDeal = buildPreDealState(seed !== undefined ? seed : undefined);
     set({ state: preDeal, redoStack: [], autoMoveState: {}, lastActionMeta: { type: 'draw' } });
     requestAnimationFrame(() => {
@@ -92,7 +94,11 @@ export const useGameStore = create((set, get) => ({
     const { state, redoStack } = get();
     if (isWon(state)) return;
     captureFlip();
-    set({ state: applyMove(state, { type: 'draw' }), redoStack, lastActionMeta: { type: 'draw' } });
+    const next = applyMove(state, { type: 'draw' });
+    set({ state: next, redoStack, lastActionMeta: { type: 'draw' } });
+    if (next.stock.length === 0 && !isWon(next) && !hasAnyValidMove(next)) {
+      useUiStore.getState().setNoMovesDialogOpen(true);
+    }
   },
 
   /**
@@ -163,6 +169,7 @@ export const useGameStore = create((set, get) => ({
 
   undo: () => {
     clearAutoCompleteTimer();
+    useUiStore.getState().setNoMovesDialogOpen(false);
     const { state, redoStack } = get();
     if (state.moveHistory.length === 0) return;
     const history = state.moveHistory.slice();
