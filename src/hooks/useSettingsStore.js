@@ -10,11 +10,12 @@ import { create } from 'zustand';
 import { setActiveDeck } from '../render/deck/deckRegistry.js';
 import { getSetting, setSetting } from '../db/schema.js';
 
-const DEFAULTS = { theme: 'classic', deck: 'procedural' };
+const DEFAULTS = { theme: 'classic', deck: 'procedural', handedness: 'right' };
 
 export const useSettingsStore = create((set, get) => ({
   theme: DEFAULTS.theme,
   deck: DEFAULTS.deck,
+  handedness: DEFAULTS.handedness,
   loaded: false,
 
   /**
@@ -22,12 +23,13 @@ export const useSettingsStore = create((set, get) => ({
    * keys fall back to DEFAULTS. Activates the loaded (or default) deck.
    */
   init: async () => {
-    const [theme, deck] = await Promise.all([
+    const [theme, deck, handedness] = await Promise.all([
       getSetting('theme', DEFAULTS.theme),
       getSetting('deck', DEFAULTS.deck),
+      getSetting('handedness', DEFAULTS.handedness),
     ]);
     setActiveDeck(deck);
-    set({ theme, deck, loaded: true });
+    set({ theme, deck, handedness, loaded: true });
   },
 
   /**
@@ -45,5 +47,13 @@ export const useSettingsStore = create((set, get) => ({
     setActiveDeck(deck);
     set({ deck });
     setSetting('deck', deck);
+  },
+
+  /**
+   * @param {'left'|'right'} handedness  board pile arrangement
+   */
+  setHandedness: (handedness) => {
+    set({ handedness });
+    setSetting('handedness', handedness);
   },
 }));

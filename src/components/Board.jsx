@@ -7,6 +7,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useDragEngine } from '../hooks/useDragEngine.js';
 import { useUiStore } from '../hooks/useUiStore.js';
+import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { useCardMoveFlip } from '../render/animation/useCardMoveFlip.js';
 import { playWinCascade } from '../render/animation/winCascade.js';
 import { isWon } from '../core/winDetection.js';
@@ -118,6 +119,7 @@ export default function Board() {
   const clearSelection = useUiStore((s) => s.clearSelection);
   const setAnnounce = useUiStore((s) => s.setAnnounce);
   const announce = useUiStore((s) => s.announce);
+  const handedness = useSettingsStore((s) => s.handedness);
   const { sensors, onDragStart, onDragEnd, onDragCancel, activeRun } =
     useDragEngine();
 
@@ -260,26 +262,54 @@ export default function Board() {
           maxWidth: '100%',
         }}
       >
-        {/* Top row: stock, waste, spacer x2, 4 foundations */}
-        <Pile
-          loc="stock"
-          cards={state.stock}
-          onClick={onStockClick}
-          label={state.stock.length === 0 ? '↻' : ''}
-          hiddenIds={hiddenIds}
-        />
-        <Pile loc="waste" cards={state.waste} label="W" hiddenIds={hiddenIds} onAutoMove={autoMove} />
-        <div />
-        {state.foundations.map((pile, i) => (
-          <Pile
-            key={`f${i}`}
-            loc={`foundation:${i}`}
-            cards={pile}
-            label={`F${i + 1}`}
-            hiddenIds={hiddenIds}
-            onAutoMove={autoMove}
-          />
-        ))}
+        {/* Top row: order depends on handedness. Left-handed = current layout
+            (stock/waste on the left, foundations on the right). Right-handed
+            mirrors it (foundations on the left, stock/waste on the right). */}
+        {handedness === 'right'
+          ? [
+              ...state.foundations.map((pile, i) => (
+                <Pile
+                  key={`f${i}`}
+                  loc={`foundation:${i}`}
+                  cards={pile}
+                  label={`F${i + 1}`}
+                  hiddenIds={hiddenIds}
+                  onAutoMove={autoMove}
+                />
+              )),
+              <div key="spacer" />,
+              <Pile loc="waste" cards={state.waste} label="W" hiddenIds={hiddenIds} onAutoMove={autoMove} />,
+              <Pile
+                key="stock"
+                loc="stock"
+                cards={state.stock}
+                onClick={onStockClick}
+                label={state.stock.length === 0 ? '↻' : ''}
+                hiddenIds={hiddenIds}
+              />,
+            ]
+          : [
+              <Pile
+                key="stock"
+                loc="stock"
+                cards={state.stock}
+                onClick={onStockClick}
+                label={state.stock.length === 0 ? '↻' : ''}
+                hiddenIds={hiddenIds}
+              />,
+              <Pile loc="waste" cards={state.waste} label="W" hiddenIds={hiddenIds} onAutoMove={autoMove} />,
+              <div key="spacer" />,
+              ...state.foundations.map((pile, i) => (
+                <Pile
+                  key={`f${i}`}
+                  loc={`foundation:${i}`}
+                  cards={pile}
+                  label={`F${i + 1}`}
+                  hiddenIds={hiddenIds}
+                  onAutoMove={autoMove}
+                />
+              )),
+            ]}
 
         {/* Tableau: 7 columns */}
         {state.tableau.map((pile, i) => (

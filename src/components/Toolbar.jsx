@@ -16,8 +16,10 @@ import NewGameModal from './NewGameModal.jsx';
  * @param {(t: string) => void} props.onThemeChange
  * @param {string} props.deck     active deck/renderer name
  * @param {(d: string) => void} props.onDeckChange
+ * @param {'left'|'right'} props.handedness  board pile arrangement
+ * @param {(h: 'left'|'right') => void} props.onHandednessChange
  */
-export default function Toolbar({ theme, onThemeChange, deck, onDeckChange }) {
+export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, handedness, onHandednessChange }) {
   const dealNewGame = useGameStore((s) => s.dealNewGame);
   const undo = useGameStore((s) => s.undo);
   const canUndo = useGameStore((s) => s.state.moveHistory.length > 0);
@@ -78,6 +80,14 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange }) {
             <option value="procedural">Procedural</option>
             <option value="sprite">Sprite (atlas)</option>
             {/* TODO(next pass): add real deck renderers */}
+          </select>
+        </label>
+
+        <label style={{ color: '#fff', fontSize: 13 }}>
+          Hand{' '}
+          <select value={handedness} onChange={(e) => onHandednessChange(e.target.value)} style={{ ...btn, color: 'var(--ui-control-fg)', background: 'var(--ui-control-bg)', border: '1px solid var(--ui-control-border)' }}>
+            <option value="left">Left</option>
+            <option value="right">Right</option>
           </select>
         </label>
 

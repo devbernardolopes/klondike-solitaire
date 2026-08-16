@@ -17,8 +17,10 @@ import { MotionDebugPanel } from '../render/animation/MotionDebugPanel.jsx';
 export default function App() {
   const theme = useSettingsStore((s) => s.theme);
   const deck = useSettingsStore((s) => s.deck);
+  const handedness = useSettingsStore((s) => s.handedness);
   const setTheme = useSettingsStore((s) => s.setTheme);
   const setDeck = useSettingsStore((s) => s.setDeck);
+  const setHandedness = useSettingsStore((s) => s.setHandedness);
   const init = useSettingsStore((s) => s.init);
   const state = useGameStore((s) => s.state);
   const won = isWon(state);
@@ -46,6 +48,8 @@ export default function App() {
         onThemeChange={setTheme}
         deck={deck}
         onDeckChange={setDeck}
+        handedness={handedness}
+        onHandednessChange={setHandedness}
       />
       <Board />
       {import.meta.env.DEV && <MotionDebugPanel />}
