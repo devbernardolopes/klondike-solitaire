@@ -28,6 +28,8 @@
 
   /* Tableau fan: the visible "peek" of each stacked card (rest overlaps beneath) */
   --tableau-fan: clamp(36px, 6vw, 54px);
+  /* Tighter peek for face-down cards (bottom of tableau piles) */
+  --tableau-fan-down: clamp(10px, 2vw, 20px);
 
   /* On dark faces, "black" suits become light; red is brightened for contrast */
   --card-text-red: #ff6b6b;
