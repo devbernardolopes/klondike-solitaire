@@ -5,6 +5,7 @@
 import { useMemo, useRef } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { useCardFaceFlip } from '../render/animation/useCardFaceFlip.js';
+import { playCardShake } from '../render/animation/playCardShake.js';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { useUiStore } from '../hooks/useUiStore.js';
@@ -145,7 +146,10 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
     if (!card.faceUp || won || !onAutoMove || !downPos.current) return;
     const dx = e.clientX - downPos.current.x;
     const dy = e.clientY - downPos.current.y;
-    if (Math.hypot(dx, dy) < CLICK_DISTANCE) onAutoMove(from, card.id);
+    if (Math.hypot(dx, dy) < CLICK_DISTANCE) {
+      const ok = onAutoMove(from, card.id);
+      if (!ok) playCardShake(e.currentTarget);
+    }
     downPos.current = null;
   };
 
@@ -160,8 +164,13 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       clearSelection();
-      setAnnounce(`Auto-moved ${rankLabel(card.rank)} of ${card.suit}`);
-      onAutoMove(from, card.id);
+      const ok = onAutoMove(from, card.id);
+      if (ok) {
+        setAnnounce(`Auto-moved ${rankLabel(card.rank)} of ${card.suit}`);
+      } else {
+        setAnnounce(`No valid move for ${rankLabel(card.rank)} of ${card.suit}`);
+        playCardShake(e.currentTarget);
+      }
     }
   };
 

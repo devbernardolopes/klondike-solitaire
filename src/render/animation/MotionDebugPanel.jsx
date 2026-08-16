@@ -18,5 +18,9 @@ export function MotionDebugPanel() {
     flyDistance: { value: MOTION.win.flyDistance, min: 200, max: 2000, step: 50, onChange: (v) => (MOTION.win.flyDistance = v) },
     bottomMargin: { value: MOTION.win.bottomMargin, min: 0, max: 100, step: 1, onChange: (v) => (MOTION.win.bottomMargin = v) },
   });
+  useControls('shake', {
+    duration: { value: MOTION.shake.duration, min: 0.1, max: 1.5, step: 0.01, onChange: (v) => (MOTION.shake.duration = v) },
+    distance: { value: MOTION.shake.distance, min: 0, max: 30, step: 1, onChange: (v) => (MOTION.shake.distance = v) },
+  });
   return null;
 }
