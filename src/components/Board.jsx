@@ -80,6 +80,7 @@ function RunPreview({ cards, metrics }) {
 
 export default function Board() {
   const state = useGameStore((s) => s.state);
+  const drawFromStock = useGameStore((s) => s.drawFromStock);
   const boardRef = useRef(null);
   const [metrics, setMetrics] = useState(null);
 
