@@ -10,11 +10,22 @@ export const useUiStore = create((set) => ({
   announce: '',
   noMovesDialogOpen: false,
 
+  // New Game mode-picker dialog state + the last mode chosen, so the "no valid
+  // moves" recovery path can re-deal with the same mode without re-prompting.
+  newGameDialogOpen: false,
+  lastNewGameMode: 'random', // 'winning' | 'random'
+
   /** Mark a card as the keyboard-selected card. */
   selectCard: (id) => set({ selectedCardId: id }),
 
   /** Show/hide the "no valid moves remaining" dialog. */
   setNoMovesDialogOpen: (open) => set({ noMovesDialogOpen: open }),
+
+  /** Show/hide the New Game mode-picker dialog. */
+  setNewGameDialogOpen: (open) => set({ newGameDialogOpen: open }),
+
+  /** Record which mode was last used, so the "no valid moves" recovery path can reuse it. */
+  setLastNewGameMode: (mode) => set({ lastNewGameMode: mode }),
 
   /** Clear the current selection (after a move or on new game). */
   clearSelection: () => set({ selectedCardId: null }),

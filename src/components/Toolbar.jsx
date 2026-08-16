@@ -1,7 +1,6 @@
 // components/Toolbar.jsx
 // New game, undo, theme/deck switchers. Stubs OK for switchers this pass.
 
-import { useState } from 'react';
 import pkg from '../../package.json';
 import { Plus, Undo2 } from 'lucide-react';
 import { useGameStore } from '../hooks/useGameStore.js';
@@ -9,6 +8,7 @@ import { useUiStore } from '../hooks/useUiStore.js';
 import { useSound } from '../hooks/useSound.js';
 import { isWon } from '../core/winDetection.js';
 import ConfirmModal from './ConfirmModal.jsx';
+import NewGameModal from './NewGameModal.jsx';
 
 /**
  * @param {object} props
@@ -18,13 +18,15 @@ import ConfirmModal from './ConfirmModal.jsx';
  * @param {(d: string) => void} props.onDeckChange
  */
 export default function Toolbar({ theme, onThemeChange, deck, onDeckChange }) {
-  const [confirmNewGame, setConfirmNewGame] = useState(false);
   const dealNewGame = useGameStore((s) => s.dealNewGame);
   const undo = useGameStore((s) => s.undo);
   const canUndo = useGameStore((s) => s.state.moveHistory.length > 0);
   const won = useGameStore((s) => isWon(s.state));
   const { play } = useSound();
 
+  const newGameDialogOpen = useUiStore((s) => s.newGameDialogOpen);
+  const setNewGameDialogOpen = useUiStore((s) => s.setNewGameDialogOpen);
+  const lastNewGameMode = useUiStore((s) => s.lastNewGameMode);
   const noMovesDialogOpen = useUiStore((s) => s.noMovesDialogOpen);
   const setNoMovesDialogOpen = useUiStore((s) => s.setNoMovesDialogOpen);
 
@@ -94,7 +96,7 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange }) {
       <button
         style={{ ...fab, left: 16 }}
         aria-label="New Game"
-        onClick={() => setConfirmNewGame(true)}
+        onClick={() => setNewGameDialogOpen(true)}
       >
         <Plus size={20} />
       </button>
@@ -108,17 +110,19 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange }) {
         <Undo2 size={20} />
       </button>
 
-      <ConfirmModal
-        open={confirmNewGame}
-        title="New Game"
-        message="Start a new game? Current progress will be lost."
-        confirmText="New Game"
-        onConfirm={() => {
-          setConfirmNewGame(false);
-          dealNewGame();
+      <NewGameModal
+        open={newGameDialogOpen}
+        onWinningDeal={() => {
+          setNewGameDialogOpen(false);
+          dealNewGame('winning');
           play('deal');
         }}
-        onCancel={() => setConfirmNewGame(false)}
+        onRandomShuffle={() => {
+          setNewGameDialogOpen(false);
+          dealNewGame('random');
+          play('deal');
+        }}
+        onDismiss={() => setNewGameDialogOpen(false)}
       />
 
       <ConfirmModal
@@ -129,7 +133,7 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange }) {
         cancelText="Undo Last Move"
         onConfirm={() => {
           setNoMovesDialogOpen(false);
-          dealNewGame();
+          dealNewGame(lastNewGameMode);
         }}
         onCancel={() => {
           setNoMovesDialogOpen(false);

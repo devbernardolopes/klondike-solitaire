@@ -9,6 +9,7 @@ import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTarget
 import { isWon } from '../core/winDetection.js';
 import { buildStandardDeck, shuffle } from '../core/Deck.js';
 import { createEmptyGameState } from '../core/GameState.js';
+import { randomSolvableSeed } from '../core/solvablePool.js';
 import { Flip } from '../render/animation/gsapSetup.js';
 import { flipBridge } from '../render/animation/flipBridge.js';
 import { useUiStore } from './useUiStore.js';
@@ -68,17 +69,21 @@ export const useGameStore = create((set, get) => ({
   lastActionMeta: { type: 'move' },
 
   /**
-   * Deal a fresh game. Optional seed for deterministic dealing/testing.
+   * Deal a fresh game. `mode` selects the dealing strategy:
+   *  - 'winning' — uses a pre-verified solvable seed from solvablePool.js
+   *  - 'random'  — unseeded, true-random (not guaranteed solvable)
    *
    * Sequences through a transient "pre-deal" layout (all cards in stock) set
    * instantly, then performs the real deal on the next animation frame so the
    * deal stagger flows through the same Flip pipeline as every other transition.
    *
-   * @param {number} [seed]
+   * @param {'winning'|'random'} [mode]
    */
-  dealNewGame: (seed) => {
+  dealNewGame: (mode = 'random') => {
     clearAutoCompleteTimer();
     useUiStore.getState().setNoMovesDialogOpen(false);
+    useUiStore.getState().setLastNewGameMode(mode);
+    const seed = mode === 'winning' ? randomSolvableSeed() : undefined;
     const preDeal = buildPreDealState(seed !== undefined ? seed : undefined);
     set({ state: preDeal, redoStack: [], autoMoveState: {}, lastActionMeta: { type: 'draw' } });
     requestAnimationFrame(() => {
