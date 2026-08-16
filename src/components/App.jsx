@@ -35,6 +35,9 @@ export default function App() {
         background: 'var(--felt-color)',
         display: 'flex',
         flexDirection: 'column',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        WebkitTouchCallout: 'none',
       }}
     >
       <Toolbar
