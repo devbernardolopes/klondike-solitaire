@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import pkg from '../../package.json';
+import { Plus, Undo2 } from 'lucide-react';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useSound } from '../hooks/useSound.js';
 import { isWon } from '../core/winDetection.js';
@@ -19,9 +20,7 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange }) {
   const [confirmNewGame, setConfirmNewGame] = useState(false);
   const dealNewGame = useGameStore((s) => s.dealNewGame);
   const undo = useGameStore((s) => s.undo);
-  const redo = useGameStore((s) => s.redo);
   const canUndo = useGameStore((s) => s.state.moveHistory.length > 0);
-  const canRedo = useGameStore((s) => s.redoStack.length > 0);
   const won = useGameStore((s) => isWon(s.state));
   const { play } = useSound();
 
@@ -35,62 +34,75 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange }) {
     fontSize: 13,
   };
 
+  // Floating action-button styling shared by the bottom-corner controls.
+  const fab = {
+    ...btn,
+    position: 'fixed',
+    bottom: 16,
+    zIndex: 50,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 10,
+  };
+
   return (
-    <div
-      style={{
-        display: 'flex',
-        gap: 8,
-        flexWrap: 'wrap',
-        alignItems: 'center',
-        padding: '8px clamp(8px, 2vw, 20px)',
-      }}
-    >
-      <button style={btn} onClick={() => setConfirmNewGame(true)}>
-        New Game
-      </button>
+    <>
+      <div
+        style={{
+          display: 'flex',
+          gap: 8,
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          padding: '8px clamp(8px, 2vw, 20px)',
+        }}
+      >
+        <label style={{ color: '#fff', fontSize: 13 }}>
+          Theme{' '}
+          <select value={theme} onChange={(e) => onThemeChange(e.target.value)} style={{ ...btn, color: 'var(--ui-control-fg)', background: 'var(--ui-control-bg)', border: '1px solid var(--ui-control-border)' }}>
+            <option value="classic">Classic</option>
+            <option value="dark">Dark</option>
+            {/* TODO(next pass): register more themes */}
+          </select>
+        </label>
+
+        <label style={{ color: '#fff', fontSize: 13 }}>
+          Deck{' '}
+          <select value={deck} onChange={(e) => onDeckChange(e.target.value)} style={{ ...btn, color: 'var(--ui-control-fg)', background: 'var(--ui-control-bg)', border: '1px solid var(--ui-control-border)' }}>
+            <option value="procedural">Procedural</option>
+            <option value="sprite">Sprite (atlas)</option>
+            {/* TODO(next pass): add real deck renderers */}
+          </select>
+        </label>
+
+        <span
+          style={{
+            color: '#fff',
+            fontSize: 13,
+            marginLeft: 'auto',
+            userSelect: 'none',
+          }}
+        >
+          Version v{pkg.version}
+        </span>
+      </div>
+
       <button
-        style={{ ...btn, opacity: won || !canUndo ? 0.4 : 1 }}
+        style={{ ...fab, left: 16 }}
+        aria-label="New Game"
+        onClick={() => setConfirmNewGame(true)}
+      >
+        <Plus size={20} />
+      </button>
+
+      <button
+        style={{ ...fab, right: 16, opacity: won || !canUndo ? 0.4 : 1 }}
+        aria-label="Undo"
         disabled={won || !canUndo}
         onClick={undo}
       >
-        Undo
+        <Undo2 size={20} />
       </button>
-      <button
-        style={{ ...btn, opacity: won || !canRedo ? 0.4 : 1 }}
-        disabled={won || !canRedo}
-        onClick={redo}
-      >
-        Redo
-      </button>
-
-      <label style={{ color: '#fff', fontSize: 13 }}>
-        Theme{' '}
-        <select value={theme} onChange={(e) => onThemeChange(e.target.value)} style={{ ...btn, color: 'var(--ui-control-fg)', background: 'var(--ui-control-bg)', border: '1px solid var(--ui-control-border)' }}>
-          <option value="classic">Classic</option>
-          <option value="dark">Dark</option>
-          {/* TODO(next pass): register more themes */}
-        </select>
-      </label>
-
-      <label style={{ color: '#fff', fontSize: 13 }}>
-        Deck{' '}
-        <select value={deck} onChange={(e) => onDeckChange(e.target.value)} style={{ ...btn, color: 'var(--ui-control-fg)', background: 'var(--ui-control-bg)', border: '1px solid var(--ui-control-border)' }}>
-          <option value="procedural">Procedural</option>
-          <option value="sprite">Sprite (atlas)</option>
-          {/* TODO(next pass): add real deck renderers */}
-        </select>
-      </label>
-
-      <span
-        style={{
-          color: '#fff',
-          fontSize: 13,
-          marginLeft: 'auto',
-          userSelect: 'none',
-        }}
-      >
-        Version v{pkg.version}
-      </span>
 
       <ConfirmModal
         open={confirmNewGame}
@@ -104,6 +116,6 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange }) {
         }}
         onCancel={() => setConfirmNewGame(false)}
       />
-    </div>
+    </>
   );
 }
