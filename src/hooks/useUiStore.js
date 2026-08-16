@@ -15,6 +15,9 @@ export const useUiStore = create((set) => ({
   newGameDialogOpen: false,
   lastNewGameMode: 'random', // 'winning' | 'random'
 
+  // Options/settings modal (Theme / Deck / Hand).
+  settingsDialogOpen: false,
+
   /** Mark a card as the keyboard-selected card. */
   selectCard: (id) => set({ selectedCardId: id }),
 
@@ -23,6 +26,9 @@ export const useUiStore = create((set) => ({
 
   /** Show/hide the New Game mode-picker dialog. */
   setNewGameDialogOpen: (open) => set({ newGameDialogOpen: open }),
+
+  /** Show/hide the options/settings dialog. */
+  setSettingsDialogOpen: (open) => set({ settingsDialogOpen: open }),
 
   /** Record which mode was last used, so the "no valid moves" recovery path can reuse it. */
   setLastNewGameMode: (mode) => set({ lastNewGameMode: mode }),

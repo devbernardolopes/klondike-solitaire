@@ -2,13 +2,14 @@
 // New game, undo, theme/deck switchers. Stubs OK for switchers this pass.
 
 import pkg from '../../package.json';
-import { Plus, Undo2 } from 'lucide-react';
+import { Plus, Undo2, Settings } from 'lucide-react';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { useSound } from '../hooks/useSound.js';
 import { isWon } from '../core/winDetection.js';
 import ConfirmModal from './ConfirmModal.jsx';
 import NewGameModal from './NewGameModal.jsx';
+import SettingsModal from './SettingsModal.jsx';
 
 /**
  * @param {object} props
@@ -31,6 +32,8 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const lastNewGameMode = useUiStore((s) => s.lastNewGameMode);
   const noMovesDialogOpen = useUiStore((s) => s.noMovesDialogOpen);
   const setNoMovesDialogOpen = useUiStore((s) => s.setNoMovesDialogOpen);
+  const settingsDialogOpen = useUiStore((s) => s.settingsDialogOpen);
+  const setSettingsDialogOpen = useUiStore((s) => s.setSettingsDialogOpen);
 
   const btn = {
     padding: '6px 10px',
@@ -54,6 +57,11 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
     padding: 10,
   };
 
+  // Bottom-left cluster: [Settings] [New Game]. The Settings button sits to the
+  // left of New Game; both are fixed-bottom and ~40px wide with a 12px gap.
+  const FAB_WIDTH = 40;
+  const FAB_GAP = 12;
+
   return (
     <>
       <div
@@ -65,32 +73,6 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
           padding: '8px clamp(8px, 2vw, 20px)',
         }}
       >
-        <label style={{ color: '#fff', fontSize: 13 }}>
-          Theme{' '}
-          <select value={theme} onChange={(e) => onThemeChange(e.target.value)} style={{ ...btn, color: 'var(--ui-control-fg)', background: 'var(--ui-control-bg)', border: '1px solid var(--ui-control-border)' }}>
-            <option value="classic">Classic</option>
-            <option value="dark">Dark</option>
-            {/* TODO(next pass): register more themes */}
-          </select>
-        </label>
-
-        <label style={{ color: '#fff', fontSize: 13 }}>
-          Deck{' '}
-          <select value={deck} onChange={(e) => onDeckChange(e.target.value)} style={{ ...btn, color: 'var(--ui-control-fg)', background: 'var(--ui-control-bg)', border: '1px solid var(--ui-control-border)' }}>
-            <option value="procedural">Procedural</option>
-            <option value="sprite">Sprite (atlas)</option>
-            {/* TODO(next pass): add real deck renderers */}
-          </select>
-        </label>
-
-        <label style={{ color: '#fff', fontSize: 13 }}>
-          Hand{' '}
-          <select value={handedness} onChange={(e) => onHandednessChange(e.target.value)} style={{ ...btn, color: 'var(--ui-control-fg)', background: 'var(--ui-control-bg)', border: '1px solid var(--ui-control-border)' }}>
-            <option value="left">Left</option>
-            <option value="right">Right</option>
-          </select>
-        </label>
-
         <span
           style={{
             color: '#fff',
@@ -99,12 +81,20 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
             userSelect: 'none',
           }}
         >
-          Version v{pkg.version}
+          v{pkg.version}
         </span>
       </div>
 
       <button
         style={{ ...fab, left: 16 }}
+        aria-label="Settings"
+        onClick={() => setSettingsDialogOpen(true)}
+      >
+        <Settings size={20} />
+      </button>
+
+      <button
+        style={{ ...fab, left: 16 + FAB_WIDTH + FAB_GAP }}
         aria-label="New Game"
         onClick={() => setNewGameDialogOpen(true)}
       >
@@ -133,6 +123,17 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
           play('deal');
         }}
         onDismiss={() => setNewGameDialogOpen(false)}
+      />
+
+      <SettingsModal
+        open={settingsDialogOpen}
+        onClose={() => setSettingsDialogOpen(false)}
+        theme={theme}
+        onThemeChange={onThemeChange}
+        deck={deck}
+        onDeckChange={onDeckChange}
+        handedness={handedness}
+        onHandednessChange={onHandednessChange}
       />
 
       <ConfirmModal
