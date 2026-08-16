@@ -272,13 +272,12 @@ export default function Board() {
                   key={`f${i}`}
                   loc={`foundation:${i}`}
                   cards={pile}
-                  label={`F${i + 1}`}
                   hiddenIds={hiddenIds}
                   onAutoMove={autoMove}
                 />
               )),
               <div key="spacer" />,
-              <Pile loc="waste" cards={state.waste} label="W" hiddenIds={hiddenIds} onAutoMove={autoMove} />,
+              <Pile loc="waste" cards={state.waste} hiddenIds={hiddenIds} onAutoMove={autoMove} />,
               <Pile
                 key="stock"
                 loc="stock"
@@ -297,14 +296,13 @@ export default function Board() {
                 label={state.stock.length === 0 ? '↻' : ''}
                 hiddenIds={hiddenIds}
               />,
-              <Pile loc="waste" cards={state.waste} label="W" hiddenIds={hiddenIds} onAutoMove={autoMove} />,
+              <Pile loc="waste" cards={state.waste} hiddenIds={hiddenIds} onAutoMove={autoMove} />,
               <div key="spacer" />,
               ...state.foundations.map((pile, i) => (
                 <Pile
                   key={`f${i}`}
                   loc={`foundation:${i}`}
                   cards={pile}
-                  label={`F${i + 1}`}
                   hiddenIds={hiddenIds}
                   onAutoMove={autoMove}
                 />
@@ -319,7 +317,6 @@ export default function Board() {
             cards={pile}
             fanned
             metrics={metrics}
-            label={`T${i + 1}`}
             hiddenIds={hiddenIds}
             onAutoMove={autoMove}
           />
