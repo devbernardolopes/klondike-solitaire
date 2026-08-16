@@ -47,9 +47,9 @@ export default function ConfirmModal({
   const btn = {
     padding: '8px 14px',
     borderRadius: 6,
-    border: '1px solid rgba(255,255,255,0.25)',
-    background: 'rgba(255,255,255,0.1)',
-    color: '#fff',
+    border: '1px solid var(--ui-modal-btn-border)',
+    background: 'var(--ui-modal-btn-bg)',
+    color: 'var(--ui-modal-fg)',
     cursor: 'pointer',
     fontSize: 14,
     fontWeight: 600,
@@ -100,7 +100,7 @@ export default function ConfirmModal({
           <button
             type="button"
             ref={confirmRef}
-            style={{ ...btn, background: 'rgba(255,255,255,0.22)' }}
+            style={{ ...btn, background: 'var(--ui-modal-btn-bg-strong)' }}
             onClick={onConfirm}
           >
             {confirmText}

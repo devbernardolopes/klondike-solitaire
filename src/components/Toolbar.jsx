@@ -65,7 +65,7 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange }) {
 
       <label style={{ color: '#fff', fontSize: 13 }}>
         Theme{' '}
-        <select value={theme} onChange={(e) => onThemeChange(e.target.value)} style={{ ...btn }}>
+        <select value={theme} onChange={(e) => onThemeChange(e.target.value)} style={{ ...btn, color: 'var(--ui-control-fg)', background: 'var(--ui-control-bg)', border: '1px solid var(--ui-control-border)' }}>
           <option value="classic">Classic</option>
           <option value="dark">Dark</option>
           {/* TODO(next pass): register more themes */}
@@ -74,7 +74,7 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange }) {
 
       <label style={{ color: '#fff', fontSize: 13 }}>
         Deck{' '}
-        <select value={deck} onChange={(e) => onDeckChange(e.target.value)} style={{ ...btn }}>
+        <select value={deck} onChange={(e) => onDeckChange(e.target.value)} style={{ ...btn, color: 'var(--ui-control-fg)', background: 'var(--ui-control-bg)', border: '1px solid var(--ui-control-border)' }}>
           <option value="procedural">Procedural</option>
           <option value="sprite">Sprite (atlas)</option>
           {/* TODO(next pass): add real deck renderers */}

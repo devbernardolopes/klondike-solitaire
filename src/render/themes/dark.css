@@ -32,4 +32,20 @@
   /* On dark faces, "black" suits become light; red is brightened for contrast */
   --card-text-red: #ff6b6b;
   --card-text-black: #e6e6e6;
+  color-scheme: dark;
+
+  /* UI controls (selects + modal buttons) */
+  --ui-control-fg: #ffffff;
+  --ui-control-bg: #2a2f3a;
+  --ui-control-border: rgba(255, 255, 255, 0.25);
+  --ui-modal-fg: #e6e6e6;
+  --ui-modal-btn-bg: rgba(255, 255, 255, 0.12);
+  --ui-modal-btn-bg-strong: rgba(255, 255, 255, 0.22);
+  --ui-modal-btn-border: rgba(255, 255, 255, 0.25);
+}
+
+/* Native dropdown option list: keep text/background readable in the popup. */
+.theme-dark select option {
+  color: var(--ui-control-fg);
+  background: var(--ui-control-bg);
 }
