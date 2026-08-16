@@ -167,6 +167,121 @@ export function canMoveToFoundation(card, foundation) {
  * @param {import('./GameState.js').GameState} state
  * @returns {{ from: string, to: string, cardId: string }|null}
  */
+/**
+ * Is every card in the tableau face-up? (Ignores stock/waste/foundations.)
+ * @param {import('./GameState.js').GameState} state
+ * @returns {boolean}
+ */
+export function isAllTableauFaceUp(state) {
+  return state.tableau.every((pile) => pile.every((c) => c.faceUp));
+}
+
+/**
+ * Is the game in a state with zero remaining hidden information — stock and
+ * waste both empty, every tableau card face-up? Once true, the game is
+ * mathematically guaranteed completable to a win (no branching required to
+ * prove this, unlike solvability of an initial deal with hidden stock order).
+ * @param {import('./GameState.js').GameState} state
+ * @returns {boolean}
+ */
+export function isObviousWinState(state) {
+  return state.stock.length === 0 && state.waste.length === 0 && isAllTableauFaceUp(state);
+}
+
+const ASSIST_MAX_DEPTH = 6;
+const ASSIST_MAX_NODES = 5000;
+
+/**
+ * Apply a single tableau-to-tableau move to a state, returning the new state.
+ * Internal helper for findAssistTableauMove's search only — does not touch
+ * moveHistory/redo bookkeeping, this is a throwaway simulation state.
+ * @param {import('./GameState.js').GameState} state
+ * @param {number} fromCol
+ * @param {string} cardId
+ * @param {number} toCol
+ * @returns {import('./GameState.js').GameState}
+ */
+function simulateTableauMove(state, fromCol, cardId, toCol) {
+  const src = state.tableau[fromCol];
+  const run = getTableauRun(src, cardId);
+  const idx = src.findIndex((c) => c.id === cardId);
+  const newSrc = src.slice(0, idx);
+  const newDst = state.tableau[toCol].concat(run);
+  const tableau = state.tableau.map((p, i) => (i === fromCol ? newSrc : i === toCol ? newDst : p));
+  return { ...state, tableau };
+}
+
+/**
+ * A compact signature for a tableau arrangement, used to prune repeated/cyclical
+ * states during the search below.
+ * @param {import('./GameState.js').GameState} state
+ * @returns {string}
+ */
+function tableauSignature(state) {
+  return state.tableau.map((pile) => pile.map((c) => c.id).join(',')).join('|');
+}
+
+/**
+ * Search for a short sequence of tableau-to-tableau moves (depth-limited,
+ * node-budget-limited) that results in a state where findFoundationMove
+ * succeeds. Only called once findFoundationMove has already failed on the
+ * current state — this never considers foundation moves itself.
+ *
+ * Returns the FIRST move of the found sequence (as { fromCol, cardId, toCol }),
+ * so the caller can apply just that one move and re-run the normal
+ * foundation-first loop, which will naturally continue unblocking further
+ * moves on subsequent steps. Returns null if no such sequence is found within
+ * the depth/node budget — callers must treat this as "can't make further
+ * automatic progress" and stop gracefully, NOT as an error.
+ *
+ * This is only tractable because isObviousWinState guarantees no hidden
+ * information remains — there is no branching over unknown stock order, only
+ * a small deterministic search over already-fully-known tableau piles.
+ *
+ * @param {import('./GameState.js').GameState} state
+ * @returns {{ fromCol: number, cardId: string, toCol: number }|null}
+ */
+export function findAssistTableauMove(state) {
+  let nodesExplored = 0;
+  const visited = new Set([tableauSignature(state)]);
+
+  // DFS returns the first move of a winning path, or null.
+  function search(cur, depth, firstMove) {
+    if (nodesExplored++ > ASSIST_MAX_NODES) return null;
+    if (findFoundationMove(cur)) return firstMove;
+    if (depth >= ASSIST_MAX_DEPTH) return null;
+
+    for (let fromCol = 0; fromCol < cur.tableau.length; fromCol++) {
+      const pile = cur.tableau[fromCol];
+      for (const card of pile) {
+        if (!card.faceUp) continue;
+        const run = getTableauRun(pile, card.id);
+        if (!run) continue;
+        for (let toCol = 0; toCol < cur.tableau.length; toCol++) {
+          if (toCol === fromCol) continue;
+          if (!canMoveToTableau(run[0], cur.tableau[toCol])) continue;
+          // Skip a no-op move: a run landing on an empty column when it was
+          // already alone at the bottom of an equally-empty source doesn't
+          // change anything meaningful and just burns the node budget.
+          if (cur.tableau[toCol].length === 0 && pile.length === run.length) continue;
+
+          const next = simulateTableauMove(cur, fromCol, card.id, toCol);
+          const sig = tableauSignature(next);
+          if (visited.has(sig)) continue;
+          visited.add(sig);
+
+          const move = firstMove ?? { fromCol, cardId: card.id, toCol };
+          const result = search(next, depth + 1, move);
+          if (result) return result;
+        }
+      }
+    }
+    return null;
+  }
+
+  return search(state, 0, null);
+}
+
 export function findFoundationMove(state) {
   const candidates = [];
   if (state.waste.length > 0) {

@@ -5,7 +5,7 @@
 import { create } from 'zustand';
 import { deal } from '../core/dealer.js';
 import { applyMove, undo as coreUndo, redo as coreRedo } from '../core/moveEngine.js';
-import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, hasAnyValidMove, DEST_ORDER } from '../core/rules.js';
+import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, findAssistTableauMove, hasAnyValidMove, DEST_ORDER } from '../core/rules.js';
 import { isWon } from '../core/winDetection.js';
 import { buildStandardDeck, shuffle } from '../core/Deck.js';
 import { createEmptyGameState } from '../core/GameState.js';
@@ -239,20 +239,41 @@ export const useGameStore = create((set, get) => ({
     if (isWon(get().state)) return false;
     const step = () => {
       const cur = get().state;
-      const mv = findFoundationMove(cur);
-      if (!mv) {
-        autoCompleteTimer = null;
+      const foundationMove = findFoundationMove(cur);
+      if (foundationMove) {
+        const next = applyMove(cur, {
+          type: 'moveCards',
+          from: foundationMove.from,
+          to: foundationMove.to,
+          cardIds: [foundationMove.cardId],
+        });
+        captureFlip();
+        set({ state: next, redoStack: [], autoMoveState: {}, lastActionMeta: { type: 'auto' } });
+        autoCompleteTimer = setTimeout(step, AUTO_COMPLETE_DELAY);
         return;
       }
-      const next = applyMove(cur, {
-        type: 'moveCards',
-        from: mv.from,
-        to: mv.to,
-        cardIds: [mv.cardId],
-      });
-      captureFlip();
-      set({ state: next, redoStack: [], autoMoveState: {}, lastActionMeta: { type: 'auto' } });
-      autoCompleteTimer = setTimeout(step, AUTO_COMPLETE_DELAY);
+      // No direct foundation move — see if a short tableau shuffle unblocks one.
+      const assist = findAssistTableauMove(cur);
+      if (assist) {
+        // applyMoveCards requires the FULL contiguous top run, not just the
+        // starting card id — reconstruct it the same way moveCard does.
+        const run = getTableauRun(cur.tableau[assist.fromCol], assist.cardId);
+        const cardIds = run.map((c) => c.id).reverse();
+        const next = applyMove(cur, {
+          type: 'moveCards',
+          from: `tableau:${assist.fromCol}`,
+          to: `tableau:${assist.toCol}`,
+          cardIds,
+        });
+        captureFlip();
+        set({ state: next, redoStack: [], autoMoveState: {}, lastActionMeta: { type: 'auto' } });
+        autoCompleteTimer = setTimeout(step, AUTO_COMPLETE_DELAY);
+        return;
+      }
+      // Neither a foundation move nor a helpful tableau shuffle was found within
+      // the search budget — stop gracefully, same as today. This should be rare
+      // once isObviousWinState triggered the run, but is not treated as an error.
+      autoCompleteTimer = null;
     };
     step();
     return autoCompleteTimer !== null;

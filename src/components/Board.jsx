@@ -11,6 +11,7 @@ import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { useCardMoveFlip } from '../render/animation/useCardMoveFlip.js';
 import { playWinCascade } from '../render/animation/winCascade.js';
 import { isWon } from '../core/winDetection.js';
+import { isObviousWinState } from '../core/rules.js';
 import Pile from './Pile.jsx';
 import { CardFace } from './CardView.jsx';
 
@@ -137,6 +138,17 @@ export default function Board() {
     }
     wasWon.current = won;
   }, [won]);
+
+  // Auto-trigger auto-complete once no hidden information remains anywhere —
+  // this state is mathematically guaranteed completable, so no button press
+  // should be required. autoComplete() already guards against double-starting
+  // while a run is in progress, so it's safe to call this on every state change.
+  useEffect(() => {
+    if (isObviousWinState(state) && !isWon(state)) {
+      setAnnounce('Auto-completing to foundations');
+      autoComplete();
+    }
+  }, [state]);
 
   // Global keyboard shortcuts (single-letter, no modifiers). Cards and piles
   // handle their own Enter/Space activation, so these never conflict with them.
