@@ -137,11 +137,13 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
   const downPos = useRef(null);
 
   const handlePointerDown = (e) => {
+    if (e.button !== 0) return;
     listeners?.onPointerDown?.(e);
     downPos.current = { x: e.clientX, y: e.clientY };
   };
 
   const handlePointerUp = (e) => {
+    if (e.button !== 0) return;
     listeners?.onPointerUp?.(e);
     if (!card.faceUp || won || !onAutoMove || !downPos.current) return;
     const dx = e.clientX - downPos.current.x;

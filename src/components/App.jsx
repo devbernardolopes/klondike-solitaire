@@ -39,6 +39,7 @@ export default function App() {
         WebkitUserSelect: 'none',
         WebkitTouchCallout: 'none',
       }}
+      onContextMenu={(e) => e.preventDefault()}
     >
       <Toolbar
         theme={theme}

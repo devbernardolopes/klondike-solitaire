@@ -73,6 +73,7 @@ export default function ConfirmModal({
       aria-label={title ?? message}
       onPointerDown={(e) => {
         // Backdrop click cancels (ignore clicks inside the panel).
+        if (e.button !== 0) return;
         if (e.target === e.currentTarget) onCancel();
       }}
       style={{

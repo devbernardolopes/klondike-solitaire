@@ -134,7 +134,7 @@ export default function Board() {
   const DOUBLE_TAP_DISTANCE_TOUCH = 24;
   const lastTap = useRef(null);
   const handleBoardPointerUp = (e) => {
-    if (won) return;
+    if (won || e.button !== 0) return;
     if (e.target.closest('[data-card]')) return;
     const now = Date.now();
     const tap = { x: e.clientX, y: e.clientY, t: now };
