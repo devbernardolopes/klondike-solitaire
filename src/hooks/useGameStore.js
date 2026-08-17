@@ -218,15 +218,26 @@ export const useGameStore = create((set, get) => ({
     if (targets.length === 0) return false;
 
     const last = autoMoveState[cardId];
-    let chosen;
-    if (last) {
-      const li = DEST_ORDER.indexOf(last);
-      chosen = targets.find((t) => DEST_ORDER.indexOf(t) > li) ?? targets[0];
-    } else {
-      chosen = targets[0];
+    // Never immediately reverse the previous auto-move: if we're acting on the
+    // card we just placed (from === last.dest), drop the slot it came FROM so a
+    // run can't ping-pong forever between two piles that are each other's only
+    // legal destination. Intentional cycling among *distinct* destinations is
+    // preserved.
+    let candidates = targets;
+    if (last && from === last.dest && last.source) {
+      candidates = targets.filter((t) => t !== last.source);
     }
 
-    set({ autoMoveState: { ...autoMoveState, [cardId]: chosen } });
+    let chosen;
+    if (last && from === last.dest) {
+      const li = DEST_ORDER.indexOf(last.dest);
+      chosen = candidates.find((t) => DEST_ORDER.indexOf(t) > li) ?? candidates[0];
+    } else {
+      chosen = candidates[0];
+    }
+    if (!chosen) return false;
+
+    set({ autoMoveState: { ...autoMoveState, [cardId]: { dest: chosen, source: from } } });
     get().moveCard(from, chosen, cardId, { metaType: 'auto' });
     return true;
   },
@@ -246,8 +257,20 @@ export const useGameStore = create((set, get) => ({
   autoComplete: () => {
     if (autoCompleteTimer !== null) return false;
     if (isWon(get().state)) return false;
+    // Remember every tableau arrangement seen during THIS run so a tableau
+    // shuffle that merely reproduces a previously-visited state (e.g. a run
+    // bouncing between two piles) is detected and the run stops instead of
+    // looping. A genuine winning sequence empties the tableau monotonically and
+    // can never revisit an arrangement, so this never blocks real progress.
+    const visited = new Set();
     const step = () => {
       const cur = get().state;
+      const sig = cur.tableau.map((p) => p.map((c) => c.id).join(',')).join('|');
+      if (visited.has(sig)) {
+        autoCompleteTimer = null;
+        return;
+      }
+      visited.add(sig);
       const foundationMove = findFoundationMove(cur);
       if (foundationMove) {
         const next = applyMove(cur, {
