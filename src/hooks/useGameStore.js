@@ -228,8 +228,6 @@ export const useGameStore = create((set, get) => ({
 
     set({ autoMoveState: { ...autoMoveState, [cardId]: chosen } });
     get().moveCard(from, chosen, cardId, { metaType: 'auto' });
-    useStatsStore.getState().startTimerIfValid(state);
-    useStatsStore.getState().addMoves(1);
     return true;
   },
 
