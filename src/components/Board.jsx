@@ -7,6 +7,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useDragEngine } from '../hooks/useDragEngine.js';
 import { useUiStore } from '../hooks/useUiStore.js';
+import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { useCardMoveFlip } from '../render/animation/useCardMoveFlip.js';
 import { playWinCascade } from '../render/animation/winCascade.js';
@@ -135,6 +136,7 @@ export default function Board() {
     if (won && !wasWon.current) {
       clearSelection();
       playWinCascade();
+      useStatsStore.getState().stopTimer();
     }
     wasWon.current = won;
   }, [won]);

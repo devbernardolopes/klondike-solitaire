@@ -2,14 +2,47 @@
 // New game, undo, theme/deck switchers. Stubs OK for switchers this pass.
 
 import pkg from '../../package.json';
+import { useEffect, useState } from 'react';
 import { Plus, Undo2, Settings } from 'lucide-react';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useUiStore } from '../hooks/useUiStore.js';
+import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useSound } from '../hooks/useSound.js';
 import { isWon } from '../core/winDetection.js';
 import ConfirmModal from './ConfirmModal.jsx';
 import NewGameModal from './NewGameModal.jsx';
 import SettingsModal from './SettingsModal.jsx';
+
+/**
+ * Format an elapsed-time span (ms) as MM:SS.
+ * @param {number} totalMs
+ * @returns {string}
+ */
+function formatTime(totalMs) {
+  const totalSec = Math.max(0, Math.floor(totalMs / 1000));
+  const m = String(Math.floor(totalSec / 60)).padStart(2, '0');
+  const s = String(totalSec % 60).padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+/**
+ * Live elapsed game time. Derived from a fixed start/end timestamp (not from
+ * accumulating interval ticks) so it stays accurate even when the tab loses
+ * focus. A short interval only exists to refresh the displayed value.
+ * @returns {string} "MM:SS"
+ */
+function useElapsed() {
+  const startTime = useStatsStore((s) => s.startTime);
+  const endTime = useStatsStore((s) => s.endTime);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (startTime === null) return undefined;
+    const id = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(id);
+  }, [startTime]);
+  const elapsed = startTime === null ? 0 : (endTime ?? now) - startTime;
+  return formatTime(elapsed);
+}
 
 /**
  * @param {object} props
@@ -34,6 +67,12 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const setNoMovesDialogOpen = useUiStore((s) => s.setNoMovesDialogOpen);
   const settingsDialogOpen = useUiStore((s) => s.settingsDialogOpen);
   const setSettingsDialogOpen = useUiStore((s) => s.setSettingsDialogOpen);
+
+  // Game session stats (moves / score) + live elapsed time for the HUD.
+  const gameState = useGameStore((s) => s.state);
+  const moves = useStatsStore((s) => s.moves);
+  const score = useStatsStore((s) => s.score);
+  const elapsed = useElapsed();
 
   const btn = {
     padding: '6px 10px',
@@ -62,6 +101,14 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const FAB_WIDTH = 40;
   const FAB_GAP = 12;
 
+  // Larger, centered font used by the Score / Time / Moves HUD row.
+  const hudLabelStyle = {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: 700,
+    userSelect: 'none',
+  };
+
   return (
     <>
       <div
@@ -72,18 +119,41 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
           alignItems: 'center',
           padding: '8px clamp(8px, 2vw, 20px)',
         }}
-      >
-        <span
-          style={{
-            color: '#fff',
-            fontSize: 13,
-            marginLeft: 'auto',
-            userSelect: 'none',
-          }}
         >
-          v{pkg.version}
-        </span>
-      </div>
+         <span
+           style={{
+             color: '#fff',
+             fontSize: 13,
+             userSelect: 'none',
+           }}
+         >
+           {lastNewGameMode === 'winning' ? `Seed: ${gameState.seed}` : 'Random'}
+         </span>
+         <span
+           style={{
+             color: '#fff',
+             fontSize: 13,
+             marginLeft: 'auto',
+             userSelect: 'none',
+           }}
+         >
+           v{pkg.version}
+         </span>
+       </div>
+
+       <div
+         style={{
+           display: 'flex',
+           justifyContent: 'center',
+           gap: 'clamp(24px, 6vw, 80px)',
+           alignItems: 'center',
+           padding: '4px clamp(8px, 2vw, 20px) 10px',
+         }}
+       >
+         <span style={hudLabelStyle}>Score: {score}</span>
+         <span style={hudLabelStyle}>Time: {elapsed}</span>
+         <span style={hudLabelStyle}>Moves: {moves}</span>
+       </div>
 
       <button
         style={{ ...fab, left: 16 }}

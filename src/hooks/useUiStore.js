@@ -13,7 +13,7 @@ export const useUiStore = create((set) => ({
   // New Game mode-picker dialog state + the last mode chosen, so the "no valid
   // moves" recovery path can re-deal with the same mode without re-prompting.
   newGameDialogOpen: false,
-  lastNewGameMode: 'random', // 'winning' | 'random'
+  lastNewGameMode: 'winning', // 'winning' | 'random'
 
   // Options/settings modal (Theme / Deck / Hand).
   settingsDialogOpen: false,

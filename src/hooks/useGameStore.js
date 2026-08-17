@@ -13,6 +13,7 @@ import { randomSolvableSeed } from '../core/solvablePool.js';
 import { Flip } from '../render/animation/gsapSetup.js';
 import { flipBridge } from '../render/animation/flipBridge.js';
 import { useUiStore } from './useUiStore.js';
+import { useStatsStore } from './useStatsStore.js';
 
 // Capture the current position/size of every card node before a state change so
 // the render-layer Flip hook can tween from old → new positions after React
@@ -59,7 +60,7 @@ function readPile(s, loc) {
 }
 
 export const useGameStore = create((set, get) => ({
-  state: deal(),
+  state: deal({ seed: randomSolvableSeed() }),
   redoStack: [],
   // Remembers the last auto-move destination per card id so repeated clicks
   // cycle through the valid slots in DEST_ORDER. Reset on new game / undo / redo.
@@ -83,6 +84,7 @@ export const useGameStore = create((set, get) => ({
     clearAutoCompleteTimer();
     useUiStore.getState().setNoMovesDialogOpen(false);
     useUiStore.getState().setLastNewGameMode(mode);
+    useStatsStore.getState().resetStats();
     const seed = mode === 'winning' ? randomSolvableSeed() : undefined;
     const preDeal = buildPreDealState(seed !== undefined ? seed : undefined);
     set({ state: preDeal, redoStack: [], autoMoveState: {}, lastActionMeta: { type: 'draw' } });
@@ -101,6 +103,8 @@ export const useGameStore = create((set, get) => ({
     captureFlip();
     const next = applyMove(state, { type: 'draw' });
     set({ state: next, redoStack, lastActionMeta: { type: 'draw' } });
+    useStatsStore.getState().startTimerIfValid(state);
+    useStatsStore.getState().addMoves(1);
     if (next.stock.length === 0 && !isWon(next) && !hasAnyValidMove(next)) {
       useUiStore.getState().setNoMovesDialogOpen(true);
     }
@@ -114,6 +118,8 @@ export const useGameStore = create((set, get) => ({
     if (isWon(state)) return;
     captureFlip();
     set({ state: applyMove(state, { type: 'recycle' }), redoStack, lastActionMeta: { type: 'draw' } });
+    useStatsStore.getState().startTimerIfValid(state);
+    useStatsStore.getState().addMoves(1);
   },
 
   /**
@@ -169,6 +175,8 @@ export const useGameStore = create((set, get) => ({
     const next = applyMove(state, { type: 'moveCards', from, to, cardIds: moveIds });
     captureFlip();
     set({ state: next, redoStack: [], lastActionMeta: { type: opts.metaType ?? 'move' } });
+    useStatsStore.getState().startTimerIfValid(state);
+    useStatsStore.getState().addMoves(1);
     return true;
   },
 
@@ -181,6 +189,7 @@ export const useGameStore = create((set, get) => ({
     const last = history[history.length - 1];
     const next = coreUndo(state);
     set({ state: next, redoStack: [...redoStack, last], autoMoveState: {} });
+    useStatsStore.getState().addMoves(1);
   },
 
   redo: () => {
@@ -219,6 +228,8 @@ export const useGameStore = create((set, get) => ({
 
     set({ autoMoveState: { ...autoMoveState, [cardId]: chosen } });
     get().moveCard(from, chosen, cardId, { metaType: 'auto' });
+    useStatsStore.getState().startTimerIfValid(state);
+    useStatsStore.getState().addMoves(1);
     return true;
   },
 
@@ -249,6 +260,8 @@ export const useGameStore = create((set, get) => ({
         });
         captureFlip();
         set({ state: next, redoStack: [], autoMoveState: {}, lastActionMeta: { type: 'auto' } });
+        useStatsStore.getState().startTimerIfValid(cur);
+        useStatsStore.getState().addMoves(1);
         autoCompleteTimer = setTimeout(step, AUTO_COMPLETE_DELAY);
         return;
       }
@@ -267,6 +280,8 @@ export const useGameStore = create((set, get) => ({
         });
         captureFlip();
         set({ state: next, redoStack: [], autoMoveState: {}, lastActionMeta: { type: 'auto' } });
+        useStatsStore.getState().startTimerIfValid(cur);
+        useStatsStore.getState().addMoves(1);
         autoCompleteTimer = setTimeout(step, AUTO_COMPLETE_DELAY);
         return;
       }
