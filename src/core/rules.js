@@ -244,12 +244,20 @@ function tableauSignature(state) {
 export function findAssistTableauMove(state) {
   let nodesExplored = 0;
   const visited = new Set([tableauSignature(state)]);
+  // Track the shallowest winning path found. A pointless reversible shuffle is
+  // never part of a minimal path (a cycle can always be removed), so returning
+  // the first move of the *shortest* winning path guarantees the chosen move is
+  // genuinely necessary — it can't be a run bouncing between two piles that
+  // merely happen to sit on an independent winning path.
+  let best = null; // { depth, firstMove }
 
-  // DFS returns the first move of a winning path, or null.
   function search(cur, depth, firstMove) {
-    if (nodesExplored++ > ASSIST_MAX_NODES) return null;
-    if (findFoundationMove(cur)) return firstMove;
-    if (depth >= ASSIST_MAX_DEPTH) return null;
+    if (nodesExplored++ > ASSIST_MAX_NODES) return;
+    if (findFoundationMove(cur)) {
+      if (!best || depth < best.depth) best = { depth, firstMove };
+      return;
+    }
+    if (depth >= ASSIST_MAX_DEPTH) return;
 
     for (let fromCol = 0; fromCol < cur.tableau.length; fromCol++) {
       const pile = cur.tableau[fromCol];
@@ -271,15 +279,14 @@ export function findAssistTableauMove(state) {
           visited.add(sig);
 
           const move = firstMove ?? { fromCol, cardId: card.id, toCol };
-          const result = search(next, depth + 1, move);
-          if (result) return result;
+          search(next, depth + 1, move);
         }
       }
     }
-    return null;
   }
 
-  return search(state, 0, null);
+  search(state, 0, null);
+  return best ? best.firstMove : null;
 }
 
 export function findFoundationMove(state) {
