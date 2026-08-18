@@ -13,18 +13,24 @@ export function playWinCascade() {
   gsap.set(cards, { clearProps: 'transform,position' });
 
   // Foundation piles are rendered non-fanned: all 13 cards share one x/y and
-  // stack with zIndex = pile index (Ace=0 … King=12), so only the top (King) is
-  // visible and the Ace/2 sit at the BOTTOM of the paint order. A random
-  // horizontal scatter (below) used to lump them into a cloud where every
-  // overlap is won by the higher-z sibling — so the Ace and 2 were *always*
-  // painted behind another foundation card and appeared never to fall.
+  // stack with zIndex = pile position (Ace=0 … King=12), so only the top (King)
+  // is visible and the Ace/2 sit at the BOTTOM of the paint order. Two bugs
+  // used to leave those buried cards looking frozen:
   //
-  // Fix: fan each foundation card into a deterministic vertical column (no
-  // random horizontal scatter, so the column stays intact) and drop the whole
-  // column together. With natural within-pile z-order, each card's top edge
-  // reads as a strip of the fanned column, so every card — Ace, 2, …, King —
-  // is revealed and clearly moves. We also raise the foundation piles above the
-  // rest of the board so flying tableau cards never hide them.
+  //  1. The fan step was capped at half a card height, so every foundation card
+  //     permanently overlapped its neighbor by >=50% — Ace needed the most
+  //     cumulative clearance but got the least.
+  //  2. GSAP's default (array-order) stagger gave Ace (index 0 in its pile, and
+  //     the first card in DOM order) the smallest delay AND the smallest travel
+  //     (idx * fanStep = 0), so it finished moving before the cards covering it
+  //     had even started.
+  //
+  // Fix: fan each foundation card by a full card height per index (capped only
+  // to fit the viewport, so the 13-card column stays on-screen and every card
+  // is unobstructed), and reverse the stagger (from: 'end') so the top of each
+  // stack (King) peels away first, revealing the buried Ace/2 beneath. We also
+  // raise the foundation piles above the rest of the board so flying tableau
+  // cards never hide them.
   const cardH = measureVar('var(--card-height)');
   const bottomMargin = MOTION.win.bottomMargin;
   let fanStep = 0;
@@ -38,9 +44,10 @@ export function playWinCascade() {
     if (fanStep === 0) {
       const rect = el.getBoundingClientRect();
       const colH = Math.max(0, window.innerHeight - rect.top - bottomMargin - cardH);
-      // Step sizes the 12 gaps so the 13-card column fits on screen AND leaves
-      // ~40% of the available space as a uniform drop for the whole column.
-      fanStep = Math.min(cardH * 0.5, (colH * 0.6) / 12);
+      // Full card-height separation per index so no card stays overlapped; the
+      // step is capped to colH/12 only so the whole column fits on screen on
+      // shorter viewports (and the leftover space becomes a uniform drop).
+      fanStep = Math.min(cardH, colH / 12);
       uniformFall = Math.max(0, colH - 12 * fanStep);
     }
 
@@ -57,8 +64,7 @@ export function playWinCascade() {
     // horizontal scatter for the confetti effect.
     x: (i, el) => (el._fanY != null ? 0 : gsap.utils.random(-90, 90)),
     // Foundation cards drop by the shared uniform fall plus their fan offset,
-    // revealing the whole column. Other cards fall by a viewport-clamped amount
-    // (the fan offset is no longer double-counted, so nothing overflows).
+    // revealing the whole column. Other cards fall by a viewport-clamped amount.
     y: (i, el) => {
       if (el._fallY != null) return el._fallY + (el._fanY || 0);
       const rect = el.getBoundingClientRect();
@@ -66,7 +72,7 @@ export function playWinCascade() {
       return Math.min(MOTION.win.flyDistance, maxFall);
     },
     rotation: () => gsap.utils.random(-60, 60),
-    stagger: MOTION.win.stagger,
+    stagger: { each: MOTION.win.stagger, from: 'end' },
     duration: MOTION.win.duration,
     ease: MOTION.win.ease,
   });
