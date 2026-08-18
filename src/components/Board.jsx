@@ -123,6 +123,7 @@ export default function Board() {
   const announce = useUiStore((s) => s.announce);
   const handedness = useSettingsStore((s) => s.handedness);
   const isOver = useStatsStore((s) => s.isOver);
+  const won = isWon(state);
   const locked = won || isOver;
   const { sensors, onDragStart, onDragEnd, onDragCancel, activeRun } =
     useDragEngine();
@@ -132,7 +133,6 @@ export default function Board() {
   useCardMoveFlip();
 
   // Win-state cascade: fire once on the false → true transition of isWon.
-  const won = isWon(state);
   const wasWon = useRef(false);
   useEffect(() => {
     if (won && !wasWon.current) {
