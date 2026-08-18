@@ -102,7 +102,7 @@ export default function StatisticsModal({ open, onClose }) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 1000,
+          zIndex: 3000,
           padding: 16,
         }}
       >

@@ -157,7 +157,7 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
           ? '2px dashed rgba(255,255,255,0.7)'
           : '1px solid rgba(255,255,255,0.18)',
         background: 'rgba(0,0,0,0.12)',
-        cursor: onClick ? 'pointer' : 'default',
+        cursor: onClick && !locked ? 'pointer' : 'default',
         outlineOffset: 2,
       }}
       data-loc={loc}

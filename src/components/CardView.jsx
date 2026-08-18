@@ -195,7 +195,7 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
       data-card={card.id}
       style={{
         visibility: hidden ? 'hidden' : 'visible',
-        cursor: 'grab',
+        cursor: locked ? 'default' : 'grab',
         touchAction: 'none',
         WebkitUserSelect: 'none',
         WebkitTouchCallout: 'none',

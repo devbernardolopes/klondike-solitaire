@@ -32,3 +32,4 @@ coverage/
 
 # Husky internal shim dir (keep .husky/<hook> files tracked)
 .husky/_
+nul

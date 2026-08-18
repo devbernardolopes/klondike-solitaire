@@ -70,7 +70,7 @@ export default function NewGameModal({ open, onWinningDeal, onRandomShuffle, onD
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 1000,
+        zIndex: 3000,
         padding: 16,
       }}
     >
