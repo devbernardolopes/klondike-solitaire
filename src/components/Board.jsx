@@ -8,6 +8,7 @@ import { useGameStore } from '../hooks/useGameStore.js';
 import { useDragEngine } from '../hooks/useDragEngine.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
+import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { useCardMoveFlip } from '../render/animation/useCardMoveFlip.js';
 import { playWinCascade } from '../render/animation/winCascade.js';
@@ -139,6 +140,11 @@ export default function Board() {
       clearSelection();
       playWinCascade();
       useStatsStore.getState().stopTimer();
+      // Persist the just-won game's stats cumulatively. The timer is frozen
+      // above, so endTime is final for this game.
+      const { startTime, endTime, moves, score } = useStatsStore.getState();
+      const durationMs = startTime == null ? 0 : (endTime ?? Date.now()) - startTime;
+      useStatisticsStore.getState().recordWin({ score, timeMs: durationMs, moves });
     }
     wasWon.current = won;
   }, [won]);

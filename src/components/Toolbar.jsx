@@ -3,7 +3,7 @@
 
 import pkg from '../../package.json';
 import { useEffect, useState } from 'react';
-import { Plus, Undo2, Settings } from 'lucide-react';
+import { Plus, Undo2, Settings, BarChart3 } from 'lucide-react';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
@@ -12,6 +12,7 @@ import { isWon } from '../core/winDetection.js';
 import ConfirmModal from './ConfirmModal.jsx';
 import NewGameModal from './NewGameModal.jsx';
 import SettingsModal from './SettingsModal.jsx';
+import StatisticsModal from './StatisticsModal.jsx';
 
 /**
  * Format an elapsed-time span (ms) as MM:SS.
@@ -72,6 +73,8 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const setNoMovesDialogOpen = useUiStore((s) => s.setNoMovesDialogOpen);
   const settingsDialogOpen = useUiStore((s) => s.settingsDialogOpen);
   const setSettingsDialogOpen = useUiStore((s) => s.setSettingsDialogOpen);
+  const statsDialogOpen = useUiStore((s) => s.statsDialogOpen);
+  const setStatsDialogOpen = useUiStore((s) => s.setStatsDialogOpen);
   const gameOverDialogOpen = useUiStore((s) => s.gameOverDialogOpen);
   const setGameOverDialogOpen = useUiStore((s) => s.setGameOverDialogOpen);
 
@@ -110,10 +113,12 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
     padding: 10,
   };
 
-  // Bottom-left cluster: [Settings] [New Game]. The Settings button sits to the
-  // left of New Game; both are fixed-bottom and ~40px wide with a 12px gap.
+  // Bottom-left cluster, left-to-right: [Settings] [Statistics] [New Game].
+  // Each is fixed-bottom and ~40px wide with a 12px gap; the third sits 2 slots
+  // in from the edge.
   const FAB_WIDTH = 40;
   const FAB_GAP = 12;
+  const fabLeft = (slot) => 16 + slot * (FAB_WIDTH + FAB_GAP);
 
   // Larger, centered font used by the Score / Time / Moves HUD row.
   const hudLabelStyle = {
@@ -170,7 +175,7 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
        </div>
 
       <button
-        style={{ ...fab, left: 16 }}
+        style={{ ...fab, left: fabLeft(0) }}
         aria-label="Settings"
         onClick={() => setSettingsDialogOpen(true)}
       >
@@ -178,7 +183,15 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
       </button>
 
       <button
-        style={{ ...fab, left: 16 + FAB_WIDTH + FAB_GAP }}
+        style={{ ...fab, left: fabLeft(1) }}
+        aria-label="Statistics"
+        onClick={() => setStatsDialogOpen(true)}
+      >
+        <BarChart3 size={20} />
+      </button>
+
+      <button
+        style={{ ...fab, left: fabLeft(2) }}
         aria-label="New Game"
         onClick={() => setNewGameDialogOpen(true)}
       >
@@ -218,6 +231,11 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
         onDeckChange={onDeckChange}
         handedness={handedness}
         onHandednessChange={onHandednessChange}
+      />
+
+      <StatisticsModal
+        open={statsDialogOpen}
+        onClose={() => setStatsDialogOpen(false)}
       />
 
        <ConfirmModal

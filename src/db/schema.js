@@ -28,6 +28,12 @@ db.version(1).stores({
   games: '++id, startedAt, finishedAt, won, durationMs',
   settings: 'key',
 });
+// v2 adds the cumulative `stats` table (single keyed row of aggregates).
+db.version(2).stores({
+  games: '++id, startedAt, finishedAt, won, durationMs',
+  settings: 'key',
+  stats: 'key',
+});
 
 /**
  * Insert a finished/abandoned game record.

@@ -12,6 +12,7 @@ import Toolbar from './Toolbar.jsx';
 import Board from './Board.jsx';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
+import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
 import { isWon } from '../core/winDetection.js';
 import { MotionDebugPanel } from '../render/animation/MotionDebugPanel.jsx';
 
@@ -23,12 +24,14 @@ export default function App() {
   const setDeck = useSettingsStore((s) => s.setDeck);
   const setHandedness = useSettingsStore((s) => s.setHandedness);
   const init = useSettingsStore((s) => s.init);
+  const initStats = useStatisticsStore((s) => s.init);
   const state = useGameStore((s) => s.state);
   const won = isWon(state);
 
   useEffect(() => {
     init();
-  }, [init]);
+    initStats();
+  }, [init, initStats]);
 
   return (
     <div

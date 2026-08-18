@@ -18,6 +18,9 @@ export const useUiStore = create((set) => ({
   // Options/settings modal (Theme / Deck / Hand).
   settingsDialogOpen: false,
 
+  // Statistics modal showing cumulative games-played/won, best score/time/moves.
+  statsDialogOpen: false,
+
   // "Game Over" modal shown when a hard limit (60:00 or 999 moves) is hit.
   gameOverDialogOpen: false,
 
@@ -32,6 +35,9 @@ export const useUiStore = create((set) => ({
 
   /** Show/hide the options/settings dialog. */
   setSettingsDialogOpen: (open) => set({ settingsDialogOpen: open }),
+
+  /** Show/hide the Statistics dialog. */
+  setStatsDialogOpen: (open) => set({ statsDialogOpen: open }),
 
   /** Show/hide the Game Over dialog. */
   setGameOverDialogOpen: (open) => set({ gameOverDialogOpen: open }),

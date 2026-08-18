@@ -6,6 +6,7 @@
 
 import { create } from 'zustand';
 import { hasAnyValidMove } from '../core/rules.js';
+import { useStatisticsStore } from './useStatisticsStore.js';
 
 // Hard limits that end the game. Reaching either freezes the session so only a
 // new game can continue (timer stops, moves stop, interactions lock).
@@ -57,6 +58,9 @@ export const useStatsStore = create((set, get) => ({
     if (get().startTime !== null) return;
     if (!hasAnyValidMove(state)) return;
     set({ startTime: Date.now() });
+    // A new game's clock has just begun — count it as a game played. This fires
+    // exactly once per game because we early-returned above when already running.
+    useStatisticsStore.getState().recordGamePlayed();
   },
 
   /** Add one (or more) moves to the counter. Freezes at the move limit. */
