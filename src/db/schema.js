@@ -1,7 +1,7 @@
 // db/schema.js
 // Dexie schema for local persistence: game history, settings, best times.
-//
-// TODO(next pass): wire save-on-game-over, settings read/write, best-times query.
+// Settings read/write is wired through useSettingsStore; game history is not
+// yet saved on game-over (TODO: wire saveGame() + best-times query).
 
 import Dexie from 'dexie';
 

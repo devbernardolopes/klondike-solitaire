@@ -1,5 +1,6 @@
 // components/App.jsx
-// Root component. Composes Toolbar + Board. Loads the classic theme CSS.
+// Root component. Composes Toolbar + Board. Loads the classic + dark theme
+// CSS and registers both deck renderers (side-effect imports).
 
 import '../render/themes/classic.css';
 import '../render/themes/dark.css';

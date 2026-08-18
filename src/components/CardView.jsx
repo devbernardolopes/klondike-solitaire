@@ -1,6 +1,7 @@
 // components/CardView.jsx
-// Renders a single card. This pass uses a plain colored div with rank/suit text.
-// The real deck renderer (Sprite/Procedural) will plug in here later — see TODO.
+// Renders a single card. Face/back art comes from the active deck renderer
+// (see render/deck/deckRegistry.js); the two faces live inside a 3D flip
+// container so face-up/face-down transitions animate.
 
 import { useMemo, useRef } from 'react';
 import { useDraggable } from '@dnd-kit/core';
