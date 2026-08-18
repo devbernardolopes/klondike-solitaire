@@ -37,7 +37,10 @@ function useElapsed() {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (startTime === null) return undefined;
-    const id = setInterval(() => setNow(Date.now()), 250);
+    const id = setInterval(() => {
+      setNow(Date.now());
+      useStatsStore.getState().checkTimeLimit();
+    }, 250);
     return () => clearInterval(id);
   }, [startTime]);
   const elapsed = startTime === null ? 0 : (endTime ?? now) - startTime;
@@ -58,6 +61,8 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const undo = useGameStore((s) => s.undo);
   const canUndo = useGameStore((s) => s.state.moveHistory.length > 0);
   const won = useGameStore((s) => isWon(s.state));
+  const isOver = useStatsStore((s) => s.isOver);
+  const overReason = useStatsStore((s) => s.overReason);
   const { play } = useSound();
 
   const newGameDialogOpen = useUiStore((s) => s.newGameDialogOpen);
@@ -67,12 +72,21 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const setNoMovesDialogOpen = useUiStore((s) => s.setNoMovesDialogOpen);
   const settingsDialogOpen = useUiStore((s) => s.settingsDialogOpen);
   const setSettingsDialogOpen = useUiStore((s) => s.setSettingsDialogOpen);
+  const gameOverDialogOpen = useUiStore((s) => s.gameOverDialogOpen);
+  const setGameOverDialogOpen = useUiStore((s) => s.setGameOverDialogOpen);
 
   // Game session stats (moves / score) + live elapsed time for the HUD.
   const gameState = useGameStore((s) => s.state);
   const moves = useStatsStore((s) => s.moves);
   const score = useStatsStore((s) => s.score);
   const elapsed = useElapsed();
+
+  // The session locks (won or a hard limit hit) — disable undo and surface the
+  // Game Over dialog when a limit (not a win) ended the game.
+  const locked = won || isOver;
+  useEffect(() => {
+    if (isOver) setGameOverDialogOpen(true);
+  }, [isOver, setGameOverDialogOpen]);
 
   const btn = {
     padding: '6px 10px',
@@ -171,10 +185,10 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
         <Plus size={20} />
       </button>
 
-      <button
-        style={{ ...fab, right: 16, opacity: won || !canUndo ? 0.4 : 1 }}
+       <button
+        style={{ ...fab, right: 16, opacity: locked || !canUndo ? 0.4 : 1 }}
         aria-label="Undo"
-        disabled={won || !canUndo}
+        disabled={locked || !canUndo}
         onClick={undo}
       >
         <Undo2 size={20} />
@@ -206,7 +220,7 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
         onHandednessChange={onHandednessChange}
       />
 
-      <ConfirmModal
+       <ConfirmModal
         open={noMovesDialogOpen}
         title="No moves remaining"
         message="There don't seem to be any more valid moves. You can undo your last move or start a new game."
@@ -220,6 +234,23 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
           setNoMovesDialogOpen(false);
           undo();
         }}
+      />
+
+      <ConfirmModal
+        open={gameOverDialogOpen}
+        title="Game Over"
+        message={
+          overReason === 'moves'
+            ? "You reached the 999-move limit. Start a new game to keep playing."
+            : "You reached the 60:00 time limit. Start a new game to keep playing."
+        }
+        confirmText="New Game"
+        hideCancel
+        onConfirm={() => {
+          setGameOverDialogOpen(false);
+          dealNewGame(lastNewGameMode);
+        }}
+        onCancel={() => setGameOverDialogOpen(false)}
       />
     </>
   );

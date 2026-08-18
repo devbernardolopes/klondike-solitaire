@@ -7,7 +7,9 @@
 import { useDroppable } from '@dnd-kit/core';
 import CardView from './CardView.jsx';
 import { useGameStore } from '../hooks/useGameStore.js';
+import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useUiStore, findCardLocator } from '../hooks/useUiStore.js';
+import { isWon } from '../core/winDetection.js';
 
 /**
  * @param {object} props
@@ -28,6 +30,9 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
   const selectedCardId = useUiStore((s) => s.selectedCardId);
   const clearSelection = useUiStore((s) => s.clearSelection);
   const setAnnounce = useUiStore((s) => s.setAnnounce);
+  const won = useGameStore((s) => isWon(s.state));
+  const sessionOver = useStatsStore((s) => s.isOver);
+  const locked = won || sessionOver;
 
   const kind = loc.split(':')[0];
 
@@ -100,6 +105,7 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
 
   const handleKeyDown = (e) => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
+    if (locked) return;
     e.preventDefault();
     if (loc === 'stock') {
       if (onClick) onClick();

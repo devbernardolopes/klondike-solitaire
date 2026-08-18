@@ -122,6 +122,8 @@ export default function Board() {
   const setAnnounce = useUiStore((s) => s.setAnnounce);
   const announce = useUiStore((s) => s.announce);
   const handedness = useSettingsStore((s) => s.handedness);
+  const isOver = useStatsStore((s) => s.isOver);
+  const locked = won || isOver;
   const { sensors, onDragStart, onDragEnd, onDragCancel, activeRun } =
     useDragEngine();
 
@@ -156,14 +158,14 @@ export default function Board() {
   // handle their own Enter/Space activation, so these never conflict with them.
   useEffect(() => {
     const onKey = (e) => {
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (e.key === 'n' || e.key === 'N') {
-        clearSelection();
-        setAnnounce('New game dealt');
-        dealNewGame();
-        return;
-      }
-      if (won) return;
+       if (e.metaKey || e.ctrlKey || e.altKey) return;
+       if (e.key === 'n' || e.key === 'N') {
+         clearSelection();
+         setAnnounce('New game dealt');
+         dealNewGame();
+         return;
+       }
+       if (locked) return;
       switch (e.key.toLowerCase()) {
         case 'd':
           clearSelection();
@@ -197,10 +199,10 @@ export default function Board() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [won, drawFromStock, recycleStock, undo, redo, autoComplete, dealNewGame, clearSelection, setAnnounce]);
+  }, [won, isOver, locked, drawFromStock, recycleStock, undo, redo, autoComplete, dealNewGame, clearSelection, setAnnounce]);
 
   const onStockClick = () => {
-    if (won) return;
+    if (locked) return;
     if (state.stock.length > 0) drawFromStock();
     else if (state.waste.length > 0) recycleStock();
   };
@@ -214,7 +216,7 @@ export default function Board() {
   const DOUBLE_TAP_DISTANCE_TOUCH = 24;
   const lastTap = useRef(null);
   const handleBoardPointerUp = (e) => {
-    if (won || e.button !== 0) return;
+    if (locked || e.button !== 0) return;
     if (e.target.closest('[data-card]')) return;
     const now = Date.now();
     const tap = { x: e.clientX, y: e.clientY, t: now };

@@ -9,6 +9,7 @@ import { playCardShake } from '../render/animation/playCardShake.js';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { useUiStore } from '../hooks/useUiStore.js';
+import { useStatsStore } from '../hooks/useStatsStore.js';
 import { isWon } from '../core/winDetection.js';
 import { getDeck } from '../render/deck/deckRegistry.js';
 
@@ -121,6 +122,8 @@ const CLICK_DISTANCE = 6;
 
 export default function CardView({ card, from, zIndex = 0, hidden = false, onAutoMove }) {
   const won = useGameStore((s) => isWon(s.state));
+  const isOver = useStatsStore((s) => s.isOver);
+  const locked = won || isOver;
   const selectedCardId = useUiStore((s) => s.selectedCardId);
   const selectCard = useUiStore((s) => s.selectCard);
   const clearSelection = useUiStore((s) => s.clearSelection);
@@ -128,7 +131,7 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
   const { attributes, listeners, setNodeRef } = useDraggable({
     id: card.id,
     data: { from, cardId: card.id },
-    disabled: !card.faceUp || won,
+    disabled: !card.faceUp || locked,
   });
 
   const flipRef = useRef(null);
@@ -145,7 +148,7 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
   const handlePointerUp = (e) => {
     if (e.button !== 0) return;
     listeners?.onPointerUp?.(e);
-    if (!card.faceUp || won || !onAutoMove || !downPos.current) return;
+    if (!card.faceUp || locked || !onAutoMove || !downPos.current) return;
     const dx = e.clientX - downPos.current.x;
     const dy = e.clientY - downPos.current.y;
     if (Math.hypot(dx, dy) < CLICK_DISTANCE) {
@@ -159,10 +162,10 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
   // same one-tap auto-move as a pointer tap. The drag PointerSensor (threshold
   // 8px) means a keyboard activation never triggers a drag.
   const handleFocus = () => {
-    if (card.faceUp && !won) selectCard(card.id);
+    if (card.faceUp && !locked) selectCard(card.id);
   };
   const handleKeyDown = (e) => {
-    if (!card.faceUp || won || !onAutoMove) return;
+    if (!card.faceUp || locked || !onAutoMove) return;
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       clearSelection();
@@ -176,7 +179,7 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
     }
   };
 
-  const selected = selectedCardId === card.id && !won;
+  const selected = selectedCardId === card.id && !locked;
 
   return (
     <div
@@ -186,7 +189,7 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
       onPointerUp={handlePointerUp}
       onFocus={handleFocus}
       onKeyDown={handleKeyDown}
-      tabIndex={card.faceUp && !won ? 0 : -1}
+      tabIndex={card.faceUp && !locked ? 0 : -1}
       role="button"
       data-card={card.id}
       style={{

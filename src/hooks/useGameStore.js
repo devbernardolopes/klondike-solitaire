@@ -99,7 +99,7 @@ export const useGameStore = create((set, get) => ({
    */
   drawFromStock: () => {
     const { state, redoStack } = get();
-    if (isWon(state)) return;
+    if (isWon(state) || useStatsStore.getState().isOver) return;
     captureFlip();
     const next = applyMove(state, { type: 'draw' });
     set({ state: next, redoStack, lastActionMeta: { type: 'draw' } });
@@ -115,7 +115,7 @@ export const useGameStore = create((set, get) => ({
    */
   recycleStock: () => {
     const { state, redoStack } = get();
-    if (isWon(state)) return;
+    if (isWon(state) || useStatsStore.getState().isOver) return;
     captureFlip();
     set({ state: applyMove(state, { type: 'recycle' }), redoStack, lastActionMeta: { type: 'draw' } });
     useStatsStore.getState().startTimerIfValid(state);
@@ -134,7 +134,7 @@ export const useGameStore = create((set, get) => ({
   moveCard: (from, to, cardId, opts = {}) => {
     clearAutoCompleteTimer();
     const { state, redoStack } = get();
-    if (isWon(state)) return false;
+    if (isWon(state) || useStatsStore.getState().isOver) return false;
     if (from === to) return false;
 
     const srcPile = readPile(state, from);
@@ -184,7 +184,7 @@ export const useGameStore = create((set, get) => ({
     clearAutoCompleteTimer();
     useUiStore.getState().setNoMovesDialogOpen(false);
     const { state, redoStack } = get();
-    if (state.moveHistory.length === 0) return;
+    if (state.moveHistory.length === 0 || useStatsStore.getState().isOver) return;
     const history = state.moveHistory.slice();
     const last = history[history.length - 1];
     const next = coreUndo(state);
@@ -195,7 +195,7 @@ export const useGameStore = create((set, get) => ({
   redo: () => {
     clearAutoCompleteTimer();
     const { state, redoStack } = get();
-    if (redoStack.length === 0) return;
+    if (redoStack.length === 0 || useStatsStore.getState().isOver) return;
     const stack = redoStack.slice();
     const record = stack.pop();
     const next = coreRedo(state, record);
@@ -213,7 +213,7 @@ export const useGameStore = create((set, get) => ({
    */
   autoMove: (from, cardId) => {
     const { state, autoMoveState } = get();
-    if (isWon(state)) return false;
+    if (isWon(state) || useStatsStore.getState().isOver) return false;
     const targets = getAutoMoveTargets(state, from, cardId);
     if (targets.length === 0) return false;
 
@@ -256,7 +256,7 @@ export const useGameStore = create((set, get) => ({
    */
   autoComplete: () => {
     if (autoCompleteTimer !== null) return false;
-    if (isWon(get().state)) return false;
+    if (isWon(get().state) || useStatsStore.getState().isOver) return false;
     // Remember every tableau arrangement seen during THIS run so a tableau
     // shuffle that merely reproduces a previously-visited state (e.g. a run
     // bouncing between two piles) is detected and the run stops instead of

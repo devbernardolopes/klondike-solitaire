@@ -3,6 +3,8 @@
 Scaffolding pass. This is a **skeleton**: architecture, folder structure, core data
 model, and stub implementations with clear TODOs. Not a finished game.
 
+Locally the project is here: `C:\Dev\klondike-solitaire\klondike-solitaire`.
+
 ## Stack
 
 - Vite + React 18 (JavaScript, **not** TypeScript)

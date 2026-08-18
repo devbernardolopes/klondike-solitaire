@@ -7,14 +7,46 @@
 import { create } from 'zustand';
 import { hasAnyValidMove } from '../core/rules.js';
 
+// Hard limits that end the game. Reaching either freezes the session so only a
+// new game can continue (timer stops, moves stop, interactions lock).
+export const MAX_TIME_MS = 60 * 60 * 1000; // 60:00
+export const MAX_MOVES = 999;
+
 export const useStatsStore = create((set, get) => ({
   moves: 0,
   score: 0, // not implemented yet — stays 0
   startTime: null, // epoch ms when the clock started (first valid interaction)
-  endTime: null, // epoch ms when the clock stopped (on win)
+  endTime: null, // epoch ms when the clock stopped (on win or limit)
+  isOver: false, // true once a limit is hit — locks all interaction
+  overReason: null, // 'time' | 'moves' — which limit ended the game
 
   /** Reset all stats for a fresh game. */
-  resetStats: () => set({ moves: 0, score: 0, startTime: null, endTime: null }),
+  resetStats: () => set({ moves: 0, score: 0, startTime: null, endTime: null, isOver: false, overReason: null }),
+
+  /**
+   * Freeze the session: lock interaction and stop the clock. The 999th move is
+   * still applied before this fires (caller increments first), so the counter
+   * reads exactly MAX_MOVES. For the time limit we pin endTime so the display
+   * reads exactly 60:00 rather than a slightly-over 250ms-tick value.
+   * @param {'time'|'moves'} reason
+   */
+  freeze: (reason) => {
+    const { isOver, startTime, endTime } = get();
+    if (isOver) return;
+    set({ isOver: true, overReason: reason });
+    if (startTime !== null && endTime === null) {
+      set({ endTime: reason === 'time' ? startTime + MAX_TIME_MS : Date.now() });
+    }
+  },
+
+  /**
+   * Called on each timer tick to freeze once elapsed crosses the time limit.
+   */
+  checkTimeLimit: () => {
+    const { isOver, startTime } = get();
+    if (isOver || startTime === null) return;
+    if (Date.now() - startTime >= MAX_TIME_MS) get().freeze('time');
+  },
 
   /**
    * Start the timer if it isn't already running and at least one valid move
@@ -27,8 +59,14 @@ export const useStatsStore = create((set, get) => ({
     set({ startTime: Date.now() });
   },
 
-  /** Add one (or more) moves to the counter. */
-  addMoves: (n = 1) => set((s) => ({ moves: s.moves + n })),
+  /** Add one (or more) moves to the counter. Freezes at the move limit. */
+  addMoves: (n = 1) => {
+    const { isOver, moves } = get();
+    if (isOver) return;
+    const next = moves + n;
+    set({ moves: next });
+    if (next >= MAX_MOVES) get().freeze('moves');
+  },
 
   /** Freeze the clock (e.g. when the game is won). */
   stopTimer: () => {

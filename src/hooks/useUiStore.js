@@ -18,6 +18,9 @@ export const useUiStore = create((set) => ({
   // Options/settings modal (Theme / Deck / Hand).
   settingsDialogOpen: false,
 
+  // "Game Over" modal shown when a hard limit (60:00 or 999 moves) is hit.
+  gameOverDialogOpen: false,
+
   /** Mark a card as the keyboard-selected card. */
   selectCard: (id) => set({ selectedCardId: id }),
 
@@ -29,6 +32,9 @@ export const useUiStore = create((set) => ({
 
   /** Show/hide the options/settings dialog. */
   setSettingsDialogOpen: (open) => set({ settingsDialogOpen: open }),
+
+  /** Show/hide the Game Over dialog. */
+  setGameOverDialogOpen: (open) => set({ gameOverDialogOpen: open }),
 
   /** Record which mode was last used, so the "no valid moves" recovery path can reuse it. */
   setLastNewGameMode: (mode) => set({ lastNewGameMode: mode }),
