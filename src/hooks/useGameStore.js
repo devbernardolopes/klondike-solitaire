@@ -9,11 +9,12 @@ import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTarget
 import { isWon } from '../core/winDetection.js';
 import { buildStandardDeck, shuffle } from '../core/Deck.js';
 import { createEmptyGameState } from '../core/GameState.js';
-import { randomSolvableSeed } from '../core/solvablePool.js';
+import { randomSolvableSeed, pickSolvableSeed } from '../core/solvablePool.js';
 import { Flip } from '../render/animation/gsapSetup.js';
 import { flipBridge } from '../render/animation/flipBridge.js';
 import { useUiStore } from './useUiStore.js';
 import { useStatsStore } from './useStatsStore.js';
+import { useSeedStore } from './useSeedStore.js';
 
 // Capture the current position/size of every card node before a state change so
 // the render-layer Flip hook can tween from old → new positions after React
@@ -85,7 +86,14 @@ export const useGameStore = create((set, get) => ({
     useUiStore.getState().setNoMovesDialogOpen(false);
     useUiStore.getState().setLastNewGameMode(mode);
     useStatsStore.getState().resetStats();
-    const seed = mode === 'winning' ? randomSolvableSeed() : undefined;
+    const seed =
+      mode === 'winning'
+        ? (() => {
+            const { seed: s, exhausted } = pickSolvableSeed(useSeedStore.getState().playedSeeds);
+            if (exhausted) useSeedStore.getState().resetPlayed();
+            return s;
+          })()
+        : undefined;
     const preDeal = buildPreDealState(seed !== undefined ? seed : undefined);
     set({ state: preDeal, redoStack: [], autoMoveState: {}, lastActionMeta: { type: 'draw' } });
     requestAnimationFrame(() => {

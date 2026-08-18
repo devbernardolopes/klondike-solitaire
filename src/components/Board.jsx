@@ -9,6 +9,7 @@ import { useDragEngine } from '../hooks/useDragEngine.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
+import { useSeedStore } from '../hooks/useSeedStore.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { useCardMoveFlip } from '../render/animation/useCardMoveFlip.js';
 import { playWinCascade } from '../render/animation/winCascade.js';
@@ -145,6 +146,12 @@ export default function Board() {
       const { startTime, endTime, moves, score } = useStatsStore.getState();
       const durationMs = startTime == null ? 0 : (endTime ?? Date.now()) - startTime;
       useStatisticsStore.getState().recordWin({ score, timeMs: durationMs, moves });
+      // If this was a Winning Deal (it carries a seed), remember the seed so it
+      // isn't re-dealt until the whole pool has been won.
+      const gameState = useGameStore.getState().state;
+      if (gameState.seed !== undefined) {
+        useSeedStore.getState().addPlayedSeed(gameState.seed);
+      }
     }
     wasWon.current = won;
   }, [won]);

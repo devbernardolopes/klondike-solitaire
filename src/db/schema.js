@@ -34,6 +34,14 @@ db.version(2).stores({
   settings: 'key',
   stats: 'key',
 });
+// v3 adds the `playedSeeds` table (single keyed row of won Winning-Deal seeds).
+// Kept separate from `stats` so a statistics reset never clears it.
+db.version(3).stores({
+  games: '++id, startedAt, finishedAt, won, durationMs',
+  settings: 'key',
+  stats: 'key',
+  playedSeeds: 'key',
+});
 
 /**
  * Insert a finished/abandoned game record.
