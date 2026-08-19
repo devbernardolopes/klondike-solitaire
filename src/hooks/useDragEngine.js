@@ -12,6 +12,7 @@ import {
   PointerSensor,
 } from '@dnd-kit/core';
 import { useGameStore } from './useGameStore.js';
+import { useUiStore } from './useUiStore.js';
 import { getTableauRun } from '../core/rules.js';
 
 /**
@@ -53,6 +54,7 @@ export function useDragEngine() {
 
   function onDragStart(event) {
     const id = event.active.id;
+    useUiStore.getState().setIsDragging(true);
     setActiveId(id);
     const data = event.active.data?.current;
     if (!data) {
@@ -74,6 +76,7 @@ export function useDragEngine() {
   function onDragEnd(event) {
     setActiveId(null);
     setActiveRun(null);
+    useUiStore.getState().setIsDragging(false);
     const { active, over } = event;
     if (!over) return;
     const activeData = active.data?.current;
@@ -90,6 +93,7 @@ export function useDragEngine() {
   function onDragCancel() {
     setActiveId(null);
     setActiveRun(null);
+    useUiStore.getState().setIsDragging(false);
   }
 
   return { sensors, onDragStart, onDragEnd, onDragCancel, activeId, activeRun };

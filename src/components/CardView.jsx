@@ -150,6 +150,10 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
     if (e.button !== 0) return;
     listeners?.onPointerUp?.(e);
     if (!card.faceUp || locked || !onAutoMove || !downPos.current) return;
+    // Never auto-move on the same gesture as a drag: doing so mid-drag relocates
+    // and hides the dragged card (see useDragEngine/Board hiddenIds), which can
+    // leave it stuck invisible. The drag lifecycle owns the move in that case.
+    if (useUiStore.getState().isDragging) return;
     const dx = e.clientX - downPos.current.x;
     const dy = e.clientY - downPos.current.y;
     if (Math.hypot(dx, dy) < CLICK_DISTANCE) {

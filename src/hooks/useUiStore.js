@@ -10,6 +10,15 @@ export const useUiStore = create((set) => ({
   announce: '',
   noMovesDialogOpen: false,
 
+  // True while a dnd-kit drag is in progress. Used to keep CardView's own
+  // tap→auto-move from firing on the same gesture as a drag, which could
+  // relocate/hide a card mid-drag and leave it stuck invisible. Not part of
+  // core/GameState and not persisted.
+  isDragging: false,
+
+  /** Set the in-progress drag flag (shared between useDragEngine and CardView). */
+  setIsDragging: (v) => set({ isDragging: v }),
+
   // New Game mode-picker dialog state + the last mode chosen, so the "no valid
   // moves" recovery path can re-deal with the same mode without re-prompting.
   newGameDialogOpen: false,
