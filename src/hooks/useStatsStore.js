@@ -33,7 +33,9 @@ export const useStatsStore = create((set, get) => ({
    */
   freeze: (reason) => {
     const { isOver, startTime, endTime } = get();
-    if (isOver) return;
+    // The clock already stopped (a win pinned endTime) — never let a hard limit
+    // overwrite the win state and flip isOver on.
+    if (isOver || endTime !== null) return;
     set({ isOver: true, overReason: reason });
     if (startTime !== null && endTime === null) {
       set({ endTime: reason === 'time' ? startTime + MAX_TIME_MS : Date.now() });
@@ -44,8 +46,10 @@ export const useStatsStore = create((set, get) => ({
    * Called on each timer tick to freeze once elapsed crosses the time limit.
    */
   checkTimeLimit: () => {
-    const { isOver, startTime } = get();
-    if (isOver || startTime === null) return;
+    const { isOver, startTime, endTime } = get();
+    // Don't re-evaluate the time limit once the clock has stopped — a win pins
+    // endTime without setting isOver, so isOver alone is not enough to bail out.
+    if (isOver || startTime === null || endTime !== null) return;
     if (Date.now() - startTime >= MAX_TIME_MS) get().freeze('time');
   },
 
