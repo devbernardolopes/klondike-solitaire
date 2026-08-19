@@ -35,11 +35,11 @@ export const MOTION = {
   // field is needed — tweak the values below to change the glide.
   draw:     {
     duration: 0.10,         // length of the horizontal slide tween (seconds).
-    ease: 'power2.in',     // decelerating glide into the waste pile.
+    ease: 'power2.out',
     // Extra horizontal travel (px) added beyond the natural pile-to-pile
     // distance to make the glide more pronounced. 0 keeps it a pure stock→waste
     // move; positive values start the card a bit further out from the stock.
-    overshoot: 2,
+    overshoot: 4,
   },
 
   // Initial deal animation; cards deal out one after another via the stagger.
