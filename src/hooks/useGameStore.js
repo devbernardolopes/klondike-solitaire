@@ -226,15 +226,13 @@ export const useGameStore = create((set, get) => ({
     if (targets.length === 0) return false;
 
     const last = autoMoveState[cardId];
-    // Never immediately reverse the previous auto-move: if we're acting on the
-    // card we just placed (from === last.dest), drop the slot it came FROM so a
-    // run can't ping-pong forever between two piles that are each other's only
-    // legal destination. Intentional cycling among *distinct* destinations is
-    // preserved.
+    // Tap auto-move cycles through every legal destination in DEST_ORDER,
+    // including reversing back to the pile the card just came from. This mirrors
+    // drag behavior (a dragged card can always be moved back) and guarantees a
+    // card is never stranded when the source is its only legal slot. Cycling is
+    // user-driven, so A→B→A→B ping-pong (between two mutually-valid piles) is
+    // intentional and identical to what dragging already permits.
     let candidates = targets;
-    if (last && from === last.dest && last.source) {
-      candidates = targets.filter((t) => t !== last.source);
-    }
 
     let chosen;
     if (last && from === last.dest) {
