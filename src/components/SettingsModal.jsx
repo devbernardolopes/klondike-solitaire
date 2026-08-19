@@ -124,8 +124,10 @@ export default function SettingsModal({
             onChange={(e) => onDeckChange(e.target.value)}
             style={selectStyle}
           >
-            <option value="procedural">Procedural</option>
+            <option value="procedural">Classic</option>
             <option value="sprite">Sprite (atlas)</option>
+            <option value="4-color">4-color</option>
+            <option value="4-color-2">4-color 2</option>
             {/* TODO(next pass): add real deck renderers */}
           </select>
         </div>

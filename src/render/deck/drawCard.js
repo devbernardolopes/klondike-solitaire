@@ -61,10 +61,12 @@ function drawGlyph(ctx, text, color, x, y, fontPx, flip) {
  * @param {number} rank  1..13
  * @param {number} w     card width in px
  * @param {number} h     card height in px
+ * @param {(suit: string) => string} [colorFor]  color resolver; defaults to the
+ *        classic red/black scheme. Pass a custom function for 4-color decks.
  */
-export function drawCardFace(ctx, suit, rank, w, h) {
+export function drawCardFace(ctx, suit, rank, w, h, colorFor = colorOf) {
   const radius = Math.max(4, Math.round(w * 0.07));
-  const color = colorOf(suit);
+  const color = colorFor(suit);
   const glyph = SUIT_GLYPH[suit];
   const label = rankLabel(rank);
 

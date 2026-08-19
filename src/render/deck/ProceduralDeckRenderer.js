@@ -16,7 +16,7 @@ import { drawCardFace, drawCardBack } from './drawCard.js';
 /**
  * @implements {import('./deckRegistry.js').DeckRenderer}
  */
-export function createProceduralDeckRenderer({ size = 96 } = {}) {
+export function createProceduralDeckRenderer({ size = 96, colorFor } = {}) {
   const w = size;
   const h = Math.round(size * 1.4);
   const cache = new Map();
@@ -45,7 +45,7 @@ export function createProceduralDeckRenderer({ size = 96 } = {}) {
       if (cache.has(key)) return cache.get(key).canvas.toDataURL('image/png');
 
       const { canvas, ctx } = makeCanvas(key);
-      drawCardFace(ctx, suit, rank, w, h);
+      drawCardFace(ctx, suit, rank, w, h, colorFor);
       return canvas.toDataURL('image/png');
     },
 
@@ -68,3 +68,22 @@ export function createProceduralDeckRenderer({ size = 96 } = {}) {
 }
 
 registerDeck('procedural', createProceduralDeckRenderer());
+
+// 4-color deck: hearts red, spades black, clubs green, diamonds blue.
+const FOUR_COLOR = {
+  hearts: '#d12b3b',
+  spades: '#1d2330',
+  clubs: '#1e8a3b',
+  diamonds: '#1f6fd6',
+};
+
+// 4-color deck #2: clubs black, diamonds yellow, hearts red, spades green.
+const FOUR_COLOR_2 = {
+  clubs: '#1d2330',
+  diamonds: '#e0a800',
+  hearts: '#d12b3b',
+  spades: '#1e8a3b',
+};
+
+registerDeck('4-color', createProceduralDeckRenderer({ colorFor: (s) => FOUR_COLOR[s] }));
+registerDeck('4-color-2', createProceduralDeckRenderer({ colorFor: (s) => FOUR_COLOR_2[s] }));
