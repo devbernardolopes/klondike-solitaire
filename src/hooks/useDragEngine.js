@@ -5,7 +5,7 @@
 // Supports multi-card run dragging: grabbing any face-up tableau card lifts the
 // valid descending-alternating run beneath it (see core/rules.js getTableauRun).
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   useSensor,
   useSensors,
@@ -42,6 +42,14 @@ export function useDragEngine() {
   const [activeId, setActiveId] = useState(null);
   const [activeRun, setActiveRun] = useState(null);
 
+  // Tracks whether a primary pointer is currently pressed. dnd-kit activates a
+  // drag asynchronously (after the 8px threshold is crossed), so on a very fast
+  // gesture (down → tiny move → up within one frame, e.g. a frantic click/drag/
+  // double-click) onDragStart can fire *after* the pointer was already released.
+  // In that case neither onDragEnd nor onDragCancel fires, leaving activeRun (and
+  // thus the source card's hiddenIds) set forever — the card stays visibility:hidden.
+  const pointerDownRef = useRef(false);
+
   const sensors = useSensors(
     // 8px threshold: a tap (< CLICK_DISTANCE in CardView) is an auto-move, while
     // a deliberate drag (>= 8px) initiates a drag. Keeps click and drag separate.
@@ -52,7 +60,40 @@ export function useDragEngine() {
     // pile moves the selected card there.
   );
 
+  // Safety net: clear drag state whenever the primary pointer is released (or a
+  // pointer is cancelled). This guarantees a card can never stay hidden because
+  // dnd-kit missed its onDragEnd/onDragCancel, and it also neutralizes the
+  // late-activation zombie described above on the release side.
+  useEffect(() => {
+    const onDown = (e) => {
+      if (e.button === 0) pointerDownRef.current = true;
+    };
+    const onUp = (e) => {
+      if (e.button !== 0 && e.type !== 'pointercancel') return;
+      pointerDownRef.current = false;
+      setActiveId(null);
+      setActiveRun(null);
+      useUiStore.getState().setIsDragging(false);
+    };
+    window.addEventListener('pointerdown', onDown);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+    return () => {
+      window.removeEventListener('pointerdown', onDown);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+    };
+  }, []);
+
   function onDragStart(event) {
+    // Ignore a drag that activates after the pointer was already released (the
+    // async-activation race). Without this guard it would set activeRun with no
+    // matching end, leaving the card hidden.
+    if (!pointerDownRef.current) {
+      setActiveId(null);
+      setActiveRun(null);
+      return;
+    }
     const id = event.active.id;
     useUiStore.getState().setIsDragging(true);
     setActiveId(id);
