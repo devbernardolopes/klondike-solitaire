@@ -14,7 +14,7 @@
 export const MOTION = {
   // Card relocation tween (draw, auto-move, and generic moves), driven through
   // the GSAP Flip pipeline in useCardMoveFlip.
-  move:     { duration: 2.60, ease: 'power1.in' },
+  move:     { duration: 2.60, ease: 'power2.inOut' },
   // Alternative easing choice for the same move tween; swap with the line above
   // to change the move's acceleration curve (power3.out decelerates harder).
   // move:     { duration: 2.60, ease: 'power3.out' },
