@@ -13,8 +13,8 @@ import { useUiStore } from '../../hooks/useUiStore.js';
  * reverse). All tweakable values live in MOTION.draw (slide) and MOTION.flipCard
  * (reveal) in motion.js.
  *
- * This takes over the `draw` action so the generic Flip pipeline in
- * useCardMoveFlip is skipped for it.
+ * This takes over the `draw` action so the generic relocation translate in
+ * useCardMoveSlide is skipped for it.
  */
 export function useStockDrawSlide() {
   const state = useGameStore((s) => s.state);

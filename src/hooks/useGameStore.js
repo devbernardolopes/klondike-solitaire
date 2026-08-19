@@ -10,17 +10,24 @@ import { isWon } from '../core/winDetection.js';
 import { buildStandardDeck, shuffle } from '../core/Deck.js';
 import { createEmptyGameState } from '../core/GameState.js';
 import { randomSolvableSeed, pickSolvableSeed } from '../core/solvablePool.js';
-import { Flip } from '../render/animation/gsapSetup.js';
 import { flipBridge } from '../render/animation/flipBridge.js';
 import { useUiStore } from './useUiStore.js';
 import { useStatsStore } from './useStatsStore.js';
 import { useSeedStore } from './useSeedStore.js';
 
-// Capture the current position/size of every card node before a state change so
-// the render-layer Flip hook can tween from old → new positions after React
-// re-renders (cards reparent between Pile components in the DOM tree).
+// Capture the current on-screen rect of every card node before a state change so
+// the render-layer hook can tween from old → new positions after React
+// re-renders (cards reparent between Pile components in the DOM tree). Stored as a
+// Map<cardId, DOMRect> keyed by data-flip-id so the animation layer can compute
+// each moved card's translation explicitly (robust to reparenting, unlike Flip
+// matching across unmounted/remounted nodes).
 function captureFlip() {
-  flipBridge.current = Flip.getState('[data-card]');
+  const rects = new Map();
+  document.querySelectorAll('[data-card]').forEach((el) => {
+    const id = el.getAttribute('data-flip-id') || el.getAttribute('data-card');
+    rects.set(id, el.getBoundingClientRect());
+  });
+  flipBridge.current = rects;
 }
 
 // Build a transient "pre-deal" layout: all 52 shuffled cards sitting face-down

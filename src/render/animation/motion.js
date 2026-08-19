@@ -1,6 +1,6 @@
 /**
  * Centralized GSAP motion presets. Each entry maps to a distinct animation in
- * the game and is consumed by the animation layer (see useCardMoveFlip,
+ * the game and is consumed by the animation layer (see useCardMoveSlide,
  * useCardFaceFlip, winCascade, playCardShake). Units are seconds for time-like
  * properties and CSS pixels for distance-like ones.
  *
@@ -13,8 +13,8 @@
  */
 export const MOTION = {
   // Card relocation tween for EVERY move except the stock→waste draw (that one is
-  // handled separately by useStockDrawSlide). Driven through the GSAP Flip pipeline
-  // in useCardMoveFlip. Covers single cards and multi-card runs between any piles:
+  // handled separately by useStockDrawSlide). Driven by the explicit GSAP translate
+  // in useCardMoveSlide. Covers single cards and multi-card runs between any piles:
   // waste↔foundation, tableau↔foundation, tableau↔tableau, foundation→tableau.
   // The tween follows the real old→new path, so it is naturally DIAGONAL whenever
   // the source and destination differ on both axes. A run lifts and lands as a
