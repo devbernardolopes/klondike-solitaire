@@ -31,7 +31,7 @@ export const MOTION = {
   // left-handed = waste right of stock → slide right). So no explicit direction
   // field is needed — tweak the values below to change the glide.
   draw:     {
-    duration: 0.42,         // length of the horizontal slide tween (seconds).
+    duration: 0.20,         // length of the horizontal slide tween (seconds).
     ease: 'power2.out',     // decelerating glide into the waste pile.
     // Extra horizontal travel (px) added beyond the natural pile-to-pile
     // distance to make the glide more pronounced. 0 keeps it a pure stock→waste
