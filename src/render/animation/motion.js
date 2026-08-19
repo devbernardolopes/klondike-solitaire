@@ -13,11 +13,13 @@
  */
 export const MOTION = {
   // Card relocation tween (draw, auto-move, and generic moves), driven through
-  // the GSAP Flip pipeline in useCardMoveFlip.
-  move:     { duration: 2.60, ease: 'power2.inOut' },
+  // the GSAP Flip pipeline in useCardMoveFlip. Snappy, clearly-visible glide
+  // (short duration + decelerating ease) so cards read as flying to their
+  // destination rather than snapping.
+  move:     { duration: 0.40, ease: 'power2.out' },
   // Alternative easing choice for the same move tween; swap with the line above
   // to change the move's acceleration curve (power3.out decelerates harder).
-  // move:     { duration: 2.60, ease: 'power3.out' },
+  // move:     { duration: 0.40, ease: 'power3.out' },
 
   // 3D rotateY face flip (face-down <-> face-up) in useCardFaceFlip.
   flipCard: { duration: 0.22, ease: 'power2.inOut' },

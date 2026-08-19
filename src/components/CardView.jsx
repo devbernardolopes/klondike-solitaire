@@ -197,6 +197,7 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
       tabIndex={card.faceUp && !locked ? 0 : -1}
       role="button"
       data-card={card.id}
+      data-flip-id={card.id}
       style={{
         visibility: hidden ? 'hidden' : 'visible',
         cursor: locked ? 'default' : 'grab',
