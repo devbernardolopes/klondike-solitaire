@@ -3,6 +3,7 @@ import { gsap } from './gsapSetup.js';
 import { MOTION } from './motion.js';
 import { flipBridge } from './flipBridge.js';
 import { useGameStore } from '../../hooks/useGameStore.js';
+import { useUiStore } from '../../hooks/useUiStore.js';
 
 /**
  * Stock → waste draw animation: the revealed card flips face-up in place at the
@@ -27,15 +28,25 @@ export function useStockDrawSlide() {
 
     const wastePile = document.querySelector('[data-loc="waste"]');
     const stockPile = document.querySelector('[data-loc="stock"]');
-    if (!wastePile || !stockPile) return;
+    // drawFromStock already acquired the lock; release it if we can't animate.
+    if (!wastePile || !stockPile) {
+      useUiStore.getState().endAnimating();
+      return;
+    }
 
     // The freshly drawn card is the last [data-card] child of the waste pile
     // (cards render in array order; the most recent draw is appended last).
     const cards = wastePile.querySelectorAll('[data-card]');
     const cardNode = cards[cards.length - 1];
-    if (!cardNode) return;
+    if (!cardNode) {
+      useUiStore.getState().endAnimating();
+      return;
+    }
     const inner = cardNode.querySelector('.card-flip-inner');
-    if (!inner) return;
+    if (!inner) {
+      useUiStore.getState().endAnimating();
+      return;
+    }
 
     const sRect = stockPile.getBoundingClientRect();
     const wRect = wastePile.getBoundingClientRect();
@@ -51,7 +62,10 @@ export function useStockDrawSlide() {
     gsap.set(cardNode, { x: startX, y: dy, zIndex: 1000 });
     gsap.set(inner, { rotateY: -180 });
 
-    const tl = gsap.timeline();
+    const tl = gsap.timeline({
+      // Release the global animation lock once the flip + slide both finish.
+      onComplete: () => useUiStore.getState().endAnimating(),
+    });
     // Phase 1: flip face-up in place at the stock pile.
     tl.to(inner, {
       rotateY: 0,
@@ -65,6 +79,13 @@ export function useStockDrawSlide() {
       '>'
     );
 
-    return () => tl.kill();
+    return () => {
+      tl.kill();
+      // Reset the card to its resting state so a torn-down effect never leaves
+      // it parked at the stock pile or face-down.
+      gsap.set(cardNode, { x: 0, y: 0, clearProps: 'zIndex' });
+      gsap.set(inner, { rotateY: 0 });
+      useUiStore.getState().endAnimating();
+    };
   }, [state, lastActionMeta]);
 }

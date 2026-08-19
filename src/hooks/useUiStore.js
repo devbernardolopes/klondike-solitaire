@@ -19,6 +19,19 @@ export const useUiStore = create((set) => ({
   /** Set the in-progress drag flag (shared between useDragEngine and CardView). */
   setIsDragging: (v) => set({ isDragging: v }),
 
+  // Ref-count of in-flight card animations (draw slide, Flip moves, deal, win
+  // cascade, auto-complete sequence). A count > 0 means the board is animating,
+  // so all user interaction is suppressed until it returns to 0. Ref-counted
+  // (not a boolean) so the timed auto-complete sequence — whose Flip tweens
+  // overlap — keeps the lock held for its entire duration.
+  animatingCount: 0,
+
+  /** Increment the in-flight animation count (call when an animation starts). */
+  beginAnimating: () => set((s) => ({ animatingCount: s.animatingCount + 1 })),
+
+  /** Decrement the in-flight animation count (call when an animation ends). */
+  endAnimating: () => set((s) => ({ animatingCount: Math.max(0, s.animatingCount - 1) })),
+
   // New Game mode-picker dialog state + the last mode chosen, so the "no valid
   // moves" recovery path can re-deal with the same mode without re-prompting.
   newGameDialogOpen: false,

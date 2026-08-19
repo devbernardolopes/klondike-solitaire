@@ -84,6 +84,7 @@ export const useGameStore = create((set, get) => ({
   dealNewGame: (mode = 'random') => {
     clearAutoCompleteTimer();
     useUiStore.getState().setNoMovesDialogOpen(false);
+    if (useUiStore.getState().animatingCount > 0) return;
     useUiStore.getState().setLastNewGameMode(mode);
     useStatsStore.getState().resetStats();
     const seed =
@@ -98,6 +99,7 @@ export const useGameStore = create((set, get) => ({
     set({ state: preDeal, redoStack: [], autoMoveState: {}, lastActionMeta: { type: 'draw' } });
     requestAnimationFrame(() => {
       captureFlip();
+      useUiStore.getState().beginAnimating();
       set({ state: deal(seed !== undefined ? { seed } : {}), lastActionMeta: { type: 'deal' } });
     });
   },
@@ -108,7 +110,12 @@ export const useGameStore = create((set, get) => ({
   drawFromStock: () => {
     const { state, redoStack } = get();
     if (isWon(state) || useStatsStore.getState().isOver) return;
+    if (state.stock.length === 0) return;
+    // Block re-entry while an animation is in flight so spam-clicking the stock
+    // can't queue overlapping/killed draw slides or inflate the move counter.
+    if (useUiStore.getState().animatingCount > 0) return;
     captureFlip();
+    useUiStore.getState().beginAnimating();
     const next = applyMove(state, { type: 'draw' });
     set({ state: next, redoStack, lastActionMeta: { type: 'draw' } });
     useStatsStore.getState().startTimerIfValid(state);
@@ -124,7 +131,9 @@ export const useGameStore = create((set, get) => ({
   recycleStock: () => {
     const { state, redoStack } = get();
     if (isWon(state) || useStatsStore.getState().isOver) return;
+    if (useUiStore.getState().animatingCount > 0) return;
     captureFlip();
+    useUiStore.getState().beginAnimating();
     set({ state: applyMove(state, { type: 'recycle' }), redoStack, lastActionMeta: { type: 'recycle' } });
     useStatsStore.getState().startTimerIfValid(state);
     useStatsStore.getState().addMoves(1);
@@ -143,6 +152,7 @@ export const useGameStore = create((set, get) => ({
     clearAutoCompleteTimer();
     const { state, redoStack } = get();
     if (isWon(state) || useStatsStore.getState().isOver) return false;
+    if (useUiStore.getState().animatingCount > 0) return false;
     if (from === to) return false;
 
     const srcPile = readPile(state, from);
@@ -182,6 +192,7 @@ export const useGameStore = create((set, get) => ({
 
     const next = applyMove(state, { type: 'moveCards', from, to, cardIds: moveIds });
     captureFlip();
+    useUiStore.getState().beginAnimating();
     set({ state: next, redoStack: [], lastActionMeta: { type: opts.metaType ?? 'move' } });
     useStatsStore.getState().startTimerIfValid(state);
     useStatsStore.getState().addMoves(1);
@@ -193,6 +204,7 @@ export const useGameStore = create((set, get) => ({
     useUiStore.getState().setNoMovesDialogOpen(false);
     const { state, redoStack } = get();
     if (state.moveHistory.length === 0 || useStatsStore.getState().isOver) return;
+    if (useUiStore.getState().animatingCount > 0) return;
     const history = state.moveHistory.slice();
     const last = history[history.length - 1];
     const next = coreUndo(state);
@@ -204,6 +216,7 @@ export const useGameStore = create((set, get) => ({
     clearAutoCompleteTimer();
     const { state, redoStack } = get();
     if (redoStack.length === 0 || useStatsStore.getState().isOver) return;
+    if (useUiStore.getState().animatingCount > 0) return;
     const stack = redoStack.slice();
     const record = stack.pop();
     const next = coreRedo(state, record);
@@ -222,6 +235,7 @@ export const useGameStore = create((set, get) => ({
   autoMove: (from, cardId) => {
     const { state, autoMoveState } = get();
     if (isWon(state) || useStatsStore.getState().isOver) return false;
+    if (useUiStore.getState().animatingCount > 0) return false;
     const targets = getAutoMoveTargets(state, from, cardId);
     if (targets.length === 0) return false;
 
@@ -260,9 +274,14 @@ export const useGameStore = create((set, get) => ({
    *
    * @returns {boolean} whether at least one move was started
    */
-  autoComplete: () => {
+  autoComplete: (force = false) => {
     if (autoCompleteTimer !== null) return false;
     if (isWon(get().state) || useStatsStore.getState().isOver) return false;
+    // User-initiated auto-complete is blocked while an animation is in flight
+    // (no interaction during animation). The automatic trigger from an
+    // obvious-win state passes force:true because that state is reached BY an
+    // animating move, and the running sequence keeps the lock held itself.
+    if (!force && useUiStore.getState().animatingCount > 0) return false;
     // Remember every tableau arrangement seen during THIS run so a tableau
     // shuffle that merely reproduces a previously-visited state (e.g. a run
     // bouncing between two piles) is detected and the run stops instead of
@@ -297,6 +316,7 @@ export const useGameStore = create((set, get) => ({
           cardIds: [foundationMove.cardId],
         });
         captureFlip();
+        useUiStore.getState().beginAnimating();
         set({ state: next, redoStack: [], autoMoveState: {}, lastActionMeta: { type: 'auto' } });
         useStatsStore.getState().startTimerIfValid(cur);
         useStatsStore.getState().addMoves(1);
@@ -317,6 +337,7 @@ export const useGameStore = create((set, get) => ({
           cardIds,
         });
         captureFlip();
+        useUiStore.getState().beginAnimating();
         set({ state: next, redoStack: [], autoMoveState: {}, lastActionMeta: { type: 'auto' } });
         useStatsStore.getState().startTimerIfValid(cur);
         useStatsStore.getState().addMoves(1);

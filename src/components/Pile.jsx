@@ -32,7 +32,8 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
   const setAnnounce = useUiStore((s) => s.setAnnounce);
   const won = useGameStore((s) => isWon(s.state));
   const sessionOver = useStatsStore((s) => s.isOver);
-  const locked = won || sessionOver;
+  const isAnimating = useUiStore((s) => s.animatingCount > 0);
+  const locked = won || sessionOver || isAnimating;
 
   const kind = loc.split(':')[0];
 

@@ -127,7 +127,8 @@ export default function Board() {
   const handedness = useSettingsStore((s) => s.handedness);
   const isOver = useStatsStore((s) => s.isOver);
   const won = isWon(state);
-  const locked = won || isOver;
+  const isAnimating = useUiStore((s) => s.animatingCount > 0);
+  const locked = won || isOver || isAnimating;
   const { sensors, onDragStart, onDragEnd, onDragCancel, activeRun } =
     useDragEngine();
 
@@ -165,7 +166,7 @@ export default function Board() {
   useEffect(() => {
     if (isObviousWinState(state) && !isWon(state)) {
       setAnnounce('Auto-completing to foundations');
-      autoComplete();
+      autoComplete(true);
     }
   }, [state]);
 
@@ -174,6 +175,8 @@ export default function Board() {
   useEffect(() => {
     const onKey = (e) => {
        if (e.metaKey || e.ctrlKey || e.altKey) return;
+       // Suppress all shortcuts while an animation is in flight.
+       if (isAnimating) return;
        if (e.key === 'n' || e.key === 'N') {
          clearSelection();
          setAnnounce('New game dealt');

@@ -3,6 +3,7 @@ import { Flip } from './gsapSetup.js';
 import { MOTION } from './motion.js';
 import { flipBridge } from './flipBridge.js';
 import { useGameStore } from '../../hooks/useGameStore.js';
+import { useUiStore } from '../../hooks/useUiStore.js';
 
 const CONFIG_BY_TYPE = {
   // All generic card relocations (single cards and multi-card runs) share the
@@ -30,6 +31,8 @@ export function useCardMoveFlip() {
       ease: cfg.ease,
       stagger: cfg.stagger ?? 0,
       absolute: true,
+      // Release the global animation lock once this relocation tween finishes.
+      onComplete: () => useUiStore.getState().endAnimating(),
     });
     flipBridge.current = null;
   }, [state, lastActionMeta]);

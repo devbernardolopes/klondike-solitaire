@@ -124,7 +124,8 @@ const CLICK_DISTANCE = 6;
 export default function CardView({ card, from, zIndex = 0, hidden = false, onAutoMove }) {
   const won = useGameStore((s) => isWon(s.state));
   const isOver = useStatsStore((s) => s.isOver);
-  const locked = won || isOver;
+  const isAnimating = useUiStore((s) => s.animatingCount > 0);
+  const locked = won || isOver || isAnimating;
   const selectedCardId = useUiStore((s) => s.selectedCardId);
   const selectCard = useUiStore((s) => s.selectCard);
   const clearSelection = useUiStore((s) => s.clearSelection);
