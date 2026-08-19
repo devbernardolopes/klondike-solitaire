@@ -8,6 +8,7 @@
 // explicit outcomes.
 
 import { useEffect, useRef } from 'react';
+import { useModalBackdrop } from './modalBackdrop.js';
 
 /**
  * @param {object} props
@@ -18,6 +19,7 @@ import { useEffect, useRef } from 'react';
  */
 export default function NewGameModal({ open, onWinningDeal, onRandomShuffle, onDismiss }) {
   const firstBtnRef = useRef(null);
+  const backdrop = useModalBackdrop(onDismiss);
 
   useEffect(() => {
     if (!open) return;
@@ -59,10 +61,7 @@ export default function NewGameModal({ open, onWinningDeal, onRandomShuffle, onD
       role="dialog"
       aria-modal="true"
       aria-label="New Game"
-      onPointerDown={(e) => {
-        if (e.button !== 0) return;
-        if (e.target === e.currentTarget) onDismiss();
-      }}
+      {...backdrop}
       style={{
         position: 'fixed',
         inset: 0,

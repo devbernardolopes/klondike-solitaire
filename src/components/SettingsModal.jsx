@@ -5,6 +5,7 @@
 // used by ConfirmModal.jsx / NewGameModal.jsx.
 
 import { useEffect, useRef } from 'react';
+import { useModalBackdrop } from './modalBackdrop.js';
 
 /**
  * @param {object} props
@@ -28,6 +29,7 @@ export default function SettingsModal({
   onHandednessChange,
 }) {
   const doneRef = useRef(null);
+  const backdrop = useModalBackdrop(onClose);
 
   useEffect(() => {
     if (!open) return;
@@ -86,10 +88,7 @@ export default function SettingsModal({
       role="dialog"
       aria-modal="true"
       aria-label="Settings"
-      onPointerDown={(e) => {
-        if (e.button !== 0) return;
-        if (e.target === e.currentTarget) onClose();
-      }}
+      {...backdrop}
       style={{
         position: 'fixed',
         inset: 0,

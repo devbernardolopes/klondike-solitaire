@@ -33,6 +33,7 @@ export function playWinCascade() {
   // cards never hide them.
   const cardH = measureVar('var(--card-height)');
   const bottomMargin = MOTION.win.bottomMargin;
+  const foundationPiles = [];
   let fanStep = 0;
   let uniformFall = 0;
   for (const el of cards) {
@@ -56,6 +57,7 @@ export function playWinCascade() {
     el._fallY = uniformFall;
     // Lift the whole pile above the rest of the board for the cascade.
     pile.style.zIndex = '2000';
+    foundationPiles.push(pile);
   }
 
   gsap.to(cards, {
@@ -75,6 +77,11 @@ export function playWinCascade() {
     stagger: { each: MOTION.win.stagger, from: 'end' },
     duration: MOTION.win.duration,
     ease: MOTION.win.ease,
+    // Drop the temporary z-index lift so it doesn't leak into the next game
+    // (the cards themselves stay where the cascade left them).
+    onComplete: () => {
+      foundationPiles.forEach((p) => { p.style.zIndex = ''; });
+    },
   });
 }
 

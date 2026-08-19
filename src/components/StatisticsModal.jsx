@@ -9,6 +9,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
+import { useModalBackdrop } from './modalBackdrop.js';
 import ConfirmModal from './ConfirmModal.jsx';
 
 /**
@@ -34,6 +35,7 @@ export default function StatisticsModal({ open, onClose }) {
   const reset = useStatisticsStore((s) => s.reset);
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
   const closeRef = useRef(null);
+  const backdrop = useModalBackdrop(onClose);
 
   useEffect(() => {
     if (!open) return;
@@ -91,11 +93,8 @@ export default function StatisticsModal({ open, onClose }) {
         role="dialog"
         aria-modal="true"
         aria-label="Statistics"
-        onPointerDown={(e) => {
-          if (e.button !== 0) return;
-          if (e.target === e.currentTarget) onClose();
-        }}
-        style={{
+      {...backdrop}
+      style={{
           position: 'fixed',
           inset: 0,
           background: 'rgba(0,0,0,0.5)',

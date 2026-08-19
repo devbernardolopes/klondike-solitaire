@@ -8,6 +8,7 @@
 // so it inherits variables from the .theme-* root container.
 
 import { useEffect, useRef } from 'react';
+import { useModalBackdrop } from './modalBackdrop.js';
 
 /**
  * @param {object} props
@@ -31,6 +32,7 @@ export default function ConfirmModal({
   onCancel,
 }) {
   const confirmRef = useRef(null);
+  const backdrop = useModalBackdrop(onCancel);
 
   useEffect(() => {
     if (!open) return;
@@ -71,11 +73,7 @@ export default function ConfirmModal({
       role="dialog"
       aria-modal="true"
       aria-label={title ?? message}
-      onPointerDown={(e) => {
-        // Backdrop click cancels (ignore clicks inside the panel).
-        if (e.button !== 0) return;
-        if (e.target === e.currentTarget) onCancel();
-      }}
+      {...backdrop}
       style={{
         position: 'fixed',
         inset: 0,
