@@ -5,6 +5,8 @@ import { flipBridge } from './flipBridge.js';
 import { useGameStore } from '../../hooks/useGameStore.js';
 
 const CONFIG_BY_TYPE = {
+  // All generic card relocations (single cards and multi-card runs) share the
+  // single, tweakable MOTION.move translation preset in motion.js.
   move: MOTION.move,
   auto: MOTION.move,
   deal: MOTION.deal,

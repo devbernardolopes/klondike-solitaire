@@ -12,14 +12,17 @@
  *               in sequence rather than all at once.
  */
 export const MOTION = {
-  // Card relocation tween (draw, auto-move, and generic moves), driven through
-  // the GSAP Flip pipeline in useCardMoveFlip. Snappy, clearly-visible glide
-  // (short duration + decelerating ease) so cards read as flying to their
-  // destination rather than snapping.
-  move:     { duration: 0.40, ease: 'power2.out' },
-  // Alternative easing choice for the same move tween; swap with the line above
-  // to change the move's acceleration curve (power3.out decelerates harder).
-  // move:     { duration: 0.40, ease: 'power3.out' },
+  // Card relocation tween for EVERY move except the stock→waste draw (that one is
+  // handled separately by useStockDrawSlide). Driven through the GSAP Flip pipeline
+  // in useCardMoveFlip. Covers single cards and multi-card runs between any piles:
+  // waste↔foundation, tableau↔foundation, tableau↔tableau, foundation→tableau.
+  // The tween follows the real old→new path, so it is naturally DIAGONAL whenever
+  // the source and destination differ on both axes. A run lifts and lands as a
+  // RIGID BLOCK because every card in it tweens in parallel (stagger 0) with the
+  // grabbed/clicked card leading the move.
+  move:     { duration: 0.40, ease: 'power2.out', stagger: 0 },
+  // Alternative easing for the same tween; swap to change the acceleration curve.
+  // move:     { duration: 0.40, ease: 'power3.out', stagger: 0 },
 
   // 3D rotateY face flip (face-down <-> face-up) in useCardFaceFlip.
   flipCard: { duration: 0.22, ease: 'power2.inOut' },
