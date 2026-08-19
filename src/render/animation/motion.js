@@ -20,12 +20,12 @@ export const MOTION = {
   // the source and destination differ on both axes. A run lifts and lands as a
   // RIGID BLOCK because every card in it tweens in parallel (stagger 0) with the
   // grabbed/clicked card leading the move.
-  move:     { duration: 0.75, ease: 'power3.out', stagger: 0 },
+  move:     { duration: 0.25, ease: 'power3.out', stagger: 0 },
   // Alternative easing for the same tween; swap to change the acceleration curve.
   // move:     { duration: 0.40, ease: 'power3.out', stagger: 0 },
 
   // 3D rotateY face flip (face-down <-> face-up) in useCardFaceFlip.
-  flipCard: { duration: 0.22, ease: 'power2.inOut' },
+  flipCard: { duration: 0.25, ease: 'power2.inOut' },
 
   // Stock → waste draw slide. The revealed card flips face-up in place at the
   // stock pile and THEN glides horizontally to the waste pile. The horizontal
@@ -35,15 +35,15 @@ export const MOTION = {
   // field is needed — tweak the values below to change the glide.
   draw:     {
     duration: 0.10,         // length of the horizontal slide tween (seconds).
-    ease: 'power2.out',     // decelerating glide into the waste pile.
+    ease: 'power2.in',     // decelerating glide into the waste pile.
     // Extra horizontal travel (px) added beyond the natural pile-to-pile
     // distance to make the glide more pronounced. 0 keeps it a pure stock→waste
     // move; positive values start the card a bit further out from the stock.
-    overshoot: 0,
+    overshoot: 2,
   },
 
   // Initial deal animation; cards deal out one after another via the stagger.
-  deal:     { duration: 0.32, stagger: 0.045, ease: 'power2.out' },
+  deal:     { duration: 0.25, stagger: 0.045, ease: 'power2.out' },
 
   // Victory cascade: every card flies off toward the bottom of the screen.
   win:      {
@@ -60,5 +60,5 @@ export const MOTION = {
 
   // Invalid-move shake (playCardShake). The sub-steps are fractions of
   // `duration`, and `distance` is the horizontal shift on each side.
-  shake:    { duration: 0.25, distance: 8 },
+  shake:    { duration: 0.10, distance: 6 },
 };
