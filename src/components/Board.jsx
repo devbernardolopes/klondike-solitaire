@@ -12,6 +12,7 @@ import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
 import { useSeedStore } from '../hooks/useSeedStore.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { useCardMoveFlip } from '../render/animation/useCardMoveFlip.js';
+import { useStockDrawSlide } from '../render/animation/useStockDrawSlide.js';
 import { playWinCascade } from '../render/animation/winCascade.js';
 import { isWon } from '../core/winDetection.js';
 import { isObviousWinState } from '../core/rules.js';
@@ -133,6 +134,7 @@ export default function Board() {
   // Plays Flip.from() after each pile-mutating state change so cards tween
   // between piles even when they reparent across Pile components.
   useCardMoveFlip();
+  useStockDrawSlide();
 
   // Win-state cascade: fire once on the false → true transition of isWon.
   const wasWon = useRef(false);

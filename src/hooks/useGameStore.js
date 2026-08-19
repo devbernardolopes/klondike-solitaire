@@ -125,7 +125,7 @@ export const useGameStore = create((set, get) => ({
     const { state, redoStack } = get();
     if (isWon(state) || useStatsStore.getState().isOver) return;
     captureFlip();
-    set({ state: applyMove(state, { type: 'recycle' }), redoStack, lastActionMeta: { type: 'draw' } });
+    set({ state: applyMove(state, { type: 'recycle' }), redoStack, lastActionMeta: { type: 'recycle' } });
     useStatsStore.getState().startTimerIfValid(state);
     useStatsStore.getState().addMoves(1);
   },

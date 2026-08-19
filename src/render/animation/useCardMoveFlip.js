@@ -6,9 +6,9 @@ import { useGameStore } from '../../hooks/useGameStore.js';
 
 const CONFIG_BY_TYPE = {
   move: MOTION.move,
-  draw: MOTION.move,
   auto: MOTION.move,
   deal: MOTION.deal,
+  recycle: MOTION.move,
 };
 
 export function useCardMoveFlip() {
@@ -16,8 +16,10 @@ export function useCardMoveFlip() {
   const lastActionMeta = useGameStore((s) => s.lastActionMeta);
 
   useLayoutEffect(() => {
-    if (!flipBridge.current) return;
-    const cfg = CONFIG_BY_TYPE[lastActionMeta.type] ?? MOTION.move;
+    // The stock → waste draw is animated by useStockDrawSlide (flip-then-slide),
+    // which discards the captured Flip state; don't run the generic pipeline for it.
+    if (!flipBridge.current || !CONFIG_BY_TYPE[lastActionMeta.type]) return;
+    const cfg = CONFIG_BY_TYPE[lastActionMeta.type];
     Flip.from(flipBridge.current, {
       duration: cfg.duration,
       ease: cfg.ease,
