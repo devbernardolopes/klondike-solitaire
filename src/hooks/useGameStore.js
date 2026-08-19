@@ -196,7 +196,7 @@ export const useGameStore = create((set, get) => ({
     const history = state.moveHistory.slice();
     const last = history[history.length - 1];
     const next = coreUndo(state);
-    set({ state: next, redoStack: [...redoStack, last], autoMoveState: {} });
+    set({ state: next, redoStack: [...redoStack, last], autoMoveState: {}, lastActionMeta: { type: 'undo' } });
     useStatsStore.getState().addMoves(1);
   },
 
@@ -207,7 +207,7 @@ export const useGameStore = create((set, get) => ({
     const stack = redoStack.slice();
     const record = stack.pop();
     const next = coreRedo(state, record);
-    set({ state: next, redoStack: stack, autoMoveState: {} });
+    set({ state: next, redoStack: stack, autoMoveState: {}, lastActionMeta: { type: record.type === 'draw' ? 'draw' : 'move' } });
   },
 
   /**

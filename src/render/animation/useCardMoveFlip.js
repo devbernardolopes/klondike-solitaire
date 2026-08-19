@@ -18,7 +18,10 @@ export function useCardMoveFlip() {
   useLayoutEffect(() => {
     // The stock → waste draw is animated by useStockDrawSlide (flip-then-slide),
     // which discards the captured Flip state; don't run the generic pipeline for it.
-    if (!flipBridge.current || !CONFIG_BY_TYPE[lastActionMeta.type]) return;
+    if (!flipBridge.current || !CONFIG_BY_TYPE[lastActionMeta.type]) {
+      flipBridge.current = null;
+      return;
+    }
     const cfg = CONFIG_BY_TYPE[lastActionMeta.type];
     Flip.from(flipBridge.current, {
       duration: cfg.duration,
