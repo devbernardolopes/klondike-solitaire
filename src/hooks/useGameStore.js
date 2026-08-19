@@ -270,9 +270,20 @@ export const useGameStore = create((set, get) => ({
     // can never revisit an arrangement, so this never blocks real progress.
     const visited = new Set();
     const step = () => {
-      const cur = get().state;
-      const sig = cur.tableau.map((p) => p.map((c) => c.id).join(',')).join('|');
-      if (visited.has(sig)) {
+    const cur = get().state;
+    // Signature must cover every pile an auto-complete step can change (waste,
+    // foundations, tableau) — not just the tableau. findFoundationMove also moves
+    // the waste top, which leaves the tableau arrangement identical, so a
+    // tableau-only signature would falsely match the previous step and stop the
+    // cascade right after the waste card moved (stranding a tableau card that
+    // also had a valid foundation move). A genuine cyclical tableau shuffle
+    // still reproduces the full signature and trips the guard.
+    const sig = [
+      cur.waste.map((c) => c.id).join(','),
+      cur.foundations.map((p) => p.map((c) => c.id).join(',')).join('|'),
+      cur.tableau.map((p) => p.map((c) => c.id).join(',')).join('|'),
+    ].join('##');
+    if (visited.has(sig)) {
         autoCompleteTimer = null;
         return;
       }
