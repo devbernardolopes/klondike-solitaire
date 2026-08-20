@@ -81,9 +81,12 @@ function applyAutoStep(get, set, move) {
     animIds = cur.waste.map((c) => c.id);
     destLocs = ['stock'];
   }
-  const tid = captureFlip(move.type);
+  // Enqueue as 'auto' (the type useCardMoveSlide actually consumes) so the tween
+  // starts and endTransition releases the lock. The animIds/destLocs above are
+  // still derived from the real move.type to avoid the undefined-cardIds crash.
+  const tid = captureFlip('auto');
   useUiStore.getState().beginTransition(tid, animIds, destLocs);
-  set({ state: next, redoStack: [], autoMoveState: {}, lastActionMeta: { type: move.type } });
+  set({ state: next, redoStack: [], autoMoveState: {}, lastActionMeta: { type: 'auto' } });
   useStatsStore.getState().startTimerIfValid(cur);
   useStatsStore.getState().addMoves(1);
 }
