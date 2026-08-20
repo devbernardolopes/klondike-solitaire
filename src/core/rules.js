@@ -188,6 +188,51 @@ export function isObviousWinState(state) {
   return state.stock.length === 0 && state.waste.length === 0 && isAllTableauFaceUp(state);
 }
 
+/**
+ * Is there at least one move that makes real PROGRESS from the current state?
+ * A progress move is one that either:
+ *  - advances a card onto a foundation, or
+ *  - uncovers a face-down card in the source tableau pile (reveals hidden info).
+ *
+ * Pure "relocation" moves that change nothing — moving a King (or a run) onto an
+ * empty column, or onto another King, when nothing beneath gets revealed — are NOT
+ * considered progress. This is the cheap, conservative gate used by the dead-end
+ * detector before it spends the (more expensive) solver to confirm there is truly
+ * no winning line. It can return `false` even when a winnable line exists (e.g. a
+ * necessary non-flipping setup relocation); the solver resolves those cases.
+ *
+ * Does NOT count stock draws/recycles as a move — the caller checks the stock
+ * separately.
+ *
+ * @param {import('./GameState.js').GameState} state
+ * @returns {boolean}
+ */
+export function hasProgressMove(state) {
+  // 1. Any foundation move (waste top + face-up tableau tops).
+  if (findFoundationMove(state)) return true;
+
+  // 2. A tableau move that uncovers a face-down card in its source pile.
+  for (let i = 0; i < state.tableau.length; i++) {
+    const pile = state.tableau[i];
+    for (const card of pile) {
+      if (!card.faceUp) continue;
+      const run = getTableauRun(pile, card.id);
+      if (!run) continue;
+      const idx = pile.findIndex((c) => c.id === run[0].id);
+      // A flip happens when the run isn't the whole pile and the card now
+      // exposed at the top of the source was face-down.
+      const uncovers = idx > 0 && !pile[idx - 1].faceUp;
+      if (!uncovers) continue;
+      // Confirm there is somewhere to legally drop the run.
+      for (let b = 0; b < state.tableau.length; b++) {
+        if (b === i) continue;
+        if (canMoveToTableau(run[0], state.tableau[b])) return true;
+      }
+    }
+  }
+  return false;
+}
+
 export function findFoundationMove(state) {
   const candidates = [];
   if (state.waste.length > 0) {

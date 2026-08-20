@@ -5,7 +5,7 @@
 import { create } from 'zustand';
 import { deal } from '../core/dealer.js';
 import { applyMove, undo as coreUndo, redo as coreRedo } from '../core/moveEngine.js';
-import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, hasAnyValidMove, isAllTableauFaceUp, DEST_ORDER } from '../core/rules.js';
+import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, hasProgressMove, isAllTableauFaceUp, DEST_ORDER } from '../core/rules.js';
 import { isWon } from '../core/winDetection.js';
 import { solveAsync, cancelAllSolves, STALE } from '../core/solverClient.js';
 import { buildStandardDeck, shuffle } from '../core/Deck.js';
@@ -33,6 +33,28 @@ function captureFlip(type) {
     rects.set(id, el.getBoundingClientRect());
   });
   return enqueueFlip(type, rects);
+}
+
+// Confirm a genuinely stuck position once the stock is exhausted (no draws left)
+// and there is no obvious progress move. We ask the off-thread solver to prove a
+// win still exists; only when it agrees there is NO winning line do we show the
+// "no moves remaining" modal. This correctly treats pure King-shuffles / setup
+// relocations as non-progress moves while still catching real dead ends (a
+// winning line requires actual foundation + flip moves, so King shuffles alone
+// prove nothing). The result is ignored if the board has changed in the
+// meantime (reference guard) or the solve was superseded (STALE).
+function checkDeadEnd(get, set, state) {
+  if (hasProgressMove(state)) {
+    useUiStore.getState().setNoMovesDialogOpen(false);
+    return;
+  }
+  const captured = state; // each action mints a fresh state object
+  const { promise } = solveAsync(state, { maxNodes: 200000, maxMs: 2000 });
+  promise.then((seq) => {
+    if (seq === STALE) return;
+    if (get().state !== captured) return; // state moved on; ignore stale result
+    useUiStore.getState().setNoMovesDialogOpen(!(seq && seq.length > 0));
+  });
 }
 
 // Build a transient "pre-deal" layout: all 52 shuffled cards sitting face-down
@@ -248,8 +270,8 @@ export const useGameStore = create((set, get) => ({
     set({ state: next, redoStack, lastActionMeta: { type: 'draw' } });
     useStatsStore.getState().startTimerIfValid(state);
     useStatsStore.getState().addMoves(1);
-    if (next.stock.length === 0 && !isWon(next) && !hasAnyValidMove(next)) {
-      useUiStore.getState().setNoMovesDialogOpen(true);
+    if (next.stock.length === 0 && !isWon(next)) {
+      checkDeadEnd(get, set, next);
     }
   },
 
