@@ -15,7 +15,8 @@ import { useCardMoveSlide } from '../render/animation/useCardMoveSlide.js';
 import { useStockDrawSlide } from '../render/animation/useStockDrawSlide.js';
 import { playWinCascade } from '../render/animation/winCascade.js';
 import { isWon } from '../core/winDetection.js';
-import { isAutoCompletable } from '../core/solver.js';
+import { isAllTableauFaceUp } from '../core/rules.js';
+import { solveAsync, STALE } from '../core/solverClient.js';
 import Pile from './Pile.jsx';
 import { CardFace } from './CardView.jsx';
 
@@ -162,22 +163,30 @@ export default function Board() {
 
   // Auto-trigger auto-complete once the tableau holds no hidden information AND
   // a full win is provable from the current state (the solver may require
-  // cycling the still-present stock/waste). Skips while a run is already
-  // animating (autoCompleting) so the (relatively expensive) solver isn't
-  // re-run on every step of the sequence. autoComplete() also guards against
-  // double-starting, so this is safe to call on every state change.
+  // cycling the still-present stock/waste). The win-proving search runs in a Web
+  // Worker, so it never blocks this handler or the main thread. Skips while a
+  // run is already animating (autoCompleting) and discards stale results when
+  // the state changes before the worker replies.
   useEffect(() => {
+    if (won) return;
     if (useGameStore.getState().autoCompleting) return;
     // Skip the transient pre-deal state: its tableau is empty (vacuously
-    // "all face-up") and a win is provable by drawing, so isAutoCompletable
-    // would be true and we'd start an auto-complete on a state that is about
+    // "all face-up"), so we'd start an auto-complete on a state that is about
     // to be replaced by the real deal — which would throw mid-sequence.
     if (state.tableau.every((p) => p.length === 0) && state.foundations.every((p) => p.length === 0)) return;
-    if (isAutoCompletable(state)) {
-      setAnnounce('Auto-completing to foundations');
-      autoComplete(true);
-    }
-  }, [state]);
+    if (!isAllTableauFaceUp(state)) return;
+    const snapshot = state;
+    const { promise, cancel } = solveAsync(state, { maxNodes: 200000, maxMs: 2000 });
+    promise.then((seq) => {
+      if (seq === STALE) return;
+      if (useGameStore.getState().state !== snapshot) return;
+      if (seq && seq.length > 0) {
+        setAnnounce('Auto-completing to foundations');
+        useGameStore.getState().autoComplete(true);
+      }
+    });
+    return () => cancel();
+  }, [state, won]);
 
   // Global keyboard shortcuts (single-letter, no modifiers). Cards and piles
   // handle their own Enter/Space activation, so these never conflict with them.

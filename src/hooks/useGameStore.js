@@ -5,9 +5,9 @@
 import { create } from 'zustand';
 import { deal } from '../core/dealer.js';
 import { applyMove, undo as coreUndo, redo as coreRedo } from '../core/moveEngine.js';
-import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, hasAnyValidMove, DEST_ORDER } from '../core/rules.js';
+import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, hasAnyValidMove, isAllTableauFaceUp, DEST_ORDER } from '../core/rules.js';
 import { isWon } from '../core/winDetection.js';
-import { findWinningSequence } from '../core/solver.js';
+import { solveAsync, cancelAllSolves, STALE } from '../core/solverClient.js';
 import { buildStandardDeck, shuffle } from '../core/Deck.js';
 import { createEmptyGameState } from '../core/GameState.js';
 import { randomSolvableSeed, pickSolvableSeed } from '../core/solvablePool.js';
@@ -48,6 +48,7 @@ function buildPreDealState(seed) {
 // fly to the foundations one at a time. Not persisted in state.
 const AUTO_COMPLETE_DELAY = 140;
 let autoCompleteTimer = null;
+let activeSolveCancel = null;
 
 function clearAutoCompleteTimer() {
   if (autoCompleteTimer !== null) {
@@ -56,10 +57,74 @@ function clearAutoCompleteTimer() {
   }
 }
 
-// Cancel any in-progress auto-complete run and drop the "autoCompleting" flag so
-// a user action (or a later obvious-win state) can re-trigger it.
+// Apply one auto move to the store state with the usual Flip-capture + animation
+// bookkeeping. Shared by the winning-sequence and greedy fallbacks.
+function applyAutoStep(get, set, move) {
+  const cur = get().state;
+  const next = applyMove(cur, move);
+  captureFlip();
+  useUiStore.getState().beginAnimating();
+  set({ state: next, redoStack: [], autoMoveState: {}, lastActionMeta: { type: 'auto' } });
+  useStatsStore.getState().startTimerIfValid(cur);
+  useStatsStore.getState().addMoves(1);
+}
+
+// Make safe, obvious foundation moves one at a time until none remain. Cheap and
+// synchronous; used when the full solver has no win to prove (or when hidden
+// cards remain and we never want to pay for the search).
+function runGreedy(get, set) {
+  const visited = new Set();
+  const step = () => {
+    const cur = get().state;
+    const sig = [
+      cur.waste.map((c) => c.id).join(','),
+      cur.foundations.map((p) => p.map((c) => c.id).join(',')).join('|'),
+      cur.tableau.map((p) => p.map((c) => c.id).join(',')).join('|'),
+    ].join('##');
+    if (visited.has(sig)) {
+      autoCompleteTimer = null;
+      set({ autoCompleting: false });
+      return;
+    }
+    visited.add(sig);
+    const fm = findFoundationMove(cur);
+    if (fm) {
+      applyAutoStep(get, set, { type: 'moveCards', from: fm.from, to: fm.to, cardIds: [fm.cardId] });
+      autoCompleteTimer = setTimeout(step, AUTO_COMPLETE_DELAY);
+      return;
+    }
+    autoCompleteTimer = null;
+    set({ autoCompleting: false });
+  };
+  step();
+}
+
+// Animate the solver's winning move sequence one step at a time.
+function runWinSequence(get, set, seq) {
+  let i = 0;
+  const step = () => {
+    if (i >= seq.length) {
+      autoCompleteTimer = null;
+      set({ autoCompleting: false });
+      return;
+    }
+    const move = seq[i++];
+    applyAutoStep(get, set, move);
+    autoCompleteTimer = setTimeout(step, AUTO_COMPLETE_DELAY);
+  };
+  step();
+}
+
+// Cancel any in-progress auto-complete run (animation and the off-thread solver)
+// and drop the "autoCompleting" flag so a user action (or a later obvious-win
+// state) can re-trigger it.
 function cancelAutoComplete(set) {
   clearAutoCompleteTimer();
+  if (activeSolveCancel) {
+    activeSolveCancel();
+    activeSolveCancel = null;
+  }
+  cancelAllSolves();
   set({ autoCompleting: false });
 }
 
@@ -302,69 +367,36 @@ export const useGameStore = create((set, get) => ({
     // animating move, and the running sequence keeps the lock held itself.
     if (!force && useUiStore.getState().animatingCount > 0) return false;
 
-    // Try to prove a full win from here. When found (even with cards still in
-    // stock/waste — the solver models draw/recycle), animate the whole winning
-    // line so the game is guaranteed to end in a win.
-    const seq = findWinningSequence(get().state);
-    if (seq && seq.length > 0) {
-      set({ autoCompleting: true });
-      let i = 0;
-      const step = () => {
-        if (i >= seq.length) {
-          autoCompleteTimer = null;
-          set({ autoCompleting: false });
-          return;
-        }
-        const move = seq[i++];
-        const cur = get().state;
-        const next = applyMove(cur, move);
-        captureFlip();
-        useUiStore.getState().beginAnimating();
-        set({ state: next, redoStack: [], autoMoveState: {}, lastActionMeta: { type: 'auto' } });
-        useStatsStore.getState().startTimerIfValid(cur);
-        useStatsStore.getState().addMoves(1);
-        autoCompleteTimer = setTimeout(step, AUTO_COMPLETE_DELAY);
-      };
-      step();
-      return true;
+    const state = get().state;
+
+    // Hidden cards remain: never run the expensive solver. Just make safe,
+    // obvious foundation moves instantly and stop (matches "instant greedy only").
+    if (!isAllTableauFaceUp(state)) {
+      runGreedy(get, set);
+      return autoCompleteTimer !== null;
     }
 
-    // No win is provable (only reachable via the manual, non-obvious trigger).
-    // Silently make safe, obvious foundation moves and stop — no announcement,
+    // All tableau revealed: prove a full win off the main thread. The solver may
+    // require cycling the still-present stock/waste; if no win is provable it
+    // silently falls back to the greedy foundation loop (no announcement),
     // matching the requested "keep silent on stall" behavior.
-    const visited = new Set();
-    const step = () => {
-      const cur = get().state;
-      const sig = [
-        cur.waste.map((c) => c.id).join(','),
-        cur.foundations.map((p) => p.map((c) => c.id).join(',')).join('|'),
-        cur.tableau.map((p) => p.map((c) => c.id).join(',')).join('|'),
-      ].join('##');
-      if (visited.has(sig)) {
-        autoCompleteTimer = null;
+    set({ autoCompleting: true });
+    const { promise, cancel } = solveAsync(state, { maxNodes: 200000, maxMs: 2000 });
+    activeSolveCancel = cancel;
+    promise.then((seq) => {
+      activeSolveCancel = null;
+      if (seq === STALE) {
+        set({ autoCompleting: false });
         return;
       }
-      visited.add(sig);
-      const foundationMove = findFoundationMove(cur);
-      if (foundationMove) {
-        const next = applyMove(cur, {
-          type: 'moveCards',
-          from: foundationMove.from,
-          to: foundationMove.to,
-          cardIds: [foundationMove.cardId],
-        });
-        captureFlip();
-        useUiStore.getState().beginAnimating();
-        set({ state: next, redoStack: [], autoMoveState: {}, lastActionMeta: { type: 'auto' } });
-        useStatsStore.getState().startTimerIfValid(cur);
-        useStatsStore.getState().addMoves(1);
-        autoCompleteTimer = setTimeout(step, AUTO_COMPLETE_DELAY);
-        return;
+      if (seq && seq.length > 0) {
+        runWinSequence(get, set, seq);
+      } else {
+        set({ autoCompleting: false });
+        runGreedy(get, set);
       }
-      autoCompleteTimer = null;
-    };
-    step();
-    return autoCompleteTimer !== null;
+    });
+    return true;
   },
 
   isWon: () => isWon(get().state),

@@ -33,9 +33,14 @@ Modules in `src/core/`:
 - `rules.js` — **REAL logic** (tableau down alternating color, foundation up by suit from Ace,
   `isValidSequence`). Additional helpers used by the UI: `getTableauRun`, `getAutoMoveTargets`,
   `findFoundationMove`, `hasAnyValidMove`, `isObviousWinState`, `DEST_ORDER`.
-- `solver.js` — `findWinningSequence(state, {maxNodes, maxMs})` (memoized DFS proving a full win,
+- `solver.js` — **PURE** `findWinningSequence(state, {maxNodes, maxMs})` (memoized DFS proving a full win,
   modeling draw/recycle/foundation/tableau moves) and `isAutoCompletable(state)` (true when the
   tableau is fully revealed AND a win is provable). Replaces the old depth-capped `findAssistTableauMove`.
+  No DOM/worker imports — unit-testable in isolation.
+- `solverClient.js` + `solver.worker.js` — `solverClient.js` wraps `findWinningSequence` in a Web Worker
+  (`solver.worker.js`) via `solveAsync(state, opts) -> { promise, cancel }`, so the (potentially
+  expensive) search runs **off the main thread** and never freezes the UI. Stale jobs are dropped via a
+  generation counter bumped on `cancel()` / `cancelAllSolves()`.
 - `moveEngine.js` — **PURE** `applyMove(state, move) -> newState` (never mutates input). Move
   `type`s: `draw`, `recycle`, `moveCards`. `undo(state)`, `redo(state, record)` (records carried in
   the store's `redoStack`).
@@ -86,10 +91,13 @@ Exposes `state` (raw core GameState) plus actions:
 `moveCard` validates via `core/rules.js` (single top card, or a full valid tableau run via
 `getTableauRun`) and ignores illegal moves. `autoMove` cycles a clicked card's destination
 through `DEST_ORDER` on repeated clicks (foundations first, then tableaus) and never
-immediately reverses the previous auto-move. `autoComplete` proves a full win with
-`solver.findWinningSequence` (modeling draw/recycle/foundation/tableau moves) and animates
-the whole winning line; if no win is provable it silently makes safe foundation moves. Each
-step is a normal history entry. Before every mutating action the
+immediately reverses the previous auto-move. `autoComplete` gates first on `rules.isAllTableauFaceUp`:
+when hidden cards remain it skips the solver and silently makes safe foundation moves (instant
+greedy only). Once the tableau is fully revealed it proves a full win with
+`solverClient.solveAsync` (modeling draw/recycle/foundation/tableau moves) — run in a Web
+Worker so the UI never blocks — and animates the whole winning line; if no win is provable it
+silently makes safe foundation moves. Each step is a normal history entry. Before every
+mutating action the
 store captures a GSAP `Flip` snapshot (`captureFlip`) so the animation layer can tween cards
 that reparent across `Pile` components. It also drives `useStatsStore` (moves/timer) and
 `useUiStore` (dialogs/announcements).
