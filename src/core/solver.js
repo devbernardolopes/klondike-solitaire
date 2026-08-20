@@ -14,6 +14,7 @@ import {
   canMoveToTableau,
   canMoveToFoundation,
   isAllTableauFaceUp,
+  hasProgressMove,
 } from './rules.js';
 import { isWon } from './winDetection.js';
 
@@ -93,13 +94,26 @@ function enumerateMoves(s) {
 }
 
 /**
- * Find a complete winning move sequence for a (fully-known) state, or null.
- * Bounded by node and time budgets; returns null if exceeded (callers treat
- * that as "no win proven", not an error).
+ * Sentinel returned by findWinningSequence when the node/time budget is exceeded
+ * before the search space was fully explored. This is deliberately distinct from
+ * `null`: `null` means the search completed and provably found NO winning line,
+ * whereas SOLVER_TIMEOUT means "unknown — gave up early". Callers must not treat
+ * a timeout as a dead end (that would falsely report a winnable game as stuck).
+ */
+export const SOLVER_TIMEOUT = '__solver_timeout__';
+
+/**
+ * Find a complete winning move sequence for a (fully-known) state.
+ * Bounded by node and time budgets:
+ *  - returns the winning move array if one is proven,
+ *  - returns `null` if the search fully exhausted the space with no win (a
+ *    definitive dead end),
+ *  - returns `SOLVER_TIMEOUT` if the budget was exceeded before exhaustion (the
+ *    answer is unknown).
  *
  * @param {import('./GameState.js').GameState} state
  * @param {{ maxNodes?: number, maxMs?: number }} [opts]
- * @returns {Array<object>|null} move descriptors consumable by applyMove, or null
+ * @returns {Array<object>|null|typeof SOLVER_TIMEOUT} move descriptors, null, or timeout
  */
 export function findWinningSequence(state, opts = {}) {
   const maxNodes = opts.maxNodes ?? 150000;
@@ -108,10 +122,14 @@ export function findWinningSequence(state, opts = {}) {
   const visited = new Set();
   const path = [];
   let nodes = 0;
+  let aborted = false;
 
   function search(s) {
     if (isWon(s)) return true;
-    if (nodes++ > maxNodes || Date.now() - start > maxMs) return false;
+    if (nodes++ > maxNodes || Date.now() - start > maxMs) {
+      aborted = true;
+      return false;
+    }
     const sig = signature(s);
     if (visited.has(sig)) return false;
     visited.add(sig);
@@ -123,7 +141,55 @@ export function findWinningSequence(state, opts = {}) {
     return false;
   }
 
-  return search(state) ? path.slice() : null;
+  return search(state) ? path.slice() : aborted ? SOLVER_TIMEOUT : null;
+}
+
+/**
+ * Is *any* progress move reachable from this state through legal moves (including
+ * stock draws / waste recycling)? A "progress move" is one that advances a card
+ * onto a foundation or uncovers a face-down card (see `hasProgressMove` in
+ * rules.js). This is the right question for the "no moves remaining" detector:
+ * a position is a dead end only when no progress is *ever* reachable, not when a
+ * full win is merely unprovable. A plain build that relocates already-exposed
+ * cards (e.g. a Queen onto a King) does not itself count as progress, but the
+ * search continues past it, so if such a build can *lead to* a foundation/uncover
+ * move the position is correctly reported as still alive.
+ *
+ * Returns:
+ *  - `true`  if a progress move is reachable,
+ *  - `false` if the search fully exhausted the space with no progress reachable
+ *            (a definitive dead end),
+ *  - `SOLVER_TIMEOUT` if the budget was exceeded before concluding (unknown).
+ *
+ * @param {import('./GameState.js').GameState} state
+ * @param {{ maxNodes?: number, maxMs?: number }} [opts]
+ * @returns {boolean|typeof SOLVER_TIMEOUT}
+ */
+export function findReachableProgress(state, opts = {}) {
+  const maxNodes = opts.maxNodes ?? 150000;
+  const maxMs = opts.maxMs ?? 1500;
+  const start = Date.now();
+  const visited = new Set();
+  let nodes = 0;
+  let aborted = false;
+
+  function search(s, depth) {
+    if (hasProgressMove(s)) return true;
+    if (nodes++ > maxNodes || Date.now() - start > maxMs) {
+      aborted = true;
+      return false;
+    }
+    if (depth > 256) return false; // bound pathological recursion
+    const sig = signature(s);
+    if (visited.has(sig)) return false;
+    visited.add(sig);
+    for (const move of enumerateMoves(s)) {
+      if (search(applyMove(s, move), depth + 1)) return true;
+    }
+    return false;
+  }
+
+  return search(state, 0) ? true : aborted ? SOLVER_TIMEOUT : false;
 }
 
 /**
@@ -139,5 +205,5 @@ export function findWinningSequence(state, opts = {}) {
 export function isAutoCompletable(state) {
   if (isWon(state)) return false;
   if (!isAllTableauFaceUp(state)) return false;
-  return findWinningSequence(state) !== null;
+  return Array.isArray(findWinningSequence(state));
 }

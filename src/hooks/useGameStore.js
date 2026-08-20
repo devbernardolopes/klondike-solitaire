@@ -8,6 +8,7 @@ import { applyMove, undo as coreUndo, redo as coreRedo } from '../core/moveEngin
 import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, hasProgressMove, isAllTableauFaceUp, DEST_ORDER } from '../core/rules.js';
 import { isWon } from '../core/winDetection.js';
 import { solveAsync, cancelAllSolves, STALE } from '../core/solverClient.js';
+import { SOLVER_TIMEOUT } from '../core/solver.js';
 import { buildStandardDeck, shuffle } from '../core/Deck.js';
 import { createEmptyGameState } from '../core/GameState.js';
 import { randomSolvableSeed, pickSolvableSeed } from '../core/solvablePool.js';
@@ -36,12 +37,13 @@ function captureFlip(type) {
 }
 
 // Confirm a genuinely stuck position once the stock is exhausted (no draws left)
-// and there is no obvious progress move. We ask the off-thread solver to prove a
-// win still exists; only when it agrees there is NO winning line do we show the
-// "no moves remaining" modal. This correctly treats pure King-shuffles / setup
-// relocations as non-progress moves while still catching real dead ends (a
-// winning line requires actual foundation + flip moves, so King shuffles alone
-// prove nothing). The result is ignored if the board has changed in the
+// and there is no obvious progress move. We ask the off-thread solver whether any
+// PROGRESS move (a foundation advance or uncovering a face-down card) is reachable
+// through legal play including stock cycling. Only when the search fully exhausts
+// the space with NO progress reachable do we show the "no moves remaining" modal.
+// This correctly treats pure King-shuffles / setup relocations as non-progress
+// moves while still catching real dead ends. A budget-exceeded (unknown) result
+// never asserts a dead end. The result is ignored if the board has changed in the
 // meantime (reference guard) or the solve was superseded (STALE).
 function checkDeadEnd(get, set, state) {
   if (hasProgressMove(state)) {
@@ -49,11 +51,21 @@ function checkDeadEnd(get, set, state) {
     return;
   }
   const captured = state; // each action mints a fresh state object
-  const { promise } = solveAsync(state, { maxNodes: 200000, maxMs: 2000 });
+  const { promise } = solveAsync(state, { maxNodes: 500000, maxMs: 4000, goal: 'progress' });
   promise.then((seq) => {
     if (seq === STALE) return;
     if (get().state !== captured) return; // state moved on; ignore stale result
-    useUiStore.getState().setNoMovesDialogOpen(!(seq && seq.length > 0));
+    if (seq === SOLVER_TIMEOUT) {
+      // Budget exceeded — unknown. Never assert a dead end on an unknown result.
+      return;
+    }
+    if (seq === true) {
+      // A progress move (foundation or uncover) is reachable — not stuck.
+      useUiStore.getState().setNoMovesDialogOpen(false);
+    } else {
+      // Search fully exhausted with no progress reachable — a genuine dead end.
+      useUiStore.getState().setNoMovesDialogOpen(true);
+    }
   });
 }
 
@@ -469,7 +481,7 @@ export const useGameStore = create((set, get) => ({
         set({ autoCompleting: false });
         return;
       }
-      if (seq && seq.length > 0) {
+      if (Array.isArray(seq)) {
         runWinSequence(get, set, seq);
       } else {
         set({ autoCompleting: false });
