@@ -65,9 +65,25 @@ function clearAutoCompleteTimer() {
 function applyAutoStep(get, set, move) {
   const cur = get().state;
   const next = applyMove(cur, move);
-  const tid = captureFlip('auto');
-  useUiStore.getState().beginTransition(tid, move.cardIds, [move.to]);
-  set({ state: next, redoStack: [], autoMoveState: {}, lastActionMeta: { type: 'auto' } });
+  // The winning solver sequence mixes moveCards / draw / recycle moves. draw and
+  // recycle descriptors carry no cardIds/to, so derive the animated card ids and
+  // destination locator from the move type (mirrors drawFromStock/recycleStock).
+  let animIds = [];
+  let destLocs = [];
+  if (move.type === 'moveCards') {
+    animIds = move.cardIds;
+    destLocs = [move.to];
+  } else if (move.type === 'draw') {
+    const drawn = cur.stock[cur.stock.length - 1];
+    animIds = drawn ? [drawn.id] : [];
+    destLocs = ['waste'];
+  } else if (move.type === 'recycle') {
+    animIds = cur.waste.map((c) => c.id);
+    destLocs = ['stock'];
+  }
+  const tid = captureFlip(move.type);
+  useUiStore.getState().beginTransition(tid, animIds, destLocs);
+  set({ state: next, redoStack: [], autoMoveState: {}, lastActionMeta: { type: move.type } });
   useStatsStore.getState().startTimerIfValid(cur);
   useStatsStore.getState().addMoves(1);
 }
