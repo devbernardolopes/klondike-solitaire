@@ -2,9 +2,35 @@ import { gsap } from './gsapSetup.js';
 import { MOTION } from './motion.js';
 import { useUiStore } from '../../hooks/useUiStore.js';
 
+// Module-level handles so a new-game request can abort an in-flight cascade.
+let winTween = null;
+let foundationPiles = [];
+
+/**
+ * Abort a running win cascade immediately (e.g. when the user starts a new
+ * game mid-fall). Kills the tween, drops the temporary foundation z-index
+ * lift and any leftover inline styles, and releases the global lock so the
+ * deal can proceed without waiting for the animation to finish. Safe no-op
+ * when no cascade is active.
+ */
+export function cancelWinCascade() {
+  if (winTween) {
+    winTween.kill();
+    winTween = null;
+  }
+  if (foundationPiles.length) {
+    foundationPiles.forEach((p) => { p.style.zIndex = ''; });
+    foundationPiles = [];
+  }
+  const cards = gsap.utils.toArray('[data-card]');
+  if (cards.length) gsap.set(cards, { clearProps: 'all' });
+  useUiStore.getState().setFullLock(false);
+}
+
 export function playWinCascade() {
   const cards = gsap.utils.toArray('[data-card]');
   if (cards.length === 0) return;
+  foundationPiles = [];
   // Hold the all-encompassing lock so new-game / undo / redo can't fire while
   // the falling-card cascade is playing (won === true already blocks card/pile
   // interaction in the components, but the store-level new-game guard keys off
@@ -44,7 +70,6 @@ export function playWinCascade() {
   // cards never hide them.
   const cardH = measureVar('var(--card-height)');
   const bottomMargin = MOTION.win.bottomMargin;
-  const foundationPiles = [];
   let fanStep = 0;
   let uniformFall = 0;
   for (const el of cards) {
@@ -71,7 +96,7 @@ export function playWinCascade() {
     foundationPiles.push(pile);
   }
 
-  gsap.to(cards, {
+  winTween = gsap.to(cards, {
     // Foundation cards hold their column (no scatter) so the fanned stack stays
     // intact and every card is revealed; the other piles get the random
     // horizontal scatter for the confetti effect.
@@ -91,8 +116,10 @@ export function playWinCascade() {
     // Drop the temporary z-index lift so it doesn't leak into the next game
     // (the cards themselves stay where the cascade left them).
     onComplete: () => {
+      winTween = null;
       useUiStore.getState().setFullLock(false);
       foundationPiles.forEach((p) => { p.style.zIndex = ''; });
+      foundationPiles = [];
     },
   });
 }

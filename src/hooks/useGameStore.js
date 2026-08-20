@@ -12,6 +12,7 @@ import { buildStandardDeck, shuffle } from '../core/Deck.js';
 import { createEmptyGameState } from '../core/GameState.js';
 import { randomSolvableSeed, pickSolvableSeed } from '../core/solvablePool.js';
 import { enqueueFlip } from '../render/animation/flipBridge.js';
+import { cancelWinCascade } from '../render/animation/winCascade.js';
 import { useUiStore } from './useUiStore.js';
 import { useStatsStore } from './useStatsStore.js';
 import { useSeedStore } from './useSeedStore.js';
@@ -189,9 +190,12 @@ export const useGameStore = create((set, get) => ({
   dealNewGame: (mode = 'random') => {
     cancelAutoComplete(set);
     useUiStore.getState().setNoMovesDialogOpen(false);
-    // Block while anything is still animating (a stray in-flight move would be
-    // clobbered by the deal reset) or while the win cascade is falling.
-    if (useUiStore.getState().animatingCards.size > 0 || useUiStore.getState().fullLock) return;
+    // Abort any in-flight win cascade immediately and release its global lock,
+    // so a new-game request mid-fall is honored instead of being dropped. Only
+    // block on real in-flight per-card transitions (a stray move being clobbered
+    // by the deal reset).
+    cancelWinCascade();
+    if (useUiStore.getState().animatingCards.size > 0) return;
     useUiStore.getState().setLastNewGameMode(mode);
     useStatsStore.getState().resetStats();
     const seed =
