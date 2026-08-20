@@ -37,15 +37,20 @@ export default function StatisticsModal({ open, onClose }) {
   const closeRef = useRef(null);
   const backdrop = useModalBackdrop(onClose);
 
+  // Read the close handler via a ref so this effect runs once per open (depends
+  // only on `open`), not whenever the handler identity changes.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   useEffect(() => {
     if (!open) return;
     closeRef.current?.focus();
     const onKey = (e) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') onCloseRef.current();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

@@ -34,15 +34,20 @@ export default function ConfirmModal({
   const confirmRef = useRef(null);
   const backdrop = useModalBackdrop(onCancel);
 
+  // Read the close handler via a ref so this effect runs once per open (depends
+  // only on `open`), not whenever the handler identity changes.
+  const onCancelRef = useRef(onCancel);
+  onCancelRef.current = onCancel;
+
   useEffect(() => {
     if (!open) return;
     confirmRef.current?.focus();
     const onKey = (e) => {
-      if (e.key === 'Escape') onCancel();
+      if (e.key === 'Escape') onCancelRef.current();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, onCancel]);
+  }, [open]);
 
   if (!open) return null;
 

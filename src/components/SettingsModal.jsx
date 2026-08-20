@@ -31,15 +31,23 @@ export default function SettingsModal({
   const doneRef = useRef(null);
   const backdrop = useModalBackdrop(onClose);
 
+  // Keep the latest close handler in a ref so the open-effect can depend only on
+  // `open` (running exactly once per open) instead of on the handler identity.
+  // Previously the effect listed the handler in its deps, so an unstable
+  // callback — e.g. re-created on every 250ms clock tick — would re-fire it and
+  // steal focus from an open <select>, snapping the dropdown shut.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   useEffect(() => {
     if (!open) return;
     doneRef.current?.focus();
     const onKey = (e) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') onCloseRef.current();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

@@ -21,15 +21,20 @@ export default function NewGameModal({ open, onWinningDeal, onRandomShuffle, onD
   const firstBtnRef = useRef(null);
   const backdrop = useModalBackdrop(onDismiss);
 
+  // Read the dismiss handler via a ref so this effect runs once per open
+  // (depends only on `open`), not whenever the handler identity changes.
+  const onDismissRef = useRef(onDismiss);
+  onDismissRef.current = onDismiss;
+
   useEffect(() => {
     if (!open) return;
     firstBtnRef.current?.focus();
     const onKey = (e) => {
-      if (e.key === 'Escape') onDismiss();
+      if (e.key === 'Escape') onDismissRef.current();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, onDismiss]);
+  }, [open]);
 
   if (!open) return null;
 

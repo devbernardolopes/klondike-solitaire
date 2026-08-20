@@ -2,7 +2,7 @@
 // New game, undo, theme/deck switchers. Stubs OK for switchers this pass.
 
 import pkg from '../../package.json';
-import { useEffect, useState } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { Plus, Undo2, Settings, BarChart3 } from 'lucide-react';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useUiStore } from '../hooks/useUiStore.js';
@@ -82,7 +82,6 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const gameState = useGameStore((s) => s.state);
   const moves = useStatsStore((s) => s.moves);
   const score = useStatsStore((s) => s.score);
-  const elapsed = useElapsed();
 
   // The session locks (won or a hard limit hit) — disable undo and surface the
   // Game Over dialog when a limit (not a win) ended the game.
@@ -90,6 +89,39 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   useEffect(() => {
     if (isOver) setGameOverDialogOpen(true);
   }, [isOver, setGameOverDialogOpen]);
+
+  // Stable modal callback identities. The live clock ticks re-render Toolbar
+  // every 250ms while a game is in progress; if these handlers were inline
+  // arrows their identity would change on every tick, re-firing each dialog's
+  // focus-on-open effect (which steals focus to its default button) and
+  // snapping shut any open <select> dropdown in the Settings dialog.
+  const closeSettings = useCallback(() => setSettingsDialogOpen(false), [setSettingsDialogOpen]);
+  const closeStats = useCallback(() => setStatsDialogOpen(false), [setStatsDialogOpen]);
+  const closeNewGame = useCallback(() => setNewGameDialogOpen(false), [setNewGameDialogOpen]);
+  const onWinningDeal = useCallback(() => {
+    setNewGameDialogOpen(false);
+    dealNewGame('winning');
+    play('deal');
+  }, [setNewGameDialogOpen, dealNewGame, play]);
+  const onRandomShuffle = useCallback(() => {
+    setNewGameDialogOpen(false);
+    dealNewGame('random');
+    play('deal');
+  }, [setNewGameDialogOpen, dealNewGame, play]);
+  const closeNoMoves = useCallback(() => setNoMovesDialogOpen(false), [setNoMovesDialogOpen]);
+  const onNoMovesConfirm = useCallback(() => {
+    setNoMovesDialogOpen(false);
+    dealNewGame(lastNewGameMode);
+  }, [setNoMovesDialogOpen, dealNewGame, lastNewGameMode]);
+  const onNoMovesCancel = useCallback(() => {
+    setNoMovesDialogOpen(false);
+    undo();
+  }, [setNoMovesDialogOpen, undo]);
+  const closeGameOver = useCallback(() => setGameOverDialogOpen(false), [setGameOverDialogOpen]);
+  const onGameOverConfirm = useCallback(() => {
+    setGameOverDialogOpen(false);
+    dealNewGame(lastNewGameMode);
+  }, [setGameOverDialogOpen, dealNewGame, lastNewGameMode]);
 
   const btn = {
     padding: '6px 10px',
@@ -121,12 +153,23 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const fabLeft = (slot) => 16 + slot * (FAB_WIDTH + FAB_GAP);
 
   // Larger, centered font used by the Score / Time / Moves HUD row.
-  const hudLabelStyle = {
-    color: '#fff',
-    fontSize: 22,
-    fontWeight: 700,
-    userSelect: 'none',
-  };
+const hudLabelStyle = {
+  color: '#fff',
+  fontSize: 22,
+  fontWeight: 700,
+  userSelect: 'none',
+};
+
+/**
+ * Live elapsed-time HUD cell. Isolated into its own component so the 250ms
+ * tick that refreshes the clock only re-renders this node, not the whole
+ * Toolbar (and, critically, not the dialog subtrees rendered alongside it).
+ * @returns {JSX.Element}
+ */
+function ElapsedClock() {
+  const elapsed = useElapsed();
+  return <span style={hudLabelStyle}>Time: {elapsed}</span>;
+}
 
   return (
     <>
@@ -169,9 +212,9 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
            padding: '4px clamp(8px, 2vw, 20px) 10px',
          }}
        >
-         <span style={hudLabelStyle}>Score: {score}</span>
-         <span style={hudLabelStyle}>Time: {elapsed}</span>
-         <span style={hudLabelStyle}>Moves: {moves}</span>
+          <span style={hudLabelStyle}>Score: {score}</span>
+          <ElapsedClock />
+          <span style={hudLabelStyle}>Moves: {moves}</span>
        </div>
 
       <button
@@ -209,22 +252,14 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
 
       <NewGameModal
         open={newGameDialogOpen}
-        onWinningDeal={() => {
-          setNewGameDialogOpen(false);
-          dealNewGame('winning');
-          play('deal');
-        }}
-        onRandomShuffle={() => {
-          setNewGameDialogOpen(false);
-          dealNewGame('random');
-          play('deal');
-        }}
-        onDismiss={() => setNewGameDialogOpen(false)}
+        onWinningDeal={onWinningDeal}
+        onRandomShuffle={onRandomShuffle}
+        onDismiss={closeNewGame}
       />
 
       <SettingsModal
         open={settingsDialogOpen}
-        onClose={() => setSettingsDialogOpen(false)}
+        onClose={closeSettings}
         theme={theme}
         onThemeChange={onThemeChange}
         deck={deck}
@@ -235,7 +270,7 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
 
       <StatisticsModal
         open={statsDialogOpen}
-        onClose={() => setStatsDialogOpen(false)}
+        onClose={closeStats}
       />
 
        <ConfirmModal
@@ -244,14 +279,8 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
         message="There don't seem to be any more valid moves. You can undo your last move or start a new game."
         confirmText="New Game"
         cancelText="Undo Last Move"
-        onConfirm={() => {
-          setNoMovesDialogOpen(false);
-          dealNewGame(lastNewGameMode);
-        }}
-        onCancel={() => {
-          setNoMovesDialogOpen(false);
-          undo();
-        }}
+        onConfirm={onNoMovesConfirm}
+        onCancel={onNoMovesCancel}
       />
 
       <ConfirmModal
@@ -264,11 +293,8 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
         }
         confirmText="New Game"
         hideCancel
-        onConfirm={() => {
-          setGameOverDialogOpen(false);
-          dealNewGame(lastNewGameMode);
-        }}
-        onCancel={() => setGameOverDialogOpen(false)}
+        onConfirm={onGameOverConfirm}
+        onCancel={closeGameOver}
       />
     </>
   );
