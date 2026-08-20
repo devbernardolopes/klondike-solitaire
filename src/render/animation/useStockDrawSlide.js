@@ -1,9 +1,16 @@
-import { useLayoutEffect } from 'react';
+import { useLayoutEffect, useEffect } from 'react';
 import { gsap } from './gsapSetup.js';
 import { MOTION } from './motion.js';
-import { flipBridge } from './flipBridge.js';
+import { dequeueFlip } from './flipBridge.js';
 import { useGameStore } from '../../hooks/useGameStore.js';
 import { useUiStore } from '../../hooks/useUiStore.js';
+
+// Module-level registry of the in-flight draw tween. Kept out of the effect's
+// per-run cleanup so a concurrent, unrelated move (which re-runs this effect)
+// can't kill the still-sliding draw. The store guards draws while stock/waste
+// are busy, so at most one draw animates at a time anyway; the registry exists
+// purely to survive effect re-runs. Killed only on unmount.
+const activeDrawTweens = [];
 
 /**
  * Stock → waste draw animation: the revealed card flips face-up in place at the
@@ -22,15 +29,18 @@ export function useStockDrawSlide() {
 
   useLayoutEffect(() => {
     if (lastActionMeta.type !== 'draw') return;
-    // The store captured a Flip snapshot for this action; we animate manually,
-    // so discard it to avoid a stale snapshot being reused by later moves.
-    flipBridge.current = null;
+    // Drain THIS draw's snapshot. If none is queued, a different transition is
+    // re-running the effect (e.g. a concurrent tableau move) — leave the
+    // in-flight draw alone.
+    const entry = dequeueFlip('draw');
+    if (!entry) return;
+    const { tid } = entry;
 
     const wastePile = document.querySelector('[data-loc="waste"]');
     const stockPile = document.querySelector('[data-loc="stock"]');
     // drawFromStock already acquired the lock; release it if we can't animate.
     if (!wastePile || !stockPile) {
-      useUiStore.getState().endAnimating();
+      useUiStore.getState().endTransition(tid);
       return;
     }
 
@@ -39,12 +49,12 @@ export function useStockDrawSlide() {
     const cards = wastePile.querySelectorAll('[data-card]');
     const cardNode = cards[cards.length - 1];
     if (!cardNode) {
-      useUiStore.getState().endAnimating();
+      useUiStore.getState().endTransition(tid);
       return;
     }
     const inner = cardNode.querySelector('.card-flip-inner');
     if (!inner) {
-      useUiStore.getState().endAnimating();
+      useUiStore.getState().endTransition(tid);
       return;
     }
 
@@ -76,19 +86,16 @@ export function useStockDrawSlide() {
     gsap.set(cardNode, { x: startX, y: dy, zIndex: 1000 });
     gsap.set(inner, { rotateY: -180 });
 
-    // Track whether the timeline actually finished. The store action already
-    // called beginAnimating(); the matching endAnimating() must run once. We do
-    // it in onComplete, and ALSO in cleanup ONLY if the timeline did NOT complete
-    // (e.g. the effect was torn down by an unmount before it finished). Without
-    // this guard, the previous draw's cleanup endAnimating() would cancel the
-    // *current* draw's beginAnimating() (which was issued in the store action),
-    // releasing the lock mid flip+slide and letting a fast tap auto-move the
-    // in-flight card. See the root-cause note in the PR/commit.
-    let completed = false;
     const tl = gsap.timeline({
       onComplete: () => {
-        completed = true;
-        useUiStore.getState().endAnimating();
+        // Reset the card to its resting state so a torn-down effect never leaves
+        // it parked at the stock pile or face-down.
+        gsap.set(cardNode, { x: 0, y: 0, clearProps: 'zIndex' });
+        gsap.set(inner, { rotateY: 0 });
+        if (wrap) wrap.style.zIndex = prevWrapZ;
+        const i = activeDrawTweens.indexOf(tl);
+        if (i >= 0) activeDrawTweens.splice(i, 1);
+        useUiStore.getState().endTransition(tid);
       },
     });
     // Phase 1: flip face-up in place at the stock pile.
@@ -103,15 +110,15 @@ export function useStockDrawSlide() {
       { x: 0, y: 0, duration: slide.duration, ease: slide.ease },
       '>'
     );
-
-    return () => {
-      tl.kill();
-      // Reset the card to its resting state so a torn-down effect never leaves
-      // it parked at the stock pile or face-down.
-      gsap.set(cardNode, { x: 0, y: 0, clearProps: 'zIndex' });
-      gsap.set(inner, { rotateY: 0 });
-      if (wrap) wrap.style.zIndex = prevWrapZ;
-      if (!completed) useUiStore.getState().endAnimating();
-    };
+    activeDrawTweens.push(tl);
+    // No per-rerun cleanup that kills `tl`: see the module-level registry note.
   }, [state, lastActionMeta]);
+
+  // Kill the draw tween only when the board unmounts.
+  useEffect(() => {
+    return () => {
+      activeDrawTweens.forEach((t) => t.kill());
+      activeDrawTweens.length = 0;
+    };
+  }, []);
 }

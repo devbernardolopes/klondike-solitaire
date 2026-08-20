@@ -32,7 +32,9 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
   const setAnnounce = useUiStore((s) => s.setAnnounce);
   const won = useGameStore((s) => isWon(s.state));
   const sessionOver = useStatsStore((s) => s.isOver);
-  const isAnimating = useUiStore((s) => s.animatingCount > 0);
+  // Block this pile only when it is the busy destination of an in-flight move.
+  // Source piles and all other piles stay fully interactive.
+  const isAnimating = useUiStore((s) => s.animatingLocs.has(loc));
   const locked = won || sessionOver || isAnimating;
 
   const kind = loc.split(':')[0];

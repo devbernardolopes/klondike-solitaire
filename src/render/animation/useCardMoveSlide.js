@@ -1,7 +1,7 @@
-import { useLayoutEffect } from 'react';
+import { useLayoutEffect, useEffect } from 'react';
 import { gsap } from './gsapSetup.js';
 import { MOTION } from './motion.js';
-import { flipBridge } from './flipBridge.js';
+import { dequeueFlip } from './flipBridge.js';
 import { useGameStore } from '../../hooks/useGameStore.js';
 import { useUiStore } from '../../hooks/useUiStore.js';
 
@@ -14,6 +14,13 @@ const CONFIG_BY_TYPE = {
   deal: MOTION.deal,
   recycle: MOTION.move,
 };
+
+// Module-level registry of in-flight timelines. These are intentionally NOT tied
+// to a single effect instance's cleanup, so a second move starting while the
+// first is still sliding does NOT kill the first tween — the two animate
+// concurrently (they always involve disjoint cards/piles, so they never
+// visually interfere). Only the unmount effect below kills them.
+const activeTweens = [];
 
 /**
  * Card-relocation animation for EVERY move except the stock→waste draw. Instead
@@ -31,22 +38,29 @@ export function useCardMoveSlide() {
   const lastActionMeta = useGameStore((s) => s.lastActionMeta);
 
   useLayoutEffect(() => {
-    const oldRects = flipBridge.current;
-    // The stock → waste draw is animated by useStockDrawSlide, which discards the
-    // captured rects; don't run the generic pipeline for it. Other untracked
-    // types (undo/redo) have no relocation animation either.
-    if (!oldRects || !CONFIG_BY_TYPE[lastActionMeta.type]) {
-      flipBridge.current = null;
+    // Pull the next pending transition of a type this hook owns. Other types
+    // (draw) are drained by useStockDrawSlide; a stale/unknown entry is left
+    // untouched. Because each transition enqueues exactly one snapshot and the
+    // effect runs once per state change, this drains one entry per commit.
+    const entry =
+      dequeueFlip('move') ||
+      dequeueFlip('auto') ||
+      dequeueFlip('recycle') ||
+      dequeueFlip('deal');
+    if (!entry) return;
+    const { tid, snapshot, type } = entry;
+    const cfg = CONFIG_BY_TYPE[type];
+    if (!cfg) {
+      useUiStore.getState().endTransition(tid);
       return;
     }
-    const cfg = CONFIG_BY_TYPE[lastActionMeta.type];
 
     // Park every card that moved at its OLD position (via a transform offset),
     // then collect the nodes so we can tween them all together.
     const moved = [];
     document.querySelectorAll('[data-card]').forEach((el) => {
       const id = el.getAttribute('data-flip-id') || el.getAttribute('data-card');
-      const oldRect = oldRects.get(id);
+      const oldRect = snapshot.get(id);
       if (!oldRect) return;
       const newRect = el.getBoundingClientRect();
       const dx = oldRect.left - newRect.left;
@@ -56,27 +70,20 @@ export function useCardMoveSlide() {
       moved.push(el);
     });
 
-    flipBridge.current = null;
-
     // Nothing actually moved (e.g. a no-op capture): release the lock at once so
     // it never sticks.
     if (moved.length === 0) {
-      useUiStore.getState().endAnimating();
+      useUiStore.getState().endTransition(tid);
       return;
     }
 
-    // Track whether the timeline actually finished. The store action already
-    // called beginAnimating(); the matching endAnimating() runs once, in
-    // onComplete. The cleanup also releases ONLY if the timeline did NOT
-    // complete (e.g. torn down by an unmount before finishing) — otherwise the
-    // previous move's cleanup endAnimating() would cancel the *current* move's
-    // beginAnimating() and release the lock mid-animation, letting a fast tap
-    // interact with an in-flight card.
     let completed = false;
     const tl = gsap.timeline({
       onComplete: () => {
         completed = true;
-        useUiStore.getState().endAnimating();
+        const i = activeTweens.indexOf(tl);
+        if (i >= 0) activeTweens.splice(i, 1);
+        useUiStore.getState().endTransition(tid);
       },
     });
     tl.to(moved, {
@@ -86,13 +93,21 @@ export function useCardMoveSlide() {
       ease: cfg.ease,
       stagger: cfg.stagger ?? 0,
     });
+    activeTweens.push(tl);
 
-    return () => {
-      tl.kill();
-      // Reset any card we parked back to its resting state so a torn-down effect
-      // never leaves it offset from its destination.
-      moved.forEach((el) => gsap.set(el, { clearProps: 'transform' }));
-      if (!completed) useUiStore.getState().endAnimating();
-    };
+    // IMPORTANT: no cleanup that kills `tl` on effect re-run. A new transition
+    // re-running this effect must start its OWN tween, not tear down the prior
+    // in-flight ones. The only teardown happens on unmount (below).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, lastActionMeta]);
+
+  // Tear down every in-flight tween only when the board unmounts, and release
+  // any locks they held so a remount/route change can't leave the board stuck.
+  useEffect(() => {
+    return () => {
+      activeTweens.forEach((t) => t.kill());
+      activeTweens.length = 0;
+      useUiStore.getState().clearAllTransitions();
+    };
+  }, []);
 }

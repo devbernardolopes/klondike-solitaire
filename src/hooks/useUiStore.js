@@ -19,18 +19,66 @@ export const useUiStore = create((set) => ({
   /** Set the in-progress drag flag (shared between useDragEngine and CardView). */
   setIsDragging: (v) => set({ isDragging: v }),
 
-  // Ref-count of in-flight card animations (draw slide, Flip moves, deal, win
-  // cascade, auto-complete sequence). A count > 0 means the board is animating,
-  // so all user interaction is suppressed until it returns to 0. Ref-counted
-  // (not a boolean) so the timed auto-complete sequence — whose Flip tweens
-  // overlap — keeps the lock held for its entire duration.
-  animatingCount: 0,
+  // Granular in-flight animation locks. Instead of a single global "board is
+  // busy" flag, we track exactly which cards are currently moving and which
+  // pile locators are busy as a destination. Components then block interaction
+  // only for the cards/locators in these sets — so a normal move animates while
+  // the rest of the board stays fully interactive. The win cascade uses
+  // `fullLock` (set in winCascade.js) to block everything, and `won` already
+  // blocks everything in the components regardless.
+  animatingCards: new Set(),
+  animatingLocs: new Set(),
+  // Map of transition id → { cards:Set, locs:Set } so endTransition can release
+  // exactly the cards/locs a finished move had reserved.
+  activeTransitions: {},
+  fullLock: false,
 
-  /** Increment the in-flight animation count (call when an animation starts). */
-  beginAnimating: () => set((s) => ({ animatingCount: s.animatingCount + 1 })),
+  /**
+   * Reserve the cards/locators a transition is about to animate. Called by the
+   * store action right before it mutates state (synchronously, so the lock is
+   * held before React re-renders the new layout).
+   * @param {number} tid  transition id from captureFlip
+   * @param {string[]} cardIds  cards physically in flight
+   * @param {string[]} locs  destination pile locators made busy
+   */
+  beginTransition: (tid, cardIds, locs) =>
+    set((s) => {
+      const cards = new Set(s.animatingCards);
+      const locsSet = new Set(s.animatingLocs);
+      cardIds.forEach((id) => cards.add(id));
+      locs.forEach((l) => locsSet.add(l));
+      return {
+        animatingCards: cards,
+        animatingLocs: locsSet,
+        activeTransitions: { ...s.activeTransitions, [tid]: { cards: new Set(cardIds), locs: new Set(locs) } },
+      };
+    }),
 
-  /** Decrement the in-flight animation count (call when an animation ends). */
-  endAnimating: () => set((s) => ({ animatingCount: Math.max(0, s.animatingCount - 1) })),
+  /**
+   * Release the cards/locators reserved by a finished transition. Recomputes
+   * the union sets from the remaining active transitions so concurrent moves
+   * don't stomp on each other.
+   * @param {number} tid
+   */
+  endTransition: (tid) =>
+    set((s) => {
+      const active = { ...s.activeTransitions };
+      delete active[tid];
+      const cards = new Set();
+      const locsSet = new Set();
+      Object.values(active).forEach((t) => {
+        t.cards.forEach((id) => cards.add(id));
+        t.locs.forEach((l) => locsSet.add(l));
+      });
+      return { animatingCards: cards, animatingLocs: locsSet, activeTransitions: active };
+    }),
+
+  /** Drop every in-flight transition (used on unmount / hard reset). */
+  clearAllTransitions: () =>
+    set({ animatingCards: new Set(), animatingLocs: new Set(), activeTransitions: {} }),
+
+  /** Set the all-encompassing lock used by the win cascade / deal reset. */
+  setFullLock: (v) => set({ fullLock: v }),
 
   // New Game mode-picker dialog state + the last mode chosen, so the "no valid
   // moves" recovery path can re-deal with the same mode without re-prompting.

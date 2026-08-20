@@ -11,7 +11,7 @@ import { solveAsync, cancelAllSolves, STALE } from '../core/solverClient.js';
 import { buildStandardDeck, shuffle } from '../core/Deck.js';
 import { createEmptyGameState } from '../core/GameState.js';
 import { randomSolvableSeed, pickSolvableSeed } from '../core/solvablePool.js';
-import { flipBridge } from '../render/animation/flipBridge.js';
+import { enqueueFlip } from '../render/animation/flipBridge.js';
 import { useUiStore } from './useUiStore.js';
 import { useStatsStore } from './useStatsStore.js';
 import { useSeedStore } from './useSeedStore.js';
@@ -21,14 +21,17 @@ import { useSeedStore } from './useSeedStore.js';
 // re-renders (cards reparent between Pile components in the DOM tree). Stored as a
 // Map<cardId, DOMRect> keyed by data-flip-id so the animation layer can compute
 // each moved card's translation explicitly (robust to reparenting, unlike Flip
-// matching across unmounted/remounted nodes).
-function captureFlip() {
+// matching across unmounted/remounted nodes). The snapshot is pushed onto a
+// per-transition queue (not a single global slot) so several moves can animate
+// concurrently without clobbering one another's starting positions.
+// Returns the transition id so the caller can reserve the lock via beginTransition.
+function captureFlip(type) {
   const rects = new Map();
   document.querySelectorAll('[data-card]').forEach((el) => {
     const id = el.getAttribute('data-flip-id') || el.getAttribute('data-card');
     rects.set(id, el.getBoundingClientRect());
   });
-  flipBridge.current = rects;
+  return enqueueFlip(type, rects);
 }
 
 // Build a transient "pre-deal" layout: all 52 shuffled cards sitting face-down
@@ -62,8 +65,8 @@ function clearAutoCompleteTimer() {
 function applyAutoStep(get, set, move) {
   const cur = get().state;
   const next = applyMove(cur, move);
-  captureFlip();
-  useUiStore.getState().beginAnimating();
+  const tid = captureFlip('auto');
+  useUiStore.getState().beginTransition(tid, move.cardIds, [move.to]);
   set({ state: next, redoStack: [], autoMoveState: {}, lastActionMeta: { type: 'auto' } });
   useStatsStore.getState().startTimerIfValid(cur);
   useStatsStore.getState().addMoves(1);
@@ -167,7 +170,9 @@ export const useGameStore = create((set, get) => ({
   dealNewGame: (mode = 'random') => {
     cancelAutoComplete(set);
     useUiStore.getState().setNoMovesDialogOpen(false);
-    if (useUiStore.getState().animatingCount > 0) return;
+    // Block while anything is still animating (a stray in-flight move would be
+    // clobbered by the deal reset) or while the win cascade is falling.
+    if (useUiStore.getState().animatingCards.size > 0 || useUiStore.getState().fullLock) return;
     useUiStore.getState().setLastNewGameMode(mode);
     useStatsStore.getState().resetStats();
     const seed =
@@ -182,9 +187,22 @@ export const useGameStore = create((set, get) => ({
     set({ state: preDeal, redoStack: [], autoMoveState: {}, lastActionMeta: { type: 'draw' } });
     requestAnimationFrame(() => {
       cancelAutoComplete(set);
-      captureFlip();
-      useUiStore.getState().beginAnimating();
-      set({ state: deal(seed !== undefined ? { seed } : {}), lastActionMeta: { type: 'deal' } });
+      const next = deal(seed !== undefined ? { seed } : {});
+      const allIds = [
+        ...next.stock,
+        ...next.waste,
+        ...next.foundations.flat(),
+        ...next.tableau.flat(),
+      ].map((c) => c.id);
+      const allLocs = [
+        'stock',
+        'waste',
+        ...next.foundations.map((_, i) => `foundation:${i}`),
+        ...next.tableau.map((_, i) => `tableau:${i}`),
+      ];
+      const tid = captureFlip('deal');
+      useUiStore.getState().beginTransition(tid, allIds, allLocs);
+      set({ state: next, lastActionMeta: { type: 'deal' } });
     });
   },
 
@@ -195,11 +213,13 @@ export const useGameStore = create((set, get) => ({
     const { state, redoStack } = get();
     if (isWon(state) || useStatsStore.getState().isOver) return;
     if (state.stock.length === 0) return;
-    // Block re-entry while an animation is in flight so spam-clicking the stock
-    // can't queue overlapping/killed draw slides or inflate the move counter.
-    if (useUiStore.getState().animatingCount > 0) return;
-    captureFlip();
-    useUiStore.getState().beginAnimating();
+    // Only block while the stock/waste pair is itself animating (a draw slides a
+    // card stock→waste). Other, unrelated moves don't block drawing.
+    const { animatingLocs } = useUiStore.getState();
+    if (animatingLocs.has('stock') || animatingLocs.has('waste')) return;
+    const drawnId = state.stock[state.stock.length - 1].id;
+    const tid = captureFlip('draw');
+    useUiStore.getState().beginTransition(tid, [drawnId], ['stock', 'waste']);
     const next = applyMove(state, { type: 'draw' });
     set({ state: next, redoStack, lastActionMeta: { type: 'draw' } });
     useStatsStore.getState().startTimerIfValid(state);
@@ -215,9 +235,13 @@ export const useGameStore = create((set, get) => ({
   recycleStock: () => {
     const { state, redoStack } = get();
     if (isWon(state) || useStatsStore.getState().isOver) return;
-    if (useUiStore.getState().animatingCount > 0) return;
-    captureFlip();
-    useUiStore.getState().beginAnimating();
+    // Recycle slides every waste card back into the stock, so block only while
+    // the stock/waste pair is already animating.
+    const { animatingLocs } = useUiStore.getState();
+    if (animatingLocs.has('stock') || animatingLocs.has('waste')) return;
+    const movingIds = state.waste.map((c) => c.id);
+    const tid = captureFlip('recycle');
+    useUiStore.getState().beginTransition(tid, movingIds, ['stock', 'waste']);
     set({ state: applyMove(state, { type: 'recycle' }), redoStack, lastActionMeta: { type: 'recycle' } });
     useStatsStore.getState().startTimerIfValid(state);
     useStatsStore.getState().addMoves(1);
@@ -236,8 +260,13 @@ export const useGameStore = create((set, get) => ({
     cancelAutoComplete(set);
     const { state, redoStack } = get();
     if (isWon(state) || useStatsStore.getState().isOver) return false;
-    if (useUiStore.getState().animatingCount > 0) return false;
     if (from === to) return false;
+    // Granular blocking: only refuse if a card being moved here is still in
+    // flight, or if the destination (or a pile currently receiving another
+    // card) is busy. The source pile stays interactive so the rest of the
+    // board can be played during an unrelated animation.
+    const { animatingCards, animatingLocs } = useUiStore.getState();
+    if (animatingLocs.has(to) || animatingLocs.has(from)) return false;
 
     const srcPile = readPile(state, from);
 
@@ -265,6 +294,8 @@ export const useGameStore = create((set, get) => ({
     const moveIds = run.map((c) => c.id).reverse();
     const movingCard = run[0]; // bottom of the run is what lands on the destination
     if (!movingCard || !movingCard.faceUp) return false;
+    // Refuse if any card we'd lift is still animating in flight.
+    if (moveIds.some((id) => animatingCards.has(id))) return false;
 
     const destPile = readPile(state, to);
     // Foundations accept only a single card; tableau accepts a run.
@@ -275,8 +306,8 @@ export const useGameStore = create((set, get) => ({
     if (!valid) return false;
 
     const next = applyMove(state, { type: 'moveCards', from, to, cardIds: moveIds });
-    captureFlip();
-    useUiStore.getState().beginAnimating();
+    const tid = captureFlip(opts.metaType ?? 'move');
+    useUiStore.getState().beginTransition(tid, moveIds, [to]);
     set({ state: next, redoStack: [], lastActionMeta: { type: opts.metaType ?? 'move' } });
     useStatsStore.getState().startTimerIfValid(state);
     useStatsStore.getState().addMoves(1);
@@ -288,7 +319,9 @@ export const useGameStore = create((set, get) => ({
     useUiStore.getState().setNoMovesDialogOpen(false);
     const { state, redoStack } = get();
     if (state.moveHistory.length === 0 || useStatsStore.getState().isOver) return;
-    if (useUiStore.getState().animatingCount > 0) return;
+    // Undo/redo don't animate and would corrupt an in-flight tween, so block
+    // them whenever any card is still moving.
+    if (useUiStore.getState().animatingCards.size > 0) return;
     const history = state.moveHistory.slice();
     const last = history[history.length - 1];
     const next = coreUndo(state);
@@ -300,7 +333,7 @@ export const useGameStore = create((set, get) => ({
     cancelAutoComplete(set);
     const { state, redoStack } = get();
     if (redoStack.length === 0 || useStatsStore.getState().isOver) return;
-    if (useUiStore.getState().animatingCount > 0) return;
+    if (useUiStore.getState().animatingCards.size > 0) return;
     const stack = redoStack.slice();
     const record = stack.pop();
     const next = coreRedo(state, record);
@@ -319,7 +352,8 @@ export const useGameStore = create((set, get) => ({
   autoMove: (from, cardId) => {
     const { state, autoMoveState } = get();
     if (isWon(state) || useStatsStore.getState().isOver) return false;
-    if (useUiStore.getState().animatingCount > 0) return false;
+    // moveCard enforces the granular per-card / per-pile lock, so autoMove only
+    // needs to bail on a won/over game here; the actual busy check happens there.
     const targets = getAutoMoveTargets(state, from, cardId);
     if (targets.length === 0) return false;
 
@@ -365,7 +399,7 @@ export const useGameStore = create((set, get) => ({
     // (no interaction during animation). The automatic trigger from an
     // obvious-win state passes force:true because that state is reached BY an
     // animating move, and the running sequence keeps the lock held itself.
-    if (!force && useUiStore.getState().animatingCount > 0) return false;
+    if (!force && useUiStore.getState().animatingCards.size > 0) return false;
 
     const state = get().state;
 

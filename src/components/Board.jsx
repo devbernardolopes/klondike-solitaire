@@ -128,8 +128,15 @@ export default function Board() {
   const handedness = useSettingsStore((s) => s.handedness);
   const isOver = useStatsStore((s) => s.isOver);
   const won = isWon(state);
-  const isAnimating = useUiStore((s) => s.animatingCount > 0);
-  const locked = won || isOver || isAnimating;
+  // `anyAnimating` = some card is still in flight (used to block global actions
+  // like new-game/undo/redo/auto-complete). `stockWasteBusy` only blocks
+  // draw/recycle. Card/pile-level interaction is gated per-card / per-pile by
+  // the components themselves, so non-involved cards stay playable mid-animation.
+  const anyAnimating = useUiStore((s) => s.animatingCards.size > 0);
+  const stockWasteBusy = useUiStore(
+    (s) => s.animatingLocs.has('stock') || s.animatingLocs.has('waste'),
+  );
+  const locked = won || isOver || anyAnimating;
   const { sensors, onDragStart, onDragEnd, onDragCancel, activeRun } =
     useDragEngine();
 
@@ -193,24 +200,29 @@ export default function Board() {
   useEffect(() => {
     const onKey = (e) => {
        if (e.metaKey || e.ctrlKey || e.altKey) return;
-       // Suppress all shortcuts while an animation is in flight.
-       if (isAnimating) return;
+       // New game / undo / redo / auto-complete are blocked while anything is
+       // still animating (or the game is over). Draw/recycle are handled below
+       // with their own narrower stock/waste lock so they stay usable during an
+       // unrelated move.
+       if (anyAnimating || isOver) return;
        if (e.key === 'n' || e.key === 'N') {
          clearSelection();
          setAnnounce('New game dealt');
          dealNewGame();
          return;
        }
-       if (locked) return;
-      switch (e.key.toLowerCase()) {
+       if (won) return;
+       switch (e.key.toLowerCase()) {
         case 'd':
           clearSelection();
+          if (stockWasteBusy) return;
           if (useGameStore.getState().state.stock.length > 0) drawFromStock();
           else if (useGameStore.getState().state.waste.length > 0) recycleStock();
           setAnnounce('Drew from stock');
           break;
         case 'r':
           clearSelection();
+          if (stockWasteBusy) return;
           recycleStock();
           setAnnounce('Recycled waste to stock');
           break;
@@ -235,10 +247,11 @@ export default function Board() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [won, isOver, locked, drawFromStock, recycleStock, undo, redo, autoComplete, dealNewGame, clearSelection, setAnnounce]);
+  }, [won, isOver, anyAnimating, stockWasteBusy, drawFromStock, recycleStock, undo, redo, autoComplete, dealNewGame, clearSelection, setAnnounce]);
 
   const onStockClick = () => {
-    if (locked) return;
+    if (won || isOver) return;
+    if (stockWasteBusy) return;
     if (state.stock.length > 0) drawFromStock();
     else if (state.waste.length > 0) recycleStock();
   };

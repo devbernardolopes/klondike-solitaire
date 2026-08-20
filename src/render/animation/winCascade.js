@@ -1,9 +1,20 @@
 import { gsap } from './gsapSetup.js';
 import { MOTION } from './motion.js';
+import { useUiStore } from '../../hooks/useUiStore.js';
 
 export function playWinCascade() {
   const cards = gsap.utils.toArray('[data-card]');
   if (cards.length === 0) return;
+  // Hold the all-encompassing lock so new-game / undo / redo can't fire while
+  // the falling-card cascade is playing (won === true already blocks card/pile
+  // interaction in the components, but the store-level new-game guard keys off
+  // this flag too).
+  useUiStore.getState().setFullLock(true);
+  // The cascade kills any in-flight winning-move tween below, which means that
+  // tween's onComplete (and therefore its endTransition) never fires. Release
+  // every granular lock now so the board isn't left stuck and a later "New
+  // Game" isn't blocked by a leaked transition.
+  useUiStore.getState().clearAllTransitions();
   // Kill any Flip.from tweens still in flight from the winning move / the
   // auto-complete moves just before it, and clear their leftover inline
   // transform/position, so the cascade is the sole animator. Otherwise Flip's
@@ -80,6 +91,7 @@ export function playWinCascade() {
     // Drop the temporary z-index lift so it doesn't leak into the next game
     // (the cards themselves stay where the cascade left them).
     onComplete: () => {
+      useUiStore.getState().setFullLock(false);
       foundationPiles.forEach((p) => { p.style.zIndex = ''; });
     },
   });
