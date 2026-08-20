@@ -76,9 +76,20 @@ export function useStockDrawSlide() {
     gsap.set(cardNode, { x: startX, y: dy, zIndex: 1000 });
     gsap.set(inner, { rotateY: -180 });
 
+    // Track whether the timeline actually finished. The store action already
+    // called beginAnimating(); the matching endAnimating() must run once. We do
+    // it in onComplete, and ALSO in cleanup ONLY if the timeline did NOT complete
+    // (e.g. the effect was torn down by an unmount before it finished). Without
+    // this guard, the previous draw's cleanup endAnimating() would cancel the
+    // *current* draw's beginAnimating() (which was issued in the store action),
+    // releasing the lock mid flip+slide and letting a fast tap auto-move the
+    // in-flight card. See the root-cause note in the PR/commit.
+    let completed = false;
     const tl = gsap.timeline({
-      // Release the global animation lock once the flip + slide both finish.
-      onComplete: () => useUiStore.getState().endAnimating(),
+      onComplete: () => {
+        completed = true;
+        useUiStore.getState().endAnimating();
+      },
     });
     // Phase 1: flip face-up in place at the stock pile.
     tl.to(inner, {
@@ -100,7 +111,7 @@ export function useStockDrawSlide() {
       gsap.set(cardNode, { x: 0, y: 0, clearProps: 'zIndex' });
       gsap.set(inner, { rotateY: 0 });
       if (wrap) wrap.style.zIndex = prevWrapZ;
-      useUiStore.getState().endAnimating();
+      if (!completed) useUiStore.getState().endAnimating();
     };
   }, [state, lastActionMeta]);
 }

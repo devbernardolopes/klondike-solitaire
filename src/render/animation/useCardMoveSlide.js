@@ -65,8 +65,19 @@ export function useCardMoveSlide() {
       return;
     }
 
+    // Track whether the timeline actually finished. The store action already
+    // called beginAnimating(); the matching endAnimating() runs once, in
+    // onComplete. The cleanup also releases ONLY if the timeline did NOT
+    // complete (e.g. torn down by an unmount before finishing) — otherwise the
+    // previous move's cleanup endAnimating() would cancel the *current* move's
+    // beginAnimating() and release the lock mid-animation, letting a fast tap
+    // interact with an in-flight card.
+    let completed = false;
     const tl = gsap.timeline({
-      onComplete: () => useUiStore.getState().endAnimating(),
+      onComplete: () => {
+        completed = true;
+        useUiStore.getState().endAnimating();
+      },
     });
     tl.to(moved, {
       x: 0,
@@ -81,7 +92,7 @@ export function useCardMoveSlide() {
       // Reset any card we parked back to its resting state so a torn-down effect
       // never leaves it offset from its destination.
       moved.forEach((el) => gsap.set(el, { clearProps: 'transform' }));
-      useUiStore.getState().endAnimating();
+      if (!completed) useUiStore.getState().endAnimating();
     };
   }, [state, lastActionMeta]);
 }
