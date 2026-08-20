@@ -14,14 +14,16 @@ import { createEmptyGameState } from './GameState.js';
  *
  * @param {object} [opts]
  * @param {number} [opts.seed]  if provided, the shuffle is deterministic.
+ * @param {number} [opts.drawCount=1]  cards turned from stock per draw.
  * @returns {import('./GameState.js').GameState}
  */
 export function deal(opts = {}) {
-  const { seed } = opts;
+  const { seed, drawCount = 1 } = opts;
   const deck = shuffle(buildStandardDeck(), seed);
 
   const state = createEmptyGameState();
   if (seed !== undefined) state.seed = seed;
+  state.drawCount = drawCount;
 
   let cursor = 0;
   for (let col = 0; col < 7; col++) {

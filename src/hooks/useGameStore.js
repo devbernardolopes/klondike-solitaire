@@ -43,6 +43,7 @@ function buildPreDealState(seed) {
   const deck = shuffle(buildStandardDeck(), seed !== undefined ? seed : undefined);
   const state = createEmptyGameState();
   if (seed !== undefined) state.seed = seed;
+  state.drawCount = 1;
   state.stock = deck.map((c) => ({ ...c, faceUp: false }));
   state.startedAt = Date.now();
   return state;

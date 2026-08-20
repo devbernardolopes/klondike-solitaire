@@ -6,6 +6,9 @@
 
 import { useEffect, useRef } from 'react';
 import { useModalBackdrop } from './modalBackdrop.js';
+import { useGameStore } from '../hooks/useGameStore.js';
+import { useUiStore } from '../hooks/useUiStore.js';
+import { buildSnapshotText, snapshotModeToken } from '../core/snapshot.js';
 
 /**
  * @param {object} props
@@ -91,6 +94,32 @@ export default function SettingsModal({
     marginBottom: 14,
   };
 
+  // Local timestamp as YYYYMMDD-HHMMSS (no separators, sortable).
+  const formatTimestamp = (d) => {
+    const p = (n) => String(n).padStart(2, '0');
+    return (
+      `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}` +
+      `-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`
+    );
+  };
+
+  // Export the current visible board as a plain-text snapshot file.
+  const handleTakeSnapshot = () => {
+    const state = useGameStore.getState().state;
+    const text = buildSnapshotText(state);
+    const filename = `${formatTimestamp(new Date())}_${snapshotModeToken(state)}.txt`;
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    useUiStore.getState().setAnnounce('Board snapshot exported');
+  };
+
   return (
     <div
       role="dialog"
@@ -151,7 +180,14 @@ export default function SettingsModal({
           </select>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
+          <button
+            type="button"
+            style={{ ...btn }}
+            onClick={handleTakeSnapshot}
+          >
+            Take Snapshot
+          </button>
           <button
             type="button"
             ref={doneRef}
@@ -161,6 +197,7 @@ export default function SettingsModal({
             Done
           </button>
         </div>
+
       </div>
     </div>
   );
