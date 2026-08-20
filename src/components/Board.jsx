@@ -168,6 +168,11 @@ export default function Board() {
   // double-starting, so this is safe to call on every state change.
   useEffect(() => {
     if (useGameStore.getState().autoCompleting) return;
+    // Skip the transient pre-deal state: its tableau is empty (vacuously
+    // "all face-up") and a win is provable by drawing, so isAutoCompletable
+    // would be true and we'd start an auto-complete on a state that is about
+    // to be replaced by the real deal — which would throw mid-sequence.
+    if (state.tableau.every((p) => p.length === 0) && state.foundations.every((p) => p.length === 0)) return;
     if (isAutoCompletable(state)) {
       setAnnounce('Auto-completing to foundations');
       autoComplete(true);
@@ -315,7 +320,7 @@ export default function Board() {
                 />
               )),
               <div key="spacer" />,
-              <Pile loc="waste" cards={state.waste} hiddenIds={hiddenIds} onAutoMove={autoMove} />,
+              <Pile key="waste" loc="waste" cards={state.waste} hiddenIds={hiddenIds} onAutoMove={autoMove} />,
               <Pile
                 key="stock"
                 loc="stock"
@@ -334,7 +339,7 @@ export default function Board() {
                 label={state.stock.length === 0 ? '↻' : ''}
                 hiddenIds={hiddenIds}
               />,
-              <Pile loc="waste" cards={state.waste} hiddenIds={hiddenIds} onAutoMove={autoMove} />,
+              <Pile key="waste" loc="waste" cards={state.waste} hiddenIds={hiddenIds} onAutoMove={autoMove} />,
               <div key="spacer" />,
               ...state.foundations.map((pile, i) => (
                 <Pile

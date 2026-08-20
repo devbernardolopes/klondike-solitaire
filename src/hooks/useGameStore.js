@@ -116,6 +116,7 @@ export const useGameStore = create((set, get) => ({
     const preDeal = buildPreDealState(seed !== undefined ? seed : undefined);
     set({ state: preDeal, redoStack: [], autoMoveState: {}, lastActionMeta: { type: 'draw' } });
     requestAnimationFrame(() => {
+      cancelAutoComplete(set);
       captureFlip();
       useUiStore.getState().beginAnimating();
       set({ state: deal(seed !== undefined ? { seed } : {}), lastActionMeta: { type: 'deal' } });
