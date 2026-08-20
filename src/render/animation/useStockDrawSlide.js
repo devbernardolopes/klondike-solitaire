@@ -48,6 +48,20 @@ export function useStockDrawSlide() {
       return;
     }
 
+    // The freshly drawn card is parked (via a transform) at the stock pile's
+    // position, but it still lives inside the WASTE pile's wrapper <div> (see
+    // Pile.jsx). That wrapper is `position:absolute; z-index:<waste index>` and
+    // forms its own stacking context, so the zIndex we set on cardNode below
+    // only orders siblings INSIDE the wrapper — it does NOT lift the card above
+    // the stock pile's own wrapper divs. For early draws the waste wrapper's
+    // z-index is below the remaining stock wrappers, so the parked card renders
+    // BEHIND the stock pile and its flip is invisible (only the slide into the
+    // waste is seen). Raise the wrapper's z-index for the animation so the flip
+    // plays on top of the stock pile for every draw, then restore it on cleanup.
+    const wrap = cardNode.parentElement;
+    const prevWrapZ = wrap ? wrap.style.zIndex : '';
+    if (wrap) wrap.style.zIndex = '10000';
+
     const sRect = stockPile.getBoundingClientRect();
     const wRect = wastePile.getBoundingClientRect();
     const dx = sRect.left - wRect.left;
@@ -85,6 +99,7 @@ export function useStockDrawSlide() {
       // it parked at the stock pile or face-down.
       gsap.set(cardNode, { x: 0, y: 0, clearProps: 'zIndex' });
       gsap.set(inner, { rotateY: 0 });
+      if (wrap) wrap.style.zIndex = prevWrapZ;
       useUiStore.getState().endAnimating();
     };
   }, [state, lastActionMeta]);
