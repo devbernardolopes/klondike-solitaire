@@ -15,7 +15,7 @@ import { useCardMoveSlide } from '../render/animation/useCardMoveSlide.js';
 import { useStockDrawSlide } from '../render/animation/useStockDrawSlide.js';
 import { playWinCascade } from '../render/animation/winCascade.js';
 import { isWon } from '../core/winDetection.js';
-import { isObviousWinState } from '../core/rules.js';
+import { isAutoCompletable } from '../core/solver.js';
 import Pile from './Pile.jsx';
 import { CardFace } from './CardView.jsx';
 
@@ -160,12 +160,15 @@ export default function Board() {
     wasWon.current = won;
   }, [won]);
 
-  // Auto-trigger auto-complete once no hidden information remains anywhere —
-  // this state is mathematically guaranteed completable, so no button press
-  // should be required. autoComplete() already guards against double-starting
-  // while a run is in progress, so it's safe to call this on every state change.
+  // Auto-trigger auto-complete once the tableau holds no hidden information AND
+  // a full win is provable from the current state (the solver may require
+  // cycling the still-present stock/waste). Skips while a run is already
+  // animating (autoCompleting) so the (relatively expensive) solver isn't
+  // re-run on every step of the sequence. autoComplete() also guards against
+  // double-starting, so this is safe to call on every state change.
   useEffect(() => {
-    if (isObviousWinState(state) && !isWon(state)) {
+    if (useGameStore.getState().autoCompleting) return;
+    if (isAutoCompletable(state)) {
       setAnnounce('Auto-completing to foundations');
       autoComplete(true);
     }

@@ -5,8 +5,9 @@
 import { create } from 'zustand';
 import { deal } from '../core/dealer.js';
 import { applyMove, undo as coreUndo, redo as coreRedo } from '../core/moveEngine.js';
-import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, findAssistTableauMove, hasAnyValidMove, DEST_ORDER } from '../core/rules.js';
+import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, hasAnyValidMove, DEST_ORDER } from '../core/rules.js';
 import { isWon } from '../core/winDetection.js';
+import { findWinningSequence } from '../core/solver.js';
 import { buildStandardDeck, shuffle } from '../core/Deck.js';
 import { createEmptyGameState } from '../core/GameState.js';
 import { randomSolvableSeed, pickSolvableSeed } from '../core/solvablePool.js';
@@ -55,6 +56,13 @@ function clearAutoCompleteTimer() {
   }
 }
 
+// Cancel any in-progress auto-complete run and drop the "autoCompleting" flag so
+// a user action (or a later obvious-win state) can re-trigger it.
+function cancelAutoComplete(set) {
+  clearAutoCompleteTimer();
+  set({ autoCompleting: false });
+}
+
 /**
  * Read a pile array from state by locator.
  * @param {import('../core/GameState.js').GameState} s
@@ -70,6 +78,9 @@ function readPile(s, loc) {
 export const useGameStore = create((set, get) => ({
   state: deal({ seed: randomSolvableSeed() }),
   redoStack: [],
+  // True while an auto-complete sequence is animating, so the Board trigger
+  // effect doesn't re-run the (expensive) solver on every step of the run.
+  autoCompleting: false,
   // Remembers the last auto-move destination per card id so repeated clicks
   // cycle through the valid slots in DEST_ORDER. Reset on new game / undo / redo.
   autoMoveState: {},
@@ -89,7 +100,7 @@ export const useGameStore = create((set, get) => ({
    * @param {'winning'|'random'} [mode]
    */
   dealNewGame: (mode = 'random') => {
-    clearAutoCompleteTimer();
+    cancelAutoComplete(set);
     useUiStore.getState().setNoMovesDialogOpen(false);
     if (useUiStore.getState().animatingCount > 0) return;
     useUiStore.getState().setLastNewGameMode(mode);
@@ -156,7 +167,7 @@ export const useGameStore = create((set, get) => ({
    * @returns {boolean} whether the move was applied
    */
   moveCard: (from, to, cardId, opts = {}) => {
-    clearAutoCompleteTimer();
+    cancelAutoComplete(set);
     const { state, redoStack } = get();
     if (isWon(state) || useStatsStore.getState().isOver) return false;
     if (useUiStore.getState().animatingCount > 0) return false;
@@ -207,7 +218,7 @@ export const useGameStore = create((set, get) => ({
   },
 
   undo: () => {
-    clearAutoCompleteTimer();
+    cancelAutoComplete(set);
     useUiStore.getState().setNoMovesDialogOpen(false);
     const { state, redoStack } = get();
     if (state.moveHistory.length === 0 || useStatsStore.getState().isOver) return;
@@ -220,7 +231,7 @@ export const useGameStore = create((set, get) => ({
   },
 
   redo: () => {
-    clearAutoCompleteTimer();
+    cancelAutoComplete(set);
     const { state, redoStack } = get();
     if (redoStack.length === 0 || useStatsStore.getState().isOver) return;
     if (useUiStore.getState().animatingCount > 0) return;
@@ -289,27 +300,46 @@ export const useGameStore = create((set, get) => ({
     // obvious-win state passes force:true because that state is reached BY an
     // animating move, and the running sequence keeps the lock held itself.
     if (!force && useUiStore.getState().animatingCount > 0) return false;
-    // Remember every tableau arrangement seen during THIS run so a tableau
-    // shuffle that merely reproduces a previously-visited state (e.g. a run
-    // bouncing between two piles) is detected and the run stops instead of
-    // looping. A genuine winning sequence empties the tableau monotonically and
-    // can never revisit an arrangement, so this never blocks real progress.
+
+    // Try to prove a full win from here. When found (even with cards still in
+    // stock/waste — the solver models draw/recycle), animate the whole winning
+    // line so the game is guaranteed to end in a win.
+    const seq = findWinningSequence(get().state);
+    if (seq && seq.length > 0) {
+      set({ autoCompleting: true });
+      let i = 0;
+      const step = () => {
+        if (i >= seq.length) {
+          autoCompleteTimer = null;
+          set({ autoCompleting: false });
+          return;
+        }
+        const move = seq[i++];
+        const cur = get().state;
+        const next = applyMove(cur, move);
+        captureFlip();
+        useUiStore.getState().beginAnimating();
+        set({ state: next, redoStack: [], autoMoveState: {}, lastActionMeta: { type: 'auto' } });
+        useStatsStore.getState().startTimerIfValid(cur);
+        useStatsStore.getState().addMoves(1);
+        autoCompleteTimer = setTimeout(step, AUTO_COMPLETE_DELAY);
+      };
+      step();
+      return true;
+    }
+
+    // No win is provable (only reachable via the manual, non-obvious trigger).
+    // Silently make safe, obvious foundation moves and stop — no announcement,
+    // matching the requested "keep silent on stall" behavior.
     const visited = new Set();
     const step = () => {
-    const cur = get().state;
-    // Signature must cover every pile an auto-complete step can change (waste,
-    // foundations, tableau) — not just the tableau. findFoundationMove also moves
-    // the waste top, which leaves the tableau arrangement identical, so a
-    // tableau-only signature would falsely match the previous step and stop the
-    // cascade right after the waste card moved (stranding a tableau card that
-    // also had a valid foundation move). A genuine cyclical tableau shuffle
-    // still reproduces the full signature and trips the guard.
-    const sig = [
-      cur.waste.map((c) => c.id).join(','),
-      cur.foundations.map((p) => p.map((c) => c.id).join(',')).join('|'),
-      cur.tableau.map((p) => p.map((c) => c.id).join(',')).join('|'),
-    ].join('##');
-    if (visited.has(sig)) {
+      const cur = get().state;
+      const sig = [
+        cur.waste.map((c) => c.id).join(','),
+        cur.foundations.map((p) => p.map((c) => c.id).join(',')).join('|'),
+        cur.tableau.map((p) => p.map((c) => c.id).join(',')).join('|'),
+      ].join('##');
+      if (visited.has(sig)) {
         autoCompleteTimer = null;
         return;
       }
@@ -330,30 +360,6 @@ export const useGameStore = create((set, get) => ({
         autoCompleteTimer = setTimeout(step, AUTO_COMPLETE_DELAY);
         return;
       }
-      // No direct foundation move — see if a short tableau shuffle unblocks one.
-      const assist = findAssistTableauMove(cur);
-      if (assist) {
-        // applyMoveCards requires the FULL contiguous top run, not just the
-        // starting card id — reconstruct it the same way moveCard does.
-        const run = getTableauRun(cur.tableau[assist.fromCol], assist.cardId);
-        const cardIds = run.map((c) => c.id).reverse();
-        const next = applyMove(cur, {
-          type: 'moveCards',
-          from: `tableau:${assist.fromCol}`,
-          to: `tableau:${assist.toCol}`,
-          cardIds,
-        });
-        captureFlip();
-        useUiStore.getState().beginAnimating();
-        set({ state: next, redoStack: [], autoMoveState: {}, lastActionMeta: { type: 'auto' } });
-        useStatsStore.getState().startTimerIfValid(cur);
-        useStatsStore.getState().addMoves(1);
-        autoCompleteTimer = setTimeout(step, AUTO_COMPLETE_DELAY);
-        return;
-      }
-      // Neither a foundation move nor a helpful tableau shuffle was found within
-      // the search budget — stop gracefully, same as today. This should be rare
-      // once isObviousWinState triggered the run, but is not treated as an error.
       autoCompleteTimer = null;
     };
     step();

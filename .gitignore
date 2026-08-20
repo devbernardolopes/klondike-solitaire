@@ -26,6 +26,7 @@ pnpm-debug.log*
 .idea/
 .DS_Store
 Thumbs.db
+.opencode/
 
 # Coverage / test output (future)
 coverage/

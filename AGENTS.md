@@ -32,7 +32,10 @@ Modules in `src/core/`:
 - `GameState.js` — JSDoc typedef of the full `GameState` shape + `createEmptyGameState()`.
 - `rules.js` — **REAL logic** (tableau down alternating color, foundation up by suit from Ace,
   `isValidSequence`). Additional helpers used by the UI: `getTableauRun`, `getAutoMoveTargets`,
-  `findFoundationMove`, `findAssistTableauMove`, `hasAnyValidMove`, `isObviousWinState`, `DEST_ORDER`.
+  `findFoundationMove`, `hasAnyValidMove`, `isObviousWinState`, `DEST_ORDER`.
+- `solver.js` — `findWinningSequence(state, {maxNodes, maxMs})` (memoized DFS proving a full win,
+  modeling draw/recycle/foundation/tableau moves) and `isAutoCompletable(state)` (true when the
+  tableau is fully revealed AND a win is provable). Replaces the old depth-capped `findAssistTableauMove`.
 - `moveEngine.js` — **PURE** `applyMove(state, move) -> newState` (never mutates input). Move
   `type`s: `draw`, `recycle`, `moveCards`. `undo(state)`, `redo(state, record)` (records carried in
   the store's `redoStack`).
@@ -83,9 +86,10 @@ Exposes `state` (raw core GameState) plus actions:
 `moveCard` validates via `core/rules.js` (single top card, or a full valid tableau run via
 `getTableauRun`) and ignores illegal moves. `autoMove` cycles a clicked card's destination
 through `DEST_ORDER` on repeated clicks (foundations first, then tableaus) and never
-immediately reverses the previous auto-move. `autoComplete` greedily flies cards to
-foundations (with optional short tableau shuffles via `findAssistTableauMove`) until no
-progress remains; each step is a normal history entry. Before every mutating action the
+immediately reverses the previous auto-move. `autoComplete` proves a full win with
+`solver.findWinningSequence` (modeling draw/recycle/foundation/tableau moves) and animates
+the whole winning line; if no win is provable it silently makes safe foundation moves. Each
+step is a normal history entry. Before every mutating action the
 store captures a GSAP `Flip` snapshot (`captureFlip`) so the animation layer can tween cards
 that reparent across `Pile` components. It also drives `useStatsStore` (moves/timer) and
 `useUiStore` (dialogs/announcements).
@@ -166,7 +170,10 @@ in-memory and score is unimplemented.
 - `Board.jsx` responsive CSS-grid layout with correct initial deal (face-down + face-up).
 - Single top-card **and** multi-card run drag-and-drop with `DragOverlay` run preview.
 - One-tap / one-click auto-move (`rules.getAutoMoveTargets` + store `autoMove`) and
-  auto-complete (`autoComplete`, gated by `isObviousWinState`).
+  auto-complete (`autoComplete`): proved-winnable via `solver.findWinningSequence`
+  (includes stock/waste cycling), auto-fired when `solver.isAutoCompletable`
+  (tableau fully revealed AND a win is provable). Manual trigger still makes safe
+  foundation moves if no win is provable.
 - Store: deal / draw / recycle / move / undo / redo / autoMove / autoComplete; Flip-capture
   integration for animations.
 - Both deck renderers (atlas slicing + procedural canvas) wired into `CardView` with 3D flip —
