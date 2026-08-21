@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createCard } from './Card.js';
 import { createEmptyGameState } from './GameState.js';
-import { findWinningSequence, findReachableMove, isAutoCompletable, SOLVER_TIMEOUT } from './solver.js';
+import { findWinningSequence, findReachableMove, hasDeadEndMove, isAutoCompletable, SOLVER_TIMEOUT } from './solver.js';
 import { applyMove } from './moveEngine.js';
 import { isWon } from './winDetection.js';
 
@@ -160,4 +160,82 @@ test('budget-exceeded search returns SOLVER_TIMEOUT, not null (findWinningSequen
   const seq = findWinningSequence(s, { maxNodes: 1 });
   assert.equal(seq, SOLVER_TIMEOUT);
   assert.ok(!Array.isArray(seq));
+});
+
+/**
+ * Whole-pile-to-empty relocations must NOT count as a move for the dead-end
+ * detector. A column whose only "move" is shifting the whole pile onto an empty
+ * column is effectively stuck (it uncovers nothing and advances nothing).
+ */
+test('a whole-pile-to-empty relocation is not a meaningful move', () => {
+  const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
+  const s = createEmptyGameState();
+  // Pile 0 is a full King-led run; pile 1 is an empty column. The only legal
+  // move is relocating pile 0 onto pile 1 — pointless.
+  s.tableau = [
+    [c('spades', 13, 'sK'), c('hearts', 12, 'hQ'), c('spades', 11, 'sJ'), c('hearts', 10, 'h10')],
+    [], [], [], [], [], [],
+  ];
+  assert.equal(hasDeadEndMove(s), false);
+  assert.equal(findReachableMove(s, { maxNodes: 500000, maxMs: 4000 }), false);
+});
+
+/**
+ * A genuine dead end: two King-led columns that cannot cross-build (a King
+ * cannot land on the other column's top) and no empty columns / stock / waste.
+ * Nothing can move, so the detector must report a dead end.
+ */
+test('genuine dead end with no cross-build shows the modal', () => {
+  const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
+  const s = createEmptyGameState();
+  s.foundations[0] = [c('hearts', 1, 'h1')];
+  s.foundations[1] = [c('clubs', 1, 'c1')];
+  s.foundations[2] = [c('diamonds', 1, 'd1')];
+  s.foundations[3] = [c('spades', 1, 's1')];
+  s.tableau = [
+    [c('clubs', 13, 'cK'), c('diamonds', 12, 'dQ'), c('clubs', 11, 'cJ'), c('diamonds', 10, 'd10')],
+    [c('spades', 13, 'sK'), c('hearts', 12, 'hQ'), c('spades', 11, 'sJ'), c('hearts', 10, 'h10')],
+    [], [], [], [], [],
+  ];
+  assert.equal(hasDeadEndMove(s), false);
+  assert.equal(findReachableMove(s, { maxNodes: 500000, maxMs: 4000 }), false);
+});
+
+/**
+ * The board reported as a dead end (Game Mode: Random) actually has a legal
+ * move — 8s (column 7) builds onto 9h (column 3) — so the "no moves" modal
+ * correctly stays hidden. Captured as a regression so the detector keeps
+ * recognizing it as alive.
+ */
+function buildReportedRandomBoard() {
+  const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
+  const s = createEmptyGameState();
+  s.foundations[0] = Array.from({ length: 7 }, (_, i) => c('hearts', i + 1, `fh${i + 1}`));
+  s.foundations[1] = Array.from({ length: 9 }, (_, i) => c('clubs', i + 1, `fc${i + 1}`));
+  s.foundations[2] = Array.from({ length: 3 }, (_, i) => c('diamonds', i + 1, `fd${i + 1}`));
+  s.foundations[3] = Array.from({ length: 5 }, (_, i) => c('spades', i + 1, `fs${i + 1}`));
+  // Tableau, bottom->top. Reported top->bottom; first listed = top.
+  s.tableau[0] = [c('clubs', 13, 'cK'), c('diamonds', 12, 'dQ'), c('clubs', 11, 'cJ'), c('diamonds', 10, 'd10')];
+  s.tableau[1] = [
+    c('spades', 13, 'sK'), c('hearts', 12, 'hQ'), c('spades', 11, 'sJ'), c('hearts', 10, 'h10'),
+    c('spades', 9, 's9'), c('hearts', 8, 'h8'), c('spades', 7, 's7'), c('hearts', 6, 'h6'),
+  ];
+  s.tableau[2] = [
+    c('hearts', 13, 'hK'), c('clubs', 12, 'cQ'), c('hearts', 11, 'hJ'), c('clubs', 10, 'c10'), c('hearts', 9, 'h9'),
+  ];
+  s.tableau[3] = [c('diamonds', 13, 'dK'), c('spades', 12, 'sQ')];
+  s.tableau[4] = [];
+  s.tableau[5] = [];
+  s.tableau[6] = [
+    c('diamonds', 5, 'd5', false), c('spades', 6, 's6', false), c('diamonds', 7, 'd7', false),
+    c('spades', 10, 's10'), c('diamonds', 9, 'd9'), c('spades', 8, 's8'),
+    c('diamonds', 7, 'd7b'), c('spades', 6, 's6b'), c('diamonds', 5, 'd5b'),
+  ];
+  return s;
+}
+
+test('reported random board has a real move (8s->9h), modal stays hidden', () => {
+  const s = buildReportedRandomBoard();
+  assert.equal(hasDeadEndMove(s), true);
+  assert.equal(findReachableMove(s, { maxNodes: 500000, maxMs: 4000 }), true);
 });

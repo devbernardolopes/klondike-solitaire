@@ -14,7 +14,6 @@ import {
   canMoveToTableau,
   canMoveToFoundation,
   isAllTableauFaceUp,
-  hasAnyValidMove,
 } from './rules.js';
 import { isWon } from './winDetection.js';
 
@@ -145,20 +144,95 @@ export function findWinningSequence(state, opts = {}) {
 }
 
 /**
- * Is *any* legal card-play move reachable from this state through legal moves
- * (including stock draws / waste recycling)? This is the right question for the
- * "no moves remaining" detector: a position is a dead end only when no legal
- * move is *ever* reachable (after fully cycling the stock), not when a full win
- * is merely unprovable. A plain tableau relocation (e.g. a red 8 onto a black 9)
- * counts as a reachable move — such a position is NOT stuck, even though it
- * neither advances a foundation nor uncovers a face-down card. The search
- * continues past non-progress moves, so a relocation that merely *leads to* a
- * later useful move also keeps the position alive.
+ * Comprehensive legal moves for the "no moves remaining" detector. Mirrors the
+ * win solver's `enumerateMoves` but (a) also generates waste->tableau
+ * relocations (e.g. a red 8 from the waste onto a black 9) and (b) skips the
+ * pointless "move an entire pile onto an empty column" shuffle, which uncovers
+ * nothing and never advances a foundation — counting it would make a genuinely
+ * stuck position (where the only moves are King-shuffles of whole piles) look
+ * alive. Draw/recycle are kept so a buried waste card can be cycled into play.
+ */
+function enumerateDeadEndMoves(s) {
+  const moves = [];
+
+  // (a) Foundation moves: waste top + face-up tableau tops.
+  const candidates = [];
+  if (s.waste.length > 0) {
+    candidates.push({ from: 'waste', card: s.waste[s.waste.length - 1] });
+  }
+  s.tableau.forEach((pile, i) => {
+    if (pile.length > 0 && pile[pile.length - 1].faceUp) {
+      candidates.push({ from: `tableau:${i}`, card: pile[pile.length - 1] });
+    }
+  });
+  for (const { from, card } of candidates) {
+    for (let i = 0; i < s.foundations.length; i++) {
+      if (canMoveToFoundation(card, s.foundations[i])) {
+        moves.push({ type: 'moveCards', from, to: `foundation:${i}`, cardIds: [card.id] });
+      }
+    }
+  }
+
+  // (b) Waste -> tableau relocations (free the waste / build a run).
+  if (s.waste.length > 0) {
+    const card = s.waste[s.waste.length - 1];
+    for (let i = 0; i < s.tableau.length; i++) {
+      if (canMoveToTableau(card, s.tableau[i])) {
+        moves.push({ type: 'moveCards', from: 'waste', to: `tableau:${i}`, cardIds: [card.id] });
+      }
+    }
+  }
+
+  // (c) Tableau -> tableau runs.
+  for (let a = 0; a < s.tableau.length; a++) {
+    const pile = s.tableau[a];
+    for (const card of pile) {
+      if (!card.faceUp) continue;
+      const run = getTableauRun(pile, card.id);
+      if (!run) continue;
+      const cardIds = run.map((c) => c.id).reverse();
+      for (let b = 0; b < s.tableau.length; b++) {
+        if (b === a) continue;
+        if (!canMoveToTableau(run[0], s.tableau[b])) continue;
+        // Skip a pointless move of an entire pile onto an empty column.
+        if (s.tableau[b].length === 0 && pile.length === run.length) continue;
+        moves.push({ type: 'moveCards', from: `tableau:${a}`, to: `tableau:${b}`, cardIds });
+      }
+    }
+  }
+
+  // (d) Stock cycling — models drawing through and recycling the waste.
+  if (s.stock.length > 0) {
+    moves.push({ type: 'draw' });
+  } else if (s.waste.length > 0) {
+    moves.push({ type: 'recycle' });
+  }
+
+  return moves;
+}
+
+/** Is there any *meaningful* card-play move in `s`? Excludes the pointless
+ * whole-pile-to-empty relocation. Used by the "no moves remaining" detector. */
+export function hasDeadEndMove(s) {
+  return enumerateDeadEndMoves(s).some((m) => m.type === 'moveCards');
+}
+
+/**
+ * Is *any* meaningful legal card-play move reachable from this state through
+ * legal moves (including stock draws / waste recycling)? This is the right
+ * question for the "no moves remaining" detector: a position is a dead end only
+ * when no meaningful move is *ever* reachable (after fully cycling the stock),
+ * not when a full win is merely unprovable. A plain tableau relocation (e.g. a
+ * red 8 onto a black 9) counts as a reachable move — such a position is NOT
+ * stuck, even though it neither advances a foundation nor uncovers a face-down
+ * card. The search continues past non-progress moves (including whole-pile
+ * shuffles, which it uses only as transitions), so a relocation that merely
+ * *leads to* a later useful move also keeps the position alive.
  *
  * Returns:
- *  - `true`  if any legal move is reachable,
- *  - `false` if the search fully exhausted the space with no move reachable
- *            (a definitive dead end),
+ *  - `true`  if a meaningful move is reachable,
+ *  - `false` if the search fully exhausted the space with no meaningful move
+ *            reachable (a definitive dead end),
  *  - `SOLVER_TIMEOUT` if the budget was exceeded before concluding (unknown).
  *
  * Note: stock draws / recycles themselves are NOT counted as moves (they change
@@ -177,7 +251,7 @@ export function findReachableMove(state, opts = {}) {
   let aborted = false;
 
   function search(s, depth) {
-    if (hasAnyValidMove(s)) return true;
+    if (hasDeadEndMove(s)) return true;
     if (nodes++ > maxNodes || Date.now() - start > maxMs) {
       aborted = true;
       return false;
@@ -186,7 +260,7 @@ export function findReachableMove(state, opts = {}) {
     const sig = signature(s);
     if (visited.has(sig)) return false;
     visited.add(sig);
-    for (const move of enumerateMoves(s)) {
+    for (const move of enumerateDeadEndMoves(s)) {
       if (search(applyMove(s, move), depth + 1)) return true;
     }
     return false;

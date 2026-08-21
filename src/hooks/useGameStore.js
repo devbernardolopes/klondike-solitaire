@@ -5,10 +5,10 @@
 import { create } from 'zustand';
 import { deal } from '../core/dealer.js';
 import { applyMove, undo as coreUndo, redo as coreRedo } from '../core/moveEngine.js';
-import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, hasAnyValidMove, isAllTableauFaceUp, DEST_ORDER } from '../core/rules.js';
+import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, isAllTableauFaceUp, DEST_ORDER } from '../core/rules.js';
 import { isWon } from '../core/winDetection.js';
 import { solveAsync, cancelAllSolves, STALE } from '../core/solverClient.js';
-import { SOLVER_TIMEOUT } from '../core/solver.js';
+import { SOLVER_TIMEOUT, hasDeadEndMove } from '../core/solver.js';
 import { buildStandardDeck, shuffle } from '../core/Deck.js';
 import { createEmptyGameState } from '../core/GameState.js';
 import { randomSolvableSeed, pickSolvableSeed } from '../core/solvablePool.js';
@@ -45,7 +45,7 @@ function captureFlip(type) {
 // result never asserts a dead end. The result is ignored if the board has changed
 // in the meantime (reference guard) or the solve was superseded (STALE).
 function checkDeadEnd(get, set, state) {
-  if (hasAnyValidMove(state)) {
+  if (hasDeadEndMove(state)) {
     useUiStore.getState().setNoMovesDialogOpen(false);
     return;
   }
