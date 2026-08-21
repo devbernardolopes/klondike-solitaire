@@ -14,7 +14,7 @@ import {
   canMoveToTableau,
   canMoveToFoundation,
   isAllTableauFaceUp,
-  hasProgressMove,
+  hasAnyValidMove,
 } from './rules.js';
 import { isWon } from './winDetection.js';
 
@@ -145,27 +145,30 @@ export function findWinningSequence(state, opts = {}) {
 }
 
 /**
- * Is *any* progress move reachable from this state through legal moves (including
- * stock draws / waste recycling)? A "progress move" is one that advances a card
- * onto a foundation or uncovers a face-down card (see `hasProgressMove` in
- * rules.js). This is the right question for the "no moves remaining" detector:
- * a position is a dead end only when no progress is *ever* reachable, not when a
- * full win is merely unprovable. A plain build that relocates already-exposed
- * cards (e.g. a Queen onto a King) does not itself count as progress, but the
- * search continues past it, so if such a build can *lead to* a foundation/uncover
- * move the position is correctly reported as still alive.
+ * Is *any* legal card-play move reachable from this state through legal moves
+ * (including stock draws / waste recycling)? This is the right question for the
+ * "no moves remaining" detector: a position is a dead end only when no legal
+ * move is *ever* reachable (after fully cycling the stock), not when a full win
+ * is merely unprovable. A plain tableau relocation (e.g. a red 8 onto a black 9)
+ * counts as a reachable move — such a position is NOT stuck, even though it
+ * neither advances a foundation nor uncovers a face-down card. The search
+ * continues past non-progress moves, so a relocation that merely *leads to* a
+ * later useful move also keeps the position alive.
  *
  * Returns:
- *  - `true`  if a progress move is reachable,
- *  - `false` if the search fully exhausted the space with no progress reachable
+ *  - `true`  if any legal move is reachable,
+ *  - `false` if the search fully exhausted the space with no move reachable
  *            (a definitive dead end),
  *  - `SOLVER_TIMEOUT` if the budget was exceeded before concluding (unknown).
+ *
+ * Note: stock draws / recycles themselves are NOT counted as moves (they change
+ * nothing about card placement); only waste/tableau/foundation plays count.
  *
  * @param {import('./GameState.js').GameState} state
  * @param {{ maxNodes?: number, maxMs?: number }} [opts]
  * @returns {boolean|typeof SOLVER_TIMEOUT}
  */
-export function findReachableProgress(state, opts = {}) {
+export function findReachableMove(state, opts = {}) {
   const maxNodes = opts.maxNodes ?? 150000;
   const maxMs = opts.maxMs ?? 1500;
   const start = Date.now();
@@ -174,7 +177,7 @@ export function findReachableProgress(state, opts = {}) {
   let aborted = false;
 
   function search(s, depth) {
-    if (hasProgressMove(s)) return true;
+    if (hasAnyValidMove(s)) return true;
     if (nodes++ > maxNodes || Date.now() - start > maxMs) {
       aborted = true;
       return false;

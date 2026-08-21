@@ -2,17 +2,17 @@
 // Web Worker that runs the (potentially expensive) win-proving search off the
 // main thread so the UI never freezes. It only imports the pure core solver.
 
-import { findWinningSequence, findReachableProgress } from './solver.js';
+import { findWinningSequence, findReachableMove } from './solver.js';
 
 self.onmessage = (e) => {
   const { id, state, opts } = e.data || {};
   let seq = null;
   try {
     if (state) {
-      // `goal: 'progress'` answers "is any progress move reachable?" (used by the
+      // `goal: 'move'` answers "is any legal move reachable?" (used by the
       // "no moves remaining" detector); otherwise we prove a full win.
-      seq = opts && opts.goal === 'progress'
-        ? findReachableProgress(state, opts || {})
+      seq = opts && opts.goal === 'move'
+        ? findReachableMove(state, opts || {})
         : findWinningSequence(state, opts || {});
     }
   } catch {

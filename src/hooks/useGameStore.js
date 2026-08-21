@@ -5,7 +5,7 @@
 import { create } from 'zustand';
 import { deal } from '../core/dealer.js';
 import { applyMove, undo as coreUndo, redo as coreRedo } from '../core/moveEngine.js';
-import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, hasProgressMove, isAllTableauFaceUp, DEST_ORDER } from '../core/rules.js';
+import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, hasAnyValidMove, isAllTableauFaceUp, DEST_ORDER } from '../core/rules.js';
 import { isWon } from '../core/winDetection.js';
 import { solveAsync, cancelAllSolves, STALE } from '../core/solverClient.js';
 import { SOLVER_TIMEOUT } from '../core/solver.js';
@@ -36,22 +36,21 @@ function captureFlip(type) {
   return enqueueFlip(type, rects);
 }
 
-// Confirm a genuinely stuck position once the stock is exhausted (no draws left)
-// and there is no obvious progress move. We ask the off-thread solver whether any
-// PROGRESS move (a foundation advance or uncovering a face-down card) is reachable
+// Confirm a genuinely stuck position once the stock is exhausted (no draws left).
+// We ask the off-thread solver whether ANY legal card-play move is reachable
 // through legal play including stock cycling. Only when the search fully exhausts
-// the space with NO progress reachable do we show the "no moves remaining" modal.
-// This correctly treats pure King-shuffles / setup relocations as non-progress
-// moves while still catching real dead ends. A budget-exceeded (unknown) result
-// never asserts a dead end. The result is ignored if the board has changed in the
-// meantime (reference guard) or the solve was superseded (STALE).
+// the space with NO move reachable do we show the "no moves remaining" modal. This
+// correctly treats a useful relocation (e.g. a red 8 onto a black 9) as a real
+// move, so the modal never fires while a play exists. A budget-exceeded (unknown)
+// result never asserts a dead end. The result is ignored if the board has changed
+// in the meantime (reference guard) or the solve was superseded (STALE).
 function checkDeadEnd(get, set, state) {
-  if (hasProgressMove(state)) {
+  if (hasAnyValidMove(state)) {
     useUiStore.getState().setNoMovesDialogOpen(false);
     return;
   }
   const captured = state; // each action mints a fresh state object
-  const { promise } = solveAsync(state, { maxNodes: 500000, maxMs: 4000, goal: 'progress' });
+  const { promise } = solveAsync(state, { maxNodes: 500000, maxMs: 4000, goal: 'move' });
   promise.then((seq) => {
     if (seq === STALE) return;
     if (get().state !== captured) return; // state moved on; ignore stale result
@@ -60,10 +59,10 @@ function checkDeadEnd(get, set, state) {
       return;
     }
     if (seq === true) {
-      // A progress move (foundation or uncover) is reachable — not stuck.
+      // A legal move is reachable anywhere through cycling — not stuck.
       useUiStore.getState().setNoMovesDialogOpen(false);
     } else {
-      // Search fully exhausted with no progress reachable — a genuine dead end.
+      // Search fully exhausted with no move reachable — a genuine dead end.
       useUiStore.getState().setNoMovesDialogOpen(true);
     }
   });

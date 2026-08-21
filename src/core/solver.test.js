@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createCard } from './Card.js';
 import { createEmptyGameState } from './GameState.js';
-import { findWinningSequence, findReachableProgress, isAutoCompletable, SOLVER_TIMEOUT } from './solver.js';
+import { findWinningSequence, findReachableMove, isAutoCompletable, SOLVER_TIMEOUT } from './solver.js';
 import { applyMove } from './moveEngine.js';
 import { isWon } from './winDetection.js';
 
@@ -128,22 +128,36 @@ test('non-winnable state returns null (not a throw)', () => {
   assert.equal(isAutoCompletable(s), false);
 });
 
-test('budget-exceeded search returns SOLVER_TIMEOUT, not null', () => {
+test('a reachable relocation move is NOT a dead end (any-move semantics)', () => {
   const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
   const s = createEmptyGameState();
-  // A board with real (non-progress) moves — a hQ/sK build loop — but no
-  // foundation move and no face-down to uncover, so no progress is ever
-  // reachable. A tiny node budget forces an abort before the loop is explored,
-  // exercising the SOLVER_TIMEOUT sentinel (distinct from a definitive `false`).
+  // hQ on sK, with empty columns available: sK can move to an empty column — that
+  // is a legal (if non-progress) move, so the position is NOT stuck.
   s.foundations[0] = Array.from({ length: 13 }, (_, i) => c('spades', i + 1, `sp${i + 1}`));
   s.foundations[1] = Array.from({ length: 13 }, (_, i) => c('clubs', i + 1, `cl${i + 1}`));
   s.foundations[2] = Array.from({ length: 13 }, (_, i) => c('diamonds', i + 1, `d${i + 1}`));
   s.foundations[3] = Array.from({ length: 10 }, (_, i) => c('hearts', i + 1, `h${i + 1}`));
-  // spades built only to 11 (sK=13 can't go), hearts only to 10 (hQ=12 can't go).
-  s.foundations[0][10] = c('spades', 11, 'sp11'); // ensure spades top is 11
+  s.foundations[0][10] = c('spades', 11, 'sp11');
   s.foundations[0] = s.foundations[0].slice(0, 11);
   s.tableau = [[c('hearts', 12, 'hQ'), c('spades', 13, 'sK')], [], [], [], [], [], []];
-  const seq = findReachableProgress(s, { maxNodes: 2 });
+  const seq = findReachableMove(s, { maxNodes: 2 });
+  assert.equal(seq, true);
+});
+
+test('budget-exceeded search returns SOLVER_TIMEOUT, not null (findWinningSequence)', () => {
+  const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
+  const s = createEmptyGameState();
+  // A board with real moves (hQ/sK build loop, sK can move to an empty column)
+  // but no immediate win. A tiny node budget forces an abort before the space is
+  // explored, exercising the SOLVER_TIMEOUT sentinel (distinct from `false`/`null`).
+  s.foundations[0] = Array.from({ length: 13 }, (_, i) => c('spades', i + 1, `sp${i + 1}`));
+  s.foundations[1] = Array.from({ length: 13 }, (_, i) => c('clubs', i + 1, `cl${i + 1}`));
+  s.foundations[2] = Array.from({ length: 13 }, (_, i) => c('diamonds', i + 1, `d${i + 1}`));
+  s.foundations[3] = Array.from({ length: 10 }, (_, i) => c('hearts', i + 1, `h${i + 1}`));
+  s.foundations[0][10] = c('spades', 11, 'sp11');
+  s.foundations[0] = s.foundations[0].slice(0, 11);
+  s.tableau = [[c('hearts', 12, 'hQ'), c('spades', 13, 'sK')], [], [], [], [], [], []];
+  const seq = findWinningSequence(s, { maxNodes: 1 });
   assert.equal(seq, SOLVER_TIMEOUT);
   assert.ok(!Array.isArray(seq));
 });
