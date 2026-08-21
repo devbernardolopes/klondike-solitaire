@@ -207,10 +207,10 @@ export default function Board() {
        // unrelated move.
        if (anyAnimating || isOver) return;
        if (e.key === 'n' || e.key === 'N') {
-         clearSelection();
-         setAnnounce('New game dealt');
-         dealNewGame();
-         return;
+          clearSelection();
+          setAnnounce('New game dealt');
+          dealNewGame(useUiStore.getState().lastNewGameMode);
+          return;
        }
        if (won) return;
        switch (e.key.toLowerCase()) {
