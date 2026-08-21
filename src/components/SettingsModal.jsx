@@ -164,6 +164,7 @@ export default function SettingsModal({
             <option value="sprite">Sprite (atlas)</option>
             <option value="4-color">4-color</option>
             <option value="4-color-2">4-color 2</option>
+            <option value="procedural-dark">Dark</option>
             {/* TODO(next pass): add real deck renderers */}
           </select>
         </div>

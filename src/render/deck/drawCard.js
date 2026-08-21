@@ -61,10 +61,14 @@ function drawGlyph(ctx, text, color, x, y, fontPx, flip) {
  * @param {number} rank  1..13
  * @param {number} w     card width in px
  * @param {number} h     card height in px
- * @param {(suit: string) => string} [colorFor]  color resolver; defaults to the
- *        classic red/black scheme. Pass a custom function for 4-color decks.
+ * @param {object} [opts]
+ * @param {(suit: string) => string} [opts.colorFor]  color resolver; defaults to
+ *        the classic red/black scheme. Pass a custom function for 4-color decks
+ *        or a light-brightened palette for dark decks.
+ * @param {string} [opts.background]  card face fill; defaults to off-white.
+ * @param {string} [opts.border]      card face stroke; defaults to a faint black.
  */
-export function drawCardFace(ctx, suit, rank, w, h, colorFor = colorOf) {
+export function drawCardFace(ctx, suit, rank, w, h, { colorFor = colorOf, background = '#fbfbf7', border = 'rgba(0,0,0,0.18)' } = {}) {
   const radius = Math.max(4, Math.round(w * 0.07));
   const color = colorFor(suit);
   const glyph = SUIT_GLYPH[suit];
@@ -72,10 +76,10 @@ export function drawCardFace(ctx, suit, rank, w, h, colorFor = colorOf) {
 
   ctx.clearRect(0, 0, w, h);
   roundRect(ctx, 0, 0, w, h, radius);
-  ctx.fillStyle = '#fbfbf7';
+  ctx.fillStyle = background;
   ctx.fill();
   ctx.lineWidth = Math.max(1, w * 0.012);
-  ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+  ctx.strokeStyle = border;
   ctx.stroke();
 
   // Corner indices (top-left, and mirrored bottom-right).

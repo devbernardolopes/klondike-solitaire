@@ -16,7 +16,7 @@ import { drawCardFace, drawCardBack } from './drawCard.js';
 /**
  * @implements {import('./deckRegistry.js').DeckRenderer}
  */
-export function createProceduralDeckRenderer({ size = 96, colorFor } = {}) {
+export function createProceduralDeckRenderer({ size = 96, faceOptions } = {}) {
   const w = size;
   const h = Math.round(size * 1.4);
   const cache = new Map();
@@ -45,7 +45,7 @@ export function createProceduralDeckRenderer({ size = 96, colorFor } = {}) {
       if (cache.has(key)) return cache.get(key).canvas.toDataURL('image/png');
 
       const { canvas, ctx } = makeCanvas(key);
-      drawCardFace(ctx, suit, rank, w, h, colorFor);
+      drawCardFace(ctx, suit, rank, w, h, faceOptions);
       return canvas.toDataURL('image/png');
     },
 
@@ -85,5 +85,25 @@ const FOUR_COLOR_2 = {
   spades: '#1e8a3b',
 };
 
-registerDeck('4-color', createProceduralDeckRenderer({ colorFor: (s) => FOUR_COLOR[s] }));
-registerDeck('4-color-2', createProceduralDeckRenderer({ colorFor: (s) => FOUR_COLOR_2[s] }));
+registerDeck('4-color', createProceduralDeckRenderer({ faceOptions: { colorFor: (s) => FOUR_COLOR[s] } }));
+registerDeck('4-color-2', createProceduralDeckRenderer({ faceOptions: { colorFor: (s) => FOUR_COLOR_2[s] } }));
+
+// Dark deck: no white face. Suit colors are brightened so the black suits
+// (spades/clubs) remain readable on the dark slate background.
+const DARK_COLOR = {
+  hearts: '#ff6b7a',
+  diamonds: '#ff8a5c',
+  spades: '#e8ecf4',
+  clubs: '#c7d2fe',
+};
+
+registerDeck(
+  'procedural-dark',
+  createProceduralDeckRenderer({
+    faceOptions: {
+      colorFor: (s) => DARK_COLOR[s],
+      background: '#232936',
+      border: 'rgba(255,255,255,0.22)',
+    },
+  })
+);
