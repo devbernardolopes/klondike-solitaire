@@ -33,10 +33,13 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
   const won = useGameStore((s) => isWon(s.state));
   const sessionOver = useStatsStore((s) => s.isOver);
   const hints = useUiStore((s) => s.hints);
+  // While an auto-complete (toward the win) is animating, the whole board is
+  // locked — the player must not interact with piles mid-sequence.
+  const autoCompleting = useGameStore((s) => s.autoCompleting);
   // Block this pile only when it is the busy destination of an in-flight move.
   // Source piles and all other piles stay fully interactive.
   const isAnimating = useUiStore((s) => s.animatingLocs.has(loc));
-  const locked = won || sessionOver || isAnimating;
+  const locked = won || sessionOver || isAnimating || autoCompleting;
 
   const kind = loc.split(':')[0];
   const isHintTarget = hints.some((h) => h.to === loc);

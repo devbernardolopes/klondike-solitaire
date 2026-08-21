@@ -128,6 +128,7 @@ export default function Board() {
   const announce = useUiStore((s) => s.announce);
   const handedness = useSettingsStore((s) => s.handedness);
   const isOver = useStatsStore((s) => s.isOver);
+  const autoCompleting = useGameStore((s) => s.autoCompleting);
   const won = isWon(state);
   // `anyAnimating` = some card is still in flight (used to block global actions
   // like new-game/undo/redo/auto-complete). `stockWasteBusy` only blocks
@@ -137,7 +138,7 @@ export default function Board() {
   const stockWasteBusy = useUiStore(
     (s) => s.animatingLocs.has('stock') || s.animatingLocs.has('waste'),
   );
-  const locked = won || isOver || anyAnimating;
+  const locked = won || isOver || anyAnimating || autoCompleting;
   const { sensors, onDragStart, onDragEnd, onDragCancel, activeRun } =
     useDragEngine();
 
@@ -205,7 +206,7 @@ export default function Board() {
        // still animating (or the game is over). Draw/recycle are handled below
        // with their own narrower stock/waste lock so they stay usable during an
        // unrelated move.
-       if (anyAnimating || isOver) return;
+        if (anyAnimating || isOver || autoCompleting) return;
        if (e.key === 'n' || e.key === 'N') {
           clearSelection();
           setAnnounce('New game dealt');
@@ -252,7 +253,7 @@ export default function Board() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [won, isOver, anyAnimating, stockWasteBusy, drawFromStock, recycleStock, undo, redo, autoComplete, dealNewGame, showHints, clearSelection, setAnnounce]);
+  }, [won, isOver, anyAnimating, autoCompleting, stockWasteBusy, drawFromStock, recycleStock, undo, redo, autoComplete, dealNewGame, showHints, clearSelection, setAnnounce]);
 
   const onStockClick = () => {
     if (won || isOver) return;

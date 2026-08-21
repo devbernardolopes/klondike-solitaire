@@ -131,6 +131,9 @@ function applyAutoStep(get, set, move) {
 // synchronous; used when the full solver has no win to prove (or when hidden
 // cards remain and we never want to pay for the search).
 function runGreedy(get, set) {
+  // Lock the whole board for the duration of the greedy run so the player
+  // cannot interact with cards mid-sequence (matches the winning auto-complete).
+  set({ autoCompleting: true });
   const visited = new Set();
   const step = () => {
     const cur = get().state;
@@ -271,6 +274,7 @@ export const useGameStore = create((set, get) => ({
   drawFromStock: () => {
     const { state, redoStack } = get();
     if (isWon(state) || useStatsStore.getState().isOver) return;
+    if (get().autoCompleting) return;
     if (state.stock.length === 0) return;
     // Only block while the stock/waste pair is itself animating (a draw slides a
     // card stock→waste). Other, unrelated moves don't block drawing.
@@ -295,6 +299,7 @@ export const useGameStore = create((set, get) => ({
   recycleStock: () => {
     const { state, redoStack } = get();
     if (isWon(state) || useStatsStore.getState().isOver) return;
+    if (get().autoCompleting) return;
     // Recycle slides every waste card back into the stock, so block only while
     // the stock/waste pair is already animating.
     const { animatingLocs } = useUiStore.getState();
@@ -321,6 +326,7 @@ export const useGameStore = create((set, get) => ({
     cancelAutoComplete(set);
     const { state, redoStack } = get();
     if (isWon(state) || useStatsStore.getState().isOver) return false;
+    if (get().autoCompleting) return false;
     if (from === to) return false;
     // Granular blocking: only refuse if a card being moved here is still in
     // flight, or if the destination (or a pile currently receiving another
@@ -416,6 +422,7 @@ export const useGameStore = create((set, get) => ({
   autoMove: (from, cardId) => {
     const { state, autoMoveState } = get();
     if (isWon(state) || useStatsStore.getState().isOver) return false;
+    if (get().autoCompleting) return false;
     // moveCard enforces the granular per-card / per-pile lock, so autoMove only
     // needs to bail on a won/over game here; the actual busy check happens there.
     const targets = getAutoMoveTargets(state, from, cardId);

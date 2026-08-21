@@ -124,10 +124,13 @@ const CLICK_DISTANCE = 6;
 export default function CardView({ card, from, zIndex = 0, hidden = false, onAutoMove }) {
   const won = useGameStore((s) => isWon(s.state));
   const isOver = useStatsStore((s) => s.isOver);
+  // While an auto-complete (toward the win) is animating, the whole board is
+  // locked — the player must not grab cards mid-sequence.
+  const autoCompleting = useGameStore((s) => s.autoCompleting);
   // Block only this card if it is the one physically in flight. Every other
   // card stays interactive during an unrelated animation.
   const isAnimating = useUiStore((s) => s.animatingCards.has(card.id));
-  const locked = won || isOver || isAnimating;
+  const locked = won || isOver || isAnimating || autoCompleting;
   const selectedCardId = useUiStore((s) => s.selectedCardId);
   const hints = useUiStore((s) => s.hints);
   const selectCard = useUiStore((s) => s.selectCard);
