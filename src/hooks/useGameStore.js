@@ -386,6 +386,7 @@ export const useGameStore = create((set, get) => ({
     cancelAutoComplete(set);
     useUiStore.getState().setNoMovesDialogOpen(false);
     const { state, redoStack } = get();
+    if (get().autoCompleting) return;
     if (state.moveHistory.length === 0 || useStatsStore.getState().isOver) return;
     // Undo/redo don't animate and would corrupt an in-flight tween, so block
     // them whenever any card is still moving.
@@ -401,6 +402,7 @@ export const useGameStore = create((set, get) => ({
   redo: () => {
     cancelAutoComplete(set);
     const { state, redoStack } = get();
+    if (get().autoCompleting) return;
     if (redoStack.length === 0 || useStatsStore.getState().isOver) return;
     if (useUiStore.getState().animatingCards.size > 0) return;
     const stack = redoStack.slice();
@@ -517,6 +519,7 @@ export const useGameStore = create((set, get) => ({
    * exists ("N moves available" / "No moves available right now").
    */
   showHints: () => {
+    if (get().autoCompleting) return;
     const ui = useUiStore.getState();
     if (ui.hints.length > 0) {
       ui.clearHints();

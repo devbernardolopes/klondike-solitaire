@@ -62,6 +62,7 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const undo = useGameStore((s) => s.undo);
   const showHints = useGameStore((s) => s.showHints);
   const canUndo = useGameStore((s) => s.state.moveHistory.length > 0);
+  const autoCompleting = useGameStore((s) => s.autoCompleting);
   const won = useGameStore((s) => isWon(s.state));
   const isOver = useStatsStore((s) => s.isOver);
   const overReason = useStatsStore((s) => s.overReason);
@@ -84,9 +85,10 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const moves = useStatsStore((s) => s.moves);
   const score = useStatsStore((s) => s.score);
 
-  // The session locks (won or a hard limit hit) — disable undo and surface the
-  // Game Over dialog when a limit (not a win) ended the game.
-  const locked = won || isOver;
+  // The session locks (won, a hard limit hit, or a winning auto-complete in
+  // progress) — disable undo/hint and surface the Game Over dialog when a limit
+  // (not a win) ended the game.
+  const locked = won || isOver || autoCompleting;
   useEffect(() => {
     if (isOver) setGameOverDialogOpen(true);
   }, [isOver, setGameOverDialogOpen]);
