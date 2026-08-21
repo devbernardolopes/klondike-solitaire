@@ -18,6 +18,7 @@ test('cardLabel uses rank+suit abbreviations', () => {
   assert.equal(cardLabel(up('clubs', 12)), 'Qc');
   assert.equal(cardLabel(up('hearts', 10)), '10h');
   assert.equal(cardLabel(up('spades', 2)), '2s');
+  assert.equal(cardLabel(down('clubs', 13)), '00');
 });
 
 test('matches the documented example layout (winning deal)', () => {
@@ -48,8 +49,11 @@ test('matches the documented example layout (winning deal)', () => {
     '# Waste (left to right is bottom-most to top-most)',
     'Waste: Ad, 7d',
     '',
-    '# Tableau (piles 1–7, left to right; only face-up cards shown, listed top to bottom)',
-    '1: Kc',
+    '# Stock (all face-down; each card shown as 00)',
+    'Stock: empty',
+    '',
+    '# Tableau (piles 1–7, left to right; listed top to bottom, face-down cards as 00)',
+    '1: Kc, 00',
     '2: Jh',
     '3: 6d, 5s, 4h, 3c, 2d',
     '4: Jc, 10h, 9s, 8d, 7c, 6h, 5s, 4h',
@@ -76,12 +80,27 @@ test('random game mode line and empty piles render as empty', () => {
   s.drawCount = 1;
   s.foundations[2] = [up('hearts', 5)];
   s.waste = [];
-  s.tableau[0] = [down('clubs', 13)]; // only face-down -> empty
+  s.tableau[0] = [down('clubs', 13)]; // only face-down -> 00
 
   const text = buildSnapshotText(s);
   assert.match(text, /^# Klondike, 1$/m);
   assert.match(text, /^# Game Mode: Random$/m);
   assert.match(text, /^F3: 5h$/m);
   assert.match(text, /^Waste: empty$/m);
-  assert.match(text, /^1: empty$/m);
+  assert.match(text, /^1: 00$/m);
+});
+
+test('stock pile serializes as a list of 00 placeholders', () => {
+  const s = createEmptyGameState();
+  s.stock = [down('hearts', 1), down('spades', 7), down('diamonds', 13)];
+  const text = buildSnapshotText(s);
+  assert.match(text, /^Stock: 00, 00, 00$/m);
+});
+
+test('face-down cards in tableau render as 00 within the column', () => {
+  const s = createEmptyGameState();
+  s.tableau[2] = [down('clubs', 5), up('hearts', 6), down('spades', 9), up('diamonds', 10)];
+  const text = buildSnapshotText(s);
+  // top→bottom after reversal: 10d, 00, 6h, 00
+  assert.match(text, /^3: 10d, 00, 6h, 00$/m);
 });

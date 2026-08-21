@@ -1,10 +1,10 @@
 // core/snapshot.js
 // Framework-agnostic. No React / DOM / UI imports allowed in this file.
 //
-// Serializes the visible board configuration to the plain-text snapshot format
-// consumed by the Settings "Take Snapshot" export. Only face-up / revealed
-// cards are shown; the stock (always face-down or empty) is intentionally
-// omitted per the snapshot spec.
+// Serializes the board configuration to the plain-text snapshot format
+// consumed by the Settings "Take Snapshot" export. Face-down cards are
+// represented as "00"; the stock pile (always face-down or empty) is included
+// as a list of "00" placeholders.
 
 import { SUITS } from './Card.js';
 
@@ -20,12 +20,14 @@ const SUIT_LETTER = {
 };
 
 /**
- * Render a card as its snapshot label: rank letter + suit letter.
- * Rank: Ace=A, 2–10 numeric, Jack=J, Queen=Q, King=K.
- * @param {{ suit: import('./Card.js').Suit, rank: number }} card
+ * Render a card as its snapshot label: rank letter + suit letter, or "00"
+ * when the card is face-down. Rank: Ace=A, 2–10 numeric, Jack=J, Queen=Q,
+ * King=K.
+ * @param {{ suit: import('./Card.js').Suit, rank: number, faceUp?: boolean }} card
  * @returns {string}
  */
 export function cardLabel(card) {
+  if (!card.faceUp) return '00';
   const rank =
     card.rank === 1 ? 'A' : card.rank === 11 ? 'J' : card.rank === 12 ? 'Q' : card.rank === 13 ? 'K' : String(card.rank);
   return `${rank}${SUIT_LETTER[card.suit]}`;
@@ -76,12 +78,16 @@ export function buildSnapshotText(state) {
   lines.push(`Waste: ${pileLine(state.waste)}`);
 
   lines.push('');
-  lines.push('# Tableau (piles 1–7, left to right; only face-up cards shown, listed top to bottom)');
+  lines.push('# Stock (all face-down; each card shown as 00)');
+  lines.push(`Stock: ${pileLine(state.stock)}`);
+
+  lines.push('');
+  lines.push('# Tableau (piles 1–7, left to right; listed top to bottom, face-down cards as 00)');
   state.tableau.forEach((pile, i) => {
-    // Only face-up cards are visible; tableau order is bottom→top, so reverse
-    // the face-up slice to list top→bottom.
-    const faceUp = pile.filter((c) => c.faceUp).reverse();
-    lines.push(`${i + 1}: ${pileLine(faceUp)}`);
+    // Tableau order is bottom→top, so reverse the whole column to list
+    // top→bottom. Face-down cards render as "00" via cardLabel.
+    const topToBottom = [...pile].reverse();
+    lines.push(`${i + 1}: ${pileLine(topToBottom)}`);
   });
 
   return lines.join('\n') + '\n';
