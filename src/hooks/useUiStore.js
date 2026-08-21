@@ -10,6 +10,10 @@ export const useUiStore = create((set) => ({
   announce: '',
   noMovesDialogOpen: false,
 
+  // Currently-displayed move hints (set by the Hint affordance). Each entry is
+  // { from, to, cardId } from core/hints.js. Empty when no hints are shown.
+  hints: [],
+
   // True while a dnd-kit drag is in progress. Used to keep CardView's own
   // tap→auto-move from firing on the same gesture as a drag, which could
   // relocate/hide a card mid-drag and leave it stuck invisible. Not part of
@@ -117,6 +121,12 @@ export const useUiStore = create((set) => ({
 
   /** Clear the current selection (after a move or on new game). */
   clearSelection: () => set({ selectedCardId: null }),
+
+  /** Show a set of move hints (replaces any currently shown). */
+  setHints: (list) => set({ hints: list }),
+
+  /** Clear all move hints. */
+  clearHints: () => set({ hints: [] }),
 
   /** Update the aria-live announcement text. */
   setAnnounce: (text) => set({ announce: text }),

@@ -9,6 +9,7 @@ import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTarget
 import { isWon } from '../core/winDetection.js';
 import { solveAsync, cancelAllSolves, STALE } from '../core/solverClient.js';
 import { SOLVER_TIMEOUT, hasDeadEndMove } from '../core/solver.js';
+import { findHints } from '../core/hints.js';
 import { buildStandardDeck, shuffle } from '../core/Deck.js';
 import { createEmptyGameState } from '../core/GameState.js';
 import { randomSolvableSeed, pickSolvableSeed } from '../core/solvablePool.js';
@@ -224,6 +225,7 @@ export const useGameStore = create((set, get) => ({
   dealNewGame: (mode = 'random') => {
     cancelAutoComplete(set);
     useUiStore.getState().setNoMovesDialogOpen(false);
+    useUiStore.getState().clearHints();
     // Abort any in-flight win cascade immediately and release its global lock,
     // so a new-game request mid-fall is honored instead of being dropped. Only
     // block on real in-flight per-card transitions (a stray move being clobbered
@@ -279,6 +281,7 @@ export const useGameStore = create((set, get) => ({
     useUiStore.getState().beginTransition(tid, [drawnId], ['stock', 'waste']);
     const next = applyMove(state, { type: 'draw' });
     set({ state: next, redoStack, lastActionMeta: { type: 'draw' } });
+    useUiStore.getState().clearHints();
     useStatsStore.getState().startTimerIfValid(state);
     useStatsStore.getState().addMoves(1);
     if (next.stock.length === 0 && !isWon(next)) {
@@ -300,6 +303,7 @@ export const useGameStore = create((set, get) => ({
     const tid = captureFlip('recycle');
     useUiStore.getState().beginTransition(tid, movingIds, ['stock', 'waste']);
     set({ state: applyMove(state, { type: 'recycle' }), redoStack, lastActionMeta: { type: 'recycle' } });
+    useUiStore.getState().clearHints();
     useStatsStore.getState().startTimerIfValid(state);
     useStatsStore.getState().addMoves(1);
   },
@@ -366,6 +370,7 @@ export const useGameStore = create((set, get) => ({
     const tid = captureFlip(opts.metaType ?? 'move');
     useUiStore.getState().beginTransition(tid, moveIds, [to]);
     set({ state: next, redoStack: [], lastActionMeta: { type: opts.metaType ?? 'move' } });
+    useUiStore.getState().clearHints();
     useStatsStore.getState().startTimerIfValid(state);
     useStatsStore.getState().addMoves(1);
     return true;
@@ -383,6 +388,7 @@ export const useGameStore = create((set, get) => ({
     const last = history[history.length - 1];
     const next = coreUndo(state);
     set({ state: next, redoStack: [...redoStack, last], autoMoveState: {}, lastActionMeta: { type: 'undo' } });
+    useUiStore.getState().clearHints();
     useStatsStore.getState().addMoves(1);
   },
 
@@ -395,6 +401,7 @@ export const useGameStore = create((set, get) => ({
     const record = stack.pop();
     const next = coreRedo(state, record);
     set({ state: next, redoStack: stack, autoMoveState: {}, lastActionMeta: { type: record.type === 'draw' ? 'draw' : 'move' } });
+    useUiStore.getState().clearHints();
   },
 
   /**
@@ -450,6 +457,7 @@ export const useGameStore = create((set, get) => ({
    * @returns {boolean} whether at least one move was started
    */
   autoComplete: (force = false) => {
+    useUiStore.getState().clearHints();
     if (autoCompleteTimer !== null) return false;
     if (isWon(get().state) || useStatsStore.getState().isOver) return false;
     // User-initiated auto-complete is blocked while an animation is in flight
@@ -493,6 +501,29 @@ export const useGameStore = create((set, get) => ({
   isWon: () => isWon(get().state),
   canUndo: () => get().state.moveHistory.length > 0,
   canRedo: () => get().redoStack.length > 0,
+
+  /**
+   * Hint affordance: surface the currently-visible legal moves. Toggles — if
+   * hints are already shown, calling again clears them. Computes the hints from
+   * the live core state and pushes them to the UI store for highlighting, plus
+   * an aria-live announcement so screen-reader users learn whether any move
+   * exists ("N moves available" / "No moves available right now").
+   */
+  showHints: () => {
+    const ui = useUiStore.getState();
+    if (ui.hints.length > 0) {
+      ui.clearHints();
+      ui.setAnnounce('Hints cleared');
+      return;
+    }
+    const hints = findHints(get().state);
+    ui.setHints(hints);
+    ui.setAnnounce(
+      hints.length > 0
+        ? `Hint: ${hints.length} move${hints.length === 1 ? '' : 's'} available`
+        : 'No moves available right now',
+    );
+  },
 }));
 
 /** Convenience selector for raw core state. */

@@ -34,6 +34,8 @@
   /* On dark faces, "black" suits become light; red is brightened for contrast */
   --card-text-red: #ff6b6b;
   --card-text-black: #e6e6e6;
+  /* Hint highlight ring (Hint affordance) */
+  --hint-ring: #ffd54a;
   color-scheme: dark;
 
   /* UI controls (selects + modal buttons) */
@@ -50,4 +52,26 @@
 .theme-dark select option {
   color: var(--ui-control-fg);
   background: var(--ui-control-bg);
+}
+
+/* Hint affordance: pulsing ring on a hinted destination pile, steady glow on the
+   source card(s). Uses --hint-ring from the active theme. */
+.hint-source {
+  outline: 3px solid var(--hint-ring);
+  outline-offset: 2px;
+}
+
+.hint-target {
+  box-shadow: 0 0 0 2px var(--hint-ring), 0 0 14px var(--hint-ring);
+  animation: hintPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes hintPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
 }

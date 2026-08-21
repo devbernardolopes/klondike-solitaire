@@ -1,0 +1,52 @@
+// core/hints.test.js
+// Unit tests for the Hint affordance (core/hints.js).
+// Run with `npm test` (node --test).
+
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { createCard } from './Card.js';
+import { createEmptyGameState } from './GameState.js';
+import { findHints } from './hints.js';
+
+// Build the exact board reported by the user (F1=Ah, F2=6c, F3=3d, F4=empty,
+// waste bottom->top Qd Qh 7s Js 10h 9s Kc 2s, tableau tops per report). The key
+// missed move is 4s (pile 7 top) onto 5d (pile 6 top).
+function buildReportedBoard() {
+  const f = (s, r) => createCard(s, r, { faceUp: true });
+  const d = (s, r) => createCard(s, r, { faceUp: false }); // face-down filler
+  const st = createEmptyGameState();
+  st.waste = [f('diamonds', 12), f('hearts', 12), f('spades', 7), f('spades', 11), f('hearts', 10), f('spades', 9), f('clubs', 13), f('spades', 2)];
+  st.foundations = [
+    [f('hearts', 1)],
+    [f('clubs', 1), f('clubs', 2), f('clubs', 3), f('clubs', 4), f('clubs', 5), f('clubs', 6)],
+    [f('diamonds', 1), f('diamonds', 2), f('diamonds', 3)],
+    [],
+  ];
+  st.tableau = [
+    [f('diamonds', 13), f('spades', 12)],
+    [f('clubs', 10)],
+    [d('spades', 2), d('spades', 3), f('clubs', 12)],
+    [d('spades', 2), d('spades', 3), f('spades', 8)],
+    [d('spades', 2), f('clubs', 11), f('diamonds', 10), f('clubs', 9), f('hearts', 8), f('clubs', 7), f('diamonds', 6), f('spades', 5), f('hearts', 4), f('spades', 3)],
+    [d('spades', 2), d('spades', 3), d('spades', 4), d('spades', 5), f('diamonds', 5)],
+    [d('spades', 2), d('spades', 3), d('spades', 4), f('spades', 10), f('hearts', 9), f('clubs', 8), f('diamonds', 7), f('spades', 6), f('hearts', 5), f('spades', 4)],
+  ];
+  st.stock = [];
+  return st;
+}
+
+test('findHints surfaces the reported 4s -> 5d move', () => {
+  const st = buildReportedBoard();
+  const hints = findHints(st);
+  assert.ok(hints.length > 0, 'expected at least one hint');
+  // The missed move: pile 7 (tableau:6) top 4s -> pile 6 (tableau:5) 5d.
+  const hit = hints.find((h) => h.from === 'tableau:6' && h.to === 'tableau:5');
+  assert.ok(hit, 'expected a hint from tableau:6 to tableau:5');
+  // Source highlight card is pile 7's top (4s).
+  assert.equal(hit.cardId, st.tableau[6][st.tableau[6].length - 1].id);
+});
+
+test('findHints returns no hints for an empty board', () => {
+  const st = createEmptyGameState();
+  assert.deepEqual(findHints(st), []);
+});

@@ -3,7 +3,7 @@
 
 import pkg from '../../package.json';
 import { useEffect, useCallback, useState } from 'react';
-import { Plus, Undo2, Settings, BarChart3 } from 'lucide-react';
+import { Plus, Undo2, Settings, BarChart3, Lightbulb } from 'lucide-react';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
@@ -60,6 +60,7 @@ function useElapsed() {
 export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, handedness, onHandednessChange }) {
   const dealNewGame = useGameStore((s) => s.dealNewGame);
   const undo = useGameStore((s) => s.undo);
+  const showHints = useGameStore((s) => s.showHints);
   const canUndo = useGameStore((s) => s.state.moveHistory.length > 0);
   const won = useGameStore((s) => isWon(s.state));
   const isOver = useStatsStore((s) => s.isOver);
@@ -239,6 +240,15 @@ function ElapsedClock() {
         onClick={() => setNewGameDialogOpen(true)}
       >
         <Plus size={20} />
+      </button>
+
+       <button
+        style={{ ...fab, right: 16 + FAB_WIDTH + FAB_GAP, opacity: locked ? 0.4 : 1 }}
+        aria-label="Hint: show available moves (H)"
+        disabled={locked}
+        onClick={showHints}
+      >
+        <Lightbulb size={20} />
       </button>
 
        <button

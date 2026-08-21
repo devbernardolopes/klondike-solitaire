@@ -122,6 +122,7 @@ export default function Board() {
   const undo = useGameStore((s) => s.undo);
   const redo = useGameStore((s) => s.redo);
   const dealNewGame = useGameStore((s) => s.dealNewGame);
+  const showHints = useGameStore((s) => s.showHints);
   const clearSelection = useUiStore((s) => s.clearSelection);
   const setAnnounce = useUiStore((s) => s.setAnnounce);
   const announce = useUiStore((s) => s.announce);
@@ -236,18 +237,22 @@ export default function Board() {
           redo();
           setAnnounce('Redo');
           break;
-        case 'a':
-          clearSelection();
-          autoComplete();
-          setAnnounce('Auto-completing to foundations');
-          break;
+         case 'a':
+           clearSelection();
+           autoComplete();
+           setAnnounce('Auto-completing to foundations');
+           break;
+         case 'h':
+           clearSelection();
+           showHints();
+           break;
         default:
           break;
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [won, isOver, anyAnimating, stockWasteBusy, drawFromStock, recycleStock, undo, redo, autoComplete, dealNewGame, clearSelection, setAnnounce]);
+  }, [won, isOver, anyAnimating, stockWasteBusy, drawFromStock, recycleStock, undo, redo, autoComplete, dealNewGame, showHints, clearSelection, setAnnounce]);
 
   const onStockClick = () => {
     if (won || isOver) return;

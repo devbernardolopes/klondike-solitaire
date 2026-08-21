@@ -32,12 +32,15 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
   const setAnnounce = useUiStore((s) => s.setAnnounce);
   const won = useGameStore((s) => isWon(s.state));
   const sessionOver = useStatsStore((s) => s.isOver);
+  const hints = useUiStore((s) => s.hints);
   // Block this pile only when it is the busy destination of an in-flight move.
   // Source piles and all other piles stay fully interactive.
   const isAnimating = useUiStore((s) => s.animatingLocs.has(loc));
   const locked = won || sessionOver || isAnimating;
 
   const kind = loc.split(':')[0];
+  const isHintTarget = hints.some((h) => h.to === loc);
+  const isHintSource = hints.some((h) => h.from === loc);
 
   // Adaptive tableau spacing: each card's vertical offset depends on whether it
   // is face-down (tight peek) or face-up (normal fan). The run compresses to fit
@@ -146,6 +149,7 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
       tabIndex={0}
       role="button"
       aria-label={`${pileName}${cards.length ? `, ${cards.length} cards` : ', empty'}`}
+      className={isHintTarget ? 'hint-target' : isHintSource ? 'hint-source' : undefined}
       style={{
         minWidth: 'var(--card-width)',
         minHeight: 'var(--card-height)',
