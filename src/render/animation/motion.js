@@ -20,12 +20,12 @@ export const MOTION = {
   // the source and destination differ on both axes. A run lifts and lands as a
   // RIGID BLOCK because every card in it tweens in parallel (stagger 0) with the
   // grabbed/clicked card leading the move.
-  move:     { duration: 0.25, ease: 'power3.out', stagger: 0 },
+  move:     { duration: 0.15, ease: 'power3.out', stagger: 0 },
   // Alternative easing for the same tween; swap to change the acceleration curve.
   // move:     { duration: 0.40, ease: 'power3.out', stagger: 0 },
 
   // 3D rotateY face flip (face-down <-> face-up) in useCardFaceFlip.
-  flipCard: { duration: 0.06, ease: 'power2.inOut' },
+  flipCard: { duration: 0.05, ease: 'power2.inOut' },
 
   // Stock → waste draw slide. The revealed card flips face-up in place at the
   // stock pile and THEN glides horizontally to the waste pile. The horizontal
