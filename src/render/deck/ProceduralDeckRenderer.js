@@ -107,3 +107,23 @@ registerDeck(
     },
   })
 );
+
+// Dark 2: same dark slate face, but strictly 2-color (reddish + blueish).
+// Red suits (hearts/diamonds) use coral-red; black suits (spades/clubs) sky-blue.
+const DARK_2_COLOR = {
+  hearts: '#ff5d6c',
+  diamonds: '#ff5d6c',
+  spades: '#5b8def',
+  clubs: '#5b8def',
+};
+
+registerDeck(
+  'procedural-dark-2',
+  createProceduralDeckRenderer({
+    faceOptions: {
+      colorFor: (s) => DARK_2_COLOR[s],
+      background: '#232936',
+      border: 'rgba(255,255,255,0.22)',
+    },
+  })
+);
