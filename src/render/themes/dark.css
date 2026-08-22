@@ -34,8 +34,10 @@
   /* On dark faces, "black" suits become light; red is brightened for contrast */
   --card-text-red: #ff6b6b;
   --card-text-black: #e6e6e6;
-  /* Hint highlight ring (Hint affordance) */
-  --hint-ring: #ffd54a;
+  /* Hint highlight: distinct colors for the "from" (source) and "to" (target)
+     affordances so they read differently at a glance (shape/animation also differ). */
+  --hint-source: #ffd54a; /* warm gold — pick-up / origin */
+  --hint-target: #34d6ff; /* cyan — drop / destination */
   color-scheme: dark;
 
   /* UI controls (selects + modal buttons) */
@@ -54,15 +56,16 @@
   background: var(--ui-control-bg);
 }
 
-/* Hint affordance: pulsing ring on a hinted destination pile, steady glow on the
-   source card(s). Uses --hint-ring from the active theme. */
+/* Hint affordance: steady gold outline on the source ("from") card(s), pulsing
+   cyan glow on the destination ("to") pile. Source/target are distinguished by
+   both color and shape/animation. */
 .hint-source {
-  outline: 3px solid var(--hint-ring);
+  outline: 3px solid var(--hint-source);
   outline-offset: 2px;
 }
 
 .hint-target {
-  box-shadow: 0 0 0 2px var(--hint-ring), 0 0 14px var(--hint-ring);
+  box-shadow: 0 0 0 2px var(--hint-target), 0 0 14px var(--hint-target);
   animation: hintPulse 1.2s ease-in-out infinite;
 }
 
