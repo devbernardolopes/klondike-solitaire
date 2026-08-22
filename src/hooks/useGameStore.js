@@ -69,12 +69,14 @@ function checkDeadEnd(get, set, state) {
   });
 }
 
-// Build a transient "pre-deal" layout: all 52 shuffled cards sitting face-down
-// in the stock, every other pile empty. The real deal() runs on the next frame
-// so the deal animation flows through the same Flip pipeline. core/ is untouched
-// — this only composes its pure building blocks.
-function buildPreDealState(seed) {
-  const deck = shuffle(buildStandardDeck(), seed !== undefined ? seed : undefined);
+// Build the pre-deal layout (all 52 cards face-down in stock) from an already
+// constructed, ordered deck. The SAME `deck` array must be reused for both the
+// pre-deal and the later deal() call so the two states reference identical card
+// ids — the deal animation matches cards by id between the snapshot and the
+// dealt DOM, so mismatched ids would give every card dx===dy===0 and animate
+// nothing (this was why the seed-based Winning Deal never animated while the
+// order-based Random Shuffle did, since the latter reused one deck).
+function preDealFromDeck(deck, seed) {
   const state = createEmptyGameState();
   if (seed !== undefined) state.seed = seed;
   state.drawCount = 1;
@@ -83,19 +85,22 @@ function buildPreDealState(seed) {
   return state;
 }
 
-// Shared animated-deal pipeline: set a transient "pre-deal" (all cards face-down
-// in stock) instantly, then on the next frame perform the real deal through the
-// same Flip pipeline used by every other transition. Used by every new-game
-// entry point (dealNewGame, replayGame, and the initial app-load deal) so the
-// deal animation is identical regardless of mode.
-function runAnimatedDeal(get, set, { seed, order }) {
-  const useSeed = seed !== undefined;
-  const preDeal = buildPreDealState(useSeed ? seed : undefined);
-  const replaySpec = useSeed ? { seed } : { order: preDeal.stock.map((c) => ({ ...c })) };
+// Shared animated-deal pipeline: build the deck ONCE, set a transient "pre-deal"
+// (all cards face-down in stock) from it instantly, then on the next frame
+// perform the real deal through the same Flip pipeline used by every other
+// transition. The deck is reused for both steps so card ids line up and the
+// animation tweens. Used by every new-game entry point (dealNewGame,
+// replayGame, and the initial app-load deal) so the deal animation is identical
+// regardless of mode.
+function runAnimatedDeal(get, set, { seed, order, deck } = {}) {
+  const usedDeck = deck ? deck.slice() : order ? order.slice() : shuffle(buildStandardDeck(), seed);
+  const preDeal = preDealFromDeck(usedDeck, seed);
+  const replaySpec = seed !== undefined ? { seed } : { order: usedDeck.map((c) => ({ ...c })) };
   set({ state: preDeal, redoStack: [], autoMoveState: {}, replaySpec, lastActionMeta: { type: 'draw' } });
   requestAnimationFrame(() => {
     cancelAutoComplete(set);
-    const next = deal(useSeed ? { seed } : { order: replaySpec.order });
+    const next = deal({ order: usedDeck });
+    if (seed !== undefined) next.seed = seed;
     const allIds = [
       ...next.stock,
       ...next.waste,
@@ -303,6 +308,12 @@ function readPile(s, loc) {
 // Capture that seed so "Replay this Game" can reproduce it.
 const INITIAL_SEED = randomSolvableSeed();
 
+// The initial game's deck, built ONCE and shared between the pre-deal snapshot
+// and the dealt layout so their card ids match (otherwise the deal animation
+// would have nothing to tween). preDealFromDeck reuses this same deck.
+const INITIAL_DECK = shuffle(buildStandardDeck(), INITIAL_SEED);
+const INITIAL_PREDEAL = preDealFromDeck(INITIAL_DECK, INITIAL_SEED);
+
 // Guards the one-time animated initial deal so React StrictMode (which double-
 // invokes mount effects) cannot trigger two overlapping deals.
 let initialDealDone = false;
@@ -310,8 +321,8 @@ let initialDealDone = false;
 export const useGameStore = create((set, get) => ({
   // Start as a pre-deal (all cards face-down in stock) so the very first game
   // can animate its deal on load via initialDeal() rather than appearing
-  // instantly. This is the only winning deal that previously had no animation.
-  state: buildPreDealState(INITIAL_SEED),
+  // instantly. The pre-deal and the dealt state share INITIAL_DECK's card ids.
+  state: INITIAL_PREDEAL,
   redoStack: [],
   // True while an auto-complete sequence is animating, so the Board trigger
   // effect doesn't re-run the (expensive) solver on every step of the run.
@@ -377,7 +388,7 @@ export const useGameStore = create((set, get) => ({
     if (useUiStore.getState().animatingCards.size > 0) return;
     useUiStore.getState().setLastNewGameMode('winning');
     useStatsStore.getState().resetStats();
-    runAnimatedDeal(get, set, { seed: INITIAL_SEED });
+    runAnimatedDeal(get, set, { seed: INITIAL_SEED, deck: INITIAL_DECK });
   },
 
   /**
