@@ -106,3 +106,31 @@ test('findHints never relocates an Ace already on a foundation to another founda
   const hints = findHints(st);
   assert.equal(hints.length, 0);
 });
+
+test('findHints records the buried moving card, not the column top (run)', () => {
+  const st = createEmptyGameState();
+  const f = (s, r) => createCard(s, r, { faceUp: true });
+  const d = (s, r) => createCard(s, r, { faceUp: false });
+  // tableau:0 bottom->top = 9s, 8d, 7c  (column top is 7c at index 2).
+  // tableau:1 top is 10h, so only the buried 9s (top of the run 9s,8d,7c) can
+  // legally move there; the column top (7c) has no valid move. The hint must
+  // record 9s (the moving card), not 7c (the column top).
+  st.tableau = [
+    [f('spades', 9), f('diamonds', 8), f('clubs', 7)],
+    [f('hearts', 10)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+  ];
+  const hints = findHints(st);
+  const hit = hints.find(
+    (h) => h.from === 'tableau:0' && h.to === 'tableau:1'
+  );
+  assert.ok(hit, 'expected a hint from tableau:0 to tableau:1');
+  const movingId = st.tableau[0][0].id; // 9s, the buried moving card
+  const topId = st.tableau[0][st.tableau[0].length - 1].id; // 7c, column top
+  assert.equal(hit.cardId, movingId, 'hint cardId must be the actual moving card');
+  assert.notEqual(hit.cardId, topId, 'hint cardId must NOT be the column top');
+});

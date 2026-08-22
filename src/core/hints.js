@@ -15,8 +15,10 @@ import { getAutoMoveTargets } from './rules.js';
 
 /**
  * List every currently-available legal move from visible cards.
- * Each hint is `{ from, to, cardId }` where `cardId` is the grabbable card
- * (the top of the source waste pile, or the top of the source tableau column).
+ * Each hint is `{ from, to, cardId }` where `cardId` is the grabbable/moving card
+ * — for a waste pile it is the top card, and for a tableau column it is the top
+ * of the run being moved (which may be a *buried* card, not the column top). This
+ * is what lets the UI anchor the "from" highlight to the actual run.
  * @param {import('./GameState.js').GameState} state
  * @returns {Array<{from:string, to:string, cardId:string}>}
  */
@@ -47,7 +49,6 @@ export function findHints(state) {
   state.tableau.forEach((pile, i) => {
     if (pile.length === 0 || !pile[pile.length - 1].faceUp) return;
     const from = `tableau:${i}`;
-    const topId = pile[pile.length - 1].id;
     for (const card of pile) {
       if (!card.faceUp) continue;
       for (const to of getAutoMoveTargets(state, from, card.id)) {
@@ -73,8 +74,10 @@ export function findHints(state) {
         ) {
           continue;
         }
-        // Highlight the grabbable top card of the column, not a buried run card.
-        add(from, to, topId);
+        // Record the actual grabbable card (top of its run) — for a tableau
+        // this may be a buried card, not the column's top. The UI uses cardId to
+        // anchor the "from" highlight rectangle to the start of the moved run.
+        add(from, to, card.id);
       }
     }
   });
