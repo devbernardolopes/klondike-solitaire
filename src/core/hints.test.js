@@ -50,3 +50,59 @@ test('findHints returns no hints for an empty board', () => {
   const st = createEmptyGameState();
   assert.deepEqual(findHints(st), []);
 });
+
+test('findHints excludes a King shuffled to an empty tableau that reveals nothing', () => {
+  const st = createEmptyGameState();
+  const f = (s, r) => createCard(s, r, { faceUp: true });
+  const d = (s, r) => createCard(s, r, { faceUp: false });
+  // A lone face-up King on tableau:0, an empty tableau:1.
+  st.tableau = [
+    [f('spades', 13)],
+    [],
+    [d('clubs', 2)], // filler so column 1 is the only empty one
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+  ];
+  const hints = findHints(st);
+  const hit = hints.find(
+    (h) => h.from === 'tableau:0' && h.to === 'tableau:1'
+  );
+  assert.equal(hit, undefined, 'King -> empty tableau relocation must be excluded');
+});
+
+test('findHints keeps a King move to an empty tableau that flips a hidden card', () => {
+  const st = createEmptyGameState();
+  const f = (s, r) => createCard(s, r, { faceUp: true });
+  const d = (s, r) => createCard(s, r, { faceUp: false });
+  // King on top of tableau:0 with a face-down card beneath it; empty tableau:1.
+  st.tableau = [
+    [d('clubs', 5), f('spades', 13)],
+    [],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+  ];
+  const hints = findHints(st);
+  const hit = hints.find(
+    (h) => h.from === 'tableau:0' && h.to === 'tableau:1'
+  );
+  assert.ok(hit, 'King move that reveals a face-down card must remain a hint');
+});
+
+test('findHints never relocates an Ace already on a foundation to another foundation', () => {
+  const st = createEmptyGameState();
+  const f = (s, r) => createCard(s, r, { faceUp: true });
+  st.foundations = [
+    [f('hearts', 1)], // an Ace already on a foundation
+    [],
+    [],
+    [],
+  ];
+  // No tableau/waste moves; only the foundation Ace could "move" — it must not.
+  const hints = findHints(st);
+  assert.equal(hints.length, 0);
+});

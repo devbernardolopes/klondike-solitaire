@@ -37,6 +37,13 @@ export function findHints(state) {
     }
   }
 
+  const isEmptyTableau = (loc) => {
+    const m = /^tableau:(\d+)$/.exec(loc);
+    if (!m) return false;
+    const pileArr = state.tableau[Number(m[1])];
+    return !!pileArr && pileArr.length === 0;
+  };
+
   state.tableau.forEach((pile, i) => {
     if (pile.length === 0 || !pile[pile.length - 1].faceUp) return;
     const from = `tableau:${i}`;
@@ -44,6 +51,28 @@ export function findHints(state) {
     for (const card of pile) {
       if (!card.faceUp) continue;
       for (const to of getAutoMoveTargets(state, from, card.id)) {
+        // Exclude a King being "shuffled" from one tableau column onto an EMPTY
+        // tableau column when doing so reveals no face-down card in its source
+        // column — such a relocation is meaningless for solving the game. A King
+        // move that flips a hidden card underneath is still a useful hint.
+        if (
+          card.rank === 13 &&
+          from.startsWith('tableau') &&
+          isEmptyTableau(to)
+        ) {
+          const idx = pile.indexOf(card);
+          const revealsHidden = pile.slice(0, idx).some((c) => !c.faceUp);
+          if (!revealsHidden) continue;
+        }
+        // An Ace already placed on a foundation must never be hinted to relocate
+        // to another (empty) foundation pile — that is a meaningless shuffle.
+        if (
+          from.startsWith('foundation') &&
+          to.startsWith('foundation') &&
+          card.rank === 1
+        ) {
+          continue;
+        }
         // Highlight the grabbable top card of the column, not a buried run card.
         add(from, to, topId);
       }
