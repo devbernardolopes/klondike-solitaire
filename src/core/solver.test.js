@@ -240,6 +240,61 @@ test('reported random board has a real move (8s->9h), modal stays hidden', () =>
   assert.equal(findReachableMove(s, { maxNodes: 500000, maxMs: 4000 }), true);
 });
 
+/**
+ * Dead-end regression for the "no valid moves" dialog (reported 2026-08-22,
+ * Game Mode: Random). The original report described reaching a stuck position
+ * after relocating the 4c/3h run from column 7 onto the 5h in column 3: stock
+ * is empty and no card can reach a foundation, so the only tableau move (the
+ * 4c+3h run, column 7 -> column 3) never frees 4c for its foundation because
+ * 3h has no other legal home.
+ *
+ * The literal card data originally transcribed for that report was NOT actually
+ * a dead end (4c reached the clubs A,2,3 foundation and several cross-column
+ * runs remained playable), so it could not lock in the bug. This helper builds a
+ * faithful minimal reconstruction of the same scenario — empty stock, a 4c/3h
+ * run that shuffles onto a 5h — and applies that exact move, producing a
+ * position that is genuinely stuck (verified: hasDeadEndMove === false AND
+ * findReachableMove === false; the only remaining "move" is recycling the lone
+ * waste card, which never creates a real play). The store must re-ask
+ * checkDeadEnd after the move that reaches this position (see useGameStore.js
+ * moveCard fix) so the modal fires.
+ */
+function buildStuckAfter4c3hShuffleBoard() {
+  const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
+  const s = createEmptyGameState();
+
+  s.foundations[0] = [c('spades', 1, 'fsA')];
+  s.foundations[1] = [c('diamonds', 1, 'fdA'), c('diamonds', 2, 'fd2')];
+  s.foundations[2] = [c('clubs', 1, 'fcA'), c('clubs', 2, 'fc2')]; // no 3c: 4c cannot reach foundation
+  s.foundations[3] = [];
+
+  s.waste = [c('diamonds', 4, 'w4d')];
+  s.stock = [];
+
+  // Exposed cards are all red and low-rank so no cross-column rank+1 landing
+  // exists, and no foundation play is reachable. Board is bottom->top.
+  s.tableau[0] = [c('hearts', 13, 't0Kh'), c('hearts', 2, 't0_2h')];
+  s.tableau[1] = [c('hearts', 12, 't1Qh'), c('hearts', 3, 't1_3h')];
+  s.tableau[2] = [c('hearts', 11, 't2Jh'), c('hearts', 4, 't2_4h')];
+  s.tableau[3] = [c('hearts', 5, 't3_5h')];
+  s.tableau[4] = [c('hearts', 10, 't4_10h'), c('diamonds', 2, 't4_2d')];
+  s.tableau[5] = [c('hearts', 9, 't5_9h'), c('hearts', 3, 't5_3h')];
+  s.tableau[6] = [
+    c('spades', 4, 'hidden_p7', false),
+    c('hearts', 6, 't7_6h'), c('clubs', 4, 't7_4c'), c('hearts', 3, 't7_3h'),
+  ];
+
+  // Apply the reported shuffle: relocate the 4c/3h run from column 7 onto the
+  // 5h in column 3, reaching the stuck position.
+  return applyMove(s, { type: 'moveCards', from: 'tableau:6', to: 'tableau:3', cardIds: ['t7_3h', 't7_4c'] });
+}
+
+test('board reached after the 4c/3h column-7 -> column-3 shuffle is a genuine dead end', () => {
+  const s = buildStuckAfter4c3hShuffleBoard();
+  assert.equal(hasDeadEndMove(s), false);
+  assert.equal(findReachableMove(s, { maxNodes: 500000, maxMs: 4000 }), false);
+});
+
 test('compressWinningSequence never breaks a win and can drop redundant tableau shuffles', () => {
   const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
   const s = createEmptyGameState();

@@ -446,6 +446,9 @@ export const useGameStore = create((set, get) => ({
     useUiStore.getState().clearHints();
     useStatsStore.getState().startTimerIfValid(state);
     useStatsStore.getState().addMoves(1);
+    if (next.stock.length === 0 && !isWon(next)) {
+      checkDeadEnd(get, set, next);
+    }
     return true;
   },
 
@@ -477,6 +480,9 @@ export const useGameStore = create((set, get) => ({
     const next = coreRedo(state, record);
     set({ state: next, redoStack: stack, autoMoveState: {}, lastActionMeta: { type: record.type === 'draw' ? 'draw' : 'move' } });
     useUiStore.getState().clearHints();
+    if (next.stock.length === 0 && !isWon(next)) {
+      checkDeadEnd(get, set, next);
+    }
   },
 
   /**
