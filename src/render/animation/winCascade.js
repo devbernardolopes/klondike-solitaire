@@ -28,6 +28,10 @@ export function cancelWinCascade() {
 }
 
 export function playWinCascade() {
+  // A hidden/background tab pauses requestAnimationFrame, so an rAF-driven
+  // cascade would stall until refocus. The win is already recorded by the caller,
+  // so simply skip the visual celebration when hidden — it will not play.
+  if (typeof document !== 'undefined' && document.hidden) return;
   const cards = gsap.utils.toArray('[data-card]');
   if (cards.length === 0) return;
   foundationPiles = [];

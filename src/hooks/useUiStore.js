@@ -111,6 +111,22 @@ export const useUiStore = create((set) => ({
   clearAllTransitions: () =>
     set({ animatingCards: new Set(), animatingLocs: new Set(), activeTransitions: {} }),
 
+  /**
+   * Force every pending transition-completion waiter to resolve and clear all
+   * granular animation locks. Used when the tab becomes hidden: a hidden tab
+   * pauses requestAnimationFrame, so GSAP tweens (and thus endTransition) can't
+   * fire, which would otherwise freeze an awaiting auto-complete step until the
+   * tab is refocused. Releasing the waiters lets the move sequence keep
+   * advancing in the background.
+   */
+  forceResolveTransitions: () => {
+    transitionDone.forEach((cb) => {
+      try { cb(); } catch { /* ignore */ }
+    });
+    transitionDone.clear();
+    set({ animatingCards: new Set(), animatingLocs: new Set(), activeTransitions: {} });
+  },
+
   /** Set the all-encompassing lock used by the win cascade / deal reset. */
   setFullLock: (v) => set({ fullLock: v }),
 
