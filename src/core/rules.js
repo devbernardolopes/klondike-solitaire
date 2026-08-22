@@ -106,7 +106,7 @@ export function getAutoMoveTargets(state, from, cardId) {
   }
 
   const movingCard = run[0];
-  const targets = [];
+  let targets = [];
   for (const loc of DEST_ORDER) {
     if (loc === from) continue;
     // A card already on a foundation should not hop to another (empty) foundation;
@@ -125,6 +125,21 @@ export function getAutoMoveTargets(state, from, cardId) {
       : canMoveToTableau(movingCard, dest);
     if (valid) targets.push(loc);
   }
+
+  // Special case: a King heading a fully-revealed tableau pile (no face-down
+  // cards anywhere in the source, so relocating it to an empty column uncovers
+  // nothing) should target the single LEFTMOST empty column rather than
+  // offering every empty column as a cycle target. This stops the King from
+  // "walking" across all empty columns one tap at a time — a single tap sends it
+  // to the leftmost empty slot. Non-empty valid drops are left untouched.
+  if (from.startsWith('tableau') && movingCard.rank === 13 && src.every((c) => c.faceUp)) {
+    const emptyTargets = targets.filter((t) => t.startsWith('tableau') && pileAt(state, t).length === 0);
+    if (emptyTargets.length > 1) {
+      const leftmost = emptyTargets[0]; // targets follow DEST_ORDER → first is leftmost
+      targets = targets.filter((t) => !(t.startsWith('tableau') && pileAt(state, t).length === 0) || t === leftmost);
+    }
+  }
+
   return targets;
 }
 

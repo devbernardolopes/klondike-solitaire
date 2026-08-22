@@ -69,6 +69,37 @@ test('only a King-to-empty relocation is NOT progress', () => {
   assert.equal(hasProgressMove(s), false);
 });
 
+test('fully-revealed King pile auto-moves to the LEFTMOST empty column only', () => {
+  const s = createEmptyGameState();
+  // King as the sole (fully-revealed) card on col2; cols 0, 1, 4 are empty.
+  s.tableau[0] = [];
+  s.tableau[1] = [];
+  s.tableau[2] = [up('hearts', 13, 'king')];
+  s.tableau[4] = [];
+  const targets = getAutoMoveTargets(s, 'tableau:2', 'king');
+  const emptyTargets = targets.filter((t) => t.startsWith('tableau') && s.tableau[Number(t.split(':')[1])].length === 0);
+  // Exactly one empty-tableau target, and it is the leftmost empty (tableau:0).
+  assert.equal(emptyTargets.length, 1);
+  assert.equal(emptyTargets[0], 'tableau:0');
+});
+
+test('King that reveals a face-down card keeps all empty-column targets', () => {
+  const s = createEmptyGameState();
+  // King on top of col2 with a face-down card beneath it; cols 0, 1 are the only
+  // empties. Every other column is filled so the count is deterministic.
+  s.tableau[0] = [];
+  s.tableau[1] = [];
+  s.tableau[2] = [down('clubs', 5, 'hidden'), up('hearts', 13, 'king')];
+  s.tableau[3] = [up('spades', 4, 'col3')];
+  s.tableau[4] = [up('diamonds', 7, 'col4')];
+  s.tableau[5] = [up('clubs', 9, 'col5')];
+  s.tableau[6] = [up('hearts', 2, 'col6')];
+  const targets = getAutoMoveTargets(s, 'tableau:2', 'king');
+  const emptyTargets = targets.filter((t) => t.startsWith('tableau') && s.tableau[Number(t.split(':')[1])].length === 0);
+  // Revealing move is meaningful, so both empties remain available.
+  assert.equal(emptyTargets.length, 2);
+});
+
 /**
  * Regression: a winnable board where the only useful card (Qs) is buried in the
  * waste and surfaces only after a recycle+draw. The "no moves" detector must NOT
