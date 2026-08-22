@@ -36,6 +36,7 @@ export default function App() {
     init();
     initStats();
     initSeeds();
+    useGameStore.getState().initialDeal();
   }, [init, initStats, initSeeds]);
 
   return (

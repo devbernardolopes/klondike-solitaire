@@ -86,14 +86,6 @@ export default function NewGameModal({ open, onReplay, onWinningDeal, onRandomSh
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <button
-            type="button"
-            style={{ ...btn, background: 'var(--ui-modal-btn-bg-strong)', textAlign: 'left' }}
-            onClick={onReplay}
-          >
-            Replay this Game{' '}
-            <span style={{ fontWeight: 400, opacity: 0.8 }}>— restart the same deal</span>
-          </button>
-          <button
             ref={firstBtnRef}
             type="button"
             style={{ ...btn, textAlign: 'left' }}
@@ -109,6 +101,14 @@ export default function NewGameModal({ open, onReplay, onWinningDeal, onRandomSh
           >
             Random Shuffle{' '}
             <span style={{ fontWeight: 400, opacity: 0.8 }}>— true random, may be unwinnable</span>
+          </button>
+          <button
+            type="button"
+            style={{ ...btn, background: 'var(--ui-modal-btn-bg-strong)', textAlign: 'left' }}
+            onClick={onReplay}
+          >
+            Replay this Game{' '}
+            <span style={{ fontWeight: 400, opacity: 0.8 }}>— restart the same deal</span>
           </button>
           <button
             type="button"

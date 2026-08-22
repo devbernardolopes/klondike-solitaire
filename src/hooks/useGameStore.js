@@ -83,6 +83,37 @@ function buildPreDealState(seed) {
   return state;
 }
 
+// Shared animated-deal pipeline: set a transient "pre-deal" (all cards face-down
+// in stock) instantly, then on the next frame perform the real deal through the
+// same Flip pipeline used by every other transition. Used by every new-game
+// entry point (dealNewGame, replayGame, and the initial app-load deal) so the
+// deal animation is identical regardless of mode.
+function runAnimatedDeal(get, set, { seed, order }) {
+  const useSeed = seed !== undefined;
+  const preDeal = buildPreDealState(useSeed ? seed : undefined);
+  const replaySpec = useSeed ? { seed } : { order: preDeal.stock.map((c) => ({ ...c })) };
+  set({ state: preDeal, redoStack: [], autoMoveState: {}, replaySpec, lastActionMeta: { type: 'draw' } });
+  requestAnimationFrame(() => {
+    cancelAutoComplete(set);
+    const next = deal(useSeed ? { seed } : { order: replaySpec.order });
+    const allIds = [
+      ...next.stock,
+      ...next.waste,
+      ...next.foundations.flat(),
+      ...next.tableau.flat(),
+    ].map((c) => c.id);
+    const allLocs = [
+      'stock',
+      'waste',
+      ...next.foundations.map((_, i) => `foundation:${i}`),
+      ...next.tableau.map((_, i) => `tableau:${i}`),
+    ];
+    const tid = captureFlip('deal');
+    useUiStore.getState().beginTransition(tid, allIds, allLocs);
+    set({ state: next, lastActionMeta: { type: 'deal' } });
+  });
+}
+
 // Delay (ms) inserted after a winning-sequence step's tween finishes, before
 // the next step is applied, so the user sees the cards arrive one at a time.
 // Each step itself waits for its own tween to complete (see runWinSequence /
@@ -272,8 +303,15 @@ function readPile(s, loc) {
 // Capture that seed so "Replay this Game" can reproduce it.
 const INITIAL_SEED = randomSolvableSeed();
 
+// Guards the one-time animated initial deal so React StrictMode (which double-
+// invokes mount effects) cannot trigger two overlapping deals.
+let initialDealDone = false;
+
 export const useGameStore = create((set, get) => ({
-  state: deal({ seed: INITIAL_SEED }),
+  // Start as a pre-deal (all cards face-down in stock) so the very first game
+  // can animate its deal on load via initialDeal() rather than appearing
+  // instantly. This is the only winning deal that previously had no animation.
+  state: buildPreDealState(INITIAL_SEED),
   redoStack: [],
   // True while an auto-complete sequence is animating, so the Board trigger
   // effect doesn't re-run the (expensive) solver on every step of the run.
@@ -320,30 +358,26 @@ export const useGameStore = create((set, get) => ({
             return s;
           })()
         : undefined;
-    const preDeal = buildPreDealState(seed !== undefined ? seed : undefined);
-    // Remember how this game was dealt so "Replay this Game" can reproduce it.
-    // For Random Shuffle (no seed) we capture the full 52-card order directly.
-    const replaySpec = seed !== undefined ? { seed } : { order: preDeal.stock.map((c) => ({ ...c })) };
-    set({ state: preDeal, redoStack: [], autoMoveState: {}, replaySpec, lastActionMeta: { type: 'draw' } });
-    requestAnimationFrame(() => {
-      cancelAutoComplete(set);
-      const next = deal(seed !== undefined ? { seed } : { order: replaySpec.order });
-      const allIds = [
-        ...next.stock,
-        ...next.waste,
-        ...next.foundations.flat(),
-        ...next.tableau.flat(),
-      ].map((c) => c.id);
-      const allLocs = [
-        'stock',
-        'waste',
-        ...next.foundations.map((_, i) => `foundation:${i}`),
-        ...next.tableau.map((_, i) => `tableau:${i}`),
-      ];
-      const tid = captureFlip('deal');
-      useUiStore.getState().beginTransition(tid, allIds, allLocs);
-      set({ state: next, lastActionMeta: { type: 'deal' } });
-    });
+    runAnimatedDeal(get, set, { seed: seed !== undefined ? seed : undefined });
+  },
+
+  /**
+   * Animate the initial game on app load. The store starts as a pre-deal, so the
+   * first Winning Deal (a fixed, pre-determined seed) plays the same deal
+   * animation as a user-initiated new game instead of appearing instantly.
+   * Guarded so React StrictMode's double-invoked mount effect deals only once.
+   */
+  initialDeal: () => {
+    if (initialDealDone) return;
+    initialDealDone = true;
+    cancelAutoComplete(set);
+    useUiStore.getState().setNoMovesDialogOpen(false);
+    useUiStore.getState().clearHints();
+    cancelWinCascade();
+    if (useUiStore.getState().animatingCards.size > 0) return;
+    useUiStore.getState().setLastNewGameMode('winning');
+    useStatsStore.getState().resetStats();
+    runAnimatedDeal(get, set, { seed: INITIAL_SEED });
   },
 
   /**
@@ -365,27 +399,7 @@ export const useGameStore = create((set, get) => ({
     if (useUiStore.getState().animatingCards.size > 0) return;
     useUiStore.getState().setLastNewGameMode(spec.seed !== undefined ? 'winning' : 'random');
     useStatsStore.getState().resetStats();
-    const preDeal = buildPreDealState();
-    set({ state: preDeal, redoStack: [], autoMoveState: {}, replaySpec: spec, lastActionMeta: { type: 'draw' } });
-    requestAnimationFrame(() => {
-      cancelAutoComplete(set);
-      const next = spec.seed !== undefined ? deal({ seed: spec.seed }) : deal({ order: spec.order });
-      const allIds = [
-        ...next.stock,
-        ...next.waste,
-        ...next.foundations.flat(),
-        ...next.tableau.flat(),
-      ].map((c) => c.id);
-      const allLocs = [
-        'stock',
-        'waste',
-        ...next.foundations.map((_, i) => `foundation:${i}`),
-        ...next.tableau.map((_, i) => `tableau:${i}`),
-      ];
-      const tid = captureFlip('deal');
-      useUiStore.getState().beginTransition(tid, allIds, allLocs);
-      set({ state: next, lastActionMeta: { type: 'deal' } });
-    });
+    runAnimatedDeal(get, set, spec.seed !== undefined ? { seed: spec.seed } : { order: spec.order });
   },
 
   /**
