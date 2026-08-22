@@ -188,42 +188,106 @@ function replaysToWin(seq, startState) {
  * @param {import('./GameState.js').GameState} startState  state the seq begins from
  * @returns {Array<object>} a (possibly shorter) winning sequence
  */
+/** Is `m` a pure tableau→tableau relocation? (Foundation/draw/recycle moves are
+ * never considered for compression — they are always progress and left untouched.) */
+function isTableauMove(m) {
+  return (
+    m.type === 'moveCards' &&
+    typeof m.from === 'string' && m.from.startsWith('tableau') &&
+    typeof m.to === 'string' && m.to.startsWith('tableau')
+  );
+}
+
+/** Do two moves share at least one card id? Used to detect that a run which left
+ * a column in move `a` is the same run that came back in move `b` (even if `b`
+ * also carries extra cards that piled on top of it in between). */
+function sharesCard(a, b) {
+  const sa = new Set(a.cardIds || []);
+  for (const id of b.cardIds || []) if (sa.has(id)) return true;
+  return false;
+}
+
+/** Drop a single tableau→tableau move if the remaining line still wins. */
+function dropSingleTableauMove(seq, startState) {
+  for (let i = 0; i < seq.length; i++) {
+    if (!isTableauMove(seq[i])) continue;
+    const trial = seq.slice(0, i).concat(seq.slice(i + 1));
+    if (replaysToWin(trial, startState)) return trial;
+  }
+  return null;
+}
+
+/** Drop an entire tableau→tableau relocation excursion: a run leaves column P in
+ * move `a`, and a later move `b` brings (at least one of) its cards back to P.
+ * Removing every tableau→tableau move in the span [a..b] leaves the run where it
+ * started, so any in-between parking (multi-step cycles P→Q→R→P, or a run that
+ * grew by picking up other cards before returning) is collapsed. Re-validated
+ * through the real move engine, so the win is preserved or the drop is rejected. */
+function dropReturnToOrigin(seq, startState) {
+  for (let i = 0; i < seq.length; i++) {
+    const a = seq[i];
+    if (!isTableauMove(a)) continue;
+    const p = a.from; // the column the run departed
+    for (let j = i + 1; j < seq.length; j++) {
+      const b = seq[j];
+      if (!isTableauMove(b)) continue;
+      // b lands a card that left P back onto P → the excursion can be collapsed.
+      if (b.to === p && sharesCard(a, b)) {
+        const trial = [];
+        for (let k = 0; k < seq.length; k++) {
+          if (k >= i && k <= j && isTableauMove(seq[k])) continue;
+          trial.push(seq[k]);
+        }
+        if (replaysToWin(trial, startState)) return trial;
+      }
+    }
+  }
+  return null;
+}
+
+/** Drop a maximal contiguous block of pure tableau→tableau relocations (bounded
+ * by foundation/draw/recycle moves or the ends). Catches lateral churn that never
+ * returns to an origin column but is nonetheless redundant — e.g. two alternating
+ * shuffles that simply cancel out. Re-validated, so a block that contains a move
+ * actually required to expose a card is kept intact. */
+function dropChurnBlock(seq, startState) {
+  let k = 0;
+  while (k < seq.length) {
+    if (!isTableauMove(seq[k])) {
+      k++;
+      continue;
+    }
+    const start = k;
+    while (k < seq.length && isTableauMove(seq[k])) k++;
+    const end = k - 1; // inclusive
+    const trial = seq.slice(0, start).concat(seq.slice(end + 1));
+    if (replaysToWin(trial, startState)) return trial;
+  }
+  return null;
+}
+
 export function compressWinningSequence(seq, startState) {
   if (!Array.isArray(seq) || seq.length === 0) return seq;
   let reduced = seq.slice();
   let changed = true;
   while (changed) {
     changed = false;
-
-    // (1) single-move deletion of any tableau→tableau move that isn't required.
-    for (let i = 0; i < reduced.length && !changed; i++) {
-      const m = reduced[i];
-      if (m.type !== 'moveCards' || !m.to.startsWith('tableau')) continue;
-      const trial = reduced.slice(0, i).concat(reduced.slice(i + 1));
-      if (replaysToWin(trial, startState)) {
-        reduced = trial;
-        changed = true;
-      }
+    const afterSingle = dropSingleTableauMove(reduced, startState);
+    if (afterSingle) {
+      reduced = afterSingle;
+      changed = true;
+      continue;
     }
-    if (changed) continue;
-
-    // (2) remove back-and-forth shuttles of the same card-set (P→Q then Q→P).
-    const idsOf = (m) => (m.cardIds || []).slice().sort().join(',');
-    for (let i = 0; i < reduced.length && !changed; i++) {
-      const a = reduced[i];
-      if (a.type !== 'moveCards' || !a.to.startsWith('tableau')) continue;
-      for (let j = i + 1; j < reduced.length; j++) {
-        const b = reduced[j];
-        if (b.type !== 'moveCards') continue;
-        if (a.from === b.to && a.to === b.from && idsOf(a) === idsOf(b)) {
-          const trial = reduced.slice(0, i).concat(reduced.slice(i + 1, j), reduced.slice(j + 1));
-          if (replaysToWin(trial, startState)) {
-            reduced = trial;
-            changed = true;
-            break;
-          }
-        }
-      }
+    const afterReturn = dropReturnToOrigin(reduced, startState);
+    if (afterReturn) {
+      reduced = afterReturn;
+      changed = true;
+      continue;
+    }
+    const afterBlock = dropChurnBlock(reduced, startState);
+    if (afterBlock) {
+      reduced = afterBlock;
+      changed = true;
     }
   }
   return reduced;

@@ -329,6 +329,61 @@ test('compressWinningSequence never breaks a win and can drop redundant tableau 
   assert.equal(isWon(replay(s, out)), true, 'compressed sequence must still win');
 });
 
+test('compressWinningSequence collapses a multi-step tableau cycle (P→Q→R→P)', () => {
+  const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
+  const s = createEmptyGameState();
+  s.foundations[0] = Array.from({ length: 12 }, (_, i) => c('spades', i + 1, `s${i + 1}`));
+  s.foundations[1] = Array.from({ length: 13 }, (_, i) => c('clubs', i + 1, `cl${i + 1}`));
+  s.foundations[2] = Array.from({ length: 13 }, (_, i) => c('diamonds', i + 1, `d${i + 1}`));
+  s.foundations[3] = Array.from({ length: 11 }, (_, i) => c('hearts', i + 1, `h${i + 1}`));
+  s.tableau = [[c('hearts', 12, 'hQ')], [c('spades', 13, 'sK')], [c('hearts', 13, 'hK')], [], [], [], []];
+
+  // hQ needlessly cycles 0→1→2→0 (a 3-column cycle returning to its origin)
+  // before going to its foundation; the whole cycle is pure churn and must be
+  // collapsed (the old code only caught the direct 0→1→0 round-trip).
+  const seq = [
+    { type: 'moveCards', from: 'tableau:0', to: 'tableau:1', cardIds: ['hQ'] },
+    { type: 'moveCards', from: 'tableau:1', to: 'tableau:2', cardIds: ['hQ'] },
+    { type: 'moveCards', from: 'tableau:2', to: 'tableau:0', cardIds: ['hQ'] },
+    { type: 'moveCards', from: 'tableau:0', to: 'foundation:3', cardIds: ['hQ'] },
+    { type: 'moveCards', from: 'tableau:1', to: 'foundation:0', cardIds: ['sK'] },
+    { type: 'moveCards', from: 'tableau:2', to: 'foundation:3', cardIds: ['hK'] },
+  ];
+  assert.equal(isWon(replay(s, seq)), true, 'hand-built cycle sequence must win');
+
+  const out = compressWinningSequence(seq, s);
+  assert.ok(out.length < seq.length, 'redundant cycle should be removed');
+  assert.equal(isWon(replay(s, out)), true, 'compressed sequence must still win');
+  const remainingTableau = out.filter((m) => m.type === 'moveCards' && String(m.to).startsWith('tableau:'));
+  assert.equal(remainingTableau.length, 0, 'no tableau churn should remain');
+});
+
+test('compressWinningSequence preserves a genuinely required tableau shuffle from the solver', () => {
+  const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
+  const s = createEmptyGameState();
+  s.foundations[0] = Array.from({ length: 13 }, (_, i) => c('spades', i + 1, `sp${i + 1}`));
+  s.foundations[1] = Array.from({ length: 13 }, (_, i) => c('diamonds', i + 1, `d${i + 1}`));
+  s.foundations[2] = Array.from({ length: 11 }, (_, i) => c('clubs', i + 1, `cl${i + 1}`));
+  s.foundations[3] = Array.from({ length: 9 }, (_, i) => c('hearts', i + 1, `h${i + 1}`));
+  s.tableau = [
+    [c('hearts', 10, 'h10'), c('hearts', 11, 'hJ')],
+    [c('clubs', 12, 'c12')],
+    [c('hearts', 12, 'hQ')],
+    [c('hearts', 13, 'hK')],
+    [c('clubs', 13, 'cK')],
+    [], [],
+  ];
+  const seq = findWinningSequence(s);
+  assert.ok(seq, 'solver must find a win');
+  assert.equal(isWon(replay(s, seq)), true);
+  assert.equal(seq.some((m) => m.type === 'moveCards' && String(m.to).startsWith('tableau:')), true, 'solver line must use a tableau shuffle');
+  const out = compressWinningSequence(seq, s);
+  assert.equal(isWon(replay(s, out)), true, 'compressed line must still win');
+  // The forced shuffle (hJ onto c12 to expose h10) is the only way to win, so it
+  // must survive compression — this guards against over-aggressive removal.
+  assert.equal(out.some((m) => m.type === 'moveCards' && String(m.to).startsWith('tableau:')), true, 'required shuffle must not be dropped');
+});
+
 test('compressWinningSequence is a no-op for an already-minimal foundation-only line', () => {
   const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
   const s = createEmptyGameState();
