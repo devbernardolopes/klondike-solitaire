@@ -11,6 +11,7 @@ import { useEffect } from 'react';
 import Toolbar from './Toolbar.jsx';
 import Board from './Board.jsx';
 import { useGameStore } from '../hooks/useGameStore.js';
+import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
 import { useSeedStore } from '../hooks/useSeedStore.js';
