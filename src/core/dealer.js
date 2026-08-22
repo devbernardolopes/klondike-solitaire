@@ -14,12 +14,14 @@ import { createEmptyGameState } from './GameState.js';
  *
  * @param {object} [opts]
  * @param {number} [opts.seed]  if provided, the shuffle is deterministic.
+ * @param {object[]} [opts.order]  if provided, the exact 52-card ordered deck to
+ *   deal from (skips shuffling). Used to re-deal an identical Random Shuffle.
  * @param {number} [opts.drawCount=1]  cards turned from stock per draw.
  * @returns {import('./GameState.js').GameState}
  */
 export function deal(opts = {}) {
-  const { seed, drawCount = 1 } = opts;
-  const deck = shuffle(buildStandardDeck(), seed);
+  const { seed, order, drawCount = 1 } = opts;
+  const deck = order ? order.slice() : shuffle(buildStandardDeck(), seed);
 
   const state = createEmptyGameState();
   if (seed !== undefined) state.seed = seed;

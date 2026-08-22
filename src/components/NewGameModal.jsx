@@ -13,11 +13,12 @@ import { useModalBackdrop } from './modalBackdrop.js';
 /**
  * @param {object} props
  * @param {boolean} props.open
+ * @param {() => void} props.onReplay    // restart the current game identically
  * @param {() => void} props.onWinningDeal
  * @param {() => void} props.onRandomShuffle
  * @param {() => void} props.onDismiss   // Escape / backdrop click / explicit close — does nothing else
  */
-export default function NewGameModal({ open, onWinningDeal, onRandomShuffle, onDismiss }) {
+export default function NewGameModal({ open, onReplay, onWinningDeal, onRandomShuffle, onDismiss }) {
   const firstBtnRef = useRef(null);
   const backdrop = useModalBackdrop(onDismiss);
 
@@ -85,9 +86,17 @@ export default function NewGameModal({ open, onWinningDeal, onRandomShuffle, onD
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <button
-            ref={firstBtnRef}
             type="button"
             style={{ ...btn, background: 'var(--ui-modal-btn-bg-strong)', textAlign: 'left' }}
+            onClick={onReplay}
+          >
+            Replay this Game{' '}
+            <span style={{ fontWeight: 400, opacity: 0.8 }}>— restart the same deal</span>
+          </button>
+          <button
+            ref={firstBtnRef}
+            type="button"
+            style={{ ...btn, textAlign: 'left' }}
             onClick={onWinningDeal}
           >
             Winning Deal{' '}

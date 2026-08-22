@@ -61,6 +61,7 @@ function useElapsed() {
  */
 export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, handedness, onHandednessChange, highlightCard, onHighlightCardChange }) {
   const dealNewGame = useGameStore((s) => s.dealNewGame);
+  const replayGame = useGameStore((s) => s.replayGame);
   const undo = useGameStore((s) => s.undo);
   const showHints = useGameStore((s) => s.showHints);
   const canUndo = useGameStore((s) => s.canUndo());
@@ -103,6 +104,11 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const closeSettings = useCallback(() => setSettingsDialogOpen(false), [setSettingsDialogOpen]);
   const closeStats = useCallback(() => setStatsDialogOpen(false), [setStatsDialogOpen]);
   const closeNewGame = useCallback(() => setNewGameDialogOpen(false), [setNewGameDialogOpen]);
+  const onReplay = useCallback(() => {
+    setNewGameDialogOpen(false);
+    replayGame();
+    play('deal');
+  }, [setNewGameDialogOpen, replayGame, play]);
   const onWinningDeal = useCallback(() => {
     setNewGameDialogOpen(false);
     dealNewGame('winning');
@@ -266,6 +272,7 @@ function ElapsedClock() {
 
       <NewGameModal
         open={newGameDialogOpen}
+        onReplay={onReplay}
         onWinningDeal={onWinningDeal}
         onRandomShuffle={onRandomShuffle}
         onDismiss={closeNewGame}

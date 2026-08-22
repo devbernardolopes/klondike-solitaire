@@ -268,8 +268,12 @@ function readPile(s, loc) {
   return kind === 'foundation' ? s.foundations[Number(idx)] : s.tableau[Number(idx)];
 }
 
+// The initial game is dealt from a solvable pool seed (i.e. Winning Deal mode).
+// Capture that seed so "Replay this Game" can reproduce it.
+const INITIAL_SEED = randomSolvableSeed();
+
 export const useGameStore = create((set, get) => ({
-  state: deal({ seed: randomSolvableSeed() }),
+  state: deal({ seed: INITIAL_SEED }),
   redoStack: [],
   // True while an auto-complete sequence is animating, so the Board trigger
   // effect doesn't re-run the (expensive) solver on every step of the run.
@@ -277,6 +281,10 @@ export const useGameStore = create((set, get) => ({
   // Remembers the last auto-move destination per card id so repeated clicks
   // cycle through the valid slots in DEST_ORDER. Reset on new game / undo / redo.
   autoMoveState: {},
+  // Captures exactly how the current game was dealt so "Replay this Game" can
+  // reproduce it: `{ seed }` for Winning Deal, `{ order }` (the full 52-card
+  // shuffled order) for Random Shuffle. Set by dealNewGame / replayGame.
+  replaySpec: { seed: INITIAL_SEED },
   // UI-only bookkeeping tagging the kind of transition last applied, so the
   // animation layer can pick the right motion config. Not part of core/GameState.
   lastActionMeta: { type: 'move' },
@@ -313,10 +321,55 @@ export const useGameStore = create((set, get) => ({
           })()
         : undefined;
     const preDeal = buildPreDealState(seed !== undefined ? seed : undefined);
-    set({ state: preDeal, redoStack: [], autoMoveState: {}, lastActionMeta: { type: 'draw' } });
+    // Remember how this game was dealt so "Replay this Game" can reproduce it.
+    // For Random Shuffle (no seed) we capture the full 52-card order directly.
+    const replaySpec = seed !== undefined ? { seed } : { order: preDeal.stock.map((c) => ({ ...c })) };
+    set({ state: preDeal, redoStack: [], autoMoveState: {}, replaySpec, lastActionMeta: { type: 'draw' } });
     requestAnimationFrame(() => {
       cancelAutoComplete(set);
-      const next = deal(seed !== undefined ? { seed } : {});
+      const next = deal(seed !== undefined ? { seed } : { order: replaySpec.order });
+      const allIds = [
+        ...next.stock,
+        ...next.waste,
+        ...next.foundations.flat(),
+        ...next.tableau.flat(),
+      ].map((c) => c.id);
+      const allLocs = [
+        'stock',
+        'waste',
+        ...next.foundations.map((_, i) => `foundation:${i}`),
+        ...next.tableau.map((_, i) => `tableau:${i}`),
+      ];
+      const tid = captureFlip('deal');
+      useUiStore.getState().beginTransition(tid, allIds, allLocs);
+      set({ state: next, lastActionMeta: { type: 'deal' } });
+    });
+  },
+
+  /**
+   * Restart the current game identically. Uses the captured `replaySpec`:
+   *  - Winning Deal (seed)   → re-deal with the same seed.
+   *  - Random Shuffle (order)→ re-deal with the exact same card order.
+   * Falls back to dealNewGame(lastNewGameMode) if no spec is recorded.
+   */
+  replayGame: () => {
+    const spec = get().replaySpec;
+    if (!spec) {
+      get().dealNewGame(useUiStore.getState().lastNewGameMode);
+      return;
+    }
+    cancelAutoComplete(set);
+    useUiStore.getState().setNoMovesDialogOpen(false);
+    useUiStore.getState().clearHints();
+    cancelWinCascade();
+    if (useUiStore.getState().animatingCards.size > 0) return;
+    useUiStore.getState().setLastNewGameMode(spec.seed !== undefined ? 'winning' : 'random');
+    useStatsStore.getState().resetStats();
+    const preDeal = buildPreDealState();
+    set({ state: preDeal, redoStack: [], autoMoveState: {}, replaySpec: spec, lastActionMeta: { type: 'draw' } });
+    requestAnimationFrame(() => {
+      cancelAutoComplete(set);
+      const next = spec.seed !== undefined ? deal({ seed: spec.seed }) : deal({ order: spec.order });
       const allIds = [
         ...next.stock,
         ...next.waste,
