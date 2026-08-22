@@ -8,14 +8,14 @@ import { applyMove, undo as coreUndo, redo as coreRedo } from '../core/moveEngin
 import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, isAllTableauFaceUp, DEST_ORDER } from '../core/rules.js';
 import { isWon } from '../core/winDetection.js';
 import { solveAsync, cancelAllSolves, STALE } from '../core/solverClient.js';
-import { SOLVER_TIMEOUT, hasDeadEndMove } from '../core/solver.js';
+import { SOLVER_TIMEOUT, hasDeadEndMove, compressWinningSequence } from '../core/solver.js';
 import { findHints } from '../core/hints.js';
 import { buildStandardDeck, shuffle } from '../core/Deck.js';
 import { createEmptyGameState } from '../core/GameState.js';
 import { randomSolvableSeed, pickSolvableSeed } from '../core/solvablePool.js';
 import { enqueueFlip } from '../render/animation/flipBridge.js';
 import { cancelWinCascade } from '../render/animation/winCascade.js';
-import { useUiStore } from './useUiStore.js';
+import { useUiStore, whenTransitionDone } from './useUiStore.js';
 import { useStatsStore } from './useStatsStore.js';
 import { useSeedStore } from './useSeedStore.js';
 
@@ -83,11 +83,18 @@ function buildPreDealState(seed) {
   return state;
 }
 
-// Delay (ms) between auto-complete move applications so the user sees cards
-// fly to the foundations one at a time. Not persisted in state.
-const AUTO_COMPLETE_DELAY = 140;
+// Delay (ms) inserted after a winning-sequence step's tween finishes, before
+// the next step is applied, so the user sees the cards arrive one at a time.
+// Each step itself waits for its own tween to complete (see runWinSequence /
+// runGreedy), so this is purely a pacing gap on top of the animation.
+const AUTO_COMPLETE_STEP_GAP = 80;
 let autoCompleteTimer = null;
 let activeSolveCancel = null;
+// Bumped whenever an in-progress auto-complete is cancelled (deal/move/undo/redo
+// all call cancelAutoComplete). The async step loops capture this id and bail
+// after an await if it changed, so a cancelled run never applies further moves
+// after the user took over.
+let autoCompleteRunId = 0;
 
 function clearAutoCompleteTimer() {
   if (autoCompleteTimer !== null) {
@@ -125,18 +132,24 @@ function applyAutoStep(get, set, move) {
   set({ state: next, redoStack: [], autoMoveState: {}, lastActionMeta: { type: 'auto' } });
   useStatsStore.getState().startTimerIfValid(cur);
   useStatsStore.getState().addMoves(1);
+  return tid;
 }
 
 // Make safe, obvious foundation moves one at a time until none remain. Cheap and
 // synchronous; used when the full solver has no win to prove (or when hidden
-// cards remain and we never want to pay for the search).
+// cards remain and we never want to pay for the search). Each step waits for its
+// own relocation tween to finish (via whenTransitionDone) before the next is
+// applied, so no two steps ever animate concurrently — this is what prevents the
+// "jumping" artefact where cards appeared to bounce between piles mid-flight.
 function runGreedy(get, set) {
   // Lock the whole board for the duration of the greedy run so the player
   // cannot interact with cards mid-sequence (matches the winning auto-complete).
   set({ autoCompleting: true });
+  const run = autoCompleteRunId;
   const visited = new Set();
-  const step = () => {
+  const step = async () => {
     const cur = get().state;
+    if (run !== autoCompleteRunId) return; // cancelled by a user action
     const sig = [
       cur.waste.map((c) => c.id).join(','),
       cur.foundations.map((p) => p.map((c) => c.id).join(',')).join('|'),
@@ -150,8 +163,10 @@ function runGreedy(get, set) {
     visited.add(sig);
     const fm = findFoundationMove(cur);
     if (fm) {
-      applyAutoStep(get, set, { type: 'moveCards', from: fm.from, to: fm.to, cardIds: [fm.cardId] });
-      autoCompleteTimer = setTimeout(step, AUTO_COMPLETE_DELAY);
+      const tid = applyAutoStep(get, set, { type: 'moveCards', from: fm.from, to: fm.to, cardIds: [fm.cardId] });
+      await whenTransitionDone(tid);
+      if (run !== autoCompleteRunId) return;
+      autoCompleteTimer = setTimeout(step, AUTO_COMPLETE_STEP_GAP);
       return;
     }
     autoCompleteTimer = null;
@@ -160,18 +175,30 @@ function runGreedy(get, set) {
   step();
 }
 
-// Animate the solver's winning move sequence one step at a time.
+// Animate the solver's winning move sequence one step at a time. Each step waits
+// for its relocation tween to fully complete (whenTransitionDone) before the next
+// is applied, so steps never overlap and a moved stack is never re-grabbed while
+// still in flight (the source of the old "jumping" artefact).
 function runWinSequence(get, set, seq) {
+  const run = autoCompleteRunId;
   let i = 0;
-  const step = () => {
+  const step = async () => {
     if (i >= seq.length) {
       autoCompleteTimer = null;
       set({ autoCompleting: false });
       return;
     }
+    if (run !== autoCompleteRunId) return; // cancelled by a user action
     const move = seq[i++];
-    applyAutoStep(get, set, move);
-    autoCompleteTimer = setTimeout(step, AUTO_COMPLETE_DELAY);
+    const tid = applyAutoStep(get, set, move);
+    await whenTransitionDone(tid);
+    if (run !== autoCompleteRunId) return;
+    if (i >= seq.length) {
+      autoCompleteTimer = null;
+      set({ autoCompleting: false });
+      return;
+    }
+    autoCompleteTimer = setTimeout(step, AUTO_COMPLETE_STEP_GAP);
   };
   step();
 }
@@ -181,6 +208,7 @@ function runWinSequence(get, set, seq) {
 // state) can re-trigger it.
 function cancelAutoComplete(set) {
   clearAutoCompleteTimer();
+  autoCompleteRunId += 1; // invalidate any in-flight async step loop
   if (activeSolveCancel) {
     activeSolveCancel();
     activeSolveCancel = null;
@@ -457,7 +485,7 @@ export const useGameStore = create((set, get) => ({
    * Auto-complete: greedily move every visible, top-most card (waste top and
    * face-up tableau tops) onto a valid foundation until no more such moves
    * exist. Moves are applied one at a time with a small delay (see
-   * AUTO_COMPLETE_DELAY) so the user sees the cards arrive. Each move is a
+   * AUTO_COMPLETE_STEP_GAP) so the user sees the cards arrive. Each move is a
    * normal history entry, so Undo steps back through them individually.
    *
    * Only one auto-complete may run at a time; any user action (deal / move /
@@ -489,16 +517,23 @@ export const useGameStore = create((set, get) => ({
     // silently falls back to the greedy foundation loop (no announcement),
     // matching the requested "keep silent on stall" behavior.
     set({ autoCompleting: true });
+    const run = autoCompleteRunId;
     const { promise, cancel } = solveAsync(state, { maxNodes: 200000, maxMs: 2000 });
     activeSolveCancel = cancel;
     promise.then((seq) => {
       activeSolveCancel = null;
+      // A user action (deal/move/undo/redo) may have cancelled us while the
+      // worker was busy; if the run id changed, abandon the result entirely.
+      if (run !== autoCompleteRunId) return;
       if (seq === STALE) {
         set({ autoCompleting: false });
         return;
       }
       if (Array.isArray(seq)) {
-        runWinSequence(get, set, seq);
+        // Strip redundant tableau shuffles so a stack isn't bounced between
+        // piles during the auto-complete animation. The compression re-validates
+        // the line through the real move engine, so the win is preserved.
+        runWinSequence(get, set, compressWinningSequence(seq, state));
       } else {
         set({ autoCompleting: false });
         runGreedy(get, set);
@@ -508,8 +543,8 @@ export const useGameStore = create((set, get) => ({
   },
 
   isWon: () => isWon(get().state),
-  canUndo: () => get().state.moveHistory.length > 0,
-  canRedo: () => get().redoStack.length > 0,
+  canUndo: () => !get().autoCompleting && get().state.moveHistory.length > 0,
+  canRedo: () => !get().autoCompleting && get().redoStack.length > 0,
 
   /**
    * Hint affordance: surface the currently-visible legal moves. Toggles — if

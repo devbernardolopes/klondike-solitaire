@@ -144,6 +144,92 @@ export function findWinningSequence(state, opts = {}) {
 }
 
 /**
+ * Replay a move list from a start state and report whether it reaches a won
+ * position. Pure and defensive: an illegal move (one that became impossible
+ * after another was removed) throws inside applyMove, which we treat as a
+ * non-winning line so the removed move is kept.
+ * @param {Array<object>} seq
+ * @param {import('./GameState.js').GameState} startState
+ * @returns {boolean}
+ */
+function replaysToWin(seq, startState) {
+  try {
+    let s = startState;
+    for (const move of seq) s = applyMove(s, move);
+    return isWon(s);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Remove redundant moves from a *winning* move sequence. A move is redundant if
+ * deleting it still leaves a line that applies legally (via the real move engine)
+ * and reaches a won state. This strips "shuffle" churn — e.g. a run moved
+ * tableau:X→tableau:Y to expose a card, then back tableau:Y→tableau:X — when the
+ * round-trip wasn't required for the win, so auto-complete doesn't visibly bounce
+ * a stack between piles. Foundation moves and stock draw/recycle steps are never
+ * considered redundant (they are always progress) and are left untouched.
+ *
+ * The function only ever *removes* moves proven safe (the remaining line is
+ * re-validated through the real move engine and must still win), so it can never
+ * make a winnable line unwinnable.
+ *
+ * Two idioms are handled:
+ *  1. A single move whose removal doesn't break any later move's locator — dropped
+ *     directly.
+ *  2. A back-and-forth "shuttle" of the SAME card-set (P→Q then Q→P). Removing one
+ *     leg alone breaks the later move's `from` locator, so both legs must be removed
+ *     together; because the card returns to its original pile, later moves that
+ *     reference it stay consistent. Re-validated, so only genuinely redundant
+ *     shuttles are dropped.
+ *
+ * @param {Array<object>} seq  winning move descriptors (core/moveEngine format)
+ * @param {import('./GameState.js').GameState} startState  state the seq begins from
+ * @returns {Array<object>} a (possibly shorter) winning sequence
+ */
+export function compressWinningSequence(seq, startState) {
+  if (!Array.isArray(seq) || seq.length === 0) return seq;
+  let reduced = seq.slice();
+  let changed = true;
+  while (changed) {
+    changed = false;
+
+    // (1) single-move deletion of any tableau→tableau move that isn't required.
+    for (let i = 0; i < reduced.length && !changed; i++) {
+      const m = reduced[i];
+      if (m.type !== 'moveCards' || !m.to.startsWith('tableau')) continue;
+      const trial = reduced.slice(0, i).concat(reduced.slice(i + 1));
+      if (replaysToWin(trial, startState)) {
+        reduced = trial;
+        changed = true;
+      }
+    }
+    if (changed) continue;
+
+    // (2) remove back-and-forth shuttles of the same card-set (P→Q then Q→P).
+    const idsOf = (m) => (m.cardIds || []).slice().sort().join(',');
+    for (let i = 0; i < reduced.length && !changed; i++) {
+      const a = reduced[i];
+      if (a.type !== 'moveCards' || !a.to.startsWith('tableau')) continue;
+      for (let j = i + 1; j < reduced.length; j++) {
+        const b = reduced[j];
+        if (b.type !== 'moveCards') continue;
+        if (a.from === b.to && a.to === b.from && idsOf(a) === idsOf(b)) {
+          const trial = reduced.slice(0, i).concat(reduced.slice(i + 1, j), reduced.slice(j + 1));
+          if (replaysToWin(trial, startState)) {
+            reduced = trial;
+            changed = true;
+            break;
+          }
+        }
+      }
+    }
+  }
+  return reduced;
+}
+
+/**
  * Comprehensive legal moves for the "no moves remaining" detector. Mirrors the
  * win solver's `enumerateMoves` but (a) also generates waste->tableau
  * relocations (e.g. a red 8 from the waste onto a black 9) and (b) skips the

@@ -61,7 +61,7 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const dealNewGame = useGameStore((s) => s.dealNewGame);
   const undo = useGameStore((s) => s.undo);
   const showHints = useGameStore((s) => s.showHints);
-  const canUndo = useGameStore((s) => s.state.moveHistory.length > 0);
+  const canUndo = useGameStore((s) => s.canUndo());
   const autoCompleting = useGameStore((s) => s.autoCompleting);
   const won = useGameStore((s) => isWon(s.state));
   const isOver = useStatsStore((s) => s.isOver);

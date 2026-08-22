@@ -5,6 +5,35 @@
 
 import { create } from 'zustand';
 
+// Module-level registry of transition-completion callbacks, keyed by transition
+// id. The animation layer calls endTransition(tid) once a move's tween finishes;
+// a caller awaiting whenTransitionDone(tid) is resolved then. Kept outside the
+// store so awaiters don't need the store's set/get plumbing.
+const transitionDone = new Map();
+
+/**
+ * Resolve when the transition with the given id finishes animating (i.e. when
+ * endTransition(tid) is next called). Used by the auto-complete loop to chain
+ * steps only after the previous step's tween fully completed, so no two steps
+ * ever animate concurrently (which would cause visible jitter / "jumping").
+ * @param {number} tid
+ * @returns {Promise<void>}
+ */
+export function whenTransitionDone(tid) {
+  return new Promise((resolve) => {
+    transitionDone.set(tid, resolve);
+  });
+}
+
+/** @internal fire any registered completion callback for a finished transition. */
+function fireTransitionDone(tid) {
+  const cb = transitionDone.get(tid);
+  if (cb) {
+    transitionDone.delete(tid);
+    cb();
+  }
+}
+
 export const useUiStore = create((set) => ({
   selectedCardId: null,
   announce: '',
@@ -74,6 +103,7 @@ export const useUiStore = create((set) => ({
         t.cards.forEach((id) => cards.add(id));
         t.locs.forEach((l) => locsSet.add(l));
       });
+      fireTransitionDone(tid);
       return { animatingCards: cards, animatingLocs: locsSet, activeTransitions: active };
     }),
 

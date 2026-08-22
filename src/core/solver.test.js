@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createCard } from './Card.js';
 import { createEmptyGameState } from './GameState.js';
-import { findWinningSequence, findReachableMove, hasDeadEndMove, isAutoCompletable, SOLVER_TIMEOUT } from './solver.js';
+import { findWinningSequence, findReachableMove, hasDeadEndMove, isAutoCompletable, SOLVER_TIMEOUT, compressWinningSequence } from './solver.js';
 import { applyMove } from './moveEngine.js';
 import { isWon } from './winDetection.js';
 
@@ -239,3 +239,58 @@ test('reported random board has a real move (8s->9h), modal stays hidden', () =>
   assert.equal(hasDeadEndMove(s), true);
   assert.equal(findReachableMove(s, { maxNodes: 500000, maxMs: 4000 }), true);
 });
+
+test('compressWinningSequence never breaks a win and can drop redundant tableau shuffles', () => {
+  const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
+  const s = createEmptyGameState();
+  // Full 52-card state that is one step pattern away from a win: the hearts
+  // king/queen are on the tableau, the rest of every suit is on its foundation.
+  s.foundations[0] = Array.from({ length: 12 }, (_, i) => c('spades', i + 1, `s${i + 1}`));
+  s.foundations[1] = Array.from({ length: 13 }, (_, i) => c('clubs', i + 1, `cl${i + 1}`));
+  s.foundations[2] = Array.from({ length: 13 }, (_, i) => c('diamonds', i + 1, `d${i + 1}`));
+  s.foundations[3] = Array.from({ length: 11 }, (_, i) => c('hearts', i + 1, `h${i + 1}`));
+  s.tableau = [
+    [c('hearts', 12, 'hQ')], // hQ: can go to foundation:3, or bounce to tableau:1
+    [c('spades', 13, 'sK')], // sK: goes to foundation:0
+    [c('hearts', 13, 'hK')], // hK: goes to foundation:3
+    [], [], [], [],
+  ];
+  assert.equal(isWon(s), false);
+
+  // A winning line that needlessly shuttles hQ between tableau:0 and tableau:1
+  // (a round-trip) before sending it to the foundation. The round-trip is pure
+  // churn: hQ can reach its foundation straight from tableau:0.
+  const seq = [
+    { type: 'moveCards', from: 'tableau:0', to: 'tableau:1', cardIds: ['hQ'] }, // hQ -> t1
+    { type: 'moveCards', from: 'tableau:1', to: 'tableau:0', cardIds: ['hQ'] }, // hQ -> t0 (return)
+    { type: 'moveCards', from: 'tableau:0', to: 'foundation:3', cardIds: ['hQ'] }, // hQ -> f3
+    { type: 'moveCards', from: 'tableau:1', to: 'foundation:0', cardIds: ['sK'] }, // sK -> f0
+    { type: 'moveCards', from: 'tableau:2', to: 'foundation:3', cardIds: ['hK'] }, // hK -> f3
+  ];
+  assert.equal(isWon(replay(s, seq)), true, 'hand-built sequence must win');
+
+  const out = compressWinningSequence(seq, s);
+  assert.ok(out.length < seq.length, 'redundant shuffle should be removed');
+  assert.equal(isWon(replay(s, out)), true, 'compressed sequence must still win');
+});
+
+test('compressWinningSequence is a no-op for an already-minimal foundation-only line', () => {
+  const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
+  const s = createEmptyGameState();
+  s.foundations[0] = Array.from({ length: 13 }, (_, i) => c('spades', i + 1, `s${i + 1}`));
+  s.foundations[1] = Array.from({ length: 13 }, (_, i) => c('clubs', i + 1, `cl${i + 1}`));
+  s.foundations[2] = Array.from({ length: 13 }, (_, i) => c('diamonds', i + 1, `d${i + 1}`));
+  s.foundations[3] = Array.from({ length: 10 }, (_, i) => c('hearts', i + 1, `h${i + 1}`));
+  s.tableau = [
+    [c('hearts', 11, 'hJ')],
+    [c('hearts', 12, 'hQ')],
+    [c('hearts', 13, 'hK')],
+    [], [], [], [],
+  ];
+  const seq = findWinningSequence(s);
+  assert.ok(seq && seq.length > 0);
+  const out = compressWinningSequence(seq, s);
+  assert.equal(out.length, seq.length, 'no redundant moves to remove');
+  assert.equal(isWon(replay(s, out)), true);
+});
+
