@@ -38,14 +38,16 @@ function captureFlip(type) {
 }
 
 // Confirm a genuinely stuck position once the stock is exhausted (no draws left).
-// We ask the off-thread solver whether ANY legal card-play move is reachable
-// through legal play including stock cycling. Only when the search fully exhausts
-// the space with NO move reachable do we show the "no moves remaining" modal. This
-// correctly treats a useful relocation (e.g. a red 8 onto a black 9) as a real
-// move, so the modal never fires while a play exists. A budget-exceeded (unknown)
-// result never asserts a dead end. The result is ignored if the board has changed
-// in the meantime (reference guard) or the solve was superseded (STALE).
+// We ask the off-thread solver whether ANY *progress* move (a foundation play or a
+// tableau relocation that uncovers a face-down card) is reachable through legal play
+// including stock cycling. Only when the search fully exhausts the space with NO
+// progress move reachable do we show the "no moves remaining" modal. This means a
+// position whose only remaining moves are non-covering shuffles (e.g. a red 8 onto a
+// black 9 that uncovers nothing) IS correctly treated as stuck. A budget-exceeded
+// (unknown) result never asserts a dead end. The result is ignored if the board has
+// changed in the meantime (reference guard) or the solve was superseded (STALE).
 function checkDeadEnd(get, set, state) {
+  // Cheap pre-filter: a progress move available right now means not stuck.
   if (hasDeadEndMove(state)) {
     useUiStore.getState().setNoMovesDialogOpen(false);
     return;

@@ -145,12 +145,13 @@ test('winnable waste-cycle board: progress is reachable (no false dead end)', ()
 });
 
 /**
- * Regression: a relocation move buried in the waste (8d that can build onto 9c)
- * must NOT be treated as a dead end. The user reported the "no moves remaining"
- * modal firing prematurely on this board (Game Mode 348) even though 8d is
- * reachable after a recycle+draw and can move to pile 6. Because 8d->9c is a
- * plain tableau relocation (not a foundation/uncover), the OLD "progress" detector
- * missed it. The detector must now report a reachable move.
+ * Board 348 (Game Mode 348): 8d buried in the waste can build onto 9c after a
+ * recycle+draw. Under ANY-move semantics that kept the game alive; under
+ * PROGRESS semantics it is a plain tableau relocation that uncovers nothing and
+ * reaches no foundation play, and there is no reachable foundation/uncover move
+ * anywhere (the waste's 9h/8h can never be placed, 8c is deadlocked under 7d,
+ * and there are no face-down cards). So the position is genuinely stuck and the
+ * "no moves" modal must now appear.
  */
 function buildBoard348() {
   const s = createEmptyGameState();
@@ -178,23 +179,22 @@ function buildBoard348() {
   return s;
 }
 
-test('board 348: an immediate move (Js->Qh) plus the buried 8d->9c keep it alive', () => {
+test('board 348: non-progress 8d->9c shuffle is a genuine dead end (progress semantics)', () => {
   const s = buildBoard348();
-  // At the root Js can build onto Qh, so the cheap pre-filter already sees a
-  // legal move and suppresses the modal. This proves the real board 348 is NOT a
-  // dead end (the old code wrongly flagged it because it only counted "progress"
-  // moves at the root).
+  // hasAnyValidMove is true (Js can build onto Qh, and 8d->9c is reachable), but
+  // none of those are progress moves, and no foundation/uncover move is reachable
+  // anywhere, so the detector must now report a dead end.
   assert.equal(hasAnyValidMove(s), true);
-  // And the buried relocation 8d->9c is reachable through cycling too.
-  assert.equal(findReachableMove(s, { maxNodes: 500000, maxMs: 4000 }), true);
+  assert.equal(findReachableMove(s, { maxNodes: 500000, maxMs: 4000 }), false);
 });
 
 /**
- * The exact old-bug scenario: a position where there is NO immediate legal move
- * at the root (so the detector must use its solver/worker path), yet a useful
- * relocation is reachable after a recycle+draw. The OLD "progress" detector
- * missed this (8d->9c is not a foundation/uncover move) and wrongly fired the
- * modal. The new "any reachable move" detector must report it as alive.
+ * A position where there is NO immediate legal move at the root (so the detector
+ * must use its solver/worker path), and a relocation (8d->9c) is reachable after a
+ * recycle+draw. Under progress semantics 8d->9c uncovers nothing and reaches no
+ * foundation play, and no foundation/uncover move is reachable anywhere (7s can
+ * never be placed, no face-down cards exist), so the position is a genuine dead
+ * end and the modal must appear.
  */
 function buildBuriedRelocationNoRootMove() {
   const s = createEmptyGameState();
@@ -216,10 +216,10 @@ function buildBuriedRelocationNoRootMove() {
   return s;
 }
 
-test('buried relocation with no root move: reachable move suppresses dead end', () => {
+test('buried relocation with no root move: non-progress 8d->9c is a dead end', () => {
   const s = buildBuriedRelocationNoRootMove();
   assert.equal(hasAnyValidMove(s), false); // forces the worker/solver path
-  assert.equal(findReachableMove(s, { maxNodes: 500000, maxMs: 4000 }), true);
+  assert.equal(findReachableMove(s, { maxNodes: 500000, maxMs: 4000 }), false);
 });
 
 /**

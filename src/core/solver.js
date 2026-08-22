@@ -14,6 +14,7 @@ import {
   canMoveToTableau,
   canMoveToFoundation,
   isAllTableauFaceUp,
+  hasProgressMove,
 } from './rules.js';
 import { isWon } from './winDetection.js';
 
@@ -361,27 +362,34 @@ function enumerateDeadEndMoves(s) {
   return moves;
 }
 
-/** Is there any *meaningful* card-play move in `s`? Excludes the pointless
- * whole-pile-to-empty relocation. Used by the "no moves remaining" detector. */
+/** Does `s` have an immediate *progress* move available right now? A progress
+ * move is a foundation play or a tableau relocation that uncovers a face-down
+ * card (see `hasProgressMove` in rules.js). Used as the cheap pre-filter for the
+ * "no moves remaining" detector: if a progress move is available immediately we
+ * can skip the (more expensive) reachability search. Note the semantics changed
+ * from "any moveCards" to "progress move" so shuffle-only positions (e.g. a
+ * non-covering King-to-empty relocation) are correctly treated as stuck. */
 export function hasDeadEndMove(s) {
-  return enumerateDeadEndMoves(s).some((m) => m.type === 'moveCards');
+  return hasProgressMove(s);
 }
 
 /**
- * Is *any* meaningful legal card-play move reachable from this state through
- * legal moves (including stock draws / waste recycling)? This is the right
- * question for the "no moves remaining" detector: a position is a dead end only
- * when no meaningful move is *ever* reachable (after fully cycling the stock),
- * not when a full win is merely unprovable. A plain tableau relocation (e.g. a
- * red 8 onto a black 9) counts as a reachable move — such a position is NOT
- * stuck, even though it neither advances a foundation nor uncovers a face-down
- * card. The search continues past non-progress moves (including whole-pile
- * shuffles, which it uses only as transitions), so a relocation that merely
- * *leads to* a later useful move also keeps the position alive.
+ * Is *any* progress move reachable from this state through legal moves
+ * (including stock draws / waste recycling)? This is the right question for the
+ * "no moves remaining" detector under progress-move semantics: a position is a
+ * dead end only when no *meaningful* (foundation or face-down-uncovering) move
+ * is *ever* reachable, not when a full win is merely unprovable. A plain
+ * non-covering tableau relocation (e.g. a red 8 onto a black 9 that uncovers
+ * nothing) does NOT count as alive — such a position IS stuck even though a
+ * shuffle exists. The search continues past non-progress moves (including
+ * whole-pile shuffles, which it uses only as transitions) so a relocation that
+ * *leads to* a later progress move still keeps the position alive. In other
+ * words: the terminal test is "is there a progress move right now?", evaluated
+ * at every reachable state.
  *
  * Returns:
- *  - `true`  if a meaningful move is reachable,
- *  - `false` if the search fully exhausted the space with no meaningful move
+ *  - `true`  if a progress move is reachable,
+ *  - `false` if the search fully exhausted the space with no progress move
  *            reachable (a definitive dead end),
  *  - `SOLVER_TIMEOUT` if the budget was exceeded before concluding (unknown).
  *
@@ -401,7 +409,7 @@ export function findReachableMove(state, opts = {}) {
   let aborted = false;
 
   function search(s, depth) {
-    if (hasDeadEndMove(s)) return true;
+    if (hasProgressMove(s)) return true;
     if (nodes++ > maxNodes || Date.now() - start > maxMs) {
       aborted = true;
       return false;

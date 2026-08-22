@@ -128,11 +128,12 @@ test('non-winnable state returns null (not a throw)', () => {
   assert.equal(isAutoCompletable(s), false);
 });
 
-test('a reachable relocation move is NOT a dead end (any-move semantics)', () => {
+test('a non-progress relocation (King->empty) is now a dead end (progress semantics)', () => {
   const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
   const s = createEmptyGameState();
   // hQ on sK, with empty columns available: sK can move to an empty column — that
-  // is a legal (if non-progress) move, so the position is NOT stuck.
+  // is a legal but non-progress move (it uncovers nothing and no foundation play
+  // exists). Under progress semantics the position IS stuck.
   s.foundations[0] = Array.from({ length: 13 }, (_, i) => c('spades', i + 1, `sp${i + 1}`));
   s.foundations[1] = Array.from({ length: 13 }, (_, i) => c('clubs', i + 1, `cl${i + 1}`));
   s.foundations[2] = Array.from({ length: 13 }, (_, i) => c('diamonds', i + 1, `d${i + 1}`));
@@ -140,8 +141,8 @@ test('a reachable relocation move is NOT a dead end (any-move semantics)', () =>
   s.foundations[0][10] = c('spades', 11, 'sp11');
   s.foundations[0] = s.foundations[0].slice(0, 11);
   s.tableau = [[c('hearts', 12, 'hQ'), c('spades', 13, 'sK')], [], [], [], [], [], []];
-  const seq = findReachableMove(s, { maxNodes: 2 });
-  assert.equal(seq, true);
+  assert.equal(hasDeadEndMove(s), false);
+  assert.equal(findReachableMove(s, { maxNodes: 500000, maxMs: 4000 }), false);
 });
 
 test('budget-exceeded search returns SOLVER_TIMEOUT, not null (findWinningSequence)', () => {
@@ -234,10 +235,13 @@ function buildReportedRandomBoard() {
   return s;
 }
 
-test('reported random board has a real move (8s->9h), modal stays hidden', () => {
+test('reported random board with only a non-progress 8s->9h shuffle is a dead end', () => {
   const s = buildReportedRandomBoard();
-  assert.equal(hasDeadEndMove(s), true);
-  assert.equal(findReachableMove(s, { maxNodes: 500000, maxMs: 4000 }), true);
+  // The only moves are non-covering relocations (e.g. 8s->9h) that uncover nothing
+  // and reach no foundation play, so under progress semantics the board is stuck
+  // and the "no moves" modal must appear.
+  assert.equal(hasDeadEndMove(s), false);
+  assert.equal(findReachableMove(s, { maxNodes: 500000, maxMs: 4000 }), false);
 });
 
 /**
