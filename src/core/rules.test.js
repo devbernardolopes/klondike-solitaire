@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createCard } from './Card.js';
 import { createEmptyGameState } from './GameState.js';
-import { hasProgressMove, hasAnyValidMove, findFoundationMove } from './rules.js';
+import { hasProgressMove, hasAnyValidMove, findFoundationMove, getAutoMoveTargets } from './rules.js';
 import { findReachableMove, SOLVER_TIMEOUT } from './solver.js';
 
 // Build a face-up card quickly.
@@ -189,4 +189,37 @@ test('buried relocation with no root move: reachable move suppresses dead end', 
   const s = buildBuriedRelocationNoRootMove();
   assert.equal(hasAnyValidMove(s), false); // forces the worker/solver path
   assert.equal(findReachableMove(s, { maxNodes: 500000, maxMs: 4000 }), true);
+});
+
+/**
+ * Regression: an Ace sitting on a foundation must NOT auto-move back down to a
+ * tableau on a tap/click (it would land on a 2). A non-Ace foundation card may
+ * still auto-move to a valid tableau slot. Dragging from foundation to tableau
+ * is unaffected (it validates through moveCard, not getAutoMoveTargets).
+ */
+function buildFoundationAceBoard() {
+  const s = createEmptyGameState();
+  // Aces on two foundations — top card of each is the Ace.
+  s.foundations[0] = [up('diamonds', 1, 'Ad')];
+  s.foundations[1] = [up('spades', 1, 'As')];
+  // A black 2 ready to receive a red Ace in a tableau column.
+  s.tableau[0] = [up('clubs', 2, '2c')];
+  return s;
+}
+
+test('foundation Ace does not auto-move to a tableau on tap', () => {
+  const s = buildFoundationAceBoard();
+  const targets = getAutoMoveTargets(s, 'foundation:0', 'Ad');
+  assert.equal(targets.length, 0);
+  const targets2 = getAutoMoveTargets(s, 'foundation:1', 'As');
+  assert.equal(targets2.length, 0);
+});
+
+test('non-Ace foundation card may still auto-move to a valid tableau', () => {
+  const s = createEmptyGameState();
+  // A 3 on a foundation (below it a 2) and a black 4 in a tableau to receive it.
+  s.foundations[0] = [up('diamonds', 2, '2d'), up('hearts', 3, '3h')];
+  s.tableau[0] = [up('spades', 4, '4s')];
+  const targets = getAutoMoveTargets(s, 'foundation:0', '3h');
+  assert.ok(targets.includes('tableau:0'), `expected tableau:0 in ${targets}`);
 });

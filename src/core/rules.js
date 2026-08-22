@@ -113,6 +113,11 @@ export function getAutoMoveTargets(state, from, cardId) {
     // it only returns to a tableau. This keeps the cycle sensible (e.g. Ace on a
     // foundation goes back onto its tableau pile rather than to foundation:1).
     if (from.startsWith('foundation') && loc.startsWith('foundation')) continue;
+    // An Ace sitting on a foundation must NOT auto-move back down to a tableau
+    // on a tap/click (it would land on a 2). It stays put on a foundation until
+    // the user deliberately drags it down, which goes through moveCard /
+    // canMoveToTableau and is unaffected by this guard.
+    if (from.startsWith('foundation') && movingCard.rank === 1 && loc.startsWith('tableau')) continue;
     const dest = pileAt(state, loc);
     if (!dest) continue;
     const valid = loc.startsWith('foundation')
