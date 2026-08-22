@@ -133,7 +133,6 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
   const locked = won || isOver || isAnimating || autoCompleting;
   const selectedCardId = useUiStore((s) => s.selectedCardId);
   const highlightCard = useSettingsStore((s) => s.highlightCard);
-  const hints = useUiStore((s) => s.hints);
   const selectCard = useUiStore((s) => s.selectCard);
   const clearSelection = useUiStore((s) => s.clearSelection);
   const setAnnounce = useUiStore((s) => s.setAnnounce);
@@ -193,7 +192,6 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
   };
 
   const selected = selectedCardId === card.id && !locked && highlightCard;
-  const isHintSource = !locked && hints.some((h) => h.cardId === card.id);
 
   return (
     <div
@@ -207,7 +205,6 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
       role="button"
       data-card={card.id}
       data-flip-id={card.id}
-      className={isHintSource ? 'hint-source' : undefined}
       style={{
         visibility: hidden ? 'hidden' : 'visible',
         cursor: locked ? 'default' : 'grab',
