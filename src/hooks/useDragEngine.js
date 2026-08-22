@@ -127,7 +127,9 @@ export function useDragEngine() {
     const { loc: to } = overData;
     if (from && to) {
       // Store validates legality via core/rules.js and ignores invalid moves.
-      moveCard(from, to, cardId);
+      // metaType:'drag' tells moveCard to snap the card in place (no slide),
+      // since the DragOverlay already showed it at the drop target.
+      moveCard(from, to, cardId, { metaType: 'drag' });
     }
   }
 

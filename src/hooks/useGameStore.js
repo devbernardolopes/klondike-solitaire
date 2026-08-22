@@ -493,6 +493,20 @@ export const useGameStore = create((set, get) => ({
     if (!valid) return false;
 
     const next = applyMove(state, { type: 'moveCards', from, to, cardIds: moveIds });
+    // Manual drag-and-drop: the DragOverlay already showed the card in hand at
+    // the drop target, so don't snapshot/capture a slide from the source pile
+    // (that would make the real card jump back and re-slide). Just snap it into
+    // the destination and skip the animating lock so the next move is immediate.
+    if (opts.metaType === 'drag') {
+      set({ state: next, redoStack: [], lastActionMeta: { type: 'move' } });
+      useUiStore.getState().clearHints();
+      useStatsStore.getState().startTimerIfValid(state);
+      useStatsStore.getState().addMoves(1);
+      if (next.stock.length === 0 && !isWon(next)) {
+        checkDeadEnd(get, set, next);
+      }
+      return true;
+    }
     const tid = captureFlip(opts.metaType ?? 'move');
     useUiStore.getState().beginTransition(tid, moveIds, [to]);
     set({ state: next, redoStack: [], lastActionMeta: { type: opts.metaType ?? 'move' } });
