@@ -45,45 +45,6 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
   const isHintTarget = hints.some((h) => h.to === loc);
   const isHintSource = hints.some((h) => h.from === loc);
 
-  // Position a hint highlight so its TOP edge starts at the relevant card
-  // rather than at the top of the whole pile (which would also ring the
-  // face-down cards stacked above). `findHints` always records the source
-  // `cardId` as the column's top card, so the "from" rectangle sits on the
-  // moving card; the "to" rectangle sits on the landing slot (current top card,
-  // or pile start when the target is empty).
-  const cardHVal =
-    metrics && metrics.cardH ? `${metrics.cardH}px` : 'var(--card-height)';
-  const topForIndex = (i) =>
-    tops && tops.length
-      ? `${tops[i]}px`
-      : fanned
-        ? `calc(${i} * var(--tableau-fan))`
-        : 0;
-
-  // Smallest source-card index among this pile's source hints (highest in the
-  // column); falls back to the top card when none resolves.
-  let sourceStartIdx = -1;
-  if (isHintSource) {
-    for (const h of hints) {
-      if (h.from !== loc) continue;
-      const idx = cards.findIndex((c) => c.id === h.cardId);
-      if (idx >= 0 && (sourceStartIdx === -1 || idx < sourceStartIdx)) {
-        sourceStartIdx = idx;
-      }
-    }
-    if (sourceStartIdx === -1) sourceStartIdx = Math.max(0, cards.length - 1);
-  }
-  const sourceTop = topForIndex(sourceStartIdx);
-  const sourceHeight = tops && tops.length
-    ? `${pileHeight - tops[sourceStartIdx]}px`
-    : fanned
-      ? `calc(${Math.max(cards.length - 1 - sourceStartIdx, 0)} * var(--tableau-fan) + var(--card-height))`
-      : cardHVal;
-
-  const targetStartIdx = cards.length > 0 ? cards.length - 1 : 0;
-  const targetTop = topForIndex(targetStartIdx);
-  const targetHeight = cardHVal;
-
   // Adaptive tableau spacing: each card's vertical offset depends on whether it
   // is face-down (tight peek) or face-up (normal fan). The run compresses to fit
   // the available column height: face-down peeks shrink first (they only need to
@@ -142,6 +103,48 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
     }
     pileHeight = cardH + acc;
   }
+
+  // Position a hint highlight so its TOP edge starts at the relevant card
+  // rather than at the top of the whole pile (which would also ring the
+  // face-down cards stacked above). `findHints` always records the source
+  // `cardId` as the column's top card, so the "from" rectangle sits on the
+  // moving card; the "to" rectangle sits on the landing slot (current top card,
+  // or pile start when the target is empty). This block is placed after the
+  // `tops`/`pileHeight` declarations above so those `let` bindings are already
+  // initialized (no Temporal Dead Zone access).
+  const cardHVal =
+    metrics && metrics.cardH ? `${metrics.cardH}px` : 'var(--card-height)';
+  const topForIndex = (i) =>
+    tops && tops.length
+      ? `${tops[i]}px`
+      : fanned
+        ? `calc(${i} * var(--tableau-fan))`
+        : 0;
+
+  // Smallest source-card index among this pile's source hints (highest in the
+  // column); falls back to the top card when none resolves.
+  let sourceStartIdx = -1;
+  if (isHintSource) {
+    for (const h of hints) {
+      if (h.from !== loc) continue;
+      const idx = cards.findIndex((c) => c.id === h.cardId);
+      if (idx >= 0 && (sourceStartIdx === -1 || idx < sourceStartIdx)) {
+        sourceStartIdx = idx;
+      }
+    }
+    if (sourceStartIdx === -1) sourceStartIdx = Math.max(0, cards.length - 1);
+  }
+  const sourceTop = topForIndex(sourceStartIdx);
+  const sourceHeight = tops && tops.length
+    ? `${pileHeight - tops[sourceStartIdx]}px`
+    : fanned
+      ? `calc(${Math.max(cards.length - 1 - sourceStartIdx, 0)} * var(--tableau-fan) + var(--card-height))`
+      : cardHVal;
+
+  const targetStartIdx = cards.length > 0 ? cards.length - 1 : 0;
+  const targetTop = topForIndex(targetStartIdx);
+  const targetHeight = cardHVal;
+
   const pileName =
     kind === 'stock'
       ? 'Stock'
