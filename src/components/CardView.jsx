@@ -132,6 +132,7 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
   const isAnimating = useUiStore((s) => s.animatingCards.has(card.id));
   const locked = won || isOver || isAnimating || autoCompleting;
   const selectedCardId = useUiStore((s) => s.selectedCardId);
+  const highlightCard = useSettingsStore((s) => s.highlightCard);
   const hints = useUiStore((s) => s.hints);
   const selectCard = useUiStore((s) => s.selectCard);
   const clearSelection = useUiStore((s) => s.clearSelection);
@@ -191,7 +192,7 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
     }
   };
 
-  const selected = selectedCardId === card.id && !locked;
+  const selected = selectedCardId === card.id && !locked && highlightCard;
   const isHintSource = !locked && hints.some((h) => h.cardId === card.id);
 
   return (

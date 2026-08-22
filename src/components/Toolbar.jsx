@@ -56,8 +56,10 @@ function useElapsed() {
  * @param {(d: string) => void} props.onDeckChange
  * @param {'left'|'right'} props.handedness  board pile arrangement
  * @param {(h: 'left'|'right') => void} props.onHandednessChange
+ * @param {boolean} props.highlightCard  draw the focus outline on the focused card
+ * @param {(v: boolean) => void} props.onHighlightCardChange
  */
-export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, handedness, onHandednessChange }) {
+export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, handedness, onHandednessChange, highlightCard, onHighlightCardChange }) {
   const dealNewGame = useGameStore((s) => s.dealNewGame);
   const undo = useGameStore((s) => s.undo);
   const showHints = useGameStore((s) => s.showHints);
@@ -278,6 +280,8 @@ function ElapsedClock() {
         onDeckChange={onDeckChange}
         handedness={handedness}
         onHandednessChange={onHandednessChange}
+        highlightCard={highlightCard}
+        onHighlightCardChange={onHighlightCardChange}
       />
 
       <StatisticsModal

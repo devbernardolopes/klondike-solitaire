@@ -10,12 +10,18 @@ import { create } from 'zustand';
 import { setActiveDeck } from '../render/deck/deckRegistry.js';
 import { getSetting, setSetting } from '../db/schema.js';
 
-const DEFAULTS = { theme: 'classic', deck: 'procedural', handedness: 'right' };
+const DEFAULTS = {
+  theme: 'classic',
+  deck: 'procedural',
+  handedness: 'right',
+  highlightCard: true,
+};
 
 export const useSettingsStore = create((set, get) => ({
   theme: DEFAULTS.theme,
   deck: DEFAULTS.deck,
   handedness: DEFAULTS.handedness,
+  highlightCard: DEFAULTS.highlightCard,
   loaded: false,
 
   /**
@@ -23,13 +29,14 @@ export const useSettingsStore = create((set, get) => ({
    * keys fall back to DEFAULTS. Activates the loaded (or default) deck.
    */
   init: async () => {
-    const [theme, deck, handedness] = await Promise.all([
+    const [theme, deck, handedness, highlightCard] = await Promise.all([
       getSetting('theme', DEFAULTS.theme),
       getSetting('deck', DEFAULTS.deck),
       getSetting('handedness', DEFAULTS.handedness),
+      getSetting('highlightCard', DEFAULTS.highlightCard),
     ]);
     setActiveDeck(deck);
-    set({ theme, deck, handedness, loaded: true });
+    set({ theme, deck, handedness, highlightCard, loaded: true });
   },
 
   /**
@@ -55,5 +62,13 @@ export const useSettingsStore = create((set, get) => ({
   setHandedness: (handedness) => {
     set({ handedness });
     setSetting('handedness', handedness);
+  },
+
+  /**
+   * @param {boolean} highlightCard  draw the focus/selection outline on the focused card
+   */
+  setHighlightCard: (highlightCard) => {
+    set({ highlightCard });
+    setSetting('highlightCard', highlightCard);
   },
 }));

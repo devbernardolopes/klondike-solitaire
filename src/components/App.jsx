@@ -21,9 +21,11 @@ export default function App() {
   const theme = useSettingsStore((s) => s.theme);
   const deck = useSettingsStore((s) => s.deck);
   const handedness = useSettingsStore((s) => s.handedness);
+  const highlightCard = useSettingsStore((s) => s.highlightCard);
   const setTheme = useSettingsStore((s) => s.setTheme);
   const setDeck = useSettingsStore((s) => s.setDeck);
   const setHandedness = useSettingsStore((s) => s.setHandedness);
+  const setHighlightCard = useSettingsStore((s) => s.setHighlightCard);
   const init = useSettingsStore((s) => s.init);
   const initStats = useStatisticsStore((s) => s.init);
   const initSeeds = useSeedStore((s) => s.init);
@@ -57,6 +59,8 @@ export default function App() {
         onDeckChange={setDeck}
         handedness={handedness}
         onHandednessChange={setHandedness}
+        highlightCard={highlightCard}
+        onHighlightCardChange={setHighlightCard}
       />
       <Board />
       {import.meta.env.DEV && <MotionDebugPanel />}

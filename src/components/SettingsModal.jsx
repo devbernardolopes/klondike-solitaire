@@ -9,6 +9,7 @@ import { useModalBackdrop } from './modalBackdrop.js';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { buildSnapshotText, snapshotModeToken } from '../core/snapshot.js';
+import ToggleSwitch from './ToggleSwitch.jsx';
 
 /**
  * @param {object} props
@@ -20,6 +21,8 @@ import { buildSnapshotText, snapshotModeToken } from '../core/snapshot.js';
  * @param {(d: string) => void} props.onDeckChange
  * @param {'left'|'right'} props.handedness  board pile arrangement
  * @param {(h: 'left'|'right') => void} props.onHandednessChange
+ * @param {boolean} props.highlightCard  draw the focus outline on the focused card
+ * @param {(v: boolean) => void} props.onHighlightCardChange
  */
 export default function SettingsModal({
   open,
@@ -30,6 +33,8 @@ export default function SettingsModal({
   onDeckChange,
   handedness,
   onHandednessChange,
+  highlightCard,
+  onHighlightCardChange,
 }) {
   const doneRef = useRef(null);
   const backdrop = useModalBackdrop(onClose);
@@ -180,6 +185,15 @@ export default function SettingsModal({
             <option value="left">Left</option>
             <option value="right">Right</option>
           </select>
+        </div>
+
+        <div style={{ ...field, marginBottom: 20 }}>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>Highlight Card</label>
+          <ToggleSwitch
+            checked={!!highlightCard}
+            onChange={onHighlightCardChange}
+            label="Highlight Card"
+          />
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
