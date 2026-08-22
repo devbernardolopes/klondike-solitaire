@@ -4,7 +4,6 @@ import { MOTION } from './motion.js';
 import { dequeueFlip } from './flipBridge.js';
 import { useGameStore } from '../../hooks/useGameStore.js';
 import { useUiStore } from '../../hooks/useUiStore.js';
-import { cancelWinCascade } from './winCascade.js';
 
 const CONFIG_BY_TYPE = {
   // All generic card relocations (single cards and multi-card runs) share the
@@ -102,26 +101,12 @@ export function useCardMoveSlide() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, lastActionMeta]);
 
-  // When the tab is hidden, requestAnimationFrame is paused, so in-flight GSAP
-  // tweens can't complete. Finalize them (snap to their end state, no leftover
-  // transform) and release any transition locks + the win cascade so the
-  // auto-complete loop keeps advancing in the background instead of stalling.
-  useEffect(() => {
-    const onVisibility = () => {
-      if (typeof document !== 'undefined' && document.hidden) {
-        cancelAllMoveTweens();
-        cancelWinCascade();
-        useUiStore.getState().forceResolveTransitions();
-      }
-    };
-    if (typeof document !== 'undefined') {
-      document.addEventListener('visibilitychange', onVisibility);
-      return () => document.removeEventListener('visibilitychange', onVisibility);
-    }
-  }, []);
-
   // Tear down every in-flight tween only when the board unmounts, and release
   // any locks they held so a remount/route change can't leave the board stuck.
+  // We deliberately do NOT cancel/snap tweens when the tab is hidden: a hidden
+  // tab merely pauses requestAnimationFrame, so GSAP's tweens simply freeze in
+  // place and resume smoothly (via GSAP's default lagSmoothing) when the tab is
+  // refocused — no auto-complete step is skipped or jumped.
   useEffect(() => {
     return () => {
       activeTweens.forEach((t) => t.kill());
@@ -129,17 +114,4 @@ export function useCardMoveSlide() {
       useUiStore.getState().clearAllTransitions();
     };
   }, []);
-}
-
-/**
- * Finalize every in-flight move tween (snap to its end state without firing
- * completion callbacks, so no leftover transform is left on the cards) and drop
- * them from the registry. Called when the tab is hidden so paused tweens don't
- * resume with a stale starting position on return.
- */
-export function cancelAllMoveTweens() {
-  activeTweens.forEach((t) => {
-    try { t.progress(1, true); } catch { /* ignore */ }
-  });
-  activeTweens.length = 0;
 }

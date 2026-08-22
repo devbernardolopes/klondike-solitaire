@@ -28,13 +28,17 @@ function formatTime(totalMs) {
 
 /**
  * Live elapsed game time. Derived from a fixed start/end timestamp (not from
- * accumulating interval ticks) so it stays accurate even when the tab loses
- * focus. A short interval only exists to refresh the displayed value.
+ * accumulating interval ticks) and excluding hidden-tab spans via getElapsedMs,
+ * so it reflects only actively-focused play. A short interval only exists to
+ * refresh the displayed value and enforce the time limit.
  * @returns {string} "MM:SS"
  */
 function useElapsed() {
   const startTime = useStatsStore((s) => s.startTime);
   const endTime = useStatsStore((s) => s.endTime);
+  // Subscribe to the pause bookkeeping so the HUD re-renders on focus change.
+  const pausedAt = useStatsStore((s) => s.pausedAt);
+  const pausedAccumMs = useStatsStore((s) => s.pausedAccumMs);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (startTime === null) return undefined;
@@ -44,7 +48,7 @@ function useElapsed() {
     }, 250);
     return () => clearInterval(id);
   }, [startTime]);
-  const elapsed = startTime === null ? 0 : (endTime ?? now) - startTime;
+  const elapsed = startTime === null ? 0 : useStatsStore.getState().getElapsedMs(now);
   return formatTime(elapsed);
 }
 

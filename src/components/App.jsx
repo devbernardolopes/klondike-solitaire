@@ -39,6 +39,19 @@ export default function App() {
     useGameStore.getState().initialDeal();
   }, [init, initStats, initSeeds]);
 
+  // Pause/resume the play timer with tab focus. When the tab is hidden the clock
+  // freezes (hidden time excluded); when it returns the clock resumes. The auto-
+  // complete animation likewise just freezes and resumes (rAF pause + GSAP lag
+  // smoothing), so the game never silently jumps to a win while unfocused.
+  useEffect(() => {
+    const onVisibility = () => {
+      useStatsStore.getState().setFocused(!document.hidden);
+    };
+    useStatsStore.getState().setFocused(!document.hidden);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
+
   return (
     <div
       className={`theme-${theme}`}

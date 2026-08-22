@@ -139,50 +139,30 @@ function clearAutoCompleteTimer() {
   }
 }
 
-// A hidden/background tab pauses requestAnimationFrame, which GSAP (and thus our
-// relocation tweens) relies on. While hidden we run the auto-complete move
-// sequence WITHOUT animation so it still advances in the background instead of
-// freezing on the first tween whose onComplete (endTransition) can never fire.
-function isHidden() {
-  return typeof document !== 'undefined' && document.hidden;
-}
-
-// Resolve when a step may proceed. When the tab is hidden (or the step was
-// applied instantly, with no tween) we resolve immediately rather than awaiting
-// the rAF-driven tween completion.
+// Resolve when a step may proceed. We await the rAF-driven tween completion so
+// the step loop advances only after the relocation tween fully finishes. A
+// hidden/background tab pauses requestAnimationFrame, so the tween (and thus
+// this await) simply stalls until the tab is visible again — at which point
+// GSAP's default lagSmoothing resumes the parked tween smoothly (no jump), the
+// tween completes, and the loop continues animating to the win.
 function awaitStepDone(tid) {
   if (tid == null) return Promise.resolve();
-  if (isHidden()) return Promise.resolve();
   return whenTransitionDone(tid);
 }
 
-// Schedule the next auto-complete step. Visible: a short timed gap for pacing.
-// Hidden: a microtask chain — microtasks are not throttled like timers/rAF in a
-// background tab, so the logical sequence finishes promptly in the background.
+// Schedule the next auto-complete step with a short timed gap for pacing, so the
+// user sees cards arrive one at a time.
 function scheduleStep(fn, run) {
-  if (isHidden()) {
-    autoCompleteTimer = -1; // sentinel (not clearable via clearTimeout)
-    Promise.resolve().then(() => {
-      if (run === autoCompleteRunId) fn();
-    });
-  } else {
-    autoCompleteTimer = setTimeout(fn, AUTO_COMPLETE_STEP_GAP);
-  }
+  autoCompleteTimer = setTimeout(fn, AUTO_COMPLETE_STEP_GAP);
 }
 
 // Apply one auto move to the store state with the usual Flip-capture + animation
-// bookkeeping. Shared by the winning-sequence and greedy fallbacks. When
-// `instant` is true (tab hidden) the move is applied to state with NO animation
-// and no transition lock, so it cannot stall on a paused rAF tween.
-function applyAutoStep(get, set, move, instant = false) {
+// bookkeeping. Shared by the winning-sequence and greedy fallbacks. The move is
+// always animated (a transition lock is held until its tween completes), so the
+// step loop never outruns the visuals — even across a tab blur/refocus.
+function applyAutoStep(get, set, move) {
   const cur = get().state;
   const next = applyMove(cur, move);
-  if (instant) {
-    set({ state: next, redoStack: [], autoMoveState: {}, lastActionMeta: { type: 'auto' } });
-    useStatsStore.getState().startTimerIfValid(cur);
-    useStatsStore.getState().addMoves(1);
-    return null;
-  }
   // The winning solver sequence mixes moveCards / draw / recycle moves. draw and
   // recycle descriptors carry no cardIds/to, so derive the animated card ids and
   // destination locator from the move type (mirrors drawFromStock/recycleStock).
@@ -238,7 +218,7 @@ function runGreedy(get, set) {
     visited.add(sig);
     const fm = findFoundationMove(cur);
     if (fm) {
-      const tid = applyAutoStep(get, set, { type: 'moveCards', from: fm.from, to: fm.to, cardIds: [fm.cardId] }, isHidden());
+      const tid = applyAutoStep(get, set, { type: 'moveCards', from: fm.from, to: fm.to, cardIds: [fm.cardId] });
       await awaitStepDone(tid);
       if (run !== autoCompleteRunId) return;
       scheduleStep(step, run);
@@ -265,7 +245,7 @@ function runWinSequence(get, set, seq) {
     }
     if (run !== autoCompleteRunId) return; // cancelled by a user action
     const move = seq[i++];
-    const tid = applyAutoStep(get, set, move, isHidden());
+    const tid = applyAutoStep(get, set, move);
     await awaitStepDone(tid);
     if (run !== autoCompleteRunId) return;
     if (i >= seq.length) {

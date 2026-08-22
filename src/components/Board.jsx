@@ -157,8 +157,8 @@ export default function Board() {
       useStatsStore.getState().stopTimer();
       // Persist the just-won game's stats cumulatively. The timer is frozen
       // above, so endTime is final for this game.
-      const { startTime, endTime, moves, score } = useStatsStore.getState();
-      const durationMs = startTime == null ? 0 : (endTime ?? Date.now()) - startTime;
+      const { startTime, moves, score } = useStatsStore.getState();
+      const durationMs = startTime == null ? 0 : useStatsStore.getState().getElapsedMs();
       useStatisticsStore.getState().recordWin({ score, timeMs: durationMs, moves });
       // If this was a Winning Deal (it carries a seed), remember the seed so it
       // isn't re-dealt until the whole pool has been won.
