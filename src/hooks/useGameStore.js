@@ -15,25 +15,34 @@ import { createEmptyGameState } from '../core/GameState.js';
 import { randomSolvableSeed, pickSolvableSeed } from '../core/solvablePool.js';
 import { enqueueFlip } from '../render/animation/flipBridge.js';
 import { cancelWinCascade } from '../render/animation/winCascade.js';
+import { MOTION } from '../render/animation/motion.js';
 import { useUiStore, whenTransitionDone } from './useUiStore.js';
 import { useStatsStore } from './useStatsStore.js';
 import { useSeedStore } from './useSeedStore.js';
 
-// Capture the current on-screen rect of every card node before a state change so
-// the render-layer hook can tween from old → new positions after React
-// re-renders (cards reparent between Pile components in the DOM tree). Stored as a
-// Map<cardId, DOMRect> keyed by data-flip-id so the animation layer can compute
-// each moved card's translation explicitly (robust to reparenting, unlike Flip
-// matching across unmounted/remounted nodes). The snapshot is pushed onto a
-// per-transition queue (not a single global slot) so several moves can animate
-// concurrently without clobbering one another's starting positions.
-// Returns the transition id so the caller can reserve the lock via beginTransition.
-function captureFlip(type) {
+// Capture the current on-screen rect of the cards being moved by this step
+// (given via `animIds`) before the state change, so the render-layer hook can
+// tween them from old → new positions after React re-renders (cards reparent
+// between Pile components in the DOM tree). Stored as a Map<cardId, DOMRect>
+// keyed by data-flip-id so the animation layer can compute each moved card's
+// translation explicitly (robust to reparenting, unlike Flip matching across
+// unmounted/remounted nodes). Snapshotting ONLY the moving cards (rather than
+// every card on the board) is what makes the 'overlap' auto-complete mode safe:
+// if a previous step's card is still mid-tween when this step captures, it is
+// not in `animIds`, so its live transform is never re-grabbed and re-tweened.
+// The snapshot is pushed onto a per-transition queue (not a single global slot)
+// so several moves can animate concurrently without clobbering one another's
+// starting positions. Returns the transition id so the caller can reserve the
+// lock via beginTransition.
+function captureFlip(type, animIds) {
   const rects = new Map();
-  document.querySelectorAll('[data-card]').forEach((el) => {
-    const id = el.getAttribute('data-flip-id') || el.getAttribute('data-card');
-    rects.set(id, el.getBoundingClientRect());
-  });
+  if (animIds && animIds.length) {
+    const want = new Set(animIds);
+    document.querySelectorAll('[data-card]').forEach((el) => {
+      const id = el.getAttribute('data-flip-id') || el.getAttribute('data-card');
+      if (want.has(id)) rects.set(id, el.getBoundingClientRect());
+    });
+  }
   return enqueueFlip(type, rects);
 }
 
@@ -118,17 +127,14 @@ function runAnimatedDeal(get, set, { seed, order, deck } = {}) {
       ...next.foundations.map((_, i) => `foundation:${i}`),
       ...next.tableau.map((_, i) => `tableau:${i}`),
     ];
-    const tid = captureFlip('deal');
+    const tid = captureFlip('deal', allIds);
     useUiStore.getState().beginTransition(tid, allIds, allLocs);
     set({ state: next, lastActionMeta: { type: 'deal' } });
   });
 }
 
-// Delay (ms) inserted after a winning-sequence step's tween finishes, before
-// the next step is applied, so the user sees the cards arrive one at a time.
-// Each step itself waits for its own tween to complete (see runWinSequence /
-// runGreedy), so this is purely a pacing gap on top of the animation.
-const AUTO_COMPLETE_STEP_GAP = 80;
+// The per-step pacing (mode + gap in ms) for auto-complete now lives in
+// MOTION.autoComplete (see motion.js); these helpers below read it.
 let autoCompleteTimer = null;
 let activeSolveCancel = null;
 // Bumped whenever an in-progress auto-complete is cancelled (deal/move/undo
@@ -155,10 +161,24 @@ function awaitStepDone(tid) {
   return whenTransitionDone(tid);
 }
 
-// Schedule the next auto-complete step with a short timed gap for pacing, so the
-// user sees cards arrive one at a time.
-function scheduleStep(fn, run) {
-  autoCompleteTimer = setTimeout(fn, AUTO_COMPLETE_STEP_GAP);
+// Clamp the user-facing auto-complete step delay (ms) to a sane range.
+function clampStepDelay(ms) {
+  const n = Number(ms);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(1000, Math.round(n)));
+}
+
+// Pause `delay` ms before the next auto-complete step. Always resolves via a
+// timer (never synchronously) so that each step lands in its own macrotask —
+// this lets React flush and useCardMoveSlide process exactly one transition per
+// step. Crucially, even when delay is 0 the timer yields once, so an 'overlap'
+// run with stepDelay 0 does NOT apply every remaining step in a single
+// synchronous burst (which would collapse all transitions into one and skip the
+// per-step animation entirely).
+function gap(delay) {
+  return new Promise((resolve) => {
+    autoCompleteTimer = setTimeout(resolve, clampStepDelay(delay));
+  });
 }
 
 // Apply one auto move to the store state with the usual Flip-capture + animation
@@ -187,7 +207,7 @@ function applyAutoStep(get, set, move) {
   // Enqueue as 'auto' (the type useCardMoveSlide actually consumes) so the tween
   // starts and endTransition releases the lock. The animIds/destLocs above are
   // still derived from the real move.type to avoid the undefined-cardIds crash.
-  const tid = captureFlip('auto');
+  const tid = captureFlip('auto', animIds);
   useUiStore.getState().beginTransition(tid, animIds, destLocs);
   set({ state: next, autoMoveState: {}, lastActionMeta: { type: 'auto' } });
   useStatsStore.getState().startTimerIfValid(cur);
@@ -195,72 +215,108 @@ function applyAutoStep(get, set, move) {
   return tid;
 }
 
-// Make safe, obvious foundation moves one at a time until none remain. Cheap and
-// synchronous; used when the full solver has no win to prove (or when hidden
-// cards remain and we never want to pay for the search). Each step waits for its
-// own relocation tween to finish (via whenTransitionDone) before the next is
-// applied, so no two steps ever animate concurrently — this is what prevents the
-// "jumping" artefact where cards appeared to bounce between piles mid-flight.
-function runGreedy(get, set) {
-  // Lock the whole board for the duration of the greedy run so the player
-  // cannot interact with cards mid-sequence (matches the winning auto-complete).
+// Drive an auto-complete sequence step by step, honoring the pacing mode in
+// MOTION.autoComplete. `makeStep()` applies the next move and returns its
+// transition id (or null when no more moves remain). `hasNext()` reports whether
+// another move is available WITHOUT applying it — used to decide when the run is
+// finished and to release the `autoCompleting` lock only after the FINAL tween
+// has actually landed (so no card is ever left mid-flight with interaction
+// re-enabled).
+//
+// Pacing:
+//   mode 'sequential' — each step awaits its relocation tween to fully land,
+//     THEN waits `stepDelay` ms before the next step starts. This preserves the
+//     original one-card-at-a-time behaviour (no two cards airborne at once).
+//   mode 'overlap'    — each step waits only `stepDelay` ms after IT started
+//     before the next step begins, so multiple cards can be in flight together.
+//     The relocation tweens themselves still use MOTION.auto; only the cadence
+//     changes. Safe because captureFlip now snapshots only the moving cards.
+function runAutoSteps(get, set, makeStep, hasNext) {
+  // Lock the whole board for the duration of the run so the player cannot
+  // interact with cards mid-sequence.
   set({ autoCompleting: true });
   const run = autoCompleteRunId;
-  const visited = new Set();
+  const { mode } = MOTION.autoComplete;
+  const delay = MOTION.autoComplete.stepDelay;
   const step = async () => {
-    const cur = get().state;
     if (run !== autoCompleteRunId) return; // cancelled by a user action
-    const sig = [
-      cur.waste.map((c) => c.id).join(','),
-      cur.foundations.map((p) => p.map((c) => c.id).join(',')).join('|'),
-      cur.tableau.map((p) => p.map((c) => c.id).join(',')).join('|'),
-    ].join('##');
-    if (visited.has(sig)) {
+    const tid = makeStep();
+    if (tid == null) {
       autoCompleteTimer = null;
       set({ autoCompleting: false });
       return;
     }
-    visited.add(sig);
-    const fm = findFoundationMove(cur);
-    if (fm) {
-      const tid = applyAutoStep(get, set, { type: 'moveCards', from: fm.from, to: fm.to, cardIds: [fm.cardId] });
+    const more = hasNext();
+    if (!more) {
+      // Final step: always wait for its tween to land before releasing the lock.
       await awaitStepDone(tid);
       if (run !== autoCompleteRunId) return;
-      scheduleStep(step, run);
+      autoCompleteTimer = null;
+      set({ autoCompleting: false });
       return;
     }
-    autoCompleteTimer = null;
-    set({ autoCompleting: false });
+    if (mode === 'overlap') {
+      // Start the next step `delay` ms after THIS step began; do NOT await the
+      // current tween, so cards can be airborne concurrently.
+      await gap(delay);
+      if (run !== autoCompleteRunId) return;
+      step();
+    } else {
+      // Sequential: wait for the current tween to fully land, then the gap.
+      await awaitStepDone(tid);
+      if (run !== autoCompleteRunId) return;
+      await gap(delay);
+      if (run !== autoCompleteRunId) return;
+      step();
+    }
   };
   step();
 }
 
-// Animate the solver's winning move sequence one step at a time. Each step waits
-// for its relocation tween to fully complete (whenTransitionDone) before the next
-// is applied, so steps never overlap and a moved stack is never re-grabbed while
-// still in flight (the source of the old "jumping" artefact).
-function runWinSequence(get, set, seq) {
-  const run = autoCompleteRunId;
-  let i = 0;
-  const step = async () => {
-    if (i >= seq.length) {
-      autoCompleteTimer = null;
-      set({ autoCompleting: false });
-      return;
-    }
-    if (run !== autoCompleteRunId) return; // cancelled by a user action
-    const move = seq[i++];
-    const tid = applyAutoStep(get, set, move);
-    await awaitStepDone(tid);
-    if (run !== autoCompleteRunId) return;
-    if (i >= seq.length) {
-      autoCompleteTimer = null;
-      set({ autoCompleting: false });
-      return;
-    }
-    scheduleStep(step, run);
+// Make safe, obvious foundation moves one at a time until none remain. Cheap and
+// synchronous; used when the full solver has no win to prove (or when hidden
+// cards remain and we never want to pay for the search). Steps are paced by
+// runAutoSteps per MOTION.autoComplete (sequential by default, so no two cards
+// ever animate concurrently — this is what prevents the "jumping" artefact where
+// cards appeared to bounce between piles mid-flight in the old engine).
+function runGreedy(get, set) {
+  const visited = new Set();
+  const signature = (s) => [
+    s.waste.map((c) => c.id).join(','),
+    s.foundations.map((p) => p.map((c) => c.id).join(',')).join('|'),
+    s.tableau.map((p) => p.map((c) => c.id).join(',')).join('|'),
+  ].join('##');
+  const makeStep = () => {
+    const cur = get().state;
+    const sig = signature(cur);
+    if (visited.has(sig)) return null; // cycle guard
+    visited.add(sig);
+    const fm = findFoundationMove(cur);
+    if (!fm) return null;
+    return applyAutoStep(get, set, { type: 'moveCards', from: fm.from, to: fm.to, cardIds: [fm.cardId] });
   };
-  step();
+  const hasNext = () => {
+    const cur = get().state;
+    const sig = signature(cur);
+    if (visited.has(sig)) return false;
+    return findFoundationMove(cur) != null;
+  };
+  runAutoSteps(get, set, makeStep, hasNext);
+}
+
+// Animate the solver's winning move sequence one step at a time. Steps are paced
+// by runAutoSteps per MOTION.autoComplete (sequential by default, so a moved
+// stack is never re-grabbed while still in flight — the source of the old
+// "jumping" artefact).
+function runWinSequence(get, set, seq) {
+  const cursor = { i: 0 };
+  const makeStep = () => {
+    if (cursor.i >= seq.length) return null;
+    const move = seq[cursor.i++];
+    return applyAutoStep(get, set, move);
+  };
+  const hasNext = () => cursor.i < seq.length;
+  runAutoSteps(get, set, makeStep, hasNext);
 }
 
 // Cancel any in-progress auto-complete run (animation and the off-thread solver)
@@ -430,7 +486,7 @@ export const useGameStore = create((set, get) => ({
     const { animatingLocs } = useUiStore.getState();
     if (animatingLocs.has('stock') || animatingLocs.has('waste')) return;
     const drawnId = state.stock[state.stock.length - 1].id;
-    const tid = captureFlip('draw');
+    const tid = captureFlip('draw', [drawnId]);
     useUiStore.getState().beginTransition(tid, [drawnId], ['stock', 'waste']);
     const next = applyMove(state, { type: 'draw' });
     set({ state: next, lastActionMeta: { type: 'draw' } });
@@ -454,7 +510,7 @@ export const useGameStore = create((set, get) => ({
     const { animatingLocs } = useUiStore.getState();
     if (animatingLocs.has('stock') || animatingLocs.has('waste')) return;
     const movingIds = state.waste.map((c) => c.id);
-    const tid = captureFlip('recycle');
+    const tid = captureFlip('recycle', movingIds);
     useUiStore.getState().beginTransition(tid, movingIds, ['stock', 'waste']);
     set({ state: applyMove(state, { type: 'recycle' }), lastActionMeta: { type: 'recycle' } });
     useUiStore.getState().clearHints();
@@ -536,7 +592,7 @@ export const useGameStore = create((set, get) => ({
       }
       return true;
     }
-    const tid = captureFlip(opts.metaType ?? 'move');
+    const tid = captureFlip(opts.metaType ?? 'move', moveIds);
     useUiStore.getState().beginTransition(tid, moveIds, [to]);
     set({ state: next, lastActionMeta: { type: opts.metaType ?? 'move' } });
     useUiStore.getState().clearHints();
@@ -607,8 +663,8 @@ export const useGameStore = create((set, get) => ({
   /**
    * Auto-complete: greedily move every visible, top-most card (waste top and
    * face-up tableau tops) onto a valid foundation until no more such moves
-   * exist. Moves are applied one at a time with a small delay (see
-   * AUTO_COMPLETE_STEP_GAP) so the user sees the cards arrive. Each move is a
+   * exist. Moves are paced one at a time per MOTION.autoComplete (mode + step
+   * delay) so the user sees the cards arrive. Each move is a
    * normal history entry, so Undo steps back through them individually.
    *
    * Only one auto-complete may run at a time; any user action (deal / move /

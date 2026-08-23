@@ -30,6 +30,21 @@ export const MOTION = {
   // Alternative easing for the same tween; swap to change the acceleration curve.
   // move:     { duration: 0.40, ease: 'power3.out', stagger: 0 },
 
+  // Auto-complete step pacing (how the SEQUENCE of foundation-peel / solver-win
+  // moves is timed relative to one another — distinct from the per-card
+  // relocation tween above, which is MOTION.auto). `mode`:
+  //   'sequential' — each card only STARTS moving after the previous one has
+  //                  fully LANDED at its destination, then `stepDelay` ms elapse.
+  //                  This is the original behaviour and avoids any two cards
+  //                  being in flight at once.
+  //   'overlap'    — the next card STARTS moving `stepDelay` ms after the
+  //                  previous step BEGAN, so multiple cards can be airborne
+  //                  simultaneously. The relocation tweens themselves still use
+  //                  MOTION.auto; only the inter-step cadence changes.
+  // `stepDelay` is milliseconds; clamped to 0..1000 when read. 0 = no gap (next
+  // step starts immediately; in 'overlap' this gives maximum concurrency).
+  autoComplete: { mode: 'overlap', stepDelay: 80 },
+
   // 3D rotateY face flip (face-down <-> face-up) in useCardFaceFlip.
   flipCard: { duration: 0.10, ease: 'power2.inOut' },
 
