@@ -362,34 +362,56 @@ function enumerateDeadEndMoves(s) {
   return moves;
 }
 
-/** Does `s` have an immediate *progress* move available right now? A progress
- * move is a foundation play or a tableau relocation that uncovers a face-down
- * card (see `hasProgressMove` in rules.js). Used as the cheap pre-filter for the
- * "no moves remaining" detector: if a progress move is available immediately we
- * can skip the (more expensive) reachability search. Note the semantics changed
- * from "any moveCards" to "progress move" so shuffle-only positions (e.g. a
- * non-covering King-to-empty relocation) are correctly treated as stuck. */
+/**
+ * Can the current waste top be moved onto any tableau pile or foundation right
+ * now? Used so a position is not flagged as stuck merely because its only moves
+ * are waste/stock relocations that uncover nothing and reach no foundation (e.g.
+ * a `4c` from the waste landing on a `5`). The caller's reachability search
+ * cycles the stock/waste, so every buried waste/stock card is eventually tested
+ * as the waste top. (A foundation play here is already subsumed by
+ * `hasProgressMove`, but it is included for completeness.)
+ * @param {import('./GameState.js').GameState} s
+ * @returns {boolean}
+ */
+function wasteTopCanMove(s) {
+  if (s.waste.length === 0) return false;
+  const top = s.waste[s.waste.length - 1];
+  for (let i = 0; i < s.tableau.length; i++) {
+    if (canMoveToTableau(top, s.tableau[i])) return true;
+  }
+  for (let i = 0; i < s.foundations.length; i++) {
+    if (canMoveToFoundation(top, s.foundations[i])) return true;
+  }
+  return false;
+}
+
+/** Does `s` have an immediate *meaningful* move available right now? Meaningful
+ * = a progress move (foundation play or a tableau relocation that uncovers a
+ * face-down card — see `hasProgressMove` in rules.js) OR a waste/stock card that
+ * can be relocated to a tableau/foundation (even if it uncovers nothing). The
+ * latter keeps "shuffle-only" positions whose waste still has a playable card
+ * (e.g. `4c` onto a `5`) from being treated as stuck. Used as the cheap
+ * pre-filter for the "no moves remaining" detector. */
 export function hasDeadEndMove(s) {
-  return hasProgressMove(s);
+  return hasProgressMove(s) || wasteTopCanMove(s);
 }
 
 /**
- * Is *any* progress move reachable from this state through legal moves
- * (including stock draws / waste recycling)? This is the right question for the
- * "no moves remaining" detector under progress-move semantics: a position is a
- * dead end only when no *meaningful* (foundation or face-down-uncovering) move
- * is *ever* reachable, not when a full win is merely unprovable. A plain
- * non-covering tableau relocation (e.g. a red 8 onto a black 9 that uncovers
- * nothing) does NOT count as alive — such a position IS stuck even though a
- * shuffle exists. The search continues past non-progress moves (including
- * whole-pile shuffles, which it uses only as transitions) so a relocation that
- * *leads to* a later progress move still keeps the position alive. In other
- * words: the terminal test is "is there a progress move right now?", evaluated
- * at every reachable state.
+ * Is *any* meaningful move reachable from this state through legal moves
+ * (including stock draws / waste recycling)? A position is a dead end only when
+ * NEITHER a progress move NOR a waste/stock relocation is *ever* reachable — i.e.
+ * when the stock/waste is fully exhausted and no card there (nor any tableau
+ * play) can change anything. Concretely, the search is "alive" at a state if:
+ *   - a progress move is available right now, OR
+ *   - the current waste top can be moved to a tableau pile or foundation.
+ * The search explores all transitions (foundation, waste->tableau,
+ * tableau->tableau, draw/recycle), using non-meaningful moves only as
+ * transitions, so a relocation that *leads to* a later meaningful move keeps the
+ * position alive.
  *
  * Returns:
- *  - `true`  if a progress move is reachable,
- *  - `false` if the search fully exhausted the space with no progress move
+ *  - `true`  if a meaningful move is reachable,
+ *  - `false` if the search fully exhausted the space with no meaningful move
  *            reachable (a definitive dead end),
  *  - `SOLVER_TIMEOUT` if the budget was exceeded before concluding (unknown).
  *
@@ -409,7 +431,7 @@ export function findReachableMove(state, opts = {}) {
   let aborted = false;
 
   function search(s, depth) {
-    if (hasProgressMove(s)) return true;
+    if (hasProgressMove(s) || wasteTopCanMove(s)) return true;
     if (nodes++ > maxNodes || Date.now() - start > maxMs) {
       aborted = true;
       return false;

@@ -179,13 +179,14 @@ function buildBoard348() {
   return s;
 }
 
-test('board 348: non-progress 8d->9c shuffle is a genuine dead end (progress semantics)', () => {
+test('board 348: non-progress 8d->9c waste relocation keeps it alive (waste rule)', () => {
   const s = buildBoard348();
   // hasAnyValidMove is true (Js can build onto Qh, and 8d->9c is reachable), but
-  // none of those are progress moves, and no foundation/uncover move is reachable
-  // anywhere, so the detector must now report a dead end.
+  // none of those are *progress* moves. Under pure progress semantics this would be
+  // a dead end; under the combined rule a waste card (8d) can relocate to a tableau
+  // pile (9c), so the position is NOT stuck and findReachableMove must report alive.
   assert.equal(hasAnyValidMove(s), true);
-  assert.equal(findReachableMove(s, { maxNodes: 500000, maxMs: 4000 }), false);
+  assert.equal(findReachableMove(s, { maxNodes: 500000, maxMs: 4000 }), true);
 });
 
 /**
@@ -216,10 +217,14 @@ function buildBuriedRelocationNoRootMove() {
   return s;
 }
 
-test('buried relocation with no root move: non-progress 8d->9c is a dead end', () => {
+test('buried relocation with no root move: 8d->9c waste move keeps it alive', () => {
   const s = buildBuriedRelocationNoRootMove();
   assert.equal(hasAnyValidMove(s), false); // forces the worker/solver path
-  assert.equal(findReachableMove(s, { maxNodes: 500000, maxMs: 4000 }), false);
+  // 8d is buried under 7s at the root, so there is no immediate legal move and the
+  // detector must use its solver path. Once 7s is cycled, 8d becomes the waste top
+  // and can relocate to the 9c pile. Under the combined alive rule (progress OR any
+  // waste/stock relocation), the position is NOT stuck.
+  assert.equal(findReachableMove(s, { maxNodes: 500000, maxMs: 4000 }), true);
 });
 
 /**

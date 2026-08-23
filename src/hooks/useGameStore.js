@@ -5,10 +5,10 @@
 import { create } from 'zustand';
 import { deal } from '../core/dealer.js';
 import { applyMove, undo as coreUndo, redo as coreRedo } from '../core/moveEngine.js';
-import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, isAllTableauFaceUp, hasProgressMove, DEST_ORDER } from '../core/rules.js';
+import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, isAllTableauFaceUp, DEST_ORDER } from '../core/rules.js';
 import { isWon } from '../core/winDetection.js';
 import { solveAsync, cancelAllSolves, STALE } from '../core/solverClient.js';
-import { SOLVER_TIMEOUT, hasDeadEndMove, findReachableMove, compressWinningSequence } from '../core/solver.js';
+import { SOLVER_TIMEOUT, hasDeadEndMove, compressWinningSequence } from '../core/solver.js';
 import { findHints } from '../core/hints.js';
 import { buildStandardDeck, shuffle } from '../core/Deck.js';
 import { createEmptyGameState } from '../core/GameState.js';
@@ -38,14 +38,17 @@ function captureFlip(type) {
 }
 
 // Confirm a genuinely stuck position once the stock is exhausted (no draws left).
-// We ask the off-thread solver whether ANY *progress* move (a foundation play or a
-// tableau relocation that uncovers a face-down card) is reachable through legal play
-// including stock cycling. Only when the search fully exhausts the space with NO
-// progress move reachable do we show the "no moves remaining" modal. This means a
-// position whose only remaining moves are non-covering shuffles (e.g. a red 8 onto a
-// black 9 that uncovers nothing) IS correctly treated as stuck. A budget-exceeded
-// (unknown) result never asserts a dead end. The result is ignored if the board has
-// changed in the meantime (reference guard) or the solve was superseded (STALE).
+// We ask the off-thread solver whether ANY move is reachable through legal play
+// including stock/waste cycling. "Reachable" means: a *progress* move (a foundation
+// play or a tableau relocation that uncovers a face-down card) OR any waste/stock
+// card that can relocate onto a tableau pile or foundation (even a non-covering
+// shuffle, e.g. a red 8 onto a black 9). Only when the search fully exhausts the
+// space with NEITHER kind of move reachable do we show the "no moves remaining"
+// modal — so a position that can still cycle its waste onto the board is never
+// falsely flagged, but one whose only moves are unwinnable tableau shuffles (no
+// waste/stock relocation possible) still is. A budget-exceeded (unknown) result
+// never asserts a dead end. The result is ignored if the board has changed in the
+// meantime (reference guard) or the solve was superseded (STALE).
 function checkDeadEnd(get, set, state) {
   // Cheap pre-filter: a progress move available right now means not stuck.
   if (hasDeadEndMove(state)) {
@@ -66,24 +69,6 @@ function checkDeadEnd(get, set, state) {
       useUiStore.getState().setNoMovesDialogOpen(false);
     } else {
       // Search fully exhausted with no move reachable — a genuine dead end.
-      // TEMP DIAGNOSTIC (remove after reproducing the false-positive report):
-      // re-run the same check on the MAIN thread with the exact state the worker
-      // evaluated. If the worker said `false` but the main thread says `true`,
-      // it's a worker/main-thread discrepancy; if both agree, the captured state
-      // is genuinely stuck (and differs from the user's snapshot).
-      if (import.meta.env.DEV) {
-        const mainThreadSeq = findReachableMove(state, { maxNodes: 500000, maxMs: 4000 });
-        // eslint-disable-next-line no-console
-        console.warn('[deadEnd-diag]', {
-          workerSeq: seq,
-          mainThreadSeq,
-          hasProgressMove: hasProgressMove(state),
-          stock: state.stock.length,
-          wasteTop: state.waste.length ? state.waste[state.waste.length - 1].id : null,
-          state,
-        });
-        window.__lastDeadEndState = state;
-      }
       useUiStore.getState().setNoMovesDialogOpen(true);
     }
   });
