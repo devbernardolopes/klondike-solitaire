@@ -5,7 +5,7 @@
 import { create } from 'zustand';
 import { deal } from '../core/dealer.js';
 import { applyMove, undo as coreUndo, redo as coreRedo } from '../core/moveEngine.js';
-import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, isAllTableauFaceUp, DEST_ORDER } from '../core/rules.js';
+import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, DEST_ORDER } from '../core/rules.js';
 import { isWon } from '../core/winDetection.js';
 import { solveAsync, cancelAllSolves, STALE } from '../core/solverClient.js';
 import { SOLVER_TIMEOUT, hasDeadEndMove, compressWinningSequence } from '../core/solver.js';
@@ -647,28 +647,17 @@ export const useGameStore = create((set, get) => ({
 
     const state = get().state;
 
-    // A board with no cards left in stock or waste is fully known (even if a
-    // tableau card is still face-down), so the solver can plan tableau moves that
-    // expose and flip it. Route those to the solver instead of the
-    // foundation-only greedy path, which would otherwise stall (greedy never
-    // makes a tableau relocation to unblock a hidden card).
-    const fullyKnown = state.stock.length === 0 && state.waste.length === 0;
-
-    // Hidden cards remain in the stock/waste: never run the expensive solver.
-    // Just make safe, obvious foundation moves instantly and stop (matches
-    // "instant greedy only").
-    if (!isAllTableauFaceUp(state) && !fullyKnown) {
-      runGreedy(get, set);
-      return autoCompleteTimer !== null;
-    }
-
-    // All tableau revealed: prove a full win off the main thread. The solver may
-    // require cycling the still-present stock/waste; if no win is provable it
-    // silently falls back to the greedy foundation loop (no announcement),
-    // matching the requested "keep silent on stall" behavior.
+    // Hard lock: auto-complete must never shuffle cards between tableau columns.
+    // Prove a full win using FOUNDATION moves only (draw/recycle of stock/waste
+    // are still permitted for plain peeling, but no tableau→tableau relocation).
+    // If no such win is provable (e.g. a buried card can only be exposed by
+    // parking a run elsewhere), silently fall back to the greedy foundation loop
+    // and leave the board to the player — no column bounces, no stall. Drawing
+    // through stock/waste is allowed here (the manual trigger may have cards to
+    // peel); the auto-trigger additionally forbids recycling (see Board.jsx).
     set({ autoCompleting: true });
     const run = autoCompleteRunId;
-    const { promise, cancel } = solveAsync(state, { maxNodes: 200000, maxMs: 2000 });
+    const { promise, cancel } = solveAsync(state, { allowTableau: false, maxNodes: 200000, maxMs: 2000 });
     activeSolveCancel = cancel;
     promise.then((seq) => {
       activeSolveCancel = null;
@@ -680,9 +669,9 @@ export const useGameStore = create((set, get) => ({
         return;
       }
       if (Array.isArray(seq)) {
-        // Strip redundant tableau shuffles so a stack isn't bounced between
-        // piles during the auto-complete animation. The compression re-validates
-        // the line through the real move engine, so the win is preserved.
+        // Strip redundant tableau shuffles (none should remain under the
+        // allowTableau:false lock, but the compressor is defensive) so a stack
+        // isn't bounced between piles during the auto-complete animation.
         runWinSequence(get, set, compressWinningSequence(seq, state));
       } else {
         set({ autoCompleting: false });

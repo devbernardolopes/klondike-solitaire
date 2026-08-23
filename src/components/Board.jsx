@@ -15,7 +15,6 @@ import { useCardMoveSlide } from '../render/animation/useCardMoveSlide.js';
 import { useStockDrawSlide } from '../render/animation/useStockDrawSlide.js';
 import { playWinCascade } from '../render/animation/winCascade.js';
 import { isWon } from '../core/winDetection.js';
-import { isAllTableauFaceUp } from '../core/rules.js';
 import { solveAsync, STALE } from '../core/solverClient.js';
 import Pile from './Pile.jsx';
 import { CardFace } from './CardView.jsx';
@@ -170,12 +169,15 @@ export default function Board() {
     wasWon.current = won;
   }, [won]);
 
-  // Auto-trigger auto-complete once the tableau holds no hidden information AND
-  // a full win is provable from the current state (the solver may require
-  // cycling the still-present stock/waste). The win-proving search runs in a Web
-  // Worker, so it never blocks this handler or the main thread. Skips while a
-  // run is already animating (autoCompleting) and discards stale results when
-  // the state changes before the worker replies.
+  // Auto-trigger auto-complete once a clean, zero-column-shuffle win is provable.
+  // The hard lock: only fire when the STOCK is empty (waste may still have cards)
+  // AND the solver can prove a full win using FOUNDATION moves only — i.e. no
+  // tableau→tableau relocation and NO recycling the waste back into the stock is
+  // required. If a buried card could only be exposed by parking a run on another
+  // column, we do NOT auto-fire and leave the board to the player. The search
+  // runs in a Web Worker, so it never blocks the main thread. Skips while a run
+  // is already animating (autoCompleting) and discards stale results when the
+  // state changes before the worker replies.
   useEffect(() => {
     if (won) return;
     if (useGameStore.getState().autoCompleting) return;
@@ -183,14 +185,11 @@ export default function Board() {
     // "all face-up"), so we'd start an auto-complete on a state that is about
     // to be replaced by the real deal — which would throw mid-sequence.
     if (state.tableau.every((p) => p.length === 0) && state.foundations.every((p) => p.length === 0)) return;
-    // Auto-fire once the board holds no hidden information. That is either a
-    // fully face-up tableau, OR a board with no cards left in stock/waste (fully
-    // known even if a tableau card is still face-down — the solver can then plan
-    // the tableau move that exposes and flips it).
-    const fullyKnown = state.stock.length === 0 && state.waste.length === 0;
-    if (!isAllTableauFaceUp(state) && !fullyKnown) return;
+    // Hard gate: the stock must be empty (waste cards may peel straight to
+    // foundations), and the win must need no tableau relocation and no recycle.
+    if (state.stock.length !== 0) return;
     const snapshot = state;
-    const { promise, cancel } = solveAsync(state, { maxNodes: 200000, maxMs: 2000 });
+    const { promise, cancel } = solveAsync(state, { allowTableau: false, allowDraw: false, maxNodes: 200000, maxMs: 2000 });
     promise.then((seq) => {
       if (seq === STALE) return;
       if (useGameStore.getState().state !== snapshot) return;

@@ -464,3 +464,105 @@ test('solver flips the last face-down card when the only way to expose it needs 
   assert.ok(hJFinal && hJFinal.faceUp, 'the once-face-down card must be flipped and on a foundation');
 });
 
+/**
+ * Hard-lock tests for auto-complete: with `allowTableau: false` the solver must
+ * never plan a column-to-column shuffle, and the auto-trigger (isAutoCompletable)
+ * must only fire when a foundation-only win is provable from an empty stock.
+ */
+
+test('hard-lock: a foundation-only win (empty stock) contains zero tableau moves', () => {
+  const c = (suit, rank, id) => createCard(suit, rank, { faceUp: true, id });
+  const s = createEmptyGameState();
+  s.foundations[0] = Array.from({ length: 13 }, (_, i) => c('spades', i + 1, `sp${i + 1}`));
+  s.foundations[1] = Array.from({ length: 13 }, (_, i) => c('clubs', i + 1, `cl${i + 1}`));
+  s.foundations[2] = Array.from({ length: 13 }, (_, i) => c('diamonds', i + 1, `d${i + 1}`));
+  s.foundations[3] = Array.from({ length: 10 }, (_, i) => c('hearts', i + 1, `h${i + 1}`));
+  // Remaining hearts sit on the waste (top) and two tableau tops — all directly
+  // foundation-playable, no column shuffle, no recycling required.
+  s.waste = [c('hearts', 11, 'hJ')];
+  s.tableau = [[c('hearts', 12, 'hQ')], [c('hearts', 13, 'hK')], [], [], [], [], []];
+  const seq = findWinningSequence(s, { allowTableau: false, allowDraw: false });
+  assert.ok(Array.isArray(seq) && seq.length > 0, 'expected a winning sequence with no tableau moves');
+  assert.equal(isWon(replay(s, seq)), true);
+  const hadTableauMove = seq.some((m) => m.type === 'moveCards' && String(m.to).startsWith('tableau:'));
+  assert.equal(hadTableauMove, false, 'hard-lock line must contain zero tableau-to-tableau moves');
+});
+
+test('hard-lock: a win requiring a tableau shuffle returns null (no tableau moves allowed)', () => {
+  const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
+  const s = createEmptyGameState();
+  s.foundations[0] = Array.from({ length: 13 }, (_, i) => c('spades', i + 1, `sp${i + 1}`));
+  s.foundations[1] = Array.from({ length: 13 }, (_, i) => c('diamonds', i + 1, `d${i + 1}`));
+  s.foundations[2] = Array.from({ length: 11 }, (_, i) => c('clubs', i + 1, `cl${i + 1}`));
+  s.foundations[3] = Array.from({ length: 9 }, (_, i) => c('hearts', i + 1, `h${i + 1}`));
+  // h10 buried under hJ; its only exposure is a forced tableau relocation.
+  s.tableau = [
+    [c('hearts', 10, 'h10'), c('hearts', 11, 'hJ')],
+    [c('clubs', 12, 'c12')],
+    [c('hearts', 12, 'hQ')],
+    [c('hearts', 13, 'hK')],
+    [c('clubs', 13, 'cK')],
+    [], [],
+  ];
+  const seq = findWinningSequence(s, { allowTableau: false, allowDraw: false });
+  assert.equal(seq, null, 'with tableau moves forbidden, no win is provable');
+});
+
+test('hard-lock: a win reachable only by drawing stock still needs zero tableau moves', () => {
+  const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
+  const s = createEmptyGameState();
+  s.foundations[0] = Array.from({ length: 13 }, (_, i) => c('spades', i + 1, `sp${i + 1}`));
+  s.foundations[1] = Array.from({ length: 13 }, (_, i) => c('clubs', i + 1, `cl${i + 1}`));
+  s.foundations[2] = Array.from({ length: 13 }, (_, i) => c('diamonds', i + 1, `d${i + 1}`));
+  s.foundations[3] = Array.from({ length: 10 }, (_, i) => c('hearts', i + 1, `h${i + 1}`));
+  s.tableau = [[c('hearts', 11, 'hJ')], [], [], [], [], [], []];
+  s.stock = [c('hearts', 13, 'hK', false), c('hearts', 12, 'hQ', false)]; // hQ draws first
+  const seq = findWinningSequence(s, { allowTableau: false });
+  assert.ok(Array.isArray(seq) && seq.length > 0, 'expected a draw-driven winning sequence with no tableau moves');
+  assert.equal(isWon(replay(s, seq)), true);
+  const hadTableauMove = seq.some((m) => m.type === 'moveCards' && String(m.to).startsWith('tableau:'));
+  assert.equal(hadTableauMove, false, 'line must contain zero tableau-to-tableau moves');
+});
+
+test('isAutoCompletable: false while stock is non-empty even if fully face-up', () => {
+  const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
+  const s = createEmptyGameState();
+  s.foundations[0] = Array.from({ length: 13 }, (_, i) => c('spades', i + 1, `sp${i + 1}`));
+  s.foundations[1] = Array.from({ length: 13 }, (_, i) => c('clubs', i + 1, `cl${i + 1}`));
+  s.foundations[2] = Array.from({ length: 13 }, (_, i) => c('diamonds', i + 1, `d${i + 1}`));
+  s.foundations[3] = Array.from({ length: 10 }, (_, i) => c('hearts', i + 1, `h${i + 1}`));
+  s.tableau = [[c('hearts', 11, 'hJ')], [c('hearts', 12, 'hQ')], [c('hearts', 13, 'hK')], [], [], [], []];
+  s.stock = [c('clubs', 1, 'cA', false)];
+  assert.equal(isAutoCompletable(s), false, 'a non-empty stock must block the auto-trigger');
+});
+
+test('isAutoCompletable: true when stock empty and a foundation-only win is provable', () => {
+  const c = (suit, rank, id) => createCard(suit, rank, { faceUp: true, id });
+  const s = createEmptyGameState();
+  s.foundations[0] = Array.from({ length: 13 }, (_, i) => c('spades', i + 1, `sp${i + 1}`));
+  s.foundations[1] = Array.from({ length: 13 }, (_, i) => c('clubs', i + 1, `cl${i + 1}`));
+  s.foundations[2] = Array.from({ length: 13 }, (_, i) => c('diamonds', i + 1, `d${i + 1}`));
+  s.foundations[3] = Array.from({ length: 10 }, (_, i) => c('hearts', i + 1, `h${i + 1}`));
+  s.waste = [c('hearts', 11, 'hJ')];
+  s.tableau = [[c('hearts', 12, 'hQ')], [c('hearts', 13, 'hK')], [], [], [], [], []];
+  assert.equal(isAutoCompletable(s), true, 'foundation-only win with empty stock should auto-fire');
+});
+
+test('isAutoCompletable: false when the foundation-only win needs a tableau relocation', () => {
+  const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
+  const s = createEmptyGameState();
+  s.foundations[0] = Array.from({ length: 13 }, (_, i) => c('spades', i + 1, `sp${i + 1}`));
+  s.foundations[1] = Array.from({ length: 13 }, (_, i) => c('diamonds', i + 1, `d${i + 1}`));
+  s.foundations[2] = Array.from({ length: 11 }, (_, i) => c('clubs', i + 1, `cl${i + 1}`));
+  s.foundations[3] = Array.from({ length: 9 }, (_, i) => c('hearts', i + 1, `h${i + 1}`));
+  s.tableau = [
+    [c('hearts', 10, 'h10'), c('hearts', 11, 'hJ')],
+    [c('clubs', 12, 'c12')],
+    [c('hearts', 12, 'hQ')],
+    [c('hearts', 13, 'hK')],
+    [c('clubs', 13, 'cK')],
+    [], [],
+  ];
+  assert.equal(isAutoCompletable(s), false, 'a board needing a tableau shuffle must NOT auto-fire');
+});
+

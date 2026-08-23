@@ -13,7 +13,6 @@ import {
   getTableauRun,
   canMoveToTableau,
   canMoveToFoundation,
-  isAllTableauFaceUp,
   hasProgressMove,
 } from './rules.js';
 import { isWon } from './winDetection.js';
@@ -42,12 +41,20 @@ function signature(s) {
  * (so the DFS stays shallow for the common case), then tableau shuffles, then
  * draw/recycle. Move descriptors are in core/moveEngine.js format.
  * @param {import('./GameState.js').GameState} s
+ * @param {{ allowTableau?: boolean, allowDraw?: boolean }} [opts]
+ *   - allowTableau (default true): when false, tableau→tableau relocations are
+ *     excluded. Used by auto-complete, which must never shuffle cards between
+ *     columns (the only legal moves become foundations + stock draw/recycle).
+ *   - allowDraw (default true): when false, draw/recycle stock moves are
+ *     excluded. Used by the auto-trigger gate, which must prove a win without
+ *     needing to recycle the waste back into the stock.
  * @returns {Array<object>}
  */
-function enumerateMoves(s) {
+function enumerateMoves(s, opts = {}) {
   const moves = [];
 
-  // (a) Foundation moves: waste top + face-up tableau tops.
+  // (a) Foundation moves: waste top + face-up tableau tops. Always generated —
+  // these are always progress and the backbone of a clean auto-complete.
   const candidates = [];
   if (s.waste.length > 0) {
     candidates.push({ from: 'waste', card: s.waste[s.waste.length - 1] });
@@ -65,29 +72,34 @@ function enumerateMoves(s) {
     }
   }
 
-  // (b) Tableau-to-tableau runs (used to unblock foundation moves).
-  for (let a = 0; a < s.tableau.length; a++) {
-    const pile = s.tableau[a];
-    for (const card of pile) {
-      if (!card.faceUp) continue;
-      const run = getTableauRun(pile, card.id);
-      if (!run) continue;
-      const cardIds = run.map((c) => c.id).reverse();
-      for (let b = 0; b < s.tableau.length; b++) {
-        if (b === a) continue;
-        if (!canMoveToTableau(run[0], s.tableau[b])) continue;
-        // Skip a pointless move of an entire pile onto an empty column.
-        if (s.tableau[b].length === 0 && pile.length === run.length) continue;
-        moves.push({ type: 'moveCards', from: `tableau:${a}`, to: `tableau:${b}`, cardIds });
+  // (b) Tableau-to-tableau runs (used to unblock foundation moves). Excluded by
+  // the auto-complete hard-lock: the user forbids any column-to-column shuffle.
+  if (opts.allowTableau !== false) {
+    for (let a = 0; a < s.tableau.length; a++) {
+      const pile = s.tableau[a];
+      for (const card of pile) {
+        if (!card.faceUp) continue;
+        const run = getTableauRun(pile, card.id);
+        if (!run) continue;
+        const cardIds = run.map((c) => c.id).reverse();
+        for (let b = 0; b < s.tableau.length; b++) {
+          if (b === a) continue;
+          if (!canMoveToTableau(run[0], s.tableau[b])) continue;
+          // Skip a pointless move of an entire pile onto an empty column.
+          if (s.tableau[b].length === 0 && pile.length === run.length) continue;
+          moves.push({ type: 'moveCards', from: `tableau:${a}`, to: `tableau:${b}`, cardIds });
+        }
       }
     }
   }
 
   // (c) Stock cycling — models drawing through and recycling the waste.
-  if (s.stock.length > 0) {
-    moves.push({ type: 'draw' });
-  } else if (s.waste.length > 0) {
-    moves.push({ type: 'recycle' });
+  if (opts.allowDraw !== false) {
+    if (s.stock.length > 0) {
+      moves.push({ type: 'draw' });
+    } else if (s.waste.length > 0) {
+      moves.push({ type: 'recycle' });
+    }
   }
 
   return moves;
@@ -112,7 +124,7 @@ export const SOLVER_TIMEOUT = '__solver_timeout__';
  *    answer is unknown).
  *
  * @param {import('./GameState.js').GameState} state
- * @param {{ maxNodes?: number, maxMs?: number }} [opts]
+ * @param {{ maxNodes?: number, maxMs?: number, allowTableau?: boolean, allowDraw?: boolean }} [opts]
  * @returns {Array<object>|null|typeof SOLVER_TIMEOUT} move descriptors, null, or timeout
  */
 export function findWinningSequence(state, opts = {}) {
@@ -133,7 +145,7 @@ export function findWinningSequence(state, opts = {}) {
     const sig = signature(s);
     if (visited.has(sig)) return false;
     visited.add(sig);
-    for (const move of enumerateMoves(s)) {
+    for (const move of enumerateMoves(s, opts)) {
       path.push(move);
       if (search(applyMove(s, move))) return true;
       path.pop();
@@ -450,17 +462,22 @@ export function findReachableMove(state, opts = {}) {
 }
 
 /**
- * Should the game auto-fire auto-complete right now? True only when the tableau
- * holds no hidden information (all face-up) AND a full win is provable from the
- * current state (which may require cycling the stock/waste). Keeping the
- * all-face-up gate prevents auto-firing from move 1 while still permitting stock
- * and waste to be non-empty.
+ * Should the game auto-fire auto-complete right now? True only when:
+ *   - the stock is empty (waste may still hold cards, but they must be peelable
+ *     straight to the foundations without recycling back into the stock), AND
+ *   - a full win is provable using foundation moves only — i.e. NO tableau→tableau
+ *     relocation is required. The auto-complete hard-lock forbids any column-to-column
+ *     shuffle, so we must prove a win that needs none.
+ *
+ * This deliberately drops the old "all tableau face-up" gate: a fully-face-up
+ * board whose only win requires parking a run on another column is NOT
+ * auto-completable and is left to the player.
  *
  * @param {import('./GameState.js').GameState} state
  * @returns {boolean}
  */
 export function isAutoCompletable(state) {
   if (isWon(state)) return false;
-  if (!isAllTableauFaceUp(state)) return false;
-  return Array.isArray(findWinningSequence(state));
+  if (state.stock.length !== 0) return false;
+  return Array.isArray(findWinningSequence(state, { allowTableau: false, allowDraw: false }));
 }
