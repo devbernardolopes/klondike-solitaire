@@ -169,6 +169,11 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
     setNoMovesDialogOpen(false);
     undo();
   }, [setNoMovesDialogOpen, undo]);
+  const onNoMovesReplay = useCallback(() => {
+    setNoMovesDialogOpen(false);
+    replayGame();
+    play('deal');
+  }, [setNoMovesDialogOpen, replayGame, play]);
   const closeGameOver = useCallback(() => setGameOverDialogOpen(false), [setGameOverDialogOpen]);
   const onGameOverConfirm = useCallback(() => {
     setGameOverDialogOpen(false);
@@ -354,9 +359,11 @@ function ElapsedClock() {
        <ConfirmModal
         open={noMovesDialogOpen}
         title="No moves remaining"
-        message="There don't seem to be any more valid moves. You can undo your last move or start a new game."
+        message="There don't seem to be any more valid moves. You can undo your last move, restart this exact deal, or start a new game."
         confirmText="New Game"
         cancelText="Undo Last Move"
+        tertiaryText="Replay this Game"
+        onTertiary={onNoMovesReplay}
         onConfirm={onNoMovesConfirm}
         onCancel={onNoMovesCancel}
       />

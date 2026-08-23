@@ -20,6 +20,8 @@ import { useModalBackdrop } from './modalBackdrop.js';
  * @param {boolean} [props.hideCancel]
  * @param {() => void} props.onConfirm
  * @param {() => void} props.onCancel
+ * @param {string} [props.tertiaryText]   optional third button label (rendered leftmost)
+ * @param {() => void} [props.onTertiary]  handler for the optional third button
  */
 export default function ConfirmModal({
   open,
@@ -30,6 +32,8 @@ export default function ConfirmModal({
   hideCancel = false,
   onConfirm,
   onCancel,
+  tertiaryText,
+  onTertiary,
 }) {
   const confirmRef = useRef(null);
   const backdrop = useModalBackdrop(onCancel);
@@ -96,6 +100,11 @@ export default function ConfirmModal({
         )}
         <p style={{ margin: '0 0 18px', fontSize: 14, lineHeight: 1.45 }}>{message}</p>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          {tertiaryText && onTertiary && (
+            <button type="button" style={btn} onClick={onTertiary}>
+              {tertiaryText}
+            </button>
+          )}
           {!hideCancel && (
             <button type="button" style={btn} onClick={onCancel}>
               {cancelText}
