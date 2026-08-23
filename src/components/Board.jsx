@@ -188,7 +188,15 @@ export default function Board() {
     // foundations), and the win must need no tableau relocation and no recycle.
     if (state.stock.length !== 0) return;
     const snapshot = state;
-    const { promise, cancel } = solveAsync(state, { allowTableau: false, allowDraw: false, maxNodes: 200000, maxMs: 2000 });
+    let solveResult;
+    try {
+      solveResult = solveAsync(state, { allowTableau: false, allowDraw: false, maxNodes: 200000, maxMs: 2000 });
+    } catch {
+      // If the solver is unavailable, simply don't auto-fire; the board stays
+      // interactive and the player can trigger auto-complete manually.
+      return undefined;
+    }
+    const { promise, cancel } = solveResult;
     promise.then((seq) => {
       if (seq === STALE) return;
       if (useGameStore.getState().state !== snapshot) return;

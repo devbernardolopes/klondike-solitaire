@@ -648,7 +648,18 @@ export const useGameStore = create((set, get) => ({
       runGreedy(get, set);
       return true;
     }
-    const { promise, cancel } = solveAsync(state, { allowTableau: false, maxNodes: 200000, maxMs: 2000 });
+    let solveResult;
+    try {
+      solveResult = solveAsync(state, { allowTableau: false, maxNodes: 200000, maxMs: 2000 });
+    } catch {
+      // The solver plumbing (worker creation / main-thread fallback) should
+      // never throw, but if it somehow does, release the lock and peel the safe
+      // foundation moves so the board stays usable and the run can be retried.
+      set({ autoCompleting: false });
+      runGreedy(get, set);
+      return true;
+    }
+    const { promise, cancel } = solveResult;
     activeSolveCancel = cancel;
     promise.then((seq) => {
       activeSolveCancel = null;
