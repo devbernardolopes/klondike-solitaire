@@ -647,9 +647,17 @@ export const useGameStore = create((set, get) => ({
 
     const state = get().state;
 
-    // Hidden cards remain: never run the expensive solver. Just make safe,
-    // obvious foundation moves instantly and stop (matches "instant greedy only").
-    if (!isAllTableauFaceUp(state)) {
+    // A board with no cards left in stock or waste is fully known (even if a
+    // tableau card is still face-down), so the solver can plan tableau moves that
+    // expose and flip it. Route those to the solver instead of the
+    // foundation-only greedy path, which would otherwise stall (greedy never
+    // makes a tableau relocation to unblock a hidden card).
+    const fullyKnown = state.stock.length === 0 && state.waste.length === 0;
+
+    // Hidden cards remain in the stock/waste: never run the expensive solver.
+    // Just make safe, obvious foundation moves instantly and stop (matches
+    // "instant greedy only").
+    if (!isAllTableauFaceUp(state) && !fullyKnown) {
       runGreedy(get, set);
       return autoCompleteTimer !== null;
     }

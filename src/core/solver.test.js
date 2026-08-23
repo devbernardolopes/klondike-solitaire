@@ -11,6 +11,7 @@ import { createEmptyGameState } from './GameState.js';
 import { findWinningSequence, findReachableMove, hasDeadEndMove, isAutoCompletable, SOLVER_TIMEOUT, compressWinningSequence } from './solver.js';
 import { applyMove } from './moveEngine.js';
 import { isWon } from './winDetection.js';
+import { findFoundationMove, isAllTableauFaceUp } from './rules.js';
 
 // A state is "fully cleared" when every card sits on a foundation as a valid
 // 1..n same-suit run and the board (tableau/stock/waste) is empty. Used instead
@@ -406,5 +407,60 @@ test('compressWinningSequence is a no-op for an already-minimal foundation-only 
   const out = compressWinningSequence(seq, s);
   assert.equal(out.length, seq.length, 'no redundant moves to remove');
   assert.equal(isWon(replay(s, out)), true);
+});
+
+test('solver flips the last face-down card when the only way to expose it needs a tableau relocation', () => {
+  // Near-endgame precondition from the report: stock and waste both empty, every
+  // card face-up EXCEPT exactly one face-down card (the hearts Jack at the bottom
+  // of column 0). The Jack is buried under the clubs Queen, and the Queen is NOT
+  // yet foundation-playable (its predecessor, the clubs Jack, is still on the
+  // tableau). So a foundation-only greedy auto-complete would make NO move at all
+  // and stall — the face-down Jack is never exposed. The win requires relocating
+  // the Queen onto the hearts King (a tableau move), which flips the exposed Jack,
+  // and only THEN can the suits be completed. This is exactly the
+  // "auto-complete stalls before flipping" bug.
+  const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
+  const s = createEmptyGameState();
+  s.foundations[0] = Array.from({ length: 13 }, (_, i) => c('spades', i + 1, `sp${i + 1}`));
+  s.foundations[1] = Array.from({ length: 10 }, (_, i) => c('clubs', i + 1, `cl${i + 1}`));   // clubs 1..10
+  s.foundations[2] = Array.from({ length: 13 }, (_, i) => c('diamonds', i + 1, `d${i + 1}`));
+  s.foundations[3] = Array.from({ length: 10 }, (_, i) => c('hearts', i + 1, `h${i + 1}`));   // hearts 1..10
+
+  // Valid descending-alternating columns; only hJ is face-down.
+  s.tableau = [
+    [c('hearts', 11, 'hJ', false), c('clubs', 12, 'cQ')], // hJ face-down, cQ on top
+    [c('clubs', 11, 'cJ'), c('hearts', 12, 'hQ')],
+    [c('clubs', 13, 'cK')],
+    [c('hearts', 13, 'hK')],
+    [], [], [],
+  ];
+
+  assert.equal(s.stock.length, 0);
+  assert.equal(s.waste.length, 0);
+  assert.equal(isAllTableauFaceUp(s), false, 'precondition: one face-down card remains');
+
+  // Foundation-only greedy cannot move a single card here, so it stalls.
+  let greedy = s;
+  let guard = 0;
+  while (guard++ < 50) {
+    const fm = findFoundationMove(greedy);
+    if (!fm) break;
+    greedy = applyMove(greedy, { type: 'moveCards', from: fm.from, to: fm.to, cardIds: [fm.cardId] });
+  }
+  assert.equal(isWon(greedy), false, 'foundation-only greedy cannot finish this board');
+
+  // The solver, by contrast, must prove a full win — which is only possible if it
+  // relocates a card, flips the exposed hJ, and clears the board.
+  const seq = findWinningSequence(s);
+  assert.ok(Array.isArray(seq), 'solver must find a winning line');
+  assert.equal(isWon(replay(s, seq)), true, 'winning line must clear the board (face-down flipped)');
+  assert.equal(
+    seq.some((m) => m.type === 'moveCards' && String(m.to).startsWith('tableau:')),
+    true,
+    'win requires a tableau relocation to expose the face-down card',
+  );
+  // The once-face-down card must end flipped on its foundation (proving it was exposed).
+  const hJFinal = replay(s, seq).foundations.flat().find((card) => card.id === 'hJ');
+  assert.ok(hJFinal && hJFinal.faceUp, 'the once-face-down card must be flipped and on a foundation');
 });
 

@@ -183,13 +183,18 @@ export default function Board() {
     // "all face-up"), so we'd start an auto-complete on a state that is about
     // to be replaced by the real deal — which would throw mid-sequence.
     if (state.tableau.every((p) => p.length === 0) && state.foundations.every((p) => p.length === 0)) return;
-    if (!isAllTableauFaceUp(state)) return;
+    // Auto-fire once the board holds no hidden information. That is either a
+    // fully face-up tableau, OR a board with no cards left in stock/waste (fully
+    // known even if a tableau card is still face-down — the solver can then plan
+    // the tableau move that exposes and flips it).
+    const fullyKnown = state.stock.length === 0 && state.waste.length === 0;
+    if (!isAllTableauFaceUp(state) && !fullyKnown) return;
     const snapshot = state;
     const { promise, cancel } = solveAsync(state, { maxNodes: 200000, maxMs: 2000 });
     promise.then((seq) => {
       if (seq === STALE) return;
       if (useGameStore.getState().state !== snapshot) return;
-      if (seq && seq.length > 0) {
+      if (Array.isArray(seq) && seq.length > 0) {
         setAnnounce('Auto-completing to foundations');
         useGameStore.getState().autoComplete(true);
       }
