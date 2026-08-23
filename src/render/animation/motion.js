@@ -20,13 +20,13 @@ export const MOTION = {
   // the source and destination differ on both axes. A run lifts and lands as a
   // RIGID BLOCK because every card in it tweens in parallel (stagger 0) with the
   // grabbed/clicked card leading the move.
-  move:     { duration: 0.20, ease: 'power3.in', stagger: 0.00 },
+  move:     { duration: 0.20, ease: 'power3.out', stagger: 0.01 },
 
   // Auto-complete relocation tween (greedy foundation peel + solver win
   // sequence). Independent of `move` so it can be tuned (e.g. made snappier)
   // without affecting normal player moves. Consumed by useCardMoveSlide via
   // CONFIG_BY_TYPE.auto.
-  auto:     { duration: 0.20, ease: 'power3.in', stagger: 0.00 },
+  auto:     { duration: 0.20, ease: 'power3.out', stagger: 0.01 },
   // Alternative easing for the same tween; swap to change the acceleration curve.
   // move:     { duration: 0.40, ease: 'power3.out', stagger: 0 },
 
