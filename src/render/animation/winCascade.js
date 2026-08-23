@@ -35,7 +35,7 @@ export function playWinCascade() {
   const cards = gsap.utils.toArray('[data-card]');
   if (cards.length === 0) return;
   foundationPiles = [];
-  // Hold the all-encompassing lock so new-game / undo / redo can't fire while
+  // Hold the all-encompassing lock so new-game / undo can't fire while
   // the falling-card cascade is playing (won === true already blocks card/pile
   // interaction in the components, but the store-level new-game guard keys off
   // this flag too).

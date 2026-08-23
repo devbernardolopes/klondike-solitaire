@@ -4,7 +4,7 @@
 
 import { create } from 'zustand';
 import { deal } from '../core/dealer.js';
-import { applyMove, undo as coreUndo, redo as coreRedo } from '../core/moveEngine.js';
+import { applyMove, undo as coreUndo } from '../core/moveEngine.js';
 import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, isAllTableauFaceUp, DEST_ORDER } from '../core/rules.js';
 import { isWon } from '../core/winDetection.js';
 import { solveAsync, cancelAllSolves, STALE } from '../core/solverClient.js';
@@ -101,7 +101,7 @@ function runAnimatedDeal(get, set, { seed, order, deck } = {}) {
   const usedDeck = deck ? deck.slice() : order ? order.slice() : shuffle(buildStandardDeck(), seed);
   const preDeal = preDealFromDeck(usedDeck, seed);
   const replaySpec = seed !== undefined ? { seed } : { order: usedDeck.map((c) => ({ ...c })) };
-  set({ state: preDeal, redoStack: [], autoMoveState: {}, replaySpec, lastActionMeta: { type: 'draw' } });
+  set({ state: preDeal, autoMoveState: {}, replaySpec, lastActionMeta: { type: 'draw' } });
   requestAnimationFrame(() => {
     cancelAutoComplete(set);
     const next = deal({ order: usedDeck });
@@ -131,7 +131,7 @@ function runAnimatedDeal(get, set, { seed, order, deck } = {}) {
 const AUTO_COMPLETE_STEP_GAP = 80;
 let autoCompleteTimer = null;
 let activeSolveCancel = null;
-// Bumped whenever an in-progress auto-complete is cancelled (deal/move/undo/redo
+// Bumped whenever an in-progress auto-complete is cancelled (deal/move/undo
 // all call cancelAutoComplete). The async step loops capture this id and bail
 // after an await if it changed, so a cancelled run never applies further moves
 // after the user took over.
@@ -189,7 +189,7 @@ function applyAutoStep(get, set, move) {
   // still derived from the real move.type to avoid the undefined-cardIds crash.
   const tid = captureFlip('auto');
   useUiStore.getState().beginTransition(tid, animIds, destLocs);
-  set({ state: next, redoStack: [], autoMoveState: {}, lastActionMeta: { type: 'auto' } });
+  set({ state: next, autoMoveState: {}, lastActionMeta: { type: 'auto' } });
   useStatsStore.getState().startTimerIfValid(cur);
   useStatsStore.getState().addMoves(1);
   return tid;
@@ -308,12 +308,11 @@ export const useGameStore = create((set, get) => ({
   // can animate its deal on load via initialDeal() rather than appearing
   // instantly. The pre-deal and the dealt state share INITIAL_DECK's card ids.
   state: INITIAL_PREDEAL,
-  redoStack: [],
   // True while an auto-complete sequence is animating, so the Board trigger
   // effect doesn't re-run the (expensive) solver on every step of the run.
   autoCompleting: false,
   // Remembers the last auto-move destination per card id so repeated clicks
-  // cycle through the valid slots in DEST_ORDER. Reset on new game / undo / redo.
+  // cycle through the valid slots in DEST_ORDER. Reset on new game / undo.
   autoMoveState: {},
   // Captures exactly how the current game was dealt so "Replay this Game" can
   // reproduce it: `{ seed }` for Winning Deal, `{ order }` (the full 52-card
@@ -422,7 +421,7 @@ export const useGameStore = create((set, get) => ({
    * Draw from stock to waste. No-op if stock is empty (UI should offer recycle).
    */
   drawFromStock: () => {
-    const { state, redoStack } = get();
+    const { state } = get();
     if (isWon(state) || useStatsStore.getState().isOver) return;
     if (get().autoCompleting) return;
     if (state.stock.length === 0) return;
@@ -434,7 +433,7 @@ export const useGameStore = create((set, get) => ({
     const tid = captureFlip('draw');
     useUiStore.getState().beginTransition(tid, [drawnId], ['stock', 'waste']);
     const next = applyMove(state, { type: 'draw' });
-    set({ state: next, redoStack, lastActionMeta: { type: 'draw' } });
+    set({ state: next, lastActionMeta: { type: 'draw' } });
     useUiStore.getState().clearHints();
     useStatsStore.getState().startTimerIfValid(state);
     useStatsStore.getState().addMoves(1);
@@ -447,7 +446,7 @@ export const useGameStore = create((set, get) => ({
    * Recycle waste back into the stock.
    */
   recycleStock: () => {
-    const { state, redoStack } = get();
+    const { state } = get();
     if (isWon(state) || useStatsStore.getState().isOver) return;
     if (get().autoCompleting) return;
     // Recycle slides every waste card back into the stock, so block only while
@@ -457,7 +456,7 @@ export const useGameStore = create((set, get) => ({
     const movingIds = state.waste.map((c) => c.id);
     const tid = captureFlip('recycle');
     useUiStore.getState().beginTransition(tid, movingIds, ['stock', 'waste']);
-    set({ state: applyMove(state, { type: 'recycle' }), redoStack, lastActionMeta: { type: 'recycle' } });
+    set({ state: applyMove(state, { type: 'recycle' }), lastActionMeta: { type: 'recycle' } });
     useUiStore.getState().clearHints();
     useStatsStore.getState().startTimerIfValid(state);
     useStatsStore.getState().addMoves(1);
@@ -474,7 +473,7 @@ export const useGameStore = create((set, get) => ({
    */
   moveCard: (from, to, cardId, opts = {}) => {
     cancelAutoComplete(set);
-    const { state, redoStack } = get();
+    const { state } = get();
     if (isWon(state) || useStatsStore.getState().isOver) return false;
     if (get().autoCompleting) return false;
     if (from === to) return false;
@@ -528,7 +527,7 @@ export const useGameStore = create((set, get) => ({
     // (that would make the real card jump back and re-slide). Just snap it into
     // the destination and skip the animating lock so the next move is immediate.
     if (opts.metaType === 'drag') {
-      set({ state: next, redoStack: [], lastActionMeta: { type: 'move' } });
+      set({ state: next, lastActionMeta: { type: 'move' } });
       useUiStore.getState().clearHints();
       useStatsStore.getState().startTimerIfValid(state);
       useStatsStore.getState().addMoves(1);
@@ -539,7 +538,7 @@ export const useGameStore = create((set, get) => ({
     }
     const tid = captureFlip(opts.metaType ?? 'move');
     useUiStore.getState().beginTransition(tid, moveIds, [to]);
-    set({ state: next, redoStack: [], lastActionMeta: { type: opts.metaType ?? 'move' } });
+    set({ state: next, lastActionMeta: { type: opts.metaType ?? 'move' } });
     useUiStore.getState().clearHints();
     useStatsStore.getState().startTimerIfValid(state);
     useStatsStore.getState().addMoves(1);
@@ -552,34 +551,16 @@ export const useGameStore = create((set, get) => ({
   undo: () => {
     cancelAutoComplete(set);
     useUiStore.getState().setNoMovesDialogOpen(false);
-    const { state, redoStack } = get();
+    const { state } = get();
     if (get().autoCompleting) return;
     if (state.moveHistory.length === 0 || useStatsStore.getState().isOver) return;
-    // Undo/redo don't animate and would corrupt an in-flight tween, so block
-    // them whenever any card is still moving.
+    // Undo doesn't animate and would corrupt an in-flight tween, so block it
+    // whenever any card is still moving.
     if (useUiStore.getState().animatingCards.size > 0) return;
-    const history = state.moveHistory.slice();
-    const last = history[history.length - 1];
     const next = coreUndo(state);
-    set({ state: next, redoStack: [...redoStack, last], autoMoveState: {}, lastActionMeta: { type: 'undo' } });
+    set({ state: next, autoMoveState: {}, lastActionMeta: { type: 'undo' } });
     useUiStore.getState().clearHints();
     useStatsStore.getState().addMoves(1);
-  },
-
-  redo: () => {
-    cancelAutoComplete(set);
-    const { state, redoStack } = get();
-    if (get().autoCompleting) return;
-    if (redoStack.length === 0 || useStatsStore.getState().isOver) return;
-    if (useUiStore.getState().animatingCards.size > 0) return;
-    const stack = redoStack.slice();
-    const record = stack.pop();
-    const next = coreRedo(state, record);
-    set({ state: next, redoStack: stack, autoMoveState: {}, lastActionMeta: { type: record.type === 'draw' ? 'draw' : 'move' } });
-    useUiStore.getState().clearHints();
-    if (next.stock.length === 0 && !isWon(next)) {
-      checkDeadEnd(get, set, next);
-    }
   },
 
   /**
@@ -631,7 +612,7 @@ export const useGameStore = create((set, get) => ({
    * normal history entry, so Undo steps back through them individually.
    *
    * Only one auto-complete may run at a time; any user action (deal / move /
-   * undo / redo) cancels the in-progress animation via clearAutoCompleteTimer.
+   * undo) cancels the in-progress animation via clearAutoCompleteTimer.
    *
    * @returns {boolean} whether at least one move was started
    */
@@ -671,7 +652,7 @@ export const useGameStore = create((set, get) => ({
     activeSolveCancel = cancel;
     promise.then((seq) => {
       activeSolveCancel = null;
-      // A user action (deal/move/undo/redo) may have cancelled us while the
+      // A user action (deal/move/undo) may have cancelled us while the
       // worker was busy; if the run id changed, abandon the result entirely.
       if (run !== autoCompleteRunId) return;
       if (seq === STALE) {
@@ -693,7 +674,6 @@ export const useGameStore = create((set, get) => ({
 
   isWon: () => isWon(get().state),
   canUndo: () => !get().autoCompleting && get().state.moveHistory.length > 0,
-  canRedo: () => !get().autoCompleting && get().redoStack.length > 0,
 
   /**
    * Hint affordance: surface the currently-visible legal moves. Toggles — if

@@ -3,11 +3,11 @@
 //
 // applyMove is a PURE function: it takes a state and a move descriptor and returns
 // a NEW state. It never mutates the input in place. This is critical because
-// undo/redo and the leaderboard's move-sequence validation both rely on snapshots
+// undo and the leaderboard's move-sequence validation both rely on snapshots
 // being trustworthy.
 //
 // Each applied move is recorded into state.moveHistory as a canonical record that
-// also carries its `inverse` so undo/redo can reconstruct exactly.
+// also carries its `inverse` so undo can reconstruct exactly.
 
 /**
  * Parse a pile locator ("stock" | "waste" | "foundation:i" | "tableau:i").
@@ -238,27 +238,4 @@ export function undo(state) {
   const last = history.pop();
   const undone = applyInverse(state, last);
   return { ...undone, moveHistory: history };
-}
-
-/**
- * Redo is intentionally NOT a forward-replay here: this skeleton keeps the undone
- * move available for redo. The store layer manages a separate redo stack. To keep
- * core pure and simple, redo re-applies the provided record.
- *
- * @param {import('./GameState.js').GameState} state
- * @param {object} record  a move record previously undone
- * @returns {import('./GameState.js').GameState}
- */
-export function redo(state, record) {
-  // For draw/recycle the record itself is the move; for moveCards re-apply forward.
-  if (record.type === 'draw') return applyDraw(state);
-  if (record.type === 'recycle') return applyRecycle(state);
-  if (record.type === 'moveCards') {
-    return applyMoveCards(state, {
-      from: record.from,
-      to: record.to,
-      cardIds: record.cardIds,
-    });
-  }
-  throw new Error(`Cannot redo move type: ${record.type}`);
 }

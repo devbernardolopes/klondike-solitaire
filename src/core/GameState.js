@@ -33,7 +33,7 @@
  * @property {CardRef[]} waste                 // face-up discard pile (top = last element)
  * @property {CardRef[][]} foundations         // length 4, each an array of face-up cards (bottom→top)
  * @property {CardRef[][]} tableau             // length 7, each an array of cards (bottom→top)
- * @property {Move[]} moveHistory              // chronological list of applied moves (for undo/redo)
+ * @property {Move[]} moveHistory              // chronological list of applied moves (for undo)
  * @property {number} [seed]                   // seed used to deal this game (if any)
  * @property {number} [drawCount=1]            // cards turned from stock per draw (snapshot header)
  * @property {number} [startedAt]              // epoch ms when the game began

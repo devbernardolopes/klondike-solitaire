@@ -119,7 +119,6 @@ export default function Board() {
   const autoMove = useGameStore((s) => s.autoMove);
   const autoComplete = useGameStore((s) => s.autoComplete);
   const undo = useGameStore((s) => s.undo);
-  const redo = useGameStore((s) => s.redo);
   const dealNewGame = useGameStore((s) => s.dealNewGame);
   const showHints = useGameStore((s) => s.showHints);
   const clearSelection = useUiStore((s) => s.clearSelection);
@@ -130,7 +129,7 @@ export default function Board() {
   const autoCompleting = useGameStore((s) => s.autoCompleting);
   const won = isWon(state);
   // `anyAnimating` = some card is still in flight (used to block global actions
-  // like new-game/undo/redo/auto-complete). `stockWasteBusy` only blocks
+  // like new-game/undo/auto-complete). `stockWasteBusy` only blocks
   // draw/recycle. Card/pile-level interaction is gated per-card / per-pile by
   // the components themselves, so non-involved cards stay playable mid-animation.
   const anyAnimating = useUiStore((s) => s.animatingCards.size > 0);
@@ -209,7 +208,7 @@ export default function Board() {
        // Never fire game shortcuts while any modal/dialog is open — e.g. typing
        // letters into the Seed Input field must not trigger new-game/draw/etc.
        if (isAnyModalOpen(useUiStore.getState())) return;
-       // New game / undo / redo / auto-complete are blocked while anything is
+        // New game / undo / auto-complete are blocked while anything is
        // still animating (or the game is over). Draw/recycle are handled below
        // with their own narrower stock/waste lock so they stay usable during an
        // unrelated move.
@@ -235,17 +234,12 @@ export default function Board() {
           recycleStock();
           setAnnounce('Recycled waste to stock');
           break;
-        case 'u':
-          clearSelection();
-          undo();
-          setAnnounce('Undo');
-          break;
-        case 'e':
-          clearSelection();
-          redo();
-          setAnnounce('Redo');
-          break;
-         case 'a':
+         case 'u':
+           clearSelection();
+           undo();
+           setAnnounce('Undo');
+           break;
+          case 'a':
            clearSelection();
            autoComplete();
            setAnnounce('Auto-completing to foundations');
@@ -260,7 +254,7 @@ export default function Board() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [won, isOver, anyAnimating, autoCompleting, stockWasteBusy, drawFromStock, recycleStock, undo, redo, autoComplete, dealNewGame, showHints, clearSelection, setAnnounce]);
+  }, [won, isOver, anyAnimating, autoCompleting, stockWasteBusy, drawFromStock, recycleStock, undo, autoComplete, dealNewGame, showHints, clearSelection, setAnnounce]);
 
   const onStockClick = () => {
     if (won || isOver) return;
