@@ -600,7 +600,7 @@ export const useGameStore = create((set, get) => ({
     if (!chosen) return false;
 
     set({ autoMoveState: { ...autoMoveState, [cardId]: { dest: chosen, source: from } } });
-    get().moveCard(from, chosen, cardId, { metaType: 'auto' });
+    get().moveCard(from, chosen, cardId, { metaType: 'move' });
     return true;
   },
 
