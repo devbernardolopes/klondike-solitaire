@@ -128,6 +128,10 @@ export const useUiStore = create((set) => ({
   // "Game Over" modal shown when a hard limit (60:00 or 999 moves) is hit.
   gameOverDialogOpen: false,
 
+  // "Enter Seed" modal: user types a specific Winning-Deal seed number to
+  // (re)start that exact, pre-verified solvable deal.
+  seedInputDialogOpen: false,
+
   /** Mark a card as the keyboard-selected card. */
   selectCard: (id) => set({ selectedCardId: id }),
 
@@ -145,6 +149,9 @@ export const useUiStore = create((set) => ({
 
   /** Show/hide the Game Over dialog. */
   setGameOverDialogOpen: (open) => set({ gameOverDialogOpen: open }),
+
+  /** Show/hide the "Enter Seed" dialog. */
+  setSeedInputDialogOpen: (open) => set({ seedInputDialogOpen: open }),
 
   /** Record which mode was last used, so the "no valid moves" recovery path can reuse it. */
   setLastNewGameMode: (mode) => set({ lastNewGameMode: mode }),

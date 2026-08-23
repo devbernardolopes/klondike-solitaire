@@ -373,6 +373,26 @@ export const useGameStore = create((set, get) => ({
   },
 
   /**
+   * Deal a fresh game from a specific, user-supplied seed in Winning Deal mode.
+   * The seed must already be a valid pool seed (validated by the UI before
+   * calling); if it is not, the caller should not invoke this action. Mirrors the
+   * 'winning' branch of dealNewGame but uses the supplied seed verbatim so the
+   * exact requested deal is reproduced.
+   *
+   * @param {number} seed
+   */
+  dealWithSeed: (seed) => {
+    cancelAutoComplete(set);
+    useUiStore.getState().setNoMovesDialogOpen(false);
+    useUiStore.getState().clearHints();
+    cancelWinCascade();
+    if (useUiStore.getState().animatingCards.size > 0) return;
+    useUiStore.getState().setLastNewGameMode('winning');
+    useStatsStore.getState().resetStats();
+    runAnimatedDeal(get, set, { seed });
+  },
+
+  /**
    * Animate the initial game on app load. The store starts as a pre-deal, so the
    * first Winning Deal (a fixed, pre-determined seed) plays the same deal
    * animation as a user-initiated new game instead of appearing instantly.

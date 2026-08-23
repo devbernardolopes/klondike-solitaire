@@ -8,6 +8,16 @@ import solvableSeeds from '../data/solvableSeeds.json';
 export const SOLVABLE_SEEDS = solvableSeeds;
 
 /**
+ * Whether a seed is part of the pre-verified solvable pool (i.e. a valid
+ * Winning-Deal seed the user can request directly).
+ * @param {number} seed
+ * @returns {boolean}
+ */
+export function isSolvableSeed(seed) {
+  return SOLVABLE_SEEDS.includes(seed);
+}
+
+/**
  * Pick a random seed from the pre-verified solvable pool.
  * @returns {number}
  */

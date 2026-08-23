@@ -2,7 +2,7 @@
 // New game, undo, theme/deck switchers. Stubs OK for switchers this pass.
 
 import pkg from '../../package.json';
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useRef } from 'react';
 import { Plus, Undo2, Settings, BarChart3, Lightbulb } from 'lucide-react';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useUiStore } from '../hooks/useUiStore.js';
@@ -13,6 +13,7 @@ import ConfirmModal from './ConfirmModal.jsx';
 import NewGameModal from './NewGameModal.jsx';
 import SettingsModal from './SettingsModal.jsx';
 import StatisticsModal from './StatisticsModal.jsx';
+import SeedInputModal from './SeedInputModal.jsx';
 
 /**
  * Format an elapsed-time span (ms) as MM:SS.
@@ -65,6 +66,7 @@ function useElapsed() {
  */
 export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, handedness, onHandednessChange, highlightCard, onHighlightCardChange }) {
   const dealNewGame = useGameStore((s) => s.dealNewGame);
+  const dealWithSeed = useGameStore((s) => s.dealWithSeed);
   const replayGame = useGameStore((s) => s.replayGame);
   const undo = useGameStore((s) => s.undo);
   const showHints = useGameStore((s) => s.showHints);
@@ -84,6 +86,9 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const setSettingsDialogOpen = useUiStore((s) => s.setSettingsDialogOpen);
   const statsDialogOpen = useUiStore((s) => s.statsDialogOpen);
   const setStatsDialogOpen = useUiStore((s) => s.setStatsDialogOpen);
+  const seedInputDialogOpen = useUiStore((s) => s.seedInputDialogOpen);
+  const setSeedInputDialogOpen = useUiStore((s) => s.setSeedInputDialogOpen);
+  const setAnnounce = useUiStore((s) => s.setAnnounce);
   const gameOverDialogOpen = useUiStore((s) => s.gameOverDialogOpen);
   const setGameOverDialogOpen = useUiStore((s) => s.setGameOverDialogOpen);
 
@@ -123,6 +128,38 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
     dealNewGame('random');
     play('deal');
   }, [setNewGameDialogOpen, dealNewGame, play]);
+  const onSeedConfirm = useCallback((seed) => {
+    setSeedInputDialogOpen(false);
+    dealWithSeed(seed);
+    play('deal');
+    setAnnounce(`New game: seed ${seed}`);
+  }, [setSeedInputDialogOpen, dealWithSeed, play, setAnnounce]);
+  const onSeedCancel = useCallback(() => {
+    setSeedInputDialogOpen(false);
+  }, [setSeedInputDialogOpen]);
+
+  // Double-click / double-tap the top-left seed label to open the "Enter Seed"
+  // dialog. A pointer-based detector (mirroring Board's double-tap logic) makes
+  // touch taps work too, since browsers don't synthesize dblclick for touch.
+  const SEED_LABEL_DOUBLE_MS = 300;
+  const SEED_LABEL_DOUBLE_DIST = 24;
+  const lastLabelTap = useRef(null);
+  const onLabelActivate = useCallback((e) => {
+    if (e.button !== undefined && e.button !== 0) return;
+    if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+    const now = Date.now();
+    const tap = { x: e.clientX ?? 0, y: e.clientY ?? 0, t: now };
+    const prev = lastLabelTap.current;
+    lastLabelTap.current = tap;
+    if (
+      prev &&
+      now - prev.t < SEED_LABEL_DOUBLE_MS &&
+      Math.hypot(tap.x - prev.x, tap.y - prev.y) < SEED_LABEL_DOUBLE_DIST
+    ) {
+      lastLabelTap.current = null;
+      setSeedInputDialogOpen(true);
+    }
+  }, [setSeedInputDialogOpen]);
   const closeNoMoves = useCallback(() => setNoMovesDialogOpen(false), [setNoMovesDialogOpen]);
   const onNoMovesConfirm = useCallback(() => {
     setNoMovesDialogOpen(false);
@@ -198,14 +235,22 @@ function ElapsedClock() {
         }}
         >
          <span
-           style={{
-             color: '#fff',
-             fontSize: 13,
-             userSelect: 'none',
-           }}
-         >
-           {lastNewGameMode === 'winning' ? `Seed: ${gameState.seed}` : 'Random'}
-         </span>
+            role="button"
+            tabIndex={0}
+            title="Double-click to enter a specific seed"
+            onDoubleClick={onLabelActivate}
+            onPointerUp={onLabelActivate}
+            onKeyDown={onLabelActivate}
+            style={{
+              color: '#fff',
+              fontSize: 13,
+              userSelect: 'none',
+              cursor: 'pointer',
+              outline: 'none',
+            }}
+          >
+            {lastNewGameMode === 'winning' ? `Seed: ${gameState.seed}` : 'Random'}
+          </span>
          <span
            style={{
              color: '#fff',
@@ -280,6 +325,12 @@ function ElapsedClock() {
         onWinningDeal={onWinningDeal}
         onRandomShuffle={onRandomShuffle}
         onDismiss={closeNewGame}
+      />
+
+      <SeedInputModal
+        open={seedInputDialogOpen}
+        onConfirm={onSeedConfirm}
+        onCancel={onSeedCancel}
       />
 
       <SettingsModal
