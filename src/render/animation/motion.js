@@ -46,7 +46,7 @@ export const MOTION = {
   autoComplete: { mode: 'overlap', stepDelay: 80 },
 
   // 3D rotateY face flip (face-down <-> face-up) in useCardFaceFlip.
-  flipCard: { duration: 0.06, ease: 'power3.out' },
+  flipCard: { duration: 0.05, ease: 'power3.out' },
 
   // Stock → waste draw slide. The revealed card flips face-up in place at the
   // stock pile and THEN glides horizontally to the waste pile. The horizontal
@@ -55,7 +55,7 @@ export const MOTION = {
   // left-handed = waste right of stock → slide right). So no explicit direction
   // field is needed — tweak the values below to change the glide.
   draw:     {
-    duration: 0.06,         // length of the horizontal slide tween (seconds).
+    duration: 0.05,         // length of the horizontal slide tween (seconds).
     ease: 'power3.out',
     // Extra horizontal travel (px) added beyond the natural pile-to-pile
     // distance to make the glide more pronounced. 0 keeps it a pure stock→waste
