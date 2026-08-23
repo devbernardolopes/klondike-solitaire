@@ -20,13 +20,13 @@ export const MOTION = {
   // the source and destination differ on both axes. A run lifts and lands as a
   // RIGID BLOCK because every card in it tweens in parallel (stagger 0) with the
   // grabbed/clicked card leading the move.
-  move:     { duration: 0.20, ease: 'power3.out', stagger: 0.01 },
+  move:     { duration: 0.25, ease: 'power3.in', stagger: 0.01 },
 
   // Auto-complete relocation tween (greedy foundation peel + solver win
   // sequence). Independent of `move` so it can be tuned (e.g. made snappier)
   // without affecting normal player moves. Consumed by useCardMoveSlide via
   // CONFIG_BY_TYPE.auto.
-  auto:     { duration: 0.20, ease: 'power3.out', stagger: 0.01 },
+  auto:     { duration: 0.25, ease: 'power3.in', stagger: 0.01 },
   // Alternative easing for the same tween; swap to change the acceleration curve.
   // move:     { duration: 0.40, ease: 'power3.out', stagger: 0 },
 
@@ -46,7 +46,7 @@ export const MOTION = {
   autoComplete: { mode: 'overlap', stepDelay: 80 },
 
   // 3D rotateY face flip (face-down <-> face-up) in useCardFaceFlip.
-  flipCard: { duration: 0.05, ease: 'power3.out' },
+  flipCard: { duration: 0.05, ease: 'power3.in' },
 
   // Stock → waste draw slide. The revealed card flips face-up in place at the
   // stock pile and THEN glides horizontally to the waste pile. The horizontal
@@ -56,7 +56,7 @@ export const MOTION = {
   // field is needed — tweak the values below to change the glide.
   draw:     {
     duration: 0.05,         // length of the horizontal slide tween (seconds).
-    ease: 'power3.out',
+    ease: 'power3.in',
     // Extra horizontal travel (px) added beyond the natural pile-to-pile
     // distance to make the glide more pronounced. 0 keeps it a pure stock→waste
     // move; positive values start the card a bit further out from the stock.
