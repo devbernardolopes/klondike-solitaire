@@ -40,6 +40,7 @@ export default function SettingsModal({
 }) {
   const doneRef = useRef(null);
   const backdrop = useModalBackdrop(onClose);
+  const helpOpen = useUiStore((s) => s.helpDialogOpen);
 
   // Keep the latest close handler in a ref so the open-effect can depend only on
   // `open` (running exactly once per open) instead of on the handler identity.
@@ -60,8 +61,6 @@ export default function SettingsModal({
   }, [open]);
 
   if (!open) return null;
-
-  const helpOpen = useUiStore((s) => s.helpDialogOpen);
 
   const btn = {
     padding: '8px 14px',
