@@ -5,7 +5,7 @@ import pkg from '../../package.json';
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { Plus, Undo2, Settings, BarChart3, Lightbulb } from 'lucide-react';
 import { useGameStore } from '../hooks/useGameStore.js';
-import { useUiStore } from '../hooks/useUiStore.js';
+import { useUiStore, isAnyModalOpen } from '../hooks/useUiStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useSound } from '../hooks/useSound.js';
 import { isWon } from '../core/winDetection.js';
@@ -92,6 +92,32 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const setAnnounce = useUiStore((s) => s.setAnnounce);
   const gameOverDialogOpen = useUiStore((s) => s.gameOverDialogOpen);
   const setGameOverDialogOpen = useUiStore((s) => s.setGameOverDialogOpen);
+
+  // True whenever any modal is open. Used to suppress the FAB reopen bug below.
+  const anyModalOpen = useUiStore(isAnyModalOpen);
+  // After a modal is dismissed, the closing gesture's synthesized `click` can
+  // land on a toolbar FAB that was underneath the full-screen backdrop, instantly
+  // re-triggering (or re-opening) that FAB's action. We block FAB pointer events
+  // for a frame once a modal transitions open → closed, so the stray click is
+  // absorbed by the board instead, then restore on the next frame.
+  const prevModalOpen = useRef(anyModalOpen);
+  const [fabsBlocked, setFabsBlocked] = useState(false);
+  useEffect(() => {
+    if (prevModalOpen.current && !anyModalOpen) {
+      setFabsBlocked(true);
+      const raf = requestAnimationFrame(() =>
+        requestAnimationFrame(() => setFabsBlocked(false)),
+      );
+      const t = setTimeout(() => setFabsBlocked(false), 250);
+      prevModalOpen.current = anyModalOpen;
+      return () => {
+        cancelAnimationFrame(raf);
+        clearTimeout(t);
+      };
+    }
+    prevModalOpen.current = anyModalOpen;
+    return undefined;
+  }, [anyModalOpen]);
 
   // Game session stats (moves / score) + live elapsed time for the HUD.
   const gameState = useGameStore((s) => s.state);
@@ -204,6 +230,9 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
     alignItems: 'center',
     justifyContent: 'center',
     padding: 10,
+    // While a modal is closing, suppress clicks on the FABs so a stray click
+    // (the tail of the dismiss gesture) can't re-trigger a button action.
+    pointerEvents: fabsBlocked ? 'none' : 'auto',
   };
 
   // Bottom-left cluster, left-to-right: [Settings] [Statistics] [New Game].
