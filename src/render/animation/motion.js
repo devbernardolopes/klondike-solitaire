@@ -26,12 +26,12 @@ export const MOTION = {
   // sequence). Independent of `move` so it can be tuned (e.g. made snappier)
   // without affecting normal player moves. Consumed by useCardMoveSlide via
   // CONFIG_BY_TYPE.auto.
-  auto:     { duration: 0.10, ease: 'power2.out', stagger: 0.06 },
+  auto:     { duration: 0.10, ease: 'power2.out', stagger: 0.00 },
   // Alternative easing for the same tween; swap to change the acceleration curve.
   // move:     { duration: 0.40, ease: 'power3.out', stagger: 0 },
 
   // 3D rotateY face flip (face-down <-> face-up) in useCardFaceFlip.
-  flipCard: { duration: 0.10, ease: 'power2.inOut' },
+  flipCard: { duration: 0.12, ease: 'power2.inOut' },
 
   // Stock → waste draw slide. The revealed card flips face-up in place at the
   // stock pile and THEN glides horizontally to the waste pile. The horizontal
@@ -66,5 +66,5 @@ export const MOTION = {
 
   // Invalid-move shake (playCardShake). The sub-steps are fractions of
   // `duration`, and `distance` is the horizontal shift on each side.
-  shake:    { duration: 0.10, distance: 6 },
+  shake:    { duration: 0.16, distance: 8 },
 };
