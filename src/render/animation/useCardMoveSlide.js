@@ -8,9 +8,11 @@ import { useUiStore } from '../../hooks/useUiStore.js';
 const CONFIG_BY_TYPE = {
   // All generic card relocations (single cards and multi-card runs) share the
   // single, tweakable MOTION.move translation preset in motion.js. The stock→
-  // waste draw is handled separately by useStockDrawSlide.
+  // waste draw is handled separately by useStockDrawSlide. The auto-complete
+  // relocation uses its OWN MOTION.auto preset so it can be tuned independently
+  // (faster/snappier) without affecting normal player moves.
   move: MOTION.move,
-  auto: MOTION.move,
+  auto: MOTION.auto,
   deal: MOTION.deal,
   recycle: MOTION.move,
 };
