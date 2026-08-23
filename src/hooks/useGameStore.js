@@ -18,6 +18,7 @@ import { cancelWinCascade } from '../render/animation/winCascade.js';
 import { MOTION } from '../render/animation/motion.js';
 import { useUiStore, whenTransitionDone } from './useUiStore.js';
 import { useStatsStore } from './useStatsStore.js';
+import { useStatisticsStore } from './useStatisticsStore.js';
 import { useSeedStore } from './useSeedStore.js';
 
 // Capture the current on-screen rect of the cards being moved by this step
@@ -399,6 +400,8 @@ export const useGameStore = create((set, get) => ({
     useUiStore.getState().setNoMovesDialogOpen(false);
     useUiStore.getState().closeWinDialog();
     useUiStore.getState().clearHints();
+    // Finalize the game we're replacing: a non-win ends the streak (best kept).
+    useStatisticsStore.getState().finalizeGame();
     // Abort any in-flight win cascade immediately and release its global lock,
     // so a new-game request mid-fall is honored instead of being dropped. Only
     // block on real in-flight per-card transitions (a stray move being clobbered
@@ -473,6 +476,8 @@ export const useGameStore = create((set, get) => ({
     useUiStore.getState().setNoMovesDialogOpen(false);
     useUiStore.getState().closeWinDialog();
     useUiStore.getState().clearHints();
+    // Finalize the game we're replacing: a non-win ends the streak (best kept).
+    useStatisticsStore.getState().finalizeGame();
     cancelWinCascade();
     if (useUiStore.getState().animatingCards.size > 0) return;
     useUiStore.getState().setLastNewGameMode(spec.seed !== undefined ? 'winning' : 'random');
@@ -624,6 +629,7 @@ export const useGameStore = create((set, get) => ({
     set({ state: next, autoMoveState: {}, lastActionMeta: { type: 'undo' } });
     useUiStore.getState().clearHints();
     useStatsStore.getState().addMoves(1);
+    useStatsStore.getState().addUndos(1);
   },
 
   /**

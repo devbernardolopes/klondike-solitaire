@@ -17,6 +17,7 @@ export const MAX_MOVES = 999;
 export const useStatsStore = create((set, get) => ({
   moves: 0,
   score: 0, // not implemented yet — stays 0
+  undos: 0, // number of undo actions performed in the current game
   startTime: null, // epoch ms when the clock started (first valid interaction)
   endTime: null, // epoch ms when the clock stopped (on win or limit)
   isOver: false, // true once a limit is hit — locks all interaction
@@ -33,6 +34,7 @@ export const useStatsStore = create((set, get) => ({
     set({
       moves: 0,
       score: 0,
+      undos: 0,
       startTime: null,
       endTime: null,
       isOver: false,
@@ -133,6 +135,12 @@ export const useStatsStore = create((set, get) => ({
     const next = moves + n;
     set({ moves: next });
     if (next >= MAX_MOVES) get().freeze('moves');
+  },
+
+  /** Record one (or more) undo actions performed in the current game. */
+  addUndos: (n = 1) => {
+    if (get().isOver) return;
+    set({ undos: get().undos + n });
   },
 
   /** Freeze the clock (e.g. when the game is won). */

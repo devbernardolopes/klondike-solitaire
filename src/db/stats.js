@@ -14,6 +14,9 @@ const EMPTY = {
   highestScore: 0,
   lowestTimeMs: null,
   lowestMoves: null,
+  lowestUndos: null,
+  currentStreak: 0,
+  bestStreak: 0,
 };
 
 /**
@@ -23,6 +26,9 @@ const EMPTY = {
  * @property {number} highestScore   best score among won games (0 if unimplemented)
  * @property {number|null} lowestTimeMs  fastest winning time in ms (null = none yet)
  * @property {number|null} lowestMoves   fewest moves in a win (null = none yet)
+ * @property {number|null} lowestUndos   fewest undos in a win (null = none yet)
+ * @property {number} currentStreak   consecutive wins in progress
+ * @property {number} bestStreak       highest currentStreak ever reached
  */
 
 /** @returns {Promise<CumulativeStats>} */
@@ -44,18 +50,37 @@ export async function saveStats(stats) {
 
 /**
  * Fold a won game into the cumulative aggregates.
- * @param {{score:number, timeMs:number, moves:number}} win
+ * @param {{score:number, timeMs:number, moves:number, undos:number}} win
  * @returns {Promise<CumulativeStats>} the updated row
  */
-export async function addWin({ score, timeMs, moves }) {
+export async function addWin({ score, timeMs, moves, undos }) {
   const cur = await loadStats();
+  const streak = (cur.currentStreak || 0) + 1;
   const next = {
+    ...cur,
     totalGamesWon: cur.totalGamesWon + 1,
     highestScore: Math.max(cur.highestScore, score),
     lowestTimeMs: cur.lowestTimeMs == null ? timeMs : Math.min(cur.lowestTimeMs, timeMs),
     lowestMoves: cur.lowestMoves == null ? moves : Math.min(cur.lowestMoves, moves),
+    lowestUndos: cur.lowestUndos == null ? undos : Math.min(cur.lowestUndos, undos),
+    currentStreak: streak,
+    // Best is raised immediately whenever a new record streak is reached, so the
+    // Statistics modal can highlight the current streak the moment it equals/exceeds best.
+    bestStreak: Math.max(cur.bestStreak || 0, streak),
     totalGamesPlayed: cur.totalGamesPlayed,
   };
+  await saveStats(next);
+  return next;
+}
+
+/**
+ * End a losing (non-winning) game: the current streak is broken, but the best
+ * streak achieved so far is preserved.
+ * @returns {Promise<CumulativeStats>} the updated row
+ */
+export async function recordLoss() {
+  const cur = await loadStats();
+  const next = { ...cur, currentStreak: 0 };
   await saveStats(next);
   return next;
 }

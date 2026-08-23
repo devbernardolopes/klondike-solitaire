@@ -156,27 +156,31 @@ export default function Board() {
       useStatsStore.getState().stopTimer();
       // Snapshot the finished game and the PREVIOUS bests (before recordWin
       // mutates them) so we can flag which stats are new records.
-      const { startTime, moves, score } = useStatsStore.getState();
+      const { startTime, moves, score, undos } = useStatsStore.getState();
       const durationMs = startTime == null ? 0 : useStatsStore.getState().getElapsedMs();
       const prev = useStatisticsStore.getState().stats;
       const newScore = score > prev.highestScore;
       const newTime = prev.lowestTimeMs == null || durationMs < prev.lowestTimeMs;
       const newMoves = prev.lowestMoves == null || moves < prev.lowestMoves;
+      const newUndos = prev.lowestUndos == null || undos < prev.lowestUndos;
       useUiStore.getState().setWinDialog({
         score,
         timeMs: durationMs,
         moves,
+        undos,
         newScore,
         newTime,
         newMoves,
+        newUndos,
         bestScore: prev.highestScore,
         bestTimeMs: prev.lowestTimeMs,
         bestMoves: prev.lowestMoves,
+        bestUndos: prev.lowestUndos,
       });
       // Persist the just-won game's stats cumulatively. The timer is frozen
       // above, so endTime is final for this game. Runs after the snapshot so the
       // new-record flags reflect the values the player actually beat.
-      useStatisticsStore.getState().recordWin({ score, timeMs: durationMs, moves });
+      useStatisticsStore.getState().recordWin({ score, timeMs: durationMs, moves, undos });
       // If this was a Winning Deal (it carries a seed), remember the seed so it
       // isn't re-dealt until the whole pool has been won.
       const gameState = useGameStore.getState().state;

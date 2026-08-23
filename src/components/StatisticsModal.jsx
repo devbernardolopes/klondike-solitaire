@@ -139,6 +139,37 @@ export default function StatisticsModal({ open, onClose }) {
             <span style={valueStyle}>{stats.lowestMoves == null ? '—' : stats.lowestMoves}</span>
           </div>
 
+          <div style={{ ...row, borderTop: '1px solid var(--ui-control-border)' }}>
+            <span style={labelStyle}>Current Winning Streak</span>
+            <span
+              style={{
+                ...valueStyle,
+                color:
+                  stats.currentStreak > 0 && stats.currentStreak >= stats.bestStreak
+                    ? '#1a7f37'
+                    : 'var(--card-text-black)',
+              }}
+            >
+              {stats.currentStreak}
+              {stats.currentStreak > 0 && stats.currentStreak >= stats.bestStreak && (
+                <span
+                  style={{
+                    marginLeft: 6,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: '#e53935',
+                  }}
+                >
+                  new
+                </span>
+              )}
+            </span>
+          </div>
+          <div style={{ ...row, borderBottom: 'none' }}>
+            <span style={labelStyle}>Best Winning Streak</span>
+            <span style={valueStyle}>{stats.bestStreak}</span>
+          </div>
+
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 18, gap: 10 }}>
             <button
               type="button"
@@ -162,7 +193,7 @@ export default function StatisticsModal({ open, onClose }) {
       <ConfirmModal
         open={confirmResetOpen}
         title="Reset statistics?"
-        message="This will permanently remove all saved score, time, moves, and games-played data. This cannot be undone."
+        message="This will permanently remove all saved score, time, moves, undos, winning streaks, and games-played data. This cannot be undone."
         confirmText="Reset"
         cancelText="Cancel"
         onConfirm={() => {
