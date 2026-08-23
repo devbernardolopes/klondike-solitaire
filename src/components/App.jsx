@@ -10,12 +10,12 @@ import '../render/deck/ProceduralDeckRenderer.js';
 import { useEffect } from 'react';
 import Toolbar from './Toolbar.jsx';
 import Board from './Board.jsx';
+import WinModal from './WinModal.jsx';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
 import { useSeedStore } from '../hooks/useSeedStore.js';
-import { isWon } from '../core/winDetection.js';
 import { MotionDebugPanel } from '../render/animation/MotionDebugPanel.jsx';
 
 export default function App() {
@@ -31,7 +31,6 @@ export default function App() {
   const initStats = useStatisticsStore((s) => s.init);
   const initSeeds = useSeedStore((s) => s.init);
   const state = useGameStore((s) => s.state);
-  const won = isWon(state);
 
   useEffect(() => {
     init();
@@ -79,11 +78,7 @@ export default function App() {
       />
       <Board />
       {import.meta.env.DEV && <MotionDebugPanel />}
-      {won && (
-        <div style={{ textAlign: 'center', color: '#fff', fontWeight: 700, padding: 12 }}>
-          You won! 🎉
-        </div>
-      )}
+      <WinModal />
     </div>
   );
 }

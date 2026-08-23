@@ -135,6 +135,12 @@ export const useUiStore = create((set) => ({
   // (re)start that exact, pre-verified solvable deal.
   seedInputDialogOpen: false,
 
+  // Win summary modal: shown when the game is won. Carries the just-finished
+  // game's score/time/moves plus which of them beat the stored best (so the
+  // modal can highlight new records). Populated by the win effect in Board.jsx.
+  winDialogOpen: false,
+  winSummary: null, // { score, timeMs, moves, newScore, newTime, newMoves }
+
   /** Mark a card as the keyboard-selected card. */
   selectCard: (id) => set({ selectedCardId: id }),
 
@@ -158,6 +164,12 @@ export const useUiStore = create((set) => ({
 
   /** Show/hide the "Enter Seed" dialog. */
   setSeedInputDialogOpen: (open) => set({ seedInputDialogOpen: open }),
+
+  /** Show the win summary modal with the given summary payload. */
+  setWinDialog: (summary) => set({ winDialogOpen: true, winSummary: summary }),
+
+  /** Dismiss the win summary modal. */
+  closeWinDialog: () => set({ winDialogOpen: false }),
 
   /** Record which mode was last used, so the "no valid moves" recovery path can reuse it. */
   setLastNewGameMode: (mode) => set({ lastNewGameMode: mode }),
@@ -189,7 +201,8 @@ export const isAnyModalOpen = (s) =>
   s.statsDialogOpen ||
   s.noMovesDialogOpen ||
   s.gameOverDialogOpen ||
-  s.seedInputDialogOpen;
+  s.seedInputDialogOpen ||
+  s.winDialogOpen;
 
 /**
  * Locate the pile a card currently lives in.

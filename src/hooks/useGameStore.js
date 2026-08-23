@@ -397,6 +397,7 @@ export const useGameStore = create((set, get) => ({
   dealNewGame: (mode = 'random') => {
     cancelAutoComplete(set);
     useUiStore.getState().setNoMovesDialogOpen(false);
+    useUiStore.getState().closeWinDialog();
     useUiStore.getState().clearHints();
     // Abort any in-flight win cascade immediately and release its global lock,
     // so a new-game request mid-fall is honored instead of being dropped. Only
@@ -470,6 +471,7 @@ export const useGameStore = create((set, get) => ({
     }
     cancelAutoComplete(set);
     useUiStore.getState().setNoMovesDialogOpen(false);
+    useUiStore.getState().closeWinDialog();
     useUiStore.getState().clearHints();
     cancelWinCascade();
     if (useUiStore.getState().animatingCards.size > 0) return;
