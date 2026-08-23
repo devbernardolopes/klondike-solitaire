@@ -41,32 +41,53 @@ self.addEventListener('fetch', (event) => {
   const req = event.request;
 
   // Navigations: try the network first (so updates are picked up), fall back to
-  // the cached app shell when offline.
+  // the cached app shell when offline. respondWith must ALWAYS receive a
+  // Response, so we never let the promise resolve to undefined — if even the
+  // cached shell is missing we synthesize a minimal one.
   if (req.mode === 'navigate') {
     event.respondWith(
-      fetch(req)
-        .then((res) => {
+      (async () => {
+        try {
+          const res = await fetch(req);
           const copy = res.clone();
           caches.open(CACHE).then((c) => c.put('/index.html', copy)).catch(() => {});
           return res;
-        })
-        .catch(() => caches.match('/index.html').then((r) => r || caches.match('/'))),
+        } catch {
+          const cached = (await caches.match('/index.html')) || (await caches.match('/'));
+          if (cached) return cached;
+          return new Response(
+            '<!doctype html><html><head><meta charset="utf-8"><title>Klondike</title></head><body><div id="root"></div></body></html>',
+            { headers: { 'Content-Type': 'text/html' } },
+          );
+        }
+      })(),
     );
     return;
   }
 
   // Static assets: stale-while-revalidate. Serve from cache immediately (fast,
-  // works offline) and refresh the cache from the network in the background.
+  // works offline) and refresh the cache from the network in the background. If
+  // the asset is neither cached nor reachable, return a 404 Response rather than
+  // undefined (which would throw "Failed to convert value to 'Response'").
   event.respondWith(
-    caches.open(CACHE).then(async (cache) => {
+    (async () => {
+      const cache = await caches.open(CACHE);
       const cached = await cache.match(req);
-      const network = fetch(req)
-        .then((res) => {
-          if (res && res.status === 200) cache.put(req, res.clone()).catch(() => {});
-          return res;
-        })
-        .catch(() => cached);
-      return cached || network;
-    }),
+      if (cached) {
+        fetch(req)
+          .then((res) => {
+            if (res && res.status === 200) cache.put(req, res.clone()).catch(() => {});
+          })
+          .catch(() => {});
+        return cached;
+      }
+      try {
+        const res = await fetch(req);
+        if (res && res.status === 200) cache.put(req, res.clone()).catch(() => {});
+        return res;
+      } catch {
+        return new Response(null, { status: 404, statusText: 'Not cached (offline)' });
+      }
+    })(),
   );
 });
