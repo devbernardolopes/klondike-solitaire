@@ -5,7 +5,7 @@
 import { create } from 'zustand';
 import { deal } from '../core/dealer.js';
 import { applyMove, undo as coreUndo, redo as coreRedo } from '../core/moveEngine.js';
-import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, DEST_ORDER } from '../core/rules.js';
+import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, isAllTableauFaceUp, DEST_ORDER } from '../core/rules.js';
 import { isWon } from '../core/winDetection.js';
 import { solveAsync, cancelAllSolves, STALE } from '../core/solverClient.js';
 import { SOLVER_TIMEOUT, hasDeadEndMove, compressWinningSequence } from '../core/solver.js';
@@ -657,6 +657,16 @@ export const useGameStore = create((set, get) => ({
     // peel); the auto-trigger additionally forbids recycling (see Board.jsx).
     set({ autoCompleting: true });
     const run = autoCompleteRunId;
+    // Hidden cards remain somewhere in the tableau: there is no point paying for
+    // the expensive worker solver (it can't prove a full win with unknown stock
+    // order), so peel the safe foundation moves instantly via the greedy loop.
+    // This skips the ~1s search delay on a fresh deal / mid-game double-tap and
+    // matches the documented autoComplete gating. The solver is only worth
+    // running once the tableau is fully revealed (see isAutoCompletable).
+    if (!isAllTableauFaceUp(state)) {
+      runGreedy(get, set);
+      return true;
+    }
     const { promise, cancel } = solveAsync(state, { allowTableau: false, maxNodes: 200000, maxMs: 2000 });
     activeSolveCancel = cancel;
     promise.then((seq) => {
