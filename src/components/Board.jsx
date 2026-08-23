@@ -127,6 +127,7 @@ export default function Board() {
   const handedness = useSettingsStore((s) => s.handedness);
   const isOver = useStatsStore((s) => s.isOver);
   const autoCompleting = useGameStore((s) => s.autoCompleting);
+  const autoCompletingToWin = useGameStore((s) => s.autoCompletingToWin);
   const won = isWon(state);
   // `anyAnimating` = some card is still in flight (used to block global actions
   // like new-game/undo/auto-complete). `stockWasteBusy` only blocks
@@ -312,7 +313,7 @@ export default function Board() {
           everything to the foundations. It is only rendered while auto-complete
           is running AND the game is not yet won, so it vanishes the instant the
           win state is reached (all cards on all four foundations). */}
-      {autoCompleting && !won && (
+      {autoCompletingToWin && !won && (
         <div className="auto-complete-banner" role="status" aria-live="polite">
           Autocomplete
         </div>

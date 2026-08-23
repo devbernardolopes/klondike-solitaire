@@ -243,7 +243,7 @@ function runAutoSteps(get, set, makeStep, hasNext) {
     const tid = makeStep();
     if (tid == null) {
       autoCompleteTimer = null;
-      set({ autoCompleting: false });
+      set({ autoCompleting: false, autoCompletingToWin: false });
       return;
     }
     const more = hasNext();
@@ -252,7 +252,7 @@ function runAutoSteps(get, set, makeStep, hasNext) {
       await awaitStepDone(tid);
       if (run !== autoCompleteRunId) return;
       autoCompleteTimer = null;
-      set({ autoCompleting: false });
+      set({ autoCompleting: false, autoCompletingToWin: false });
       return;
     }
     if (mode === 'overlap') {
@@ -330,7 +330,7 @@ function cancelAutoComplete(set) {
     activeSolveCancel = null;
   }
   cancelAllSolves();
-  set({ autoCompleting: false });
+  set({ autoCompleting: false, autoCompletingToWin: false });
 }
 
 /**
@@ -367,6 +367,11 @@ export const useGameStore = create((set, get) => ({
   // True while an auto-complete sequence is animating, so the Board trigger
   // effect doesn't re-run the (expensive) solver on every step of the run.
   autoCompleting: false,
+  // True ONLY while the auto-complete "to completion" (solver-proven winning)
+  // sequence is actually animating — i.e. runWinSequence. Never set for the
+  // greedy "peel a few safe moves" fallback. Drives the centered "Autocomplete"
+  // banner, which must not appear for non-winning auto-moves/auto-completes.
+  autoCompletingToWin: false,
   // Remembers the last auto-move destination per card id so repeated clicks
   // cycle through the valid slots in DEST_ORDER. Reset on new game / undo.
   autoMoveState: {},
@@ -711,7 +716,7 @@ export const useGameStore = create((set, get) => ({
       // The solver plumbing (worker creation / main-thread fallback) should
       // never throw, but if it somehow does, release the lock and peel the safe
       // foundation moves so the board stays usable and the run can be retried.
-      set({ autoCompleting: false });
+      set({ autoCompleting: false, autoCompletingToWin: false });
       runGreedy(get, set);
       return true;
     }
@@ -723,16 +728,19 @@ export const useGameStore = create((set, get) => ({
       // worker was busy; if the run id changed, abandon the result entirely.
       if (run !== autoCompleteRunId) return;
       if (seq === STALE) {
-        set({ autoCompleting: false });
+        set({ autoCompleting: false, autoCompletingToWin: false });
         return;
       }
       if (Array.isArray(seq)) {
         // Strip redundant tableau shuffles (none should remain under the
         // allowTableau:false lock, but the compressor is defensive) so a stack
         // isn't bounced between piles during the auto-complete animation.
+        // This is the genuine "to completion" run — flag it so the centered
+        // "Autocomplete" banner shows for the duration of the winning line.
+        set({ autoCompletingToWin: true });
         runWinSequence(get, set, compressWinningSequence(seq, state));
       } else {
-        set({ autoCompleting: false });
+        set({ autoCompleting: false, autoCompletingToWin: false });
         runGreedy(get, set);
       }
     });
