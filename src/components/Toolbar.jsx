@@ -84,6 +84,7 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const setNoMovesDialogOpen = useUiStore((s) => s.setNoMovesDialogOpen);
   const settingsDialogOpen = useUiStore((s) => s.settingsDialogOpen);
   const setSettingsDialogOpen = useUiStore((s) => s.setSettingsDialogOpen);
+  const setHelpDialogOpen = useUiStore((s) => s.setHelpDialogOpen);
   const statsDialogOpen = useUiStore((s) => s.statsDialogOpen);
   const setStatsDialogOpen = useUiStore((s) => s.setStatsDialogOpen);
   const seedInputDialogOpen = useUiStore((s) => s.seedInputDialogOpen);
@@ -110,7 +111,10 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   // arrows their identity would change on every tick, re-firing each dialog's
   // focus-on-open effect (which steals focus to its default button) and
   // snapping shut any open <select> dropdown in the Settings dialog.
-  const closeSettings = useCallback(() => setSettingsDialogOpen(false), [setSettingsDialogOpen]);
+  const closeSettings = useCallback(() => {
+    setSettingsDialogOpen(false);
+    setHelpDialogOpen(false);
+  }, [setSettingsDialogOpen, setHelpDialogOpen]);
   const closeStats = useCallback(() => setStatsDialogOpen(false), [setStatsDialogOpen]);
   const closeNewGame = useCallback(() => setNewGameDialogOpen(false), [setNewGameDialogOpen]);
   const onReplay = useCallback(() => {

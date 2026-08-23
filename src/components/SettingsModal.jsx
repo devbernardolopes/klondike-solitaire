@@ -5,11 +5,13 @@
 // used by ConfirmModal.jsx / NewGameModal.jsx.
 
 import { useEffect, useRef } from 'react';
+import { HelpCircle } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { buildSnapshotText, snapshotModeToken } from '../core/snapshot.js';
 import ToggleSwitch from './ToggleSwitch.jsx';
+import HelpModal from './HelpModal.jsx';
 
 /**
  * @param {object} props
@@ -58,6 +60,8 @@ export default function SettingsModal({
   }, [open]);
 
   if (!open) return null;
+
+  const helpOpen = useUiStore((s) => s.helpDialogOpen);
 
   const btn = {
     padding: '8px 14px',
@@ -109,6 +113,8 @@ export default function SettingsModal({
   };
 
   // Export the current visible board as a plain-text snapshot file.
+  const openHelp = () => useUiStore.getState().setHelpDialogOpen(true);
+
   const handleTakeSnapshot = () => {
     const state = useGameStore.getState().state;
     const text = buildSnapshotText(state);
@@ -126,22 +132,23 @@ export default function SettingsModal({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Settings"
-      {...backdrop}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.5)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 3000,
-        padding: 16,
-      }}
-    >
+    <>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Settings"
+        {...backdrop}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 3000,
+          padding: 16,
+        }}
+      >
       <div style={panel}>
         <h2 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700 }}>Settings</h2>
 
@@ -197,13 +204,30 @@ export default function SettingsModal({
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
-          <button
-            type="button"
-            style={{ ...btn }}
-            onClick={handleTakeSnapshot}
-          >
-            Take Snapshot
-          </button>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button
+              type="button"
+              aria-label="Keyboard shortcuts"
+              title="Keyboard shortcuts"
+              style={{
+                ...btn,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '8px 10px',
+              }}
+              onClick={openHelp}
+            >
+              <HelpCircle size={18} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              style={{ ...btn }}
+              onClick={handleTakeSnapshot}
+            >
+              Take Snapshot
+            </button>
+          </div>
           <button
             type="button"
             ref={doneRef}
@@ -216,5 +240,11 @@ export default function SettingsModal({
 
       </div>
     </div>
+
+      <HelpModal
+        open={helpOpen}
+        onClose={() => useUiStore.getState().setHelpDialogOpen(false)}
+      />
+    </>
   );
 }

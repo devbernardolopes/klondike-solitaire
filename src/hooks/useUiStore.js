@@ -122,6 +122,9 @@ export const useUiStore = create((set) => ({
   // Options/settings modal (Theme / Deck / Hand).
   settingsDialogOpen: false,
 
+  // Keyboard-shortcuts help modal (opened on top of the Settings modal).
+  helpDialogOpen: false,
+
   // Statistics modal showing cumulative games-played/won, best score/time/moves.
   statsDialogOpen: false,
 
@@ -143,6 +146,9 @@ export const useUiStore = create((set) => ({
 
   /** Show/hide the options/settings dialog. */
   setSettingsDialogOpen: (open) => set({ settingsDialogOpen: open }),
+
+  /** Show/hide the keyboard-shortcuts help dialog. */
+  setHelpDialogOpen: (open) => set({ helpDialogOpen: open }),
 
   /** Show/hide the Statistics dialog. */
   setStatsDialogOpen: (open) => set({ statsDialogOpen: open }),
@@ -179,6 +185,7 @@ export const useUiStore = create((set) => ({
 export const isAnyModalOpen = (s) =>
   s.newGameDialogOpen ||
   s.settingsDialogOpen ||
+  s.helpDialogOpen ||
   s.statsDialogOpen ||
   s.noMovesDialogOpen ||
   s.gameOverDialogOpen ||
