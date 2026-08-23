@@ -6,7 +6,7 @@ import { DndContext, DragOverlay } from '@dnd-kit/core';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useDragEngine } from '../hooks/useDragEngine.js';
-import { useUiStore } from '../hooks/useUiStore.js';
+import { useUiStore, isAnyModalOpen } from '../hooks/useUiStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
 import { useSeedStore } from '../hooks/useSeedStore.js';
@@ -202,6 +202,9 @@ export default function Board() {
   useEffect(() => {
     const onKey = (e) => {
        if (e.metaKey || e.ctrlKey || e.altKey) return;
+       // Never fire game shortcuts while any modal/dialog is open — e.g. typing
+       // letters into the Seed Input field must not trigger new-game/draw/etc.
+       if (isAnyModalOpen(useUiStore.getState())) return;
        // New game / undo / redo / auto-complete are blocked while anything is
        // still animating (or the game is over). Draw/recycle are handled below
        // with their own narrower stock/waste lock so they stay usable during an

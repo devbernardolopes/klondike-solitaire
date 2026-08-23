@@ -170,6 +170,21 @@ export const useUiStore = create((set) => ({
 }));
 
 /**
+ * Whether any modal/dialog is currently open. Used to suppress global game
+ * keyboard shortcuts (see Board.jsx) so typing in e.g. the Seed Input field
+ * never triggers a game action.
+ * @param {object} s  a useUiStore state snapshot
+ * @returns {boolean}
+ */
+export const isAnyModalOpen = (s) =>
+  s.newGameDialogOpen ||
+  s.settingsDialogOpen ||
+  s.statsDialogOpen ||
+  s.noMovesDialogOpen ||
+  s.gameOverDialogOpen ||
+  s.seedInputDialogOpen;
+
+/**
  * Locate the pile a card currently lives in.
  * @param {import('../core/GameState.js').GameState} state
  * @param {string} cardId
