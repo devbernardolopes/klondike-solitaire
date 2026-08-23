@@ -5,10 +5,10 @@
 import { create } from 'zustand';
 import { deal } from '../core/dealer.js';
 import { applyMove, undo as coreUndo, redo as coreRedo } from '../core/moveEngine.js';
-import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, isAllTableauFaceUp, DEST_ORDER } from '../core/rules.js';
+import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, isAllTableauFaceUp, hasProgressMove, DEST_ORDER } from '../core/rules.js';
 import { isWon } from '../core/winDetection.js';
 import { solveAsync, cancelAllSolves, STALE } from '../core/solverClient.js';
-import { SOLVER_TIMEOUT, hasDeadEndMove, compressWinningSequence } from '../core/solver.js';
+import { SOLVER_TIMEOUT, hasDeadEndMove, findReachableMove, compressWinningSequence } from '../core/solver.js';
 import { findHints } from '../core/hints.js';
 import { buildStandardDeck, shuffle } from '../core/Deck.js';
 import { createEmptyGameState } from '../core/GameState.js';
@@ -66,6 +66,24 @@ function checkDeadEnd(get, set, state) {
       useUiStore.getState().setNoMovesDialogOpen(false);
     } else {
       // Search fully exhausted with no move reachable — a genuine dead end.
+      // TEMP DIAGNOSTIC (remove after reproducing the false-positive report):
+      // re-run the same check on the MAIN thread with the exact state the worker
+      // evaluated. If the worker said `false` but the main thread says `true`,
+      // it's a worker/main-thread discrepancy; if both agree, the captured state
+      // is genuinely stuck (and differs from the user's snapshot).
+      if (import.meta.env.DEV) {
+        const mainThreadSeq = findReachableMove(state, { maxNodes: 500000, maxMs: 4000 });
+        // eslint-disable-next-line no-console
+        console.warn('[deadEnd-diag]', {
+          workerSeq: seq,
+          mainThreadSeq,
+          hasProgressMove: hasProgressMove(state),
+          stock: state.stock.length,
+          wasteTop: state.waste.length ? state.waste[state.waste.length - 1].id : null,
+          state,
+        });
+        window.__lastDeadEndState = state;
+      }
       useUiStore.getState().setNoMovesDialogOpen(true);
     }
   });
