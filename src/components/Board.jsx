@@ -308,6 +308,15 @@ export default function Board() {
       onPointerUp={handleBoardPointerUp}
       style={{ flex: 1, minHeight: '100%', width: '100%', touchAction: 'manipulation', overflow: 'hidden' }}
     >
+      {/* Centered "Autocomplete" banner shown while the game is auto-moving
+          everything to the foundations. It is only rendered while auto-complete
+          is running AND the game is not yet won, so it vanishes the instant the
+          win state is reached (all cards on all four foundations). */}
+      {autoCompleting && !won && (
+        <div className="auto-complete-banner" role="status" aria-live="polite">
+          Autocomplete
+        </div>
+      )}
       {/* Screen-reader live region for keyboard/shortcut feedback. */}
       <div
         role="status"
