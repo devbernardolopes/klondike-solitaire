@@ -162,7 +162,17 @@ export default function Board() {
       const newScore = score > prev.highestScore;
       const newTime = prev.lowestTimeMs == null || durationMs < prev.lowestTimeMs;
       const newMoves = prev.lowestMoves == null || moves < prev.lowestMoves;
-      useUiStore.getState().setWinDialog({ score, timeMs: durationMs, moves, newScore, newTime, newMoves });
+      useUiStore.getState().setWinDialog({
+        score,
+        timeMs: durationMs,
+        moves,
+        newScore,
+        newTime,
+        newMoves,
+        bestScore: prev.highestScore,
+        bestTimeMs: prev.lowestTimeMs,
+        bestMoves: prev.lowestMoves,
+      });
       // Persist the just-won game's stats cumulatively. The timer is frozen
       // above, so endTime is final for this game. Runs after the snapshot so the
       // new-record flags reflect the values the player actually beat.

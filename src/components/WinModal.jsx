@@ -40,7 +40,7 @@ export default function WinModal() {
 
   if (!winDialogOpen || !summary) return null;
 
-  const { score, timeMs, moves, newScore, newTime, newMoves } = summary;
+  const { score, timeMs, moves, newScore, newTime, newMoves, bestScore, bestTimeMs, bestMoves } = summary;
 
   const onNewGame = () => {
     closeWinDialog();
@@ -74,21 +74,43 @@ export default function WinModal() {
     outline: 'none',
   };
 
-  // A single stat row: label, value, and (when a new record) a green value +
-  // red "new" badge.
-  const StatRow = ({ label, value, isNew }) => (
+  // Column header: "Current" and "Best" sit above the two value columns.
+  const HeaderRow = () => (
     <div
       style={{
-        display: 'flex',
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr 1fr',
+        gap: 8,
+        paddingBottom: 4,
+        marginBottom: 2,
+        borderBottom: '2px solid var(--card-border)',
+      }}
+    >
+      <span />
+      <span style={{ textAlign: 'right', fontSize: 12, fontWeight: 700, opacity: 0.7 }}>
+        Current
+      </span>
+      <span style={{ textAlign: 'right', fontSize: 12, fontWeight: 700, opacity: 0.7 }}>
+        Best
+      </span>
+    </div>
+  );
+
+  // A single stat row: label, current value (green + red "new" badge when a
+  // record), and the best value in the second column.
+  const StatRow = ({ label, value, best, isNew }) => (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr 1fr',
         alignItems: 'baseline',
-        justifyContent: 'space-between',
-        gap: 12,
+        gap: 8,
         padding: '8px 0',
         borderBottom: '1px solid var(--card-border)',
       }}
     >
       <span style={{ fontSize: 14, fontWeight: 600 }}>{label}</span>
-      <span style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+      <span style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', gap: 6 }}>
         <span
           style={{
             fontSize: 20,
@@ -99,17 +121,21 @@ export default function WinModal() {
           {value}
         </span>
         {isNew && (
-          <span
-            style={{
-              fontSize: 12,
-              fontWeight: 700,
-              color: NEW_BADGE_COLOR,
-              textTransform: 'lowercase',
-            }}
-          >
+          <span style={{ fontSize: 12, fontWeight: 700, color: NEW_BADGE_COLOR }}>
             new
           </span>
         )}
+      </span>
+      <span
+        style={{
+          fontSize: 18,
+          fontWeight: 700,
+          textAlign: 'right',
+          color: 'var(--card-text-black)',
+          opacity: 0.8,
+        }}
+      >
+        {best}
       </span>
     </div>
   );
@@ -144,21 +170,36 @@ export default function WinModal() {
         </h2>
 
         <div style={{ marginBottom: 18 }}>
-          <StatRow label="Score" value={String(score)} isNew={newScore} />
-          <StatRow label="Time" value={formatTime(timeMs)} isNew={newTime} />
-          <StatRow label="Moves" value={String(moves)} isNew={newMoves} />
+          <HeaderRow />
+          <StatRow label="Score" value={String(score)} best={String(bestScore)} isNew={newScore} />
+          <StatRow
+            label="Time"
+            value={formatTime(timeMs)}
+            best={bestTimeMs == null ? '—' : formatTime(bestTimeMs)}
+            isNew={newTime}
+          />
+          <StatRow
+            label="Moves"
+            value={String(moves)}
+            best={bestMoves == null ? '—' : String(bestMoves)}
+            isNew={newMoves}
+          />
         </div>
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'stretch' }}>
-          <button type="button" style={{ ...btn, flex: 1 }} onClick={onNewGame}>
-            New Game
+          <button
+            type="button"
+            style={{ ...btn, flex: 1 }}
+            onClick={onReplay}
+          >
+            Replay this Game
           </button>
           <button
             type="button"
             style={{ ...btn, flex: 1, background: 'var(--ui-modal-btn-bg-strong)' }}
-            onClick={onReplay}
+            onClick={onNewGame}
           >
-            Replay this Game
+            New Game
           </button>
         </div>
       </div>
