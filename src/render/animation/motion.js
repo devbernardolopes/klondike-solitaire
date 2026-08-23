@@ -26,7 +26,7 @@ export const MOTION = {
   // sequence). Independent of `move` so it can be tuned (e.g. made snappier)
   // without affecting normal player moves. Consumed by useCardMoveSlide via
   // CONFIG_BY_TYPE.auto.
-  auto:     { duration: 0.10, ease: 'power2.out', stagger: 0.00 },
+  auto:     { duration: 0.25, ease: 'power3.out', stagger: 0.00 },
   // Alternative easing for the same tween; swap to change the acceleration curve.
   // move:     { duration: 0.40, ease: 'power3.out', stagger: 0 },
 
