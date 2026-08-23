@@ -46,7 +46,7 @@ export const MOTION = {
   autoComplete: { mode: 'overlap', stepDelay: 80 },
 
   // 3D rotateY face flip (face-down <-> face-up) in useCardFaceFlip.
-  flipCard: { duration: 0.10, ease: 'power2.inOut' },
+  flipCard: { duration: 0.07, ease: 'power2.inOut' },
 
   // Stock → waste draw slide. The revealed card flips face-up in place at the
   // stock pile and THEN glides horizontally to the waste pile. The horizontal
