@@ -78,7 +78,10 @@ function saveProgress(pool, scannedUpTo) {
 function findSolverBinary() {
   if (process.env.SOLVER_PATH && existsSync(process.env.SOLVER_PATH)) return process.env.SOLVER_PATH;
   try {
-    return execFileSync('which', ['KlondikeSolver']).toString().trim() || null;
+    const found = execFileSync('which', ['KlondikeSolver']).toString().trim();
+    // Some `which` implementations print a "no KlondikeSolver in (...)" notice
+    // and still exit 0, so only accept it if the path actually exists.
+    return found && existsSync(found) ? found : null;
   } catch {
     return null;
   }
@@ -396,4 +399,4 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   main();
 }
 
-export { solveWithJs, solveWithBinary, genMoves, deckStringForSeed, solveState, toCompact, applyCompact, foundationTotal, keyOf, SEED_RANGE_END };
+export { solveWithJs, solveWithBinary, findSolverBinary, genMoves, deckStringForSeed, solveState, toCompact, applyCompact, foundationTotal, keyOf, SEED_RANGE_END };

@@ -13,6 +13,8 @@ import { findHints } from '../core/hints.js';
 import { buildStandardDeck, shuffle } from '../core/Deck.js';
 import { createEmptyGameState } from '../core/GameState.js';
 import { randomSolvableSeed, pickSolvableSeed } from '../core/solvablePool.js';
+import { seedForDate } from '../core/dailyChallenge.js';
+import { getEvent } from '../core/specialEvents.js';
 import { enqueueFlip } from '../render/animation/flipBridge.js';
 import { cancelWinCascade } from '../render/animation/winCascade.js';
 import { MOTION } from '../render/animation/motion.js';
@@ -439,6 +441,53 @@ export const useGameStore = create((set, get) => ({
     useUiStore.getState().setLastNewGameMode('winning');
     useStatsStore.getState().resetStats();
     runAnimatedDeal(get, set, { seed });
+  },
+
+  /**
+   * Deal the Daily Challenge for a specific calendar date (YYYY-MM-DD). The seed
+   * must be pre-generated and bundled (see core/dailyChallenge.js); dates
+   * outside the bundled window are not supported yet (on-demand generation is a
+   * future enhancement) and return false.
+   *
+   * @param {string} date
+   * @returns {boolean} whether the game was dealt
+   */
+  dealDaily: (date) => {
+    const seed = seedForDate(date);
+    if (seed == null) return false;
+    cancelAutoComplete(set);
+    useUiStore.getState().setNoMovesDialogOpen(false);
+    useUiStore.getState().clearHints();
+    cancelWinCascade();
+    if (useUiStore.getState().animatingCards.size > 0) return false;
+    useUiStore.getState().setLastNewGameMode('winning');
+    useStatsStore.getState().resetStats();
+    runAnimatedDeal(get, set, { seed });
+    return true;
+  },
+
+  /**
+   * Deal a Special Event game. Picks the seed at `index` (default 0) from the
+   * event's pre-generated 50-seed set. Unknown events return false.
+   *
+   * @param {string} eventId
+   * @param {number} [index]
+   * @returns {boolean} whether the game was dealt
+   */
+  dealEvent: (eventId, index = 0) => {
+    const ev = getEvent(eventId);
+    if (!ev || !ev.seeds || ev.seeds.length === 0) return false;
+    const i = Math.max(0, Math.min(Number.isFinite(index) ? Math.floor(index) : 0, ev.seeds.length - 1));
+    const seed = ev.seeds[i];
+    cancelAutoComplete(set);
+    useUiStore.getState().setNoMovesDialogOpen(false);
+    useUiStore.getState().clearHints();
+    cancelWinCascade();
+    if (useUiStore.getState().animatingCards.size > 0) return false;
+    useUiStore.getState().setLastNewGameMode('winning');
+    useStatsStore.getState().resetStats();
+    runAnimatedDeal(get, set, { seed });
+    return true;
   },
 
   /**
