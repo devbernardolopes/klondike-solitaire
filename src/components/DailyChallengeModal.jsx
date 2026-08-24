@@ -129,13 +129,18 @@ export default function DailyChallengeModal() {
       setToday(todayStr);
       if (userPicked.current) return;
       // A preferred initial date (e.g. advanced after a daily win) takes
-      // precedence over the persisted last-selection, then is consumed.
+      // precedence over the persisted last-selection — but only when it is a
+      // *selectable* day. If it is disabled (out of the supported window or in
+      // the future), we do nothing and keep the current day selected.
       const preferred = useUiStore.getState().dailyChallengeInitialDate;
       let initial;
-      if (preferred && withinSupported(preferred)) {
-        initial = preferred;
-        useUiStore.getState().setDailyChallengeInitialDate(null);
-      } else {
+      if (preferred) {
+        useUiStore.getState().setDailyChallengeInitialDate(null); // consume it
+        if (withinSupported(preferred) && !isAfter(preferred, todayStr)) {
+          initial = preferred;
+        }
+      }
+      if (!initial) {
         initial = (lastSel && lastSel !== todayStr) ? lastSel : todayStr;
       }
       if (!withinSupported(initial)) initial = todayStr;
