@@ -335,7 +335,10 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
             borderRadius: 'var(--card-radius)',
             border: '2px dashed rgba(255,255,255,0.9)',
             pointerEvents: 'none',
-            zIndex: 2000,
+            // Kept below the DragOverlay (which renders the card(s) being
+            // dragged) and below all modals (z-index 3000+), but above the
+            // in-pile cards so the highlight still reads on top of the stack.
+            zIndex: 900,
           }}
         />
       )}

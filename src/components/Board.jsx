@@ -450,7 +450,7 @@ export default function Board() {
         ))}
       </div>
 
-      <DragOverlay dropAnimation={null}>
+      <DragOverlay dropAnimation={null} zIndex={1500}>
         {activeRun ? <RunPreview cards={activeRun} metrics={metrics} /> : null}
       </DragOverlay>
     </DndContext>
