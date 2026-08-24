@@ -22,6 +22,7 @@ import {
   daysInMonth,
   toDateStr,
   dateToUTC,
+  seedForDate,
 } from '../core/dailyChallenge.js';
 import { fetchServerNow, utcToYMD, getFallbackUTC } from '../utils/serverTime.js';
 import { loadAllDailyResults } from '../db/dailyResults.js';
@@ -339,20 +340,16 @@ export default function DailyChallengeModal() {
               {selected ? (
                 <div style={{ fontSize: 13, lineHeight: 1.6 }}>
                   <div style={{ marginBottom: 8, fontWeight: 600 }}>{selected}</div>
-                  {selectedResult ? (
-                    <>
-                      <div>Seed: {selectedResult.seed}</div>
-                      <div>Best Score: {selectedResult.bestScore}</div>
-                      <div>Best Time: {formatTime(selectedResult.bestTimeMs)}</div>
-                      <div>Best Moves: {selectedResult.bestMoves}</div>
-                      <div style={{ opacity: 0.7 }}>Completed {selectedResult.wins} time(s)</div>
-                    </>
-                  ) : (
-                    <div style={{ opacity: 0.75 }}>Not completed yet.</div>
-                  )}
+                  <div>Seed: {selectedResult ? selectedResult.seed : seedForDate(selected)}</div>
+                  <div>Best Score: {selectedResult ? selectedResult.bestScore : 0}</div>
+                  <div>Best Time: {selectedResult ? formatTime(selectedResult.bestTimeMs) : formatTime(0)}</div>
+                  <div>Best Moves: {selectedResult ? selectedResult.bestMoves : 0}</div>
+                  <div style={{ opacity: 0.7 }}>
+                    Completed {selectedResult ? selectedResult.wins : 0} time(s)
+                  </div>
                 </div>
               ) : (
-                <div style={{ fontSize: 13, opacity: 0.75 }}>Select a day to see its best result.</div>
+                <div style={{ color: 'var(--card-text-black)', opacity: 0.75 }}>Select a day to see its best result.</div>
               )}
             </div>
           </div>
