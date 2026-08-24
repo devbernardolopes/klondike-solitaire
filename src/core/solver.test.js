@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createCard } from './Card.js';
 import { createEmptyGameState } from './GameState.js';
-import { findWinningSequence, findReachableMove, hasDeadEndMove, isAutoCompletable, SOLVER_TIMEOUT, compressWinningSequence } from './solver.js';
+import { findWinningSequence, findReachableMove, hasDeadEndMove, isAutoCompletable, isDrainedFoundationDeadEnd, SOLVER_TIMEOUT, compressWinningSequence } from './solver.js';
 import { applyMove } from './moveEngine.js';
 import { isWon } from './winDetection.js';
 import { findFoundationMove, isAllTableauFaceUp, hasAnyValidMove } from './rules.js';
@@ -201,6 +201,97 @@ test('genuine dead end with no cross-build shows the modal', () => {
   ];
   assert.equal(hasDeadEndMove(s), false);
   assert.equal(findReachableMove(s, { maxNodes: 500000, maxMs: 4000 }), false);
+});
+
+/**
+ * Edge case for the "No More Moves" modal: the board is fully drained (stock
+ * AND waste empty) and the last move was a foundation play from a visible source
+ * (waste or a tableau column). When nothing meaningful remains, the modal must
+ * fire (returns `true`); when a move is still reachable it must not (returns
+ * `false`); and the predicate must return `null` whenever the edge case does not
+ * apply (last move was a tableau->tableau shuffle, or cards remain to draw).
+ */
+test('isDrainedFoundationDeadEnd: true after a tableau->foundation play with no moves left', () => {
+  const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
+  const s = createEmptyGameState();
+  s.foundations[0] = [c('hearts', 1, 'h1')];
+  s.foundations[1] = [c('clubs', 1, 'c1')];
+  s.foundations[2] = [c('diamonds', 1, 'd1')];
+  s.foundations[3] = [c('spades', 1, 's1')];
+  s.tableau = [
+    [c('clubs', 13, 'cK'), c('diamonds', 12, 'dQ'), c('clubs', 11, 'cJ'), c('diamonds', 10, 'd10')],
+    [c('spades', 13, 'sK'), c('hearts', 12, 'hQ'), c('spades', 11, 'sJ'), c('hearts', 10, 'h10')],
+    [], [], [], [], [],
+  ];
+  s.stock = [];
+  s.waste = [];
+  s.moveHistory = [{ type: 'moveCards', from: 'tableau:0', to: 'foundation:0', cardIds: ['h2'] }];
+  assert.equal(isDrainedFoundationDeadEnd(s), true);
+});
+
+test('isDrainedFoundationDeadEnd: true after a waste->foundation play with no moves left', () => {
+  const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
+  const s = createEmptyGameState();
+  s.foundations[0] = [c('hearts', 1, 'h1')];
+  s.foundations[1] = [c('clubs', 1, 'c1')];
+  s.foundations[2] = [c('diamonds', 1, 'd1')];
+  s.foundations[3] = [c('spades', 1, 's1')];
+  s.tableau = [
+    [c('clubs', 13, 'cK'), c('diamonds', 12, 'dQ'), c('clubs', 11, 'cJ'), c('diamonds', 10, 'd10')],
+    [c('spades', 13, 'sK'), c('hearts', 12, 'hQ'), c('spades', 11, 'sJ'), c('hearts', 10, 'h10')],
+    [], [], [], [], [],
+  ];
+  s.stock = [];
+  s.waste = [];
+  s.moveHistory = [{ type: 'moveCards', from: 'waste', to: 'foundation:0', cardIds: ['h2'] }];
+  assert.equal(isDrainedFoundationDeadEnd(s), true);
+});
+
+test('isDrainedFoundationDeadEnd: null when last move was tableau->tableau', () => {
+  const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
+  const s = createEmptyGameState();
+  s.foundations[0] = [c('hearts', 1, 'h1')];
+  s.foundations[1] = [c('clubs', 1, 'c1')];
+  s.foundations[2] = [c('diamonds', 1, 'd1')];
+  s.foundations[3] = [c('spades', 1, 's1')];
+  s.tableau = [
+    [c('clubs', 13, 'cK'), c('diamonds', 12, 'dQ'), c('clubs', 11, 'cJ'), c('diamonds', 10, 'd10')],
+    [c('spades', 13, 'sK'), c('hearts', 12, 'hQ'), c('spades', 11, 'sJ'), c('hearts', 10, 'h10')],
+    [], [], [], [], [],
+  ];
+  s.stock = [];
+  s.waste = [];
+  s.moveHistory = [{ type: 'moveCards', from: 'tableau:0', to: 'tableau:1', cardIds: ['x'] }];
+  assert.equal(isDrainedFoundationDeadEnd(s), null);
+});
+
+test('isDrainedFoundationDeadEnd: null when stock still has cards', () => {
+  const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
+  const s = createEmptyGameState();
+  s.foundations[0] = [c('hearts', 1, 'h1')];
+  s.foundations[1] = [c('clubs', 1, 'c1')];
+  s.foundations[2] = [c('diamonds', 1, 'd1')];
+  s.foundations[3] = [c('spades', 1, 's1')];
+  s.tableau = [
+    [c('clubs', 13, 'cK'), c('diamonds', 12, 'dQ'), c('clubs', 11, 'cJ'), c('diamonds', 10, 'd10')],
+    [c('spades', 13, 'sK'), c('hearts', 12, 'hQ'), c('spades', 11, 'sJ'), c('hearts', 10, 'h10')],
+    [], [], [], [], [],
+  ];
+  s.stock = [c('spades', 5, 's5', false)];
+  s.waste = [];
+  s.moveHistory = [{ type: 'moveCards', from: 'tableau:0', to: 'foundation:0', cardIds: ['h2'] }];
+  assert.equal(isDrainedFoundationDeadEnd(s), null);
+});
+
+test('isDrainedFoundationDeadEnd: false when a move is still reachable', () => {
+  const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
+  const s = createEmptyGameState();
+  s.foundations[0] = [c('clubs', 1, 'c1'), c('clubs', 2, 'c2')];
+  s.tableau = [[c('clubs', 3, 'c3')], [], [], [], [], [], []];
+  s.stock = [];
+  s.waste = [];
+  s.moveHistory = [{ type: 'moveCards', from: 'waste', to: 'foundation:0', cardIds: ['x'] }];
+  assert.equal(isDrainedFoundationDeadEnd(s), false);
 });
 
 /**

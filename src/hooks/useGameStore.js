@@ -8,7 +8,7 @@ import { applyMove, undo as coreUndo } from '../core/moveEngine.js';
 import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, isAllTableauFaceUp, DEST_ORDER } from '../core/rules.js';
 import { isWon } from '../core/winDetection.js';
 import { solveAsync, cancelAllSolves, STALE } from '../core/solverClient.js';
-import { SOLVER_TIMEOUT, hasDeadEndMove, compressWinningSequence } from '../core/solver.js';
+import { SOLVER_TIMEOUT, hasDeadEndMove, compressWinningSequence, isDrainedFoundationDeadEnd } from '../core/solver.js';
 import { findHints } from '../core/hints.js';
 import { buildStandardDeck, shuffle } from '../core/Deck.js';
 import { createEmptyGameState } from '../core/GameState.js';
@@ -89,6 +89,18 @@ function evaluateDeadEnd(get, set, state) {
   // skip the expensive solver. Just ensure the modal is closed.
   if (state.stock.length > 0) {
     useUiStore.getState().setNoMovesDialogOpen(false);
+    return;
+  }
+  // Edge case: fully drained (stock AND waste empty) with the last move being a
+  // foundation play from a visible source (waste or a tableau column). This is
+  // the classic "solved-or-stuck, nothing left to draw" moment — decide it
+  // immediately and synchronously so the modal is deterministic and never lost
+  // to an async worker round-trip. When the drained board's last move was NOT a
+  // foundation play, this returns null and we fall through to the general (async)
+  // solver below.
+  const drained = isDrainedFoundationDeadEnd(state);
+  if (drained !== null) {
+    useUiStore.getState().setNoMovesDialogOpen(drained === true);
     return;
   }
   const captured = state; // each action mints a fresh state object

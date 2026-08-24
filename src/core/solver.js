@@ -462,6 +462,43 @@ export function findReachableMove(state, opts = {}) {
 }
 
 /**
+ * Edge case for the "No More Moves" modal: the board is fully drained (stock
+ * AND waste both empty) and the last move was a foundation play from a *visible*
+ * source — the waste or a tableau column (i.e. the player just peeled the last
+ * waste/tableau card up onto a foundation and there is nothing left to draw).
+ * This is the classic "solved-or-stuck with no cards remaining to reveal"
+ * moment, and it must reliably surface the dead-end modal.
+ *
+ * Returns:
+ *  - `true`  when the position matches this edge case AND no meaningful move is
+ *             reachable from here (a genuine dead end),
+ *  - `false` when the position matches this edge case but a move is still
+ *             reachable (don't show the modal),
+ *  - `null`  when the position does NOT match this edge case (caller should fall
+ *             back to the general dead-end detector, which also handles the
+ *             fully-drained case after a non-foundation last move).
+ *
+ * @param {import('./GameState.js').GameState} state
+ * @returns {boolean|null}
+ */
+export function isDrainedFoundationDeadEnd(state) {
+  if (state.stock.length !== 0 || state.waste.length !== 0) return null;
+  const last = state.moveHistory[state.moveHistory.length - 1];
+  const lastWasFoundationFromVisible =
+    last && last.type === 'moveCards' &&
+    typeof last.to === 'string' && last.to.startsWith('foundation') &&
+    (last.from === 'waste' || (typeof last.from === 'string' && last.from.startsWith('tableau')));
+  if (!lastWasFoundationFromVisible) return null;
+  // A drained board's search space is tiny (only tableau relocations remain), so
+  // a synchronous solve is both safe and instant here — giving the modal an
+  // immediate, deterministic result instead of waiting on the async worker.
+  // Only a definitive `false` (search fully exhausted, no move reachable) is a
+  // dead end; a `true` (move reachable) or SOLVER_TIMEOUT (unknown) is not.
+  const reachable = findReachableMove(state, { maxNodes: 200000, maxMs: 1500 });
+  return reachable === false;
+}
+
+/**
  * Should the game auto-fire auto-complete right now? True only when:
  *   - the stock is empty (waste may still hold cards, but they must be peelable
  *     straight to the foundations without recycling back into the stock), AND
