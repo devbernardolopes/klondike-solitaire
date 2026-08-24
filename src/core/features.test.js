@@ -4,6 +4,9 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 
 import {
   cyrb53,
@@ -58,11 +61,17 @@ test('buildUsedSet aggregates pool + daily + events without throwing on missing 
   assert.ok(used instanceof Set);
 });
 
-test('daily loader is safe with empty skeleton data', () => {
-  assert.equal(getDailyAnchor(), '2024-01-01');
-  assert.equal(seedForDate('2024-01-01'), null);
-  assert.equal(isDateBundled('2024-01-01'), false);
-  assert.deepEqual(listBundledDates(), []);
+test('daily loader reflects the bundled data file', () => {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const file = JSON.parse(readFileSync(join(here, '../data/dailyChallenge.json'), 'utf8'));
+  assert.equal(getDailyAnchor(), file.anchor);
+  const dates = Object.keys(file.seeds || {}).sort();
+  assert.deepEqual(listBundledDates(), dates);
+  if (dates.length > 0) {
+    assert.equal(seedForDate(dates[0]), file.seeds[dates[0]]);
+    assert.equal(isDateBundled(dates[0]), true);
+  }
+  assert.equal(isDateBundled('2099-01-01'), false);
 });
 
 test('event loader is safe with empty skeleton data', () => {

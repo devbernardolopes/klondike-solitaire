@@ -32,7 +32,7 @@ const DAILY_META = join(DATA_DIR, 'dailyChallenge.meta.json');
 const EVENTS_META = join(DATA_DIR, 'specialEvents.meta.json');
 
 const SEEDS_PER_EVENT = 50;
-const ANCHOR = process.env.DAILY_ANCHOR || '2024-01-01';
+const ANCHOR = process.env.DAILY_ANCHOR || '2026-01-01';
 const WINDOW_YEARS = Number(process.env.DAILY_WINDOW_YEARS || 5);
 
 // ---- Pure helpers (exported for unit testing) ------------------------------
@@ -83,6 +83,10 @@ function solveBatch(seeds, binary) {
 export function fillSeeds(base, count, used, solveFn, cap = 500000) {
   const out = [];
   const tried = new Set();
+  // Solve in small batches when only a few seeds are needed (e.g. 1/day), but
+  // keep the 200-candidate batch for the 50-seed events (efficient for the
+  // binary fast path). Avoids solving hundreds of deals to find a single seed.
+  const batchSize = Math.min(200, Math.max(count * 4, 8));
   let pending = [];
   const consume = () => {
     if (pending.length === 0) return;
@@ -101,7 +105,7 @@ export function fillSeeds(base, count, used, solveFn, cap = 500000) {
     if (used.has(c) || tried.has(c)) continue;
     tried.add(c);
     pending.push(c);
-    if (pending.length >= 200) consume();
+    if (pending.length >= batchSize) consume();
     if (out.length >= count) break;
   }
   if (out.length < count) consume();
@@ -199,7 +203,14 @@ function runGeneration({ used, solveFn, binary, outDir, anchor, windowYears, cat
 // ---- Entry points -----------------------------------------------------------
 
 function main() {
-  const smoke = process.argv.includes('--smoke');
+  const args = process.argv.slice(2);
+  const getFlag = (name) => {
+    const i = args.indexOf(name);
+    return i !== -1 ? args[i + 1] : null;
+  };
+  const smoke = args.includes('--smoke');
+  const dailyLimit = getFlag('--daily-limit');
+  const outDir = getFlag('--out');
   const binary = findSolverBinary();
   const solveFn = (seeds) => solveBatch(seeds, binary);
 
@@ -236,8 +247,18 @@ function main() {
 
   const used = buildUsedSet();
   const catalog = (loadJson(join(DATA_DIR, 'eventCatalog.json'), { events: [] }).events) || [];
-  runGeneration({ used, solveFn, binary, outDir: DATA_DIR, anchor: ANCHOR, windowYears: WINDOW_YEARS, catalog });
-  console.log('Done. Daily + Special Event seeds written to src/data/.');
+  const target = outDir || DATA_DIR;
+  runGeneration({
+    used,
+    solveFn,
+    binary,
+    outDir: target,
+    anchor: ANCHOR,
+    windowYears: WINDOW_YEARS,
+    catalog,
+    dailyLimit: dailyLimit ? Number(dailyLimit) : Infinity,
+  });
+  console.log(`Done. Daily + Special Event seeds written to ${target}/.`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
