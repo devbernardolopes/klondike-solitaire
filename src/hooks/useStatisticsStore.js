@@ -59,9 +59,19 @@ export const useStatisticsStore = create((set, get) => ({
     set({ gameWon: false });
   },
 
-  /** Clear all cumulative statistics. */
-  reset: async () => {
+  /**
+   * Clear all cumulative statistics.
+   * @param {boolean} [countCurrentGame]  when true (a game is in progress, i.e.
+   *   its timer is running), Total Games Played is set to 1 so the ongoing game
+   *   is still counted instead of being wiped to 0.
+   */
+  reset: async (countCurrentGame = false) => {
     const stats = await resetStats();
-    set({ stats });
+    if (countCurrentGame) {
+      const withPlayed = await addGamePlayed();
+      set({ stats: withPlayed });
+    } else {
+      set({ stats });
+    }
   },
 }));

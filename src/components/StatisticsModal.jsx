@@ -9,6 +9,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
+import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useModalBackdrop } from './modalBackdrop.js';
 import ConfirmModal from './ConfirmModal.jsx';
 
@@ -198,7 +199,11 @@ export default function StatisticsModal({ open, onClose }) {
         cancelText="Cancel"
         onConfirm={() => {
           setConfirmResetOpen(false);
-          reset();
+          // If a game is currently in progress (timer running), count it so
+          // Total Games Played resets to 1 instead of 0.
+          const live = useStatsStore.getState();
+          const inProgress = live.startTime !== null && !live.isOver;
+          reset(inProgress);
         }}
         onCancel={() => setConfirmResetOpen(false)}
       />
