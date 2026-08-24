@@ -97,8 +97,11 @@ export default function DailyChallengeModal() {
   const [results, setResults] = useState({});
 
   // Dismiss returns to the New Game picker only when opened from it (not from
-  // the Win modal, which already closed before opening this one).
+  // the Win modal, which already closed before opening this one). A day the
+  // player manually selected (and that isn't today) is persisted so the calendar
+  // re-opens there next time, even when the modal is dismissed without playing.
   const onDismiss = () => {
+    if (selected && selected !== today) saveLastDailySelection(selected);
     setOpen(false);
     if (useUiStore.getState().dailyChallengeOrigin === 'newgame') setNewGameOpen(true);
   };
