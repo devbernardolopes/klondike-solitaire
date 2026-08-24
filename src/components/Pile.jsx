@@ -33,6 +33,8 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
   const won = useGameStore((s) => isWon(s.state));
   const sessionOver = useStatsStore((s) => s.isOver);
   const hints = useUiStore((s) => s.hints);
+  const draggingFrom = useUiStore((s) => s.draggingFrom);
+  const draggingCard = useUiStore((s) => s.draggingCard);
   // While an auto-complete (toward the win) is animating, the whole board is
   // locked — the player must not interact with piles mid-sequence.
   const autoCompleting = useGameStore((s) => s.autoCompleting);
@@ -44,6 +46,22 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
   const kind = loc.split(':')[0];
   const isHintTarget = hints.some((h) => h.to === loc);
   const isHintSource = hints.some((h) => h.from === loc);
+
+  // Whether to show the dashed drop-target highlight while a drag is hovering
+  // this pile. Rendered as a top-layer overlay (see below) so it sits above all
+  // cards; we gate it here so it never appears on illegal/unwanted targets:
+  //   - stock: never
+  //   - waste: only when the dragged card came from the waste
+  //   - empty foundation: only when the dragged (lead) card is an Ace
+  //   - everything else (tableau, non-empty foundation): whenever hovered
+  let showHover = isOver;
+  if (kind === 'stock') {
+    showHover = false;
+  } else if (kind === 'waste') {
+    showHover = isOver && draggingFrom === 'waste';
+  } else if (kind === 'foundation' && cards.length === 0) {
+    showHover = isOver && !!draggingCard && draggingCard.rank === 1;
+  }
 
   // Adaptive tableau spacing: each card's vertical offset depends on whether it
   // is face-down (tight peek) or face-up (normal fan). The run compresses to fit
@@ -192,9 +210,7 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
           : 'var(--card-height)',
         position: 'relative',
         borderRadius: 'var(--card-radius)',
-        border: isOver
-          ? '2px dashed rgba(255,255,255,0.7)'
-          : '1px solid rgba(255,255,255,0.18)',
+        border: '1px solid rgba(255,255,255,0.18)',
         background: 'rgba(0,0,0,0.12)',
         cursor: onClick && !locked ? 'pointer' : 'default',
         outlineOffset: 2,
@@ -303,6 +319,26 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
           />
         </div>
       ))}
+
+      {/* Dashed drop-target highlight. Rendered as an absolutely-positioned
+          overlay (not the container border) so it draws ABOVE all stacked
+          cards, and so toggling it causes no layout shift (it takes no space
+          and the container keeps a constant 1px border). `showHover` already
+          encodes the stock/waste/empty-foundation rules above. */}
+      {showHover && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            boxSizing: 'border-box',
+            borderRadius: 'var(--card-radius)',
+            border: '2px dashed rgba(255,255,255,0.9)',
+            pointerEvents: 'none',
+            zIndex: 2000,
+          }}
+        />
+      )}
     </div>
   );
 }

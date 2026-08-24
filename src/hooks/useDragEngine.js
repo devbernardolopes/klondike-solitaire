@@ -74,6 +74,7 @@ export function useDragEngine() {
       setActiveId(null);
       setActiveRun(null);
       useUiStore.getState().setIsDragging(false);
+      useUiStore.getState().clearDragContext();
     };
     window.addEventListener('pointerdown', onDown);
     window.addEventListener('pointerup', onUp);
@@ -112,12 +113,15 @@ export function useDragEngine() {
     // Lift the full run for tableau sources; a single card elsewhere.
     const run = from.startsWith('tableau') ? getTableauRun(pile, cardId) : [pile[idx]];
     setActiveRun(run);
+    // Expose the drag source + lead card so piles can gate their hover highlight.
+    useUiStore.getState().setDragContext(from, run[0]);
   }
 
   function onDragEnd(event) {
     setActiveId(null);
     setActiveRun(null);
     useUiStore.getState().setIsDragging(false);
+    useUiStore.getState().clearDragContext();
     const { active, over } = event;
     if (!over) return;
     const activeData = active.data?.current;
@@ -137,6 +141,7 @@ export function useDragEngine() {
     setActiveId(null);
     setActiveRun(null);
     useUiStore.getState().setIsDragging(false);
+    useUiStore.getState().clearDragContext();
   }
 
   return { sensors, onDragStart, onDragEnd, onDragCancel, activeId, activeRun };

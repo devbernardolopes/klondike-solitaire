@@ -52,6 +52,18 @@ export const useUiStore = create((set) => ({
   /** Set the in-progress drag flag (shared between useDragEngine and CardView). */
   setIsDragging: (v) => set({ isDragging: v }),
 
+  // While a drag is in progress, the locator the dragged card came from and the
+  // lead card of the lifted run. Used by Pile to decide whether to show the
+  // hover/drop highlight (e.g. never on stock, only on waste when dragging from
+  // waste, only on an empty foundation when the card is an Ace). Cleared on drag
+  // end/cancel so the highlight can never get stuck on.
+  draggingFrom: null,
+  draggingCard: null,
+  /** Record the source locator and lead card of the in-progress drag. */
+  setDragContext: (from, card) => set({ draggingFrom: from, draggingCard: card }),
+  /** Clear the in-progress drag source/card. */
+  clearDragContext: () => set({ draggingFrom: null, draggingCard: null }),
+
   // Granular in-flight animation locks. Instead of a single global "board is
   // busy" flag, we track exactly which cards are currently moving and which
   // pile locators are busy as a destination. Components then block interaction
