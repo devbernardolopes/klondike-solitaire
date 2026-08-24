@@ -420,6 +420,7 @@ export const useGameStore = create((set, get) => ({
             return s;
           })()
         : undefined;
+    useUiStore.getState().setCurrentGame(mode);
     runAnimatedDeal(get, set, { seed: seed !== undefined ? seed : undefined });
   },
 
@@ -440,6 +441,7 @@ export const useGameStore = create((set, get) => ({
     if (useUiStore.getState().animatingCards.size > 0) return;
     useUiStore.getState().setLastNewGameMode('winning');
     useStatsStore.getState().resetStats();
+    useUiStore.getState().setCurrentGame('winning');
     runAnimatedDeal(get, set, { seed });
   },
 
@@ -462,6 +464,7 @@ export const useGameStore = create((set, get) => ({
     if (useUiStore.getState().animatingCards.size > 0) return false;
     useUiStore.getState().setLastNewGameMode('winning');
     useStatsStore.getState().resetStats();
+    useUiStore.getState().setCurrentGame('daily', date);
     runAnimatedDeal(get, set, { seed });
     return true;
   },
@@ -486,6 +489,7 @@ export const useGameStore = create((set, get) => ({
     if (useUiStore.getState().animatingCards.size > 0) return false;
     useUiStore.getState().setLastNewGameMode('winning');
     useStatsStore.getState().resetStats();
+    useUiStore.getState().setCurrentGame('event');
     runAnimatedDeal(get, set, { seed });
     return true;
   },
@@ -506,6 +510,7 @@ export const useGameStore = create((set, get) => ({
     if (useUiStore.getState().animatingCards.size > 0) return;
     useUiStore.getState().setLastNewGameMode('winning');
     useStatsStore.getState().resetStats();
+    useUiStore.getState().setCurrentGame('winning');
     runAnimatedDeal(get, set, { seed: INITIAL_SEED, deck: INITIAL_DECK });
   },
 

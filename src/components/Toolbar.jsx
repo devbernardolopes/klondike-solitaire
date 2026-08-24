@@ -14,6 +14,7 @@ import NewGameModal from './NewGameModal.jsx';
 import SettingsModal from './SettingsModal.jsx';
 import StatisticsModal from './StatisticsModal.jsx';
 import SeedInputModal from './SeedInputModal.jsx';
+import DailyChallengeModal from './DailyChallengeModal.jsx';
 import { formatTime } from '../utils/formatTime.js';
 
 /**
@@ -69,6 +70,10 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const newGameDialogOpen = useUiStore((s) => s.newGameDialogOpen);
   const setNewGameDialogOpen = useUiStore((s) => s.setNewGameDialogOpen);
   const lastNewGameMode = useUiStore((s) => s.lastNewGameMode);
+  const currentGameKind = useUiStore((s) => s.currentGameKind);
+  const currentDailyDate = useUiStore((s) => s.currentDailyDate);
+  const setDailyChallengeDialogOpen = useUiStore((s) => s.setDailyChallengeDialogOpen);
+  const setDailyChallengeOrigin = useUiStore((s) => s.setDailyChallengeOrigin);
   const noMovesDialogOpen = useUiStore((s) => s.noMovesDialogOpen);
   const setNoMovesDialogOpen = useUiStore((s) => s.setNoMovesDialogOpen);
   const settingsDialogOpen = useUiStore((s) => s.settingsDialogOpen);
@@ -147,6 +152,11 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
     dealNewGame('random');
     play('deal');
   }, [setNewGameDialogOpen, dealNewGame, play]);
+  const onDailyChallenge = useCallback(() => {
+    setNewGameDialogOpen(false);
+    setDailyChallengeOrigin('newgame');
+    setDailyChallengeDialogOpen(true);
+  }, [setNewGameDialogOpen, setDailyChallengeOrigin, setDailyChallengeDialogOpen]);
   const onSeedConfirm = useCallback((seed) => {
     setSeedInputDialogOpen(false);
     dealWithSeed(seed);
@@ -276,7 +286,11 @@ function ElapsedClock() {
               outline: 'none',
             }}
           >
-            {lastNewGameMode === 'winning' ? `Seed: ${gameState.seed}` : 'Random'}
+             {currentGameKind === 'daily'
+                ? `Daily Challenge: ${currentDailyDate} (seed ${gameState.seed})`
+                : currentGameKind === 'random'
+                  ? 'Random'
+                  : `Seed: ${gameState.seed}`}
           </span>
          <span
            style={{
@@ -351,8 +365,11 @@ function ElapsedClock() {
         onReplay={onReplay}
         onWinningDeal={onWinningDeal}
         onRandomShuffle={onRandomShuffle}
+        onDailyChallenge={onDailyChallenge}
         onDismiss={closeNewGame}
       />
+
+      <DailyChallengeModal />
 
       <SeedInputModal
         open={seedInputDialogOpen}

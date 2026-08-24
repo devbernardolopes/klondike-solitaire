@@ -21,6 +21,8 @@ export default function WinModal() {
   const winDialogOpen = useUiStore((s) => s.winDialogOpen);
   const summary = useUiStore((s) => s.winSummary);
   const closeWinDialog = useUiStore((s) => s.closeWinDialog);
+  const setDailyChallengeDialogOpen = useUiStore((s) => s.setDailyChallengeDialogOpen);
+  const setDailyChallengeOrigin = useUiStore((s) => s.setDailyChallengeOrigin);
   const dealNewGame = useGameStore((s) => s.dealNewGame);
   const replayGame = useGameStore((s) => s.replayGame);
 
@@ -40,7 +42,7 @@ export default function WinModal() {
 
   if (!winDialogOpen || !summary) return null;
 
-  const { score, timeMs, moves, undos, newScore, newTime, newMoves, newUndos, bestScore, bestTimeMs, bestMoves, bestUndos } = summary;
+  const { score, timeMs, moves, undos, newScore, newTime, newMoves, newUndos, bestScore, bestTimeMs, bestMoves, bestUndos, dailyDate, seed } = summary;
 
   const onNewGame = () => {
     closeWinDialog();
@@ -49,6 +51,13 @@ export default function WinModal() {
   const onReplay = () => {
     closeWinDialog();
     replayGame();
+  };
+  const onReturnDaily = () => {
+    closeWinDialog();
+    // The Win modal is already dismissed here, so returning to the Daily
+    // Challenge leaves no modal behind when this one is closed.
+    setDailyChallengeOrigin('win');
+    setDailyChallengeDialogOpen(true);
   };
 
   const btn = {
@@ -157,19 +166,34 @@ export default function WinModal() {
         padding: 16,
       }}
     >
-      <div ref={panelRef} tabIndex={-1} style={panel}>
-        <h2
-          style={{
-            margin: '0 0 14px',
-            fontSize: 22,
-            fontWeight: 800,
-            textAlign: 'center',
-          }}
-        >
-          You Won
-        </h2>
+       <div ref={panelRef} tabIndex={-1} style={panel}>
+         <h2
+           style={{
+             margin: '0 0 14px',
+             fontSize: 22,
+             fontWeight: 800,
+             textAlign: 'center',
+           }}
+         >
+           You Won
+         </h2>
 
-        <div style={{ marginBottom: 18 }}>
+         {dailyDate && (
+           <div
+             style={{
+               textAlign: 'center',
+               fontSize: 14,
+               fontWeight: 600,
+               margin: '0 0 14px',
+               color: 'var(--card-text-black)',
+               opacity: 0.85,
+             }}
+           >
+             Daily Challenge: {dailyDate} (seed {seed})
+           </div>
+         )}
+
+         <div style={{ marginBottom: 18 }}>
           <HeaderRow />
           <StatRow label="Score" value={String(score)} best={String(bestScore)} isNew={newScore} />
           <StatRow
@@ -200,13 +224,23 @@ export default function WinModal() {
           >
             Replay this Game
           </button>
-          <button
-            type="button"
-            style={{ ...btn, flex: 1, background: 'var(--ui-modal-btn-bg-strong)' }}
-            onClick={onNewGame}
-          >
-            New Game
-          </button>
+          {dailyDate ? (
+            <button
+              type="button"
+              style={{ ...btn, flex: 1, background: 'var(--ui-modal-btn-bg-strong)' }}
+              onClick={onReturnDaily}
+            >
+              Return to Daily Challenge
+            </button>
+          ) : (
+            <button
+              type="button"
+              style={{ ...btn, flex: 1, background: 'var(--ui-modal-btn-bg-strong)' }}
+              onClick={onNewGame}
+            >
+              New Game
+            </button>
+          )}
         </div>
       </div>
     </div>

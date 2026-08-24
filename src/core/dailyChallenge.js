@@ -36,3 +36,111 @@ export function seedForDate(dateStr) {
 export function isDateBundled(dateStr) {
   return seedForDate(dateStr) !== null;
 }
+
+// ---- Calendar / range helpers (framework-agnostic, UTC arithmetic) ----
+
+/** Parse a YYYY-MM-DD string into {y,m,d} (numbers). */
+function parseYMD(s) {
+  const [y, m, d] = String(s).split('-').map(Number);
+  return { y, m, d };
+}
+
+/** Format a {y,m,d} triple into a zero-padded YYYY-MM-DD string. */
+function fmtYMD(y, m, d) {
+  return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+/** Convert a YYYY-MM-DD string to a UTC epoch (ms). */
+export function dateToUTC(dateStr) {
+  const { y, m, d } = parseYMD(dateStr);
+  return Date.UTC(y, m - 1, d);
+}
+
+/**
+ * The full supported window as { start, end } (both YYYY-MM-DD, inclusive).
+ * Derived from the bundled anchor + windowYears so it stays correct across
+ * leap years (Date.UTC handles Feb 29) and multi-year windows.
+ * @returns {{start:string, end:string}}
+ */
+export function getSupportedRange() {
+  const start = getDailyAnchor();
+  const wy = getDailyWindowYears();
+  if (!start || !wy) return { start: '', end: '' };
+  const s = parseYMD(start);
+  // end = anchor + windowYears, minus one day.
+  const endMs = Date.UTC(s.y + wy, s.m - 1, s.d) - 86400000;
+  const e = utcToYMDfromMS(endMs);
+  return { start, end: fmtYMD(e.y, e.m, e.d) };
+}
+
+function utcToYMDfromMS(ms) {
+  const dt = new Date(ms);
+  return { y: dt.getUTCFullYear(), m: dt.getUTCMonth() + 1, d: dt.getUTCDate() };
+}
+
+/** List every year covered by the supported window (ascending). @returns {number[]} */
+export function listSupportedYears() {
+  const { start, end } = getSupportedRange();
+  if (!start || !end) return [];
+  const a = parseYMD(start);
+  const b = parseYMD(end);
+  const years = [];
+  for (let y = a.y; y <= b.y; y++) years.push(y);
+  return years;
+}
+
+/**
+ * Whether a (year, month) pair falls within the supported window.
+ * @param {number} y
+ * @param {number} m  1-12
+ */
+export function isSupportedYM(y, m) {
+  const { start, end } = getSupportedRange();
+  if (!start || !end) return false;
+  const a = parseYMD(start);
+  const b = parseYMD(end);
+  const idx = y * 12 + (m - 1);
+  const ai = a.y * 12 + (a.m - 1);
+  const bi = b.y * 12 + (b.m - 1);
+  return idx >= ai && idx <= bi;
+}
+
+/** Strict chronological comparison: is `a` strictly after `b`? */
+export function isAfter(a, b) {
+  return dateToUTC(a) > dateToUTC(b);
+}
+
+/** Whether a date is inside the supported window (inclusive of both ends). */
+export function withinSupported(dateStr) {
+  const { start, end } = getSupportedRange();
+  if (!start || !end) return false;
+  return !isAfter(start, dateStr) && !isAfter(dateStr, end);
+}
+
+/**
+ * Add (or subtract) `delta` months to a (year, month) pair, rolling the year
+ * over at the boundaries. Returns { y, m } with m in 1-12.
+ * @param {number} y
+ * @param {number} m  1-12
+ * @param {number} delta  positive or negative integer
+ * @returns {{y:number, m:number}}
+ */
+export function addMonths(y, m, delta) {
+  const idx = y * 12 + (m - 1) + delta;
+  return { y: Math.floor(idx / 12), m: (idx % 12) + 1 };
+}
+
+/** Number of days in a given month (correct across leap years). */
+export function daysInMonth(y, m) {
+  return new Date(Date.UTC(y, m, 0)).getUTCDate();
+}
+
+/** Format a (year, month) into its YYYY-MM key. */
+export function ymKey(y, m) {
+  return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}`;
+}
+
+/** Zero-padded YYYY-MM-DD for a (y,m,d) triple. */
+export function toDateStr(y, m, d) {
+  return fmtYMD(y, m, d);
+}

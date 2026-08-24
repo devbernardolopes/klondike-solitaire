@@ -113,3 +113,58 @@
     transform: translate(-50%, -50%) scale(1);
   }
 }
+
+/* Daily Challenge calendar cells (dark variant). See classic.css for notes. */
+.dc-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: #262b36;
+  color: #e6e6e6;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+
+.dc-cell--completed {
+  background: #1f3d2a;
+  border-color: rgba(52, 214, 130, 0.5);
+}
+
+.dc-cell--today {
+  outline: 3px solid #34d6ff;
+  outline-offset: -1px;
+}
+
+.dc-cell--selected {
+  background: #34d6ff;
+  color: #0a0d12;
+  border-color: #1aa3c4;
+  box-shadow: 0 0 0 2px rgba(52, 214, 255, 0.35);
+}
+
+.dc-cell--today.dc-cell--selected {
+  outline: 3px solid #0f5a27;
+  outline-offset: -1px;
+}
+
+.dc-cell--disabled {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.08);
+  cursor: default;
+}
+
+.dc-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  margin-right: 4px;
+  vertical-align: -1px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}

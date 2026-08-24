@@ -42,6 +42,15 @@ db.version(3).stores({
   stats: 'key',
   playedSeeds: 'key',
 });
+// v4 adds the `dailyResults` table: one row per completed Daily Challenge day,
+// keyed by its YYYY-MM-DD date, holding that day's best score/time/moves.
+db.version(4).stores({
+  games: '++id, startedAt, finishedAt, won, durationMs',
+  settings: 'key',
+  stats: 'key',
+  playedSeeds: 'key',
+  dailyResults: 'date',
+});
 
 /**
  * Insert a finished/abandoned game record.

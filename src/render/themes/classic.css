@@ -112,3 +112,63 @@
     transform: translate(-50%, -50%) scale(1);
   }
 }
+
+/* Daily Challenge calendar cells. Base styling lives here; the dynamic state
+   classes (today / completed / selected / disabled) layer on top. Layout
+   (size + centering) is set inline in DailyChallengeModal so it's robust even
+   before the theme CSS loads. */
+.dc-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: #ffffff;
+  color: #1a1a1a;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+
+.dc-cell--completed {
+  background: #d8f0dd; /* soft green — a day already won */
+  border-color: rgba(26, 127, 55, 0.5);
+}
+
+.dc-cell--today {
+  outline: 3px solid #1a7f37; /* distinct border for the current day */
+  outline-offset: -1px;
+}
+
+.dc-cell--selected {
+  background: #1a7f37;
+  color: #ffffff;
+  border-color: #14632b;
+  box-shadow: 0 0 0 2px rgba(26, 127, 55, 0.35);
+}
+
+/* today + selected must coexist: keep the green fill but re-assert the border */
+.dc-cell--today.dc-cell--selected {
+  outline: 3px solid #0f5a27;
+  outline-offset: -1px;
+}
+
+.dc-cell--disabled {
+  background: rgba(0, 0, 0, 0.04);
+  color: rgba(0, 0, 0, 0.3);
+  border-color: rgba(0, 0, 0, 0.08);
+  cursor: default;
+}
+
+/* Small color swatches used in the legend beneath the grid. */
+.dc-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  margin-right: 4px;
+  vertical-align: -1px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+}

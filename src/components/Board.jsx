@@ -11,6 +11,7 @@ import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
 import { useSeedStore } from '../hooks/useSeedStore.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
+import { saveDailyResult } from '../db/dailyResults.js';
 import { useCardMoveSlide } from '../render/animation/useCardMoveSlide.js';
 import { useStockDrawSlide } from '../render/animation/useStockDrawSlide.js';
 import { playWinCascade } from '../render/animation/winCascade.js';
@@ -163,6 +164,13 @@ export default function Board() {
       const newTime = prev.lowestTimeMs == null || durationMs < prev.lowestTimeMs;
       const newMoves = prev.lowestMoves == null || moves < prev.lowestMoves;
       const newUndos = prev.lowestUndos == null || undos < prev.lowestUndos;
+      // The current game's kind + (for daily) date, so the Win modal can show
+      // the daily banner and a "Return to Daily Challenge" affordance, and so we
+      // can persist the day's best result below.
+      const uiState = useUiStore.getState();
+      const gameKind = uiState.currentGameKind;
+      const dailyDate = uiState.currentDailyDate;
+      const gameState = useGameStore.getState().state;
       useUiStore.getState().setWinDialog({
         score,
         timeMs: durationMs,
@@ -176,16 +184,23 @@ export default function Board() {
         bestTimeMs: prev.lowestTimeMs,
         bestMoves: prev.lowestMoves,
         bestUndos: prev.lowestUndos,
+        dailyDate: gameKind === 'daily' ? dailyDate : null,
+        seed: gameState.seed,
       });
       // Persist the just-won game's stats cumulatively. The timer is frozen
       // above, so endTime is final for this game. Runs after the snapshot so the
       // new-record flags reflect the values the player actually beat.
       useStatisticsStore.getState().recordWin({ score, timeMs: durationMs, moves, undos });
-      // If this was a Winning Deal (it carries a seed), remember the seed so it
-      // isn't re-dealt until the whole pool has been won.
-      const gameState = useGameStore.getState().state;
-      if (gameState.seed !== undefined) {
+      // If this was a Winning Deal (it carries a pool seed), remember the seed
+      // so it isn't re-dealt until the whole pool has been won. Daily/Event
+      // seeds are NOT pool seeds and must never be added here.
+      if (gameKind === 'winning' && gameState.seed !== undefined) {
         useSeedStore.getState().addPlayedSeed(gameState.seed);
+      }
+      // Fold a Daily Challenge win into that day's best result. Daily wins also
+      // count in the global cumulative stats (handled by recordWin above).
+      if (gameKind === 'daily' && dailyDate) {
+        saveDailyResult(dailyDate, { seed: gameState.seed, score, timeMs: durationMs, moves });
       }
     }
     wasWon.current = won;

@@ -16,9 +16,10 @@ import { useModalBackdrop } from './modalBackdrop.js';
  * @param {() => void} props.onReplay    // restart the current game identically
  * @param {() => void} props.onWinningDeal
  * @param {() => void} props.onRandomShuffle
+ * @param {() => void} props.onDailyChallenge  // open the Daily Challenge calendar
  * @param {() => void} props.onDismiss   // Escape / backdrop click / explicit close — does nothing else
  */
-export default function NewGameModal({ open, onReplay, onWinningDeal, onRandomShuffle, onDismiss }) {
+export default function NewGameModal({ open, onReplay, onWinningDeal, onRandomShuffle, onDailyChallenge, onDismiss }) {
   const firstBtnRef = useRef(null);
   const backdrop = useModalBackdrop(onDismiss);
 
@@ -101,6 +102,14 @@ export default function NewGameModal({ open, onReplay, onWinningDeal, onRandomSh
           >
             Random Shuffle{' '}
             <span style={{ fontWeight: 400, opacity: 0.8 }}>— true random, may be unwinnable</span>
+          </button>
+          <button
+            type="button"
+            style={{ ...btn, textAlign: 'left' }}
+            onClick={onDailyChallenge}
+          >
+            Daily Challenge{' '}
+            <span style={{ fontWeight: 400, opacity: 0.8 }}>— a new deal every day</span>
           </button>
           <button
             type="button"

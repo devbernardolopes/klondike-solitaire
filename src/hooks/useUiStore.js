@@ -135,6 +135,14 @@ export const useUiStore = create((set) => ({
   // (re)start that exact, pre-verified solvable deal.
   seedInputDialogOpen: false,
 
+  // Daily Challenge calendar modal: month/year navigation + per-day status and
+  // a "Play" button that starts the selected day's deal. `dailyChallengeOrigin`
+  // records what opened it so dismissal can return to the right place:
+  //   - 'newgame' → closing returns to the New Game picker beneath it
+  //   - 'win'     → closing leaves no modal (the Win modal already dismissed)
+  dailyChallengeDialogOpen: false,
+  dailyChallengeOrigin: 'newgame', // 'newgame' | 'win'
+
   // Win summary modal: shown when the game is won. Carries the just-finished
   // game's score/time/moves plus which of them beat the stored best (so the
   // modal can highlight new records). Populated by the win effect in Board.jsx.
@@ -165,6 +173,12 @@ export const useUiStore = create((set) => ({
   /** Show/hide the "Enter Seed" dialog. */
   setSeedInputDialogOpen: (open) => set({ seedInputDialogOpen: open }),
 
+  /** Show/hide the Daily Challenge calendar modal. */
+  setDailyChallengeDialogOpen: (open) => set({ dailyChallengeDialogOpen: open }),
+
+  /** Set which surface opened the Daily Challenge modal. */
+  setDailyChallengeOrigin: (origin) => set({ dailyChallengeOrigin: origin }),
+
   /** Show the win summary modal with the given summary payload. */
   setWinDialog: (summary) => set({ winDialogOpen: true, winSummary: summary }),
 
@@ -173,6 +187,20 @@ export const useUiStore = create((set) => ({
 
   /** Record which mode was last used, so the "no valid moves" recovery path can reuse it. */
   setLastNewGameMode: (mode) => set({ lastNewGameMode: mode }),
+
+  // Which kind of game is currently being played, and (for daily challenges)
+  // the calendar date string. Drives the top-left label and the Win modal's
+  // "Return to Daily Challenge" affordance. Set by the deal actions in
+  // useGameStore (winning / random / daily / event).
+  currentGameKind: null, // 'winning' | 'random' | 'daily' | 'event' | null
+  currentDailyDate: null, // YYYY-MM-DD when kind === 'daily'
+
+  /**
+   * Record the kind of game just dealt (and the daily date when relevant).
+   * @param {'winning'|'random'|'daily'|'event'} kind
+   * @param {string|null} [date]  the daily date when kind === 'daily'
+   */
+  setCurrentGame: (kind, date = null) => set({ currentGameKind: kind, currentDailyDate: date }),
 
   /** Clear the current selection (after a move or on new game). */
   clearSelection: () => set({ selectedCardId: null }),
@@ -202,7 +230,8 @@ export const isAnyModalOpen = (s) =>
   s.noMovesDialogOpen ||
   s.gameOverDialogOpen ||
   s.seedInputDialogOpen ||
-  s.winDialogOpen;
+  s.winDialogOpen ||
+  s.dailyChallengeDialogOpen;
 
 /**
  * Locate the pile a card currently lives in.
