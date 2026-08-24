@@ -9,6 +9,7 @@
 // (core/dailyChallenge.seedForDate).
 
 import { useEffect, useRef, useState } from 'react';
+import { Crosshair } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { useGameStore } from '../hooks/useGameStore.js';
@@ -20,10 +21,11 @@ import {
   addMonths,
   daysInMonth,
   toDateStr,
-  getSupportedRange,
+  dateToUTC,
 } from '../core/dailyChallenge.js';
 import { fetchServerNow, utcToYMD, getFallbackUTC } from '../utils/serverTime.js';
 import { loadAllDailyResults } from '../db/dailyResults.js';
+import { loadLastDailySelection, saveLastDailySelection } from '../db/dailySelection.js';
 import { formatTime } from '../utils/formatTime.js';
 
 const MONTH_NAMES = [
@@ -72,14 +74,6 @@ const gridStyle = {
   gap: 6,
 };
 
-/** Pick the default selected date given today + supported window. */
-function defaultSelection(todayStr) {
-  if (withinSupported(todayStr)) return todayStr;
-  const { start, end } = getSupportedRange();
-  if (isAfter(todayStr, end)) return end;
-  return start;
-}
-
 const fallbackDate = (() => {
   const f = utcToYMD(getFallbackUTC());
   return toDateStr(f.y, f.m, f.d);
@@ -110,27 +104,32 @@ export default function DailyChallengeModal() {
 
   const backdrop = useModalBackdrop(onDismiss);
 
-  // Load authoritative "today" + completed-day results on open.
+  // Load authoritative "today", completed-day results, and the last-selected day
+  // on open. Pre-selects the persisted last day when it differs from today
+  // (otherwise defaults to today), and navigates the grid to that month.
   useEffect(() => {
     if (!open) return undefined;
     userPicked.current = false;
     let cancelled = false;
-    loadAllDailyResults().then((rows) => {
+    Promise.all([
+      loadAllDailyResults(),
+      loadLastDailySelection(),
+      fetchServerNow(),
+    ]).then(([rows, lastSel, ms]) => {
       if (cancelled) return;
       const map = {};
       rows.forEach((r) => { map[r.date] = r; });
       setResults(map);
-    });
-    fetchServerNow().then((ms) => {
-      if (cancelled) return;
       const { y, m, d } = utcToYMD(ms);
       const todayStr = toDateStr(y, m, d);
       setToday(todayStr);
-      if (!userPicked.current) {
-        setViewY(y);
-        setViewM(m);
-        setSelected(defaultSelection(todayStr));
-      }
+      if (userPicked.current) return;
+      let initial = (lastSel && lastSel !== todayStr) ? lastSel : todayStr;
+      if (!withinSupported(initial)) initial = todayStr;
+      const ini = utcToYMD(dateToUTC(initial));
+      setViewY(ini.y);
+      setViewM(ini.m);
+      setSelected(initial);
     });
     return () => { cancelled = true; };
   }, [open]);
@@ -148,7 +147,21 @@ export default function DailyChallengeModal() {
     if (!selected) return;
     if (isAfter(selected, today) || !withinSupported(selected)) return;
     const ok = dealDaily(selected);
-    if (ok) setOpen(false);
+    if (ok) {
+      // Remember the picked day only when it differs from today, so the calendar
+      // re-opens there next time (persisted in the DB).
+      if (selected !== today) saveLastDailySelection(selected);
+      setOpen(false);
+    }
+  };
+
+  // Jump the grid back to today and select it.
+  const onGoToday = () => {
+    const ini = utcToYMD(dateToUTC(today));
+    setViewY(ini.y);
+    setViewM(ini.m);
+    setSelected(today);
+    userPicked.current = true;
   };
 
   const prev = addMonths(viewY, viewM, -1);
@@ -271,6 +284,23 @@ export default function DailyChallengeModal() {
                   <option key={y} value={y}>{y}</option>
                 ))}
               </select>
+              <button
+                type="button"
+                aria-label="Go to today"
+                title="Go to today"
+                onClick={onGoToday}
+                style={{
+                  ...btn,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: 6,
+                  minWidth: 32,
+                  cursor: 'pointer',
+                }}
+              >
+                <Crosshair size={18} />
+              </button>
             </div>
 
             <button
