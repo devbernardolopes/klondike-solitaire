@@ -338,13 +338,6 @@ export default function DailyChallengeModal() {
           <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'flex-start' }}>
             <div style={{ flex: '1 1 320px', minWidth: 280 }}>
               <div style={gridStyle}>{cells}</div>
-              <p style={{ margin: '10px 0 0', fontSize: 12, opacity: 0.75, lineHeight: 1.5 }}>
-                <span style={{ display: 'inline-flex', gap: 12, flexWrap: 'wrap' }}>
-                  <span><span className="dc-swatch dc-cell--today" /> Today</span>
-                  <span><span className="dc-swatch dc-cell--completed" /> Completed</span>
-                  <span><span className="dc-swatch dc-cell--selected" /> Selected</span>
-                </span>
-              </p>
             </div>
 
             <div style={{ flex: '1 1 220px', minWidth: 200, borderLeft: '1px solid var(--card-border)', paddingLeft: 16 }}>

@@ -152,6 +152,14 @@
   outline-offset: -1px;
 }
 
+/* A day that is BOTH selected and already won is visually distinct from a
+   selected-but-unwon day: keep the cyan selected fill but add a gold ring. */
+.dc-cell--completed.dc-cell--selected {
+  outline: 3px solid #ffd54a;
+  outline-offset: -3px;
+  box-shadow: 0 0 0 2px rgba(255, 213, 74, 0.5);
+}
+
 .dc-cell--disabled {
   background: rgba(255, 255, 255, 0.05);
   color: rgba(255, 255, 255, 0.3);

@@ -155,6 +155,15 @@
   outline-offset: -1px;
 }
 
+/* A day that is BOTH selected and already won is visually distinct from a
+   selected-but-unwon day: keep the green selected fill but add a gold ring so a
+   completed selection reads differently from an unplayed selection. */
+.dc-cell--completed.dc-cell--selected {
+  outline: 3px solid #ffd54a;
+  outline-offset: -3px;
+  box-shadow: 0 0 0 2px rgba(255, 213, 74, 0.5);
+}
+
 .dc-cell--disabled {
   background: rgba(0, 0, 0, 0.04);
   color: rgba(0, 0, 0, 0.3);
