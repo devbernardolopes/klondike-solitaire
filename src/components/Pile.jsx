@@ -121,25 +121,13 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
         ? `calc(${i} * var(--tableau-fan))`
         : 0;
 
-  // Smallest source-card index among this pile's source hints (highest in the
-  // column); falls back to the top card when none resolves.
-  let sourceStartIdx = -1;
-  if (isHintSource) {
-    for (const h of hints) {
-      if (h.from !== loc) continue;
-      const idx = cards.findIndex((c) => c.id === h.cardId);
-      if (idx >= 0 && (sourceStartIdx === -1 || idx < sourceStartIdx)) {
-        sourceStartIdx = idx;
-      }
-    }
-    if (sourceStartIdx === -1) sourceStartIdx = Math.max(0, cards.length - 1);
-  }
-  const sourceTop = topForIndex(sourceStartIdx);
-  const sourceHeight = tops && tops.length
-    ? `${pileHeight - tops[sourceStartIdx]}px`
-    : fanned
-      ? `calc(${Math.max(cards.length - 1 - sourceStartIdx, 0)} * var(--tableau-fan) + var(--card-height))`
-      : cardHVal;
+  // Each distinct source card in this pile is the top of its own movable run, so
+  // each gets its own highlight rectangle. (They may nest, since a run always
+  // extends to the top of the column — that nesting correctly shows multiple
+  // distinct "from" moves starting at different levels.)
+  const sourceCardIds = isHintSource
+    ? [...new Set(hints.filter((h) => h.from === loc).map((h) => h.cardId))]
+    : [];
 
   const targetStartIdx = cards.length > 0 ? cards.length - 1 : 0;
   const targetTop = topForIndex(targetStartIdx);
@@ -229,22 +217,33 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
         </span>
       )}
 
-      {isHintSource && (
-        <div
-          className="hint-source"
-          aria-hidden="true"
-          style={{
-            position: 'absolute',
-            top: sourceTop,
-            left: 0,
-            width: 'var(--card-width)',
-            height: sourceHeight,
-            borderRadius: 'var(--card-radius)',
-            pointerEvents: 'none',
-            zIndex: 1000,
-          }}
-        />
-      )}
+      {sourceCardIds.map((cid) => {
+        const idx = cards.findIndex((c) => c.id === cid);
+        if (idx < 0) return null;
+        const top = topForIndex(idx);
+        const height = tops && tops.length
+          ? `${pileHeight - tops[idx]}px`
+          : fanned
+            ? `calc(${Math.max(cards.length - 1 - idx, 0)} * var(--tableau-fan) + var(--card-height))`
+            : cardHVal;
+        return (
+          <div
+            key={cid}
+            className="hint-source"
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              top,
+              left: 0,
+              width: 'var(--card-width)',
+              height,
+              borderRadius: 'var(--card-radius)',
+              pointerEvents: 'none',
+              zIndex: 1000,
+            }}
+          />
+        );
+      })}
       {isHintTarget && (
         <div
           className="hint-target"
