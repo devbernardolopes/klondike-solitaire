@@ -125,7 +125,16 @@ export default function DailyChallengeModal() {
       const todayStr = toDateStr(y, m, d);
       setToday(todayStr);
       if (userPicked.current) return;
-      let initial = (lastSel && lastSel !== todayStr) ? lastSel : todayStr;
+      // A preferred initial date (e.g. advanced after a daily win) takes
+      // precedence over the persisted last-selection, then is consumed.
+      const preferred = useUiStore.getState().dailyChallengeInitialDate;
+      let initial;
+      if (preferred && withinSupported(preferred)) {
+        initial = preferred;
+        useUiStore.getState().setDailyChallengeInitialDate(null);
+      } else {
+        initial = (lastSel && lastSel !== todayStr) ? lastSel : todayStr;
+      }
       if (!withinSupported(initial)) initial = todayStr;
       const ini = utcToYMD(dateToUTC(initial));
       setViewY(ini.y);

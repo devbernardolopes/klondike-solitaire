@@ -10,6 +10,8 @@ import { useEffect, useRef } from 'react';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useModalBackdrop } from './modalBackdrop.js';
+import { dateToUTC, toDateStr, withinSupported } from '../core/dailyChallenge.js';
+import { utcToYMD } from '../utils/serverTime.js';
 import { formatTime } from '../utils/formatTime.js';
 
 // Color used for a value that is a new record (distinct from normal text).
@@ -54,6 +56,16 @@ export default function WinModal() {
   };
   const onReturnDaily = () => {
     closeWinDialog();
+    // Land the calendar one day ahead of the day just won (whenever such a day
+    // is still within the supported window), so the player is invited to play
+    // the next daily. Cleared by the modal once consumed.
+    if (dailyDate) {
+      const adv = utcToYMD(dateToUTC(dailyDate) + 86400000);
+      const nextDay = toDateStr(adv.y, adv.m, adv.d);
+      if (withinSupported(nextDay)) {
+        useUiStore.getState().setDailyChallengeInitialDate(nextDay);
+      }
+    }
     // The Win modal is already dismissed here, so returning to the Daily
     // Challenge leaves no modal behind when this one is closed.
     setDailyChallengeOrigin('win');

@@ -155,6 +155,11 @@ export const useUiStore = create((set) => ({
   dailyChallengeDialogOpen: false,
   dailyChallengeOrigin: 'newgame', // 'newgame' | 'win'
 
+  // When set (a YYYY-MM-DD string), the Daily Challenge modal opens pre-selected
+  // to this date (consuming/clearing it on open). Used to advance the calendar
+  // to the next day after a daily win's "Return to Daily Challenge".
+  dailyChallengeInitialDate: null,
+
   // Win summary modal: shown when the game is won. Carries the just-finished
   // game's score/time/moves plus which of them beat the stored best (so the
   // modal can highlight new records). Populated by the win effect in Board.jsx.
@@ -190,6 +195,9 @@ export const useUiStore = create((set) => ({
 
   /** Set which surface opened the Daily Challenge modal. */
   setDailyChallengeOrigin: (origin) => set({ dailyChallengeOrigin: origin }),
+
+  /** Set the preferred initial date for the next Daily Challenge open (cleared on consumption). */
+  setDailyChallengeInitialDate: (date) => set({ dailyChallengeInitialDate: date }),
 
   /** Show the win summary modal with the given summary payload. */
   setWinDialog: (summary) => set({ winDialogOpen: true, winSummary: summary }),
