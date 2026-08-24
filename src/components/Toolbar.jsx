@@ -9,8 +9,6 @@ import { useUiStore, isAnyModalOpen } from '../hooks/useUiStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useSound } from '../hooks/useSound.js';
 import { isWon } from '../core/winDetection.js';
-import { dateToUTC, toDateStr, withinSupported } from '../core/dailyChallenge.js';
-import { utcToYMD } from '../utils/serverTime.js';
 import ConfirmModal from './ConfirmModal.jsx';
 import NewGameModal from './NewGameModal.jsx';
 import SettingsModal from './SettingsModal.jsx';
@@ -206,17 +204,10 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
     play('deal');
   }, [setNoMovesDialogOpen, replayGame, play]);
   // When a daily challenge reaches a dead end, the primary button returns to the
-  // Daily Challenge calendar (advanced to the next day, like the Win modal).
+  // Daily Challenge calendar WITHOUT advancing the day (advancing only happens
+  // on a win, via the Win modal).
   const onNoMovesReturnDaily = useCallback(() => {
     setNoMovesDialogOpen(false);
-    const dailyDate = useUiStore.getState().currentDailyDate;
-    if (dailyDate) {
-      const adv = utcToYMD(dateToUTC(dailyDate) + 86400000);
-      const nextDay = toDateStr(adv.y, adv.m, adv.d);
-      if (withinSupported(nextDay)) {
-        useUiStore.getState().setDailyChallengeInitialDate(nextDay);
-      }
-    }
     useUiStore.getState().setDailyChallengeOrigin('newgame');
     useUiStore.getState().setDailyChallengeDialogOpen(true);
   }, [setNoMovesDialogOpen]);
