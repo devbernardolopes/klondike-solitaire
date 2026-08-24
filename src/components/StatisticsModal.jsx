@@ -13,19 +13,7 @@ import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useModalBackdrop } from './modalBackdrop.js';
 import ConfirmModal from './ConfirmModal.jsx';
-
-/**
- * Format an elapsed-time span (ms) as MM:SS.
- * @param {number|null} totalMs
- * @returns {string}
- */
-function formatTime(totalMs) {
-  if (totalMs == null) return '—';
-  const totalSec = Math.max(0, Math.floor(totalMs / 1000));
-  const m = String(Math.floor(totalSec / 60)).padStart(2, '0');
-  const s = String(totalSec % 60).padStart(2, '0');
-  return `${m}:${s}`;
-}
+import { formatTime } from '../utils/formatTime.js';
 
 /**
  * @param {object} props
@@ -134,7 +122,7 @@ export default function StatisticsModal({ open, onClose }) {
           </div>
           <div style={row}>
             <span style={labelStyle}>Lowest time (won)</span>
-            <span style={valueStyle}>{formatTime(stats.lowestTimeMs)}</span>
+            <span style={valueStyle}>{stats.lowestTimeMs == null ? '—' : formatTime(stats.lowestTimeMs)}</span>
           </div>
           <div style={{ ...row, borderBottom: 'none' }}>
             <span style={labelStyle}>Lowest moves (won)</span>

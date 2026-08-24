@@ -14,18 +14,7 @@ import NewGameModal from './NewGameModal.jsx';
 import SettingsModal from './SettingsModal.jsx';
 import StatisticsModal from './StatisticsModal.jsx';
 import SeedInputModal from './SeedInputModal.jsx';
-
-/**
- * Format an elapsed-time span (ms) as MM:SS.
- * @param {number} totalMs
- * @returns {string}
- */
-function formatTime(totalMs) {
-  const totalSec = Math.max(0, Math.floor(totalMs / 1000));
-  const m = String(Math.floor(totalSec / 60)).padStart(2, '0');
-  const s = String(totalSec % 60).padStart(2, '0');
-  return `${m}:${s}`;
-}
+import { formatTime } from '../utils/formatTime.js';
 
 /**
  * Live elapsed game time. Derived from a fixed start/end timestamp (not from

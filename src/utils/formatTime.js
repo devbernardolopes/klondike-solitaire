@@ -5,11 +5,11 @@
 
 /**
  * @param {number} ms  duration in milliseconds
- * @returns {string}  e.g. "4:21" (or "0:00" for <= 0)
+ * @returns {string}  e.g. "04:21" (or "00:00" for <= 0)
  */
 export function formatTime(ms) {
-  const totalSec = Math.max(0, Math.round(ms / 1000));
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
-  return `${m}:${String(s).padStart(2, '0')}`;
+  const totalSec = Math.max(0, Math.floor(ms / 1000));
+  const m = String(Math.floor(totalSec / 60)).padStart(2, '0');
+  const s = String(totalSec % 60).padStart(2, '0');
+  return `${m}:${s}`;
 }
