@@ -61,9 +61,33 @@ function captureFlip(type, animIds) {
 // waste/stock relocation possible) still is. A budget-exceeded (unknown) result
 // never asserts a dead end. The result is ignored if the board has changed in the
 // meantime (reference guard) or the solve was superseded (STALE).
-function checkDeadEnd(get, set, state) {
-  // Cheap pre-filter: a progress move available right now means not stuck.
+// Evaluate whether the current position is a genuine dead end and show/hide the
+// "No More Moves" modal accordingly. Called after every state mutation so the
+// modal is reliable regardless of which action reached the position.
+//
+// The rule (the "when" to show the modal): show it iff the position is a
+// *provable* dead end — there is no immediate progress move (a foundation play
+// or a tableau relocation that uncovers a face-down card) AND the off-thread
+// solver confirms no move is reachable through any stock-draw / waste-recycle /
+// tableau play. While the stock still holds cards (or the game is already won)
+// we never declare a dead end: a draw (or recycle-then-draw) is always an
+// available action, so a move is always possible, and we avoid paying for the
+// solver on every mid-game step.
+function evaluateDeadEnd(get, set, state) {
+  // A won game is never a dead end.
+  if (isWon(state)) {
+    useUiStore.getState().setNoMovesDialogOpen(false);
+    return;
+  }
+  // Cheap pre-filter: a meaningful move available right now means not stuck.
   if (hasDeadEndMove(state)) {
+    useUiStore.getState().setNoMovesDialogOpen(false);
+    return;
+  }
+  // While cards remain in the stock (or the waste can still be recycled into it)
+  // the player can always draw, so we cannot yet conclude a dead end — and we
+  // skip the expensive solver. Just ensure the modal is closed.
+  if (state.stock.length > 0) {
     useUiStore.getState().setNoMovesDialogOpen(false);
     return;
   }
@@ -247,6 +271,10 @@ function runAutoSteps(get, set, makeStep, hasNext) {
     if (tid == null) {
       autoCompleteTimer = null;
       set({ autoCompleting: false, autoCompletingToWin: false });
+      // The run finished with nothing left to play — re-evaluate for a dead end
+      // (a greedy peel can exhaust every safe foundation move and leave a stuck
+      // board, which the per-step applyAutoStep path does not check).
+      evaluateDeadEnd(get, set, get().state);
       return;
     }
     const more = hasNext();
@@ -256,6 +284,8 @@ function runAutoSteps(get, set, makeStep, hasNext) {
       if (run !== autoCompleteRunId) return;
       autoCompleteTimer = null;
       set({ autoCompleting: false, autoCompletingToWin: false });
+      // The run finished with nothing left to play — re-evaluate for a dead end.
+      evaluateDeadEnd(get, set, get().state);
       return;
     }
     if (mode === 'overlap') {
@@ -559,9 +589,7 @@ export const useGameStore = create((set, get) => ({
     useUiStore.getState().clearHints();
     useStatsStore.getState().startTimerIfValid(state);
     useStatsStore.getState().addMoves(1);
-    if (next.stock.length === 0 && !isWon(next)) {
-      checkDeadEnd(get, set, next);
-    }
+    evaluateDeadEnd(get, set, next);
   },
 
   /**
@@ -579,6 +607,7 @@ export const useGameStore = create((set, get) => ({
     const tid = captureFlip('recycle', movingIds);
     useUiStore.getState().beginTransition(tid, movingIds, ['stock', 'waste']);
     set({ state: applyMove(state, { type: 'recycle' }), lastActionMeta: { type: 'recycle' } });
+    evaluateDeadEnd(get, set, get().state);
     useUiStore.getState().clearHints();
     useStatsStore.getState().startTimerIfValid(state);
     useStatsStore.getState().addMoves(1);
@@ -653,9 +682,7 @@ export const useGameStore = create((set, get) => ({
       useUiStore.getState().clearHints();
       useStatsStore.getState().startTimerIfValid(state);
       useStatsStore.getState().addMoves(1);
-      if (next.stock.length === 0 && !isWon(next)) {
-        checkDeadEnd(get, set, next);
-      }
+      evaluateDeadEnd(get, set, next);
       return true;
     }
     const tid = captureFlip(opts.metaType ?? 'move', moveIds);
@@ -664,9 +691,7 @@ export const useGameStore = create((set, get) => ({
     useUiStore.getState().clearHints();
     useStatsStore.getState().startTimerIfValid(state);
     useStatsStore.getState().addMoves(1);
-    if (next.stock.length === 0 && !isWon(next)) {
-      checkDeadEnd(get, set, next);
-    }
+    evaluateDeadEnd(get, set, next);
     return true;
   },
 
@@ -681,6 +706,7 @@ export const useGameStore = create((set, get) => ({
     if (useUiStore.getState().animatingCards.size > 0) return;
     const next = coreUndo(state);
     set({ state: next, autoMoveState: {}, lastActionMeta: { type: 'undo' } });
+    evaluateDeadEnd(get, set, next);
     useUiStore.getState().clearHints();
     useStatsStore.getState().addMoves(1);
     useStatsStore.getState().addUndos(1);

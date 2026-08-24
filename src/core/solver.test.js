@@ -11,7 +11,7 @@ import { createEmptyGameState } from './GameState.js';
 import { findWinningSequence, findReachableMove, hasDeadEndMove, isAutoCompletable, SOLVER_TIMEOUT, compressWinningSequence } from './solver.js';
 import { applyMove } from './moveEngine.js';
 import { isWon } from './winDetection.js';
-import { findFoundationMove, isAllTableauFaceUp } from './rules.js';
+import { findFoundationMove, isAllTableauFaceUp, hasAnyValidMove } from './rules.js';
 
 // A state is "fully cleared" when every card sits on a foundation as a valid
 // 1..n same-suit run and the board (tableau/stock/waste) is empty. Used instead
@@ -204,6 +204,42 @@ test('genuine dead end with no cross-build shows the modal', () => {
 });
 
 /**
+ * Regression: the exact board reported as a dead end (Game Mode 25016), with
+ * empty stock AND empty waste. The cheap hasAnyValidMove sees a non-progress
+ * whole-pile King-shuffle and (misleadingly) reports a "move", but the
+ * "no moves" modal must be driven by the dead-end detector, which ignores
+ * those shuffles and proves no meaningful move is reachable. This is the case
+ * that previously went undetected because the check was only reached on some
+ * mutation paths.
+ */
+test('reported dead-end board (Game Mode 25016) is detected as a dead end', () => {
+  const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
+  // Tableau arrays are BOTTOM->TOP in core; the bug report listed TOP->BOTTOM,
+  // so each column below is the report reversed.
+  const s = createEmptyGameState();
+  s.stock = [];
+  s.waste = [];
+  s.foundations[0] = [c('clubs', 1, 'Ac'), c('clubs', 2, '2c')];
+  s.foundations[1] = [c('spades', 1, 'As'), c('spades', 2, '2s'), c('spades', 3, '3s')];
+  s.foundations[2] = [c('hearts', 1, 'Ah'), c('hearts', 2, '2h'), c('hearts', 3, '3h'), c('hearts', 4, '4h'), c('hearts', 5, '5h')];
+  s.foundations[3] = [];
+  s.tableau = [
+    [c('spades', 13, 'Ks'), c('diamonds', 12, 'Qd'), c('clubs', 11, 'Jc'), c('hearts', 10, '10h'), c('clubs', 9, '9c'), c('diamonds', 8, '8d'), c('clubs', 7, '7c'), c('diamonds', 6, '6d'), c('clubs', 5, '5c'), c('diamonds', 4, '4d'), c('clubs', 3, '3c'), c('diamonds', 2, '2d')],
+    [c('diamonds', 13, 'Kd'), c('clubs', 12, 'Qc'), c('hearts', 11, 'Jh'), c('spades', 10, '10s'), c('diamonds', 9, '9d'), c('clubs', 8, '8c'), c('hearts', 7, '7h'), c('clubs', 6, '6c'), c('diamonds', 5, '5d'), c('clubs', 4, '4c'), c('diamonds', 3, '3d')],
+    [c('hearts', 13, 'Kh'), c('spades', 12, 'Qs'), c('diamonds', 11, 'Jd'), c('clubs', 10, '10c'), c('hearts', 9, '9h'), c('spades', 8, '8s'), c('diamonds', 7, '7d'), c('spades', 6, '6s')],
+    [c('clubs', 13, 'Kc'), c('hearts', 12, 'Qh')],
+    [],
+    [],
+    [c('diamonds', 1, 'Ad', false), c('spades', 4, '4s', false), c('spades', 11, 'Js', false), c('diamonds', 10, '10d'), c('spades', 9, '9s'), c('hearts', 8, '8h'), c('spades', 7, '7s'), c('hearts', 6, '6h'), c('spades', 5, '5s')],
+  ];
+  // The trap: hasAnyValidMove counts the King-shuffle as a move, so the modal
+  // must NOT be driven by it. The detector ignores those and reports no move.
+  assert.equal(hasAnyValidMove(s), true);
+  assert.equal(hasDeadEndMove(s), false);
+  assert.equal(findReachableMove(s, { maxNodes: 500000, maxMs: 4000 }), false);
+});
+
+/**
  * The board reported as a dead end (Game Mode: Random) actually has a legal
  * move — 8s (column 7) builds onto 9h (column 3) — so the "no moves" modal
  * correctly stays hidden. Captured as a regression so the detector keeps
@@ -261,8 +297,8 @@ test('reported random board with only a non-progress 8s->9h shuffle is a dead en
  * position that is genuinely stuck (verified: hasDeadEndMove === false AND
  * findReachableMove === false; the only remaining "move" is recycling the lone
  * waste card, which never creates a real play). The store must re-ask
- * checkDeadEnd after the move that reaches this position (see useGameStore.js
- * moveCard fix) so the modal fires.
+  * evaluateDeadEnd after the move that reaches this position (see useGameStore.js
+  * moveCard fix) so the modal fires.
  */
 function buildStuckAfter4c3hShuffleBoard() {
   const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });

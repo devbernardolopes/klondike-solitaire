@@ -6,7 +6,7 @@
 // real wall-clock timestamps) reflects only actively-focused play time.
 
 import { create } from 'zustand';
-import { hasAnyValidMove } from '../core/rules.js';
+import { hasDeadEndMove } from '../core/solver.js';
 import { useStatisticsStore } from './useStatisticsStore.js';
 
 // Hard limits that end the game. Reaching either freezes the session so only a
@@ -121,7 +121,11 @@ export const useStatsStore = create((set, get) => ({
    */
   startTimerIfValid: (state) => {
     if (get().startTime !== null) return;
-    if (!hasAnyValidMove(state)) return;
+    // Don't start the clock on a hopeless board: a position whose only "moves"
+    // are non-progress shuffles (e.g. sliding a whole pile onto an empty column)
+    // still reports hasAnyValidMove=true, but hasDeadEndMove correctly ignores
+    // them. We only begin counting once a real move exists or is reachable.
+    if (!hasDeadEndMove(state)) return;
     set({ startTime: Date.now() });
     // A new game's clock has just begun — count it as a game played. This fires
     // exactly once per game because we early-returned above when already running.
