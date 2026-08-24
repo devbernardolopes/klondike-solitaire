@@ -19,17 +19,23 @@ import { drawCardFace, drawCardBack } from './drawCard.js';
 export function createProceduralDeckRenderer({ size = 96, faceOptions } = {}) {
   const w = size;
   const h = Math.round(size * 1.4);
+  // Cache the encoded data-URL string (not the raw canvas), so repeated renders
+  // — e.g. every card remounting on a new deal — reuse the PNG instead of
+  // re-running the expensive toDataURL() encode each time.
   const cache = new Map();
 
-  /** @param {string} key */
-  function makeCanvas(key) {
-    if (cache.has(key)) return cache.get(key);
+  /** @param {string} key @param {(ctx: CanvasRenderingContext2D) => void} draw */
+  function render(key, draw) {
+    const hit = cache.get(key);
+    if (hit !== undefined) return hit;
     const canvas = document.createElement('canvas');
     canvas.width = w;
     canvas.height = h;
     const ctx = canvas.getContext('2d');
-    cache.set(key, { canvas, ctx });
-    return { canvas, ctx };
+    draw(ctx);
+    const url = canvas.toDataURL('image/png');
+    cache.set(key, url);
+    return url;
   }
 
   return {
@@ -42,23 +48,14 @@ export function createProceduralDeckRenderer({ size = 96, faceOptions } = {}) {
      */
     renderCard(suit, rank) {
       const key = `card:${suit}:${rank}`;
-      if (cache.has(key)) return cache.get(key).canvas.toDataURL('image/png');
-
-      const { canvas, ctx } = makeCanvas(key);
-      drawCardFace(ctx, suit, rank, w, h, faceOptions);
-      return canvas.toDataURL('image/png');
+      return render(key, (ctx) => drawCardFace(ctx, suit, rank, w, h, faceOptions));
     },
 
     /**
      * @returns {string}
      */
     renderBack() {
-      const key = 'back';
-      if (cache.has(key)) return cache.get(key).canvas.toDataURL('image/png');
-
-      const { canvas, ctx } = makeCanvas(key);
-      drawCardBack(ctx, w, h);
-      return canvas.toDataURL('image/png');
+      return render('back', (ctx) => drawCardBack(ctx, w, h));
     },
 
     dispose() {
