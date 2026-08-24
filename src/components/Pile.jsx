@@ -201,7 +201,7 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
       }}
       data-loc={loc}
     >
-      {kind === 'foundation' && cards.length === 0 ? (
+      {kind === 'foundation' && (
         <span
           aria-hidden="true"
           style={{
@@ -217,26 +217,26 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
             lineHeight: 1,
             userSelect: 'none',
             pointerEvents: 'none',
+            zIndex: 0,
           }}
         >
           A
         </span>
-      ) : (
-        cards.length === 0 && (
-          <span
-            style={{
-              position: 'absolute',
-              inset: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'rgba(255,255,255,0.4)',
-              fontSize: 12,
-            }}
-          >
-            {label ?? ''}
-          </span>
-        )
+      )}
+      {kind !== 'foundation' && cards.length === 0 && (
+        <span
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'rgba(255,255,255,0.4)',
+            fontSize: 12,
+          }}
+        >
+          {label ?? ''}
+        </span>
       )}
 
       {sourceCardIds.map((cid) => {
