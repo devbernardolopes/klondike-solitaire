@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
+import { useGameStore } from '../hooks/useGameStore.js';
 import { useModalBackdrop } from './modalBackdrop.js';
 import ConfirmModal from './ConfirmModal.jsx';
 
@@ -199,10 +200,12 @@ export default function StatisticsModal({ open, onClose }) {
         cancelText="Cancel"
         onConfirm={() => {
           setConfirmResetOpen(false);
-          // If a game is currently in progress (timer running), count it so
-          // Total Games Played resets to 1 instead of 0.
+          // If a game is currently in progress (timer running and not won),
+          // count it so Total Games Played resets to 1 instead of 0. A won (or
+          // hard-limit) game is over, so it must reset to 0.
           const live = useStatsStore.getState();
-          const inProgress = live.startTime !== null && !live.isOver;
+          const won = useGameStore.getState().isWon();
+          const inProgress = live.startTime !== null && !live.isOver && !won;
           reset(inProgress);
         }}
         onCancel={() => setConfirmResetOpen(false)}
