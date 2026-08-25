@@ -86,6 +86,8 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const setAnnounce = useUiStore((s) => s.setAnnounce);
   const gameOverDialogOpen = useUiStore((s) => s.gameOverDialogOpen);
   const setGameOverDialogOpen = useUiStore((s) => s.setGameOverDialogOpen);
+  const confirmNewGameDialogOpen = useUiStore((s) => s.confirmNewGameDialogOpen);
+  const setConfirmNewGameDialogOpen = useUiStore((s) => s.setConfirmNewGameDialogOpen);
 
   // True whenever any modal is open. Used to suppress the FAB reopen bug below.
   const anyModalOpen = useUiStore(isAnyModalOpen);
@@ -216,6 +218,12 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
     setGameOverDialogOpen(false);
     dealNewGame(lastNewGameMode);
   }, [setGameOverDialogOpen, dealNewGame, lastNewGameMode]);
+  const onConfirmNewGame = useCallback(() => {
+    setConfirmNewGameDialogOpen(false);
+    dealNewGame(lastNewGameMode);
+    play('deal');
+    setAnnounce('New game dealt');
+  }, [setConfirmNewGameDialogOpen, dealNewGame, lastNewGameMode, play, setAnnounce]);
 
   const btn = {
     padding: '6px 10px',
@@ -415,7 +423,7 @@ function ElapsedClock() {
         onCancel={onNoMovesCancel}
       />
 
-      <ConfirmModal
+       <ConfirmModal
         open={gameOverDialogOpen}
         title="Game Over"
         message={
@@ -427,6 +435,16 @@ function ElapsedClock() {
         hideCancel
         onConfirm={onGameOverConfirm}
         onCancel={closeGameOver}
+      />
+
+      <ConfirmModal
+        open={confirmNewGameDialogOpen}
+        title="Start a new game?"
+        message="The current game is in progress. Starting a new game will discard your current progress."
+        confirmText="New Game"
+        cancelText="Cancel"
+        onConfirm={onConfirmNewGame}
+        onCancel={() => setConfirmNewGameDialogOpen(false)}
       />
     </>
   );

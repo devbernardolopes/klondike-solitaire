@@ -131,6 +131,12 @@ export const useUiStore = create((set) => ({
   newGameDialogOpen: false,
   lastNewGameMode: 'winning', // 'winning' | 'random'
 
+  // "Start a new game?" confirmation dialog. Shown (via the `n` shortcut) only
+  // when a game is in progress (timer running) to avoid silently discarding
+  // progress. When the game is not started or has finished, `n` deals directly
+  // with no prompt.
+  confirmNewGameDialogOpen: false,
+
   // Options/settings modal (Theme / Deck / Hand).
   settingsDialogOpen: false,
 
@@ -174,6 +180,9 @@ export const useUiStore = create((set) => ({
 
   /** Show/hide the New Game mode-picker dialog. */
   setNewGameDialogOpen: (open) => set({ newGameDialogOpen: open }),
+
+  /** Show/hide the "Start a new game?" confirmation dialog. */
+  setConfirmNewGameDialogOpen: (open) => set({ confirmNewGameDialogOpen: open }),
 
   /** Show/hide the options/settings dialog. */
   setSettingsDialogOpen: (open) => set({ settingsDialogOpen: open }),
@@ -251,7 +260,8 @@ export const isAnyModalOpen = (s) =>
   s.gameOverDialogOpen ||
   s.seedInputDialogOpen ||
   s.winDialogOpen ||
-  s.dailyChallengeDialogOpen;
+  s.dailyChallengeDialogOpen ||
+  s.confirmNewGameDialogOpen;
 
 /**
  * Locate the pile a card currently lives in.
