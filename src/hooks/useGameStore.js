@@ -5,7 +5,7 @@
 import { create } from 'zustand';
 import { deal } from '../core/dealer.js';
 import { applyMove, undo as coreUndo } from '../core/moveEngine.js';
-import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, DEST_ORDER } from '../core/rules.js';
+import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, wouldGreedyComplete, DEST_ORDER } from '../core/rules.js';
 import { isWon } from '../core/winDetection.js';
 import { solveAsync, cancelAllSolves, STALE } from '../core/solverClient.js';
 import { SOLVER_TIMEOUT, hasDeadEndMove, compressWinningSequence, isDrainedFoundationDeadEnd } from '../core/solver.js';
@@ -845,6 +845,9 @@ export const useGameStore = create((set, get) => ({
     // in via `opts.seq` above. If this greedy peel happens to empty the board
     // (or reach a stock-empty, foundation-only-winnable state), the Board effect
     // re-evaluates and takes over the to-completion run with the banner.
+    // Show the banner whenever this peel will actually finish the game, so a
+    // double-click that completes the board still gets the "Autocomplete" label.
+    if (wouldGreedyComplete(state)) set({ autoCompletingToWin: true });
     runGreedy(get, set);
     return true;
   },

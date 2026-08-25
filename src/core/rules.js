@@ -7,6 +7,8 @@
 //  - Only the top card of a pile, or a valid descending-alternating run, can move.
 
 import { colorOf } from './Card.js';
+import { applyMove } from './moveEngine.js';
+import { isWon } from './winDetection.js';
 
 /**
  * Fixed priority order of all possible destination slots for an auto-move.
@@ -273,6 +275,35 @@ export function findFoundationMove(state) {
     }
   }
   return null;
+}
+
+/**
+ * Would a foundation-only greedy peel clear the board? Used by the manual
+ * auto-complete trigger to decide whether to show the "Autocomplete" banner —
+ * it should appear whenever a double-click will actually finish the game.
+ *
+ * Simulates the same peel `runGreedy` performs (repeatedly move the next
+ * available waste-top / face-up tableau-top to a foundation, which also flips
+ * any newly-exposed buried card) up to a safe cap, then reports whether the
+ * resulting state is won. Foundation moves are monotone (foundations only grow)
+ * and a flip only ever enables further moves, so the order of foundation moves
+ * is irrelevant — this simulation's `isWon` result exactly matches what the
+ * animated greedy run will produce.
+ *
+ * Crucially, the simulation never draws from or recycles the stock, so a board
+ * that can only be finished by touching the stock returns `false` here.
+ *
+ * @param {import('./GameState.js').GameState} state
+ * @returns {boolean}
+ */
+export function wouldGreedyComplete(state) {
+  let cur = state;
+  for (let i = 0; i < 400; i++) {
+    const fm = findFoundationMove(cur);
+    if (!fm) break;
+    cur = applyMove(cur, { type: 'moveCards', from: fm.from, to: fm.to, cardIds: [fm.cardId] });
+  }
+  return isWon(cur);
 }
 
 /**

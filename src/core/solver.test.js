@@ -11,7 +11,7 @@ import { createEmptyGameState } from './GameState.js';
 import { findWinningSequence, findReachableMove, hasDeadEndMove, getAutoFireSolveOptions, isDrainedFoundationDeadEnd, SOLVER_TIMEOUT, compressWinningSequence } from './solver.js';
 import { applyMove } from './moveEngine.js';
 import { isWon } from './winDetection.js';
-import { findFoundationMove, isAllTableauFaceUp, hasAnyValidMove } from './rules.js';
+import { findFoundationMove, isAllTableauFaceUp, hasAnyValidMove, wouldGreedyComplete } from './rules.js';
 
 // A state is "fully cleared" when every card sits on a foundation as a valid
 // 1..n same-suit run and the board (tableau/stock/waste) is empty. Used instead
@@ -797,5 +797,35 @@ test('a foundation-only winning sequence (allowTableau:false, allowDraw:false) c
     seq.every((m) => m.type === 'moveCards' && String(m.to).startsWith('foundation')),
     'foundation-only solve must contain only foundation moves (no draw/recycle)',
   );
+});
+
+test('wouldGreedyComplete: true when a foundation-only peel with buried cards finishes the game', () => {
+  const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
+  const s = createEmptyGameState();
+  s.foundations[0] = Array.from({ length: 13 }, (_, i) => c('spades', i + 1, `sp${i + 1}`));
+  s.foundations[1] = Array.from({ length: 13 }, (_, i) => c('clubs', i + 1, `cl${i + 1}`));
+  s.foundations[2] = Array.from({ length: 13 }, (_, i) => c('diamonds', i + 1, `d${i + 1}`));
+  s.foundations[3] = Array.from({ length: 10 }, (_, i) => c('hearts', i + 1, `h${i + 1}`));
+  // h11 (face-up, top) covers two buried hearts; the peel sends h11 to its
+  // foundation, flipping both buried cards which then also ascend. Stock/waste
+  // empty → foundation-only. (Tableau arrays are bottom→top, so the face-up
+  // covering card is last.)
+  s.tableau = [[], [], [], [], [], [c('hearts', 13, 'h13', false), c('hearts', 12, 'h12', false), c('hearts', 11, 'h11')], []];
+  assert.equal(s.stock.length, 0);
+  assert.equal(wouldGreedyComplete(s), true, 'a peel that clears the board must report completion');
+});
+
+test('wouldGreedyComplete: false when finishing would require drawing from the stock', () => {
+  const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
+  const s = createEmptyGameState();
+  s.foundations[0] = Array.from({ length: 13 }, (_, i) => c('spades', i + 1, `sp${i + 1}`));
+  s.foundations[1] = Array.from({ length: 13 }, (_, i) => c('clubs', i + 1, `cl${i + 1}`));
+  s.foundations[2] = Array.from({ length: 13 }, (_, i) => c('diamonds', i + 1, `d${i + 1}`));
+  s.foundations[3] = Array.from({ length: 10 }, (_, i) => c('hearts', i + 1, `h${i + 1}`));
+  // Same shape as the completing board, but the last heart sits in the (non-empty)
+  // stock, which a greedy peel never draws from — so it cannot finish.
+  s.tableau = [[], [], [], [], [], [c('hearts', 12, 'h12', false), c('hearts', 11, 'h11')], []];
+  s.stock = [c('hearts', 13, 'h13', false)];
+  assert.equal(wouldGreedyComplete(s), false, 'a board needing a stock draw must NOT report completion');
 });
 
