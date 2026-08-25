@@ -1,14 +1,14 @@
 // core/solver.test.js
 // Tests for the auto-complete solver: it must prove wins (including ones that
 // require tableau shuffles and stock cycling) and replay to a cleared board,
-// and report null when no win is provable. Also covers the isAutoCompletable
-// trigger gate.
+// and report null when no win is provable. Also covers the getAutoFireSolveOptions
+// trigger gate (when auto-complete-to-completion may auto-fire).
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createCard } from './Card.js';
 import { createEmptyGameState } from './GameState.js';
-import { findWinningSequence, findReachableMove, hasDeadEndMove, isAutoCompletable, isDrainedFoundationDeadEnd, SOLVER_TIMEOUT, compressWinningSequence } from './solver.js';
+import { findWinningSequence, findReachableMove, hasDeadEndMove, getAutoFireSolveOptions, isDrainedFoundationDeadEnd, SOLVER_TIMEOUT, compressWinningSequence } from './solver.js';
 import { applyMove } from './moveEngine.js';
 import { isWon } from './winDetection.js';
 import { findFoundationMove, isAllTableauFaceUp, hasAnyValidMove } from './rules.js';
@@ -51,10 +51,10 @@ test('obvious-win (all 52 cards, stock+waste empty): solver wins', () => {
   const seq = findWinningSequence(s);
   assert.ok(seq && seq.length > 0, 'expected a winning sequence');
   assert.equal(isWon(replay(s, seq)), true, 'replay must reach a full win');
-  assert.equal(isAutoCompletable(s), true);
+  assert.deepEqual(getAutoFireSolveOptions(s), { allowTableau: false, allowDraw: false });
 });
 
-test('isAutoCompletable is false while a tableau card is still face-down', () => {
+test('getAutoFireSolveOptions: a single face-down card that cannot be cleared (no covering play) does not auto-fire', () => {
   const c = (suit, rank, id) => createCard(suit, rank, { faceUp: true, id });
   const s = createEmptyGameState();
   s.foundations[0] = Array.from({ length: 13 }, (_, i) => c('spades', i + 1, `s${i + 1}`));
@@ -63,7 +63,57 @@ test('isAutoCompletable is false while a tableau card is still face-down', () =>
   s.foundations[3] = Array.from({ length: 10 }, (_, i) => c('hearts', i + 1, `h${i + 1}`));
   s.tableau = [[c('hearts', 11, 'hJ')], [c('hearts', 12, 'hQ')], [c('hearts', 13, 'hK')], [], [], [], []];
   s.tableau[0][0] = { ...s.tableau[0][0], faceUp: false };
-  assert.equal(isAutoCompletable(s), false);
+  assert.equal(getAutoFireSolveOptions(s), null);
+});
+
+test('getAutoFireSolveOptions: exactly one face-down card covered by a playable face-up card (waste empty) auto-fires', () => {
+  const c = (suit, rank, id) => createCard(suit, rank, { faceUp: true, id });
+  const s = createEmptyGameState();
+  s.foundations[0] = Array.from({ length: 13 }, (_, i) => c('spades', i + 1, `sp${i + 1}`));
+  s.foundations[1] = Array.from({ length: 13 }, (_, i) => c('clubs', i + 1, `cl${i + 1}`));
+  s.foundations[2] = Array.from({ length: 13 }, (_, i) => c('diamonds', i + 1, `d${i + 1}`));
+  s.foundations[3] = Array.from({ length: 8 }, (_, i) => c('hearts', i + 1, `h${i + 1}`));
+  // Full 52-card board: the only buried card is h10, covered by h9 (lower rank, a
+  // valid descending placement). Moving h9 to its foundation flips h10, which then
+  // also ascends; the remaining hearts (h11-h13) sit face-up elsewhere. Foundation-
+  // only, no column relocation, so it must fire.
+  s.tableau = [
+    [c('hearts', 10, 'h10', false), c('hearts', 9, 'h9')],
+    [c('hearts', 11, 'h11')],
+    [c('hearts', 12, 'h12')],
+    [c('hearts', 13, 'h13')],
+    [], [], [],
+  ];
+  assert.equal(s.waste.length, 0);
+  assert.deepEqual(getAutoFireSolveOptions(s), { allowTableau: false, allowDraw: false });
+});
+
+test('getAutoFireSolveOptions: exactly one face-down card but waste still has cards does NOT auto-fire', () => {
+  const c = (suit, rank, id) => createCard(suit, rank, { faceUp: true, id });
+  const s = createEmptyGameState();
+  s.foundations[0] = Array.from({ length: 13 }, (_, i) => c('spades', i + 1, `sp${i + 1}`));
+  s.foundations[1] = Array.from({ length: 13 }, (_, i) => c('clubs', i + 1, `cl${i + 1}`));
+  s.foundations[2] = Array.from({ length: 13 }, (_, i) => c('diamonds', i + 1, `d${i + 1}`));
+  s.foundations[3] = Array.from({ length: 8 }, (_, i) => c('hearts', i + 1, `h${i + 1}`));
+  s.tableau = [[c('hearts', 10, 'h10', false), c('hearts', 9, 'h9')], [], [], [], [], [], []];
+  s.waste = [c('clubs', 1, 'cA')];
+  assert.equal(getAutoFireSolveOptions(s), null);
+});
+
+test('getAutoFireSolveOptions: more than one face-down card does NOT auto-fire', () => {
+  const c = (suit, rank, id) => createCard(suit, rank, { faceUp: true, id });
+  const s = createEmptyGameState();
+  s.foundations[0] = Array.from({ length: 13 }, (_, i) => c('spades', i + 1, `sp${i + 1}`));
+  s.foundations[1] = Array.from({ length: 13 }, (_, i) => c('clubs', i + 1, `cl${i + 1}`));
+  s.foundations[2] = Array.from({ length: 13 }, (_, i) => c('diamonds', i + 1, `d${i + 1}`));
+  s.foundations[3] = Array.from({ length: 8 }, (_, i) => c('hearts', i + 1, `h${i + 1}`));
+  // Two buried cards, both coverable — but >1 hidden must never auto-fire.
+  s.tableau = [
+    [c('hearts', 10, 'h10', false), c('hearts', 9, 'h9')],
+    [c('clubs', 10, 'c10', false), c('clubs', 9, 'c9')],
+    [], [], [], [], [],
+  ];
+  assert.equal(getAutoFireSolveOptions(s), null);
 });
 
 test('winnable deal with cards still in stock: solver models drawing', () => {
@@ -126,7 +176,7 @@ test('non-winnable state returns null (not a throw)', () => {
   ];
   const seq = findWinningSequence(s, { maxNodes: 5000 });
   assert.equal(seq, null);
-  assert.equal(isAutoCompletable(s), false);
+  assert.equal(getAutoFireSolveOptions(s), null);
 });
 
 test('a non-progress relocation (King->empty) is now a dead end (progress semantics)', () => {
@@ -593,7 +643,7 @@ test('solver flips the last face-down card when the only way to expose it needs 
 
 /**
  * Hard-lock tests for auto-complete: with `allowTableau: false` the solver must
- * never plan a column-to-column shuffle, and the auto-trigger (isAutoCompletable)
+ * never plan a column-to-column shuffle, and the auto-trigger (getAutoFireSolveOptions)
  * must only fire when a foundation-only win is provable from an empty stock.
  */
 
@@ -651,7 +701,7 @@ test('hard-lock: a win reachable only by drawing stock still needs zero tableau 
   assert.equal(hadTableauMove, false, 'line must contain zero tableau-to-tableau moves');
 });
 
-test('isAutoCompletable: false while stock is non-empty even if fully face-up', () => {
+test('getAutoFireSolveOptions: false while stock is non-empty even if fully face-up', () => {
   const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
   const s = createEmptyGameState();
   s.foundations[0] = Array.from({ length: 13 }, (_, i) => c('spades', i + 1, `sp${i + 1}`));
@@ -660,10 +710,10 @@ test('isAutoCompletable: false while stock is non-empty even if fully face-up', 
   s.foundations[3] = Array.from({ length: 10 }, (_, i) => c('hearts', i + 1, `h${i + 1}`));
   s.tableau = [[c('hearts', 11, 'hJ')], [c('hearts', 12, 'hQ')], [c('hearts', 13, 'hK')], [], [], [], []];
   s.stock = [c('clubs', 1, 'cA', false)];
-  assert.equal(isAutoCompletable(s), false, 'a non-empty stock must block the auto-trigger');
+  assert.equal(getAutoFireSolveOptions(s), null, 'a non-empty stock must block the auto-trigger');
 });
 
-test('isAutoCompletable: true when stock empty and a foundation-only win is provable', () => {
+test('getAutoFireSolveOptions: fires when stock empty and a foundation-only win is provable', () => {
   const c = (suit, rank, id) => createCard(suit, rank, { faceUp: true, id });
   const s = createEmptyGameState();
   s.foundations[0] = Array.from({ length: 13 }, (_, i) => c('spades', i + 1, `sp${i + 1}`));
@@ -672,10 +722,10 @@ test('isAutoCompletable: true when stock empty and a foundation-only win is prov
   s.foundations[3] = Array.from({ length: 10 }, (_, i) => c('hearts', i + 1, `h${i + 1}`));
   s.waste = [c('hearts', 11, 'hJ')];
   s.tableau = [[c('hearts', 12, 'hQ')], [c('hearts', 13, 'hK')], [], [], [], [], []];
-  assert.equal(isAutoCompletable(s), true, 'foundation-only win with empty stock should auto-fire');
+  assert.deepEqual(getAutoFireSolveOptions(s), { allowTableau: false, allowDraw: false }, 'foundation-only win with empty stock should auto-fire');
 });
 
-test('isAutoCompletable: false when the foundation-only win needs a tableau relocation', () => {
+test('getAutoFireSolveOptions: false when the foundation-only win needs a tableau relocation', () => {
   const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
   const s = createEmptyGameState();
   s.foundations[0] = Array.from({ length: 13 }, (_, i) => c('spades', i + 1, `sp${i + 1}`));
@@ -690,6 +740,6 @@ test('isAutoCompletable: false when the foundation-only win needs a tableau relo
     [c('clubs', 13, 'cK')],
     [], [],
   ];
-  assert.equal(isAutoCompletable(s), false, 'a board needing a tableau shuffle must NOT auto-fire');
+  assert.equal(getAutoFireSolveOptions(s), null, 'a board needing a tableau shuffle must NOT auto-fire');
 });
 

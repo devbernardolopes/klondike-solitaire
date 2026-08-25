@@ -18,6 +18,7 @@ import { useFoundationParticles } from '../render/animation/useFoundationParticl
 import { playWinCascade } from '../render/animation/winCascade.js';
 import { isWon } from '../core/winDetection.js';
 import { solveAsync, STALE } from '../core/solverClient.js';
+import { getAutoFireSolveOptions } from '../core/solver.js';
 import Pile from './Pile.jsx';
 import { CardFace } from './CardView.jsx';
 
@@ -209,14 +210,23 @@ export default function Board() {
   }, [won]);
 
   // Auto-trigger auto-complete once a clean, zero-column-shuffle win is provable.
-  // The hard lock: only fire when the STOCK is empty (waste may still have cards)
-  // AND the solver can prove a full win using FOUNDATION moves only — i.e. no
-  // tableau→tableau relocation and NO recycling the waste back into the stock is
-  // required. If a buried card could only be exposed by parking a run on another
-  // column, we do NOT auto-fire and leave the board to the player. The search
-  // runs in a Web Worker, so it never blocks the main thread. Skips while a run
-  // is already animating (autoCompleting) and discards stale results when the
-  // state changes before the worker replies.
+  // The trigger condition and the winning line are decided by core
+  // `getAutoFireSolveOptions`: it returns solver options (always
+  // foundation-only / no-recycle) when the board is in an "obviously
+  // finishable" state — stock empty AND (tableau fully revealed, OR exactly one
+  // face-down card with an empty waste) — and otherwise returns null so the
+  // board is left to the player. We then prove the win off-thread (Web Worker,
+  // never blocks) and, if proven, hand the EXACT sequence back to the store via
+  // autoComplete(true, { seq }) so it runs without re-solving (which would
+  // otherwise risk re-introducing a recycle). Skips while a run is already
+  // animating (autoCompleting) and discards stale results when the state changes
+  // before the worker replies.
+  //
+  // `autoCompleting` is in the deps so that when a manual greedy double-click
+  // peel finishes and releases the lock, this effect re-runs: if the peeled
+  // board has now reached a fireable state, the to-completion run takes over
+  // (with the banner) — per the rule that the banner appears on the trigger, not
+  // necessarily on the user's double-click.
   useEffect(() => {
     if (won) return;
     if (useGameStore.getState().autoCompleting) return;
@@ -224,13 +234,12 @@ export default function Board() {
     // "all face-up"), so we'd start an auto-complete on a state that is about
     // to be replaced by the real deal — which would throw mid-sequence.
     if (state.tableau.every((p) => p.length === 0) && state.foundations.every((p) => p.length === 0)) return;
-    // Hard gate: the stock must be empty (waste cards may peel straight to
-    // foundations), and the win must need no tableau relocation and no recycle.
-    if (state.stock.length !== 0) return;
+    const fireOpts = getAutoFireSolveOptions(state);
+    if (!fireOpts) return;
     const snapshot = state;
     let solveResult;
     try {
-      solveResult = solveAsync(state, { allowTableau: false, allowDraw: false, maxNodes: 200000, maxMs: 2000 });
+      solveResult = solveAsync(state, { ...fireOpts, maxNodes: 200000, maxMs: 2000 });
     } catch {
       // If the solver is unavailable, simply don't auto-fire; the board stays
       // interactive and the player can trigger auto-complete manually.
@@ -242,11 +251,11 @@ export default function Board() {
       if (useGameStore.getState().state !== snapshot) return;
       if (Array.isArray(seq) && seq.length > 0) {
         setAnnounce('Auto-completing to foundations');
-        useGameStore.getState().autoComplete(true);
+        useGameStore.getState().autoComplete(true, { seq });
       }
     });
     return () => cancel();
-  }, [state, won]);
+  }, [state, won, autoCompleting]);
 
   // Global keyboard shortcuts (single-letter, no modifiers). Cards and piles
   // handle their own Enter/Space activation, so these never conflict with them.

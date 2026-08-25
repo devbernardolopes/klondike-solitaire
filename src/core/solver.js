@@ -499,22 +499,36 @@ export function isDrainedFoundationDeadEnd(state) {
 }
 
 /**
- * Should the game auto-fire auto-complete right now? True only when:
- *   - the stock is empty (waste may still hold cards, but they must be peelable
- *     straight to the foundations without recycling back into the stock), AND
- *   - a full win is provable using foundation moves only — i.e. NO tableau→tableau
- *     relocation is required. The auto-complete hard-lock forbids any column-to-column
- *     shuffle, so we must prove a win that needs none.
+ * Decide whether auto-complete-to-completion should auto-fire for `state`, and if
+ * so, with which solver options. Returns the options object (always
+ * `{ allowTableau: false, allowDraw: false }` — foundation moves only, never a
+ * column-to-column relocation and never a stock recycle) when the board is in an
+ * "obviously finishable" state, or `null` when it must NOT auto-fire.
  *
- * This deliberately drops the old "all tableau face-up" gate: a fully-face-up
- * board whose only win requires parking a run on another column is NOT
- * auto-completable and is left to the player.
+ * Firing is permitted only when the STOCK is empty (so no waste→stock recycle is
+ * ever required) AND one of:
+ *   - hidden === 0: the tableau is fully revealed, OR
+ *   - hidden === 1 AND the waste is ALSO empty: exactly one face-down card
+ *     remains. Because the stock and waste are both empty, that single buried card
+ *     is always covered by a face-up card of a higher rank and a different suit;
+ *     moving that covering card to its foundation flips the buried card, which
+ *     then also ascends — so a foundation-only solve suffices and no column
+ *     relocation is ever needed.
+ *
+ * Any other shape (more than one hidden card, or exactly one hidden card but the
+ * waste still holds cards) returns `null`: a column shuffle would be required to
+ * expose the buried card(s), which the auto-complete hard-lock forbids.
  *
  * @param {import('./GameState.js').GameState} state
- * @returns {boolean}
+ * @returns {{ allowTableau: boolean, allowDraw: boolean } | null}
  */
-export function isAutoCompletable(state) {
-  if (isWon(state)) return false;
-  if (state.stock.length !== 0) return false;
-  return Array.isArray(findWinningSequence(state, { allowTableau: false, allowDraw: false }));
+export function getAutoFireSolveOptions(state) {
+  if (isWon(state)) return null;
+  if (state.stock.length !== 0) return null;
+  const hidden = state.tableau.reduce((n, p) => n + p.filter((c) => !c.faceUp).length, 0);
+  const eligible = hidden === 0 || (hidden === 1 && state.waste.length === 0);
+  if (!eligible) return null;
+  return Array.isArray(findWinningSequence(state, { allowTableau: false, allowDraw: false }))
+    ? { allowTableau: false, allowDraw: false }
+    : null;
 }

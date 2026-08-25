@@ -803,9 +803,16 @@ export const useGameStore = create((set, get) => ({
    * Only one auto-complete may run at a time; any user action (deal / move /
    * undo) cancels the in-progress animation via clearAutoCompleteTimer.
    *
+   * @param {boolean} [force]  bypass the in-flight-animation guard (used by the
+   *   automatic trigger, which reaches the state via an animating move).
+   * @param {{ seq?: Array<object> }} [opts]  when `seq` (a proven winning move
+   *   list) is supplied, the store runs THAT sequence directly instead of
+   *   re-solving — this is how the Board auto-trigger hands over the line it
+   *   already proved (so the no-recycle / no-column-shuffle guarantees it proved
+   *   are preserved, and we don't pay for a second worker solve).
    * @returns {boolean} whether at least one move was started
    */
-  autoComplete: (force = false) => {
+  autoComplete: (force = false, opts = {}) => {
     useUiStore.getState().clearHints();
     if (autoCompleteTimer !== null) return false;
     if (isWon(get().state) || useStatsStore.getState().isOver) return false;
@@ -816,6 +823,17 @@ export const useGameStore = create((set, get) => ({
     if (!force && useUiStore.getState().animatingCards.size > 0) return false;
 
     const state = get().state;
+
+    // Fast path: a pre-proven winning sequence was handed in (the auto-trigger
+    // already proved it with the foundation-only / no-recycle solver options).
+    // Run it directly as the "to completion" run — this is the ONLY path that
+    // sets `autoCompletingToWin`, so the centered banner appears for the whole
+    // winning line. No re-solve, no chance of a recycle slipping back in.
+    if (opts && Array.isArray(opts.seq)) {
+      set({ autoCompleting: true, autoCompletingToWin: true });
+      runWinSequence(get, set, compressWinningSequence(opts.seq, state));
+      return true;
+    }
 
     // Hard lock: auto-complete must never shuffle cards between tableau columns.
     // Prove a full win using FOUNDATION moves only (draw/recycle of stock/waste
@@ -832,7 +850,7 @@ export const useGameStore = create((set, get) => ({
     // order), so peel the safe foundation moves instantly via the greedy loop.
     // This skips the ~1s search delay on a fresh deal / mid-game double-tap and
     // matches the documented autoComplete gating. The solver is only worth
-    // running once the tableau is fully revealed (see isAutoCompletable).
+    // running once the tableau is fully revealed (see getAutoFireSolveOptions).
     if (!isAllTableauFaceUp(state)) {
       runGreedy(get, set);
       return true;
