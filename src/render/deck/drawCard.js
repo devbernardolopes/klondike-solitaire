@@ -101,30 +101,6 @@ export function drawCardFace(ctx, suit, rank, w, h, { colorFor = colorOf, backgr
 }
 
 /**
- * Render a single suit glyph as a transparent data URL, sized `size` x `size`.
- * Used by the foundation particle burst so each particle shows the exact deck-
- * colored suit symbol. Has no dependency on a card face, so it composes with
- * any renderer's own color resolver.
- * @param {string} suit  'hearts'|'diamonds'|'clubs'|'spades'
- * @param {(suit: string) => string} [colorFor]  color resolver; defaults to the
- *        classic red/black scheme.
- * @param {number} [size]  output square side in px (default 64).
- * @returns {string} a `data:image/png` URL
- */
-export function drawSuitGlyphDataURL(suit, colorFor = colorOf, size = 64) {
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  ctx.clearRect(0, 0, size, size);
-  const color = colorFor(suit);
-  const glyph = SUIT_GLYPH[suit];
-  // Glyph fills most of the square; slightly above center reads better visually.
-  drawGlyph(ctx, glyph, color, size / 2, size / 2, Math.round(size * 0.82), false);
-  return canvas.toDataURL('image/png');
-}
-
-/**
  * Draw a card back (repeating diagonal motif) into the given context, filling
  * the rectangle [0,0,w,h].
  * @param {CanvasRenderingContext2D} ctx

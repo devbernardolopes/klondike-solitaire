@@ -27,6 +27,7 @@ import { drainParticles } from './particleBridge.js';
 import { useGameStore } from '../../hooks/useGameStore.js';
 import { useSettingsStore } from '../../hooks/useSettingsStore.js';
 import { getDeck } from '../deck/deckRegistry.js';
+import { SUIT_GLYPH } from '../deck/drawCard.js';
 
 let layerEl = null;
 
@@ -80,13 +81,14 @@ function spawnBurst(layer, event, cfg) {
   const origin = locCenter(event.loc);
   if (!origin) return;
 
-  let url;
+  let color;
   try {
-    url = getDeck(event.deck).renderSuit(event.suit);
+    color = getDeck(event.deck).suitColor(event.suit) || '#ffffff';
   } catch {
     return;
   }
-  if (!url) return;
+  const glyph = SUIT_GLYPH[event.suit];
+  if (!glyph) return;
 
   for (let i = 0; i < cfg.count; i++) {
     if (activeCount >= MAX_PARTICLES) {
@@ -101,8 +103,12 @@ function spawnBurst(layer, event, cfg) {
 
     let sprite;
     try {
-      sprite = document.createElement('img');
-      sprite.src = url;
+      // A DOM text glyph (not a canvas/data-URL <img>) paints reliably under
+      // GSAP transforms on every mobile engine, needs no GPU image layer, and
+      // uses no canvas/toDataURL/image-decode — eliminating the mobile crash
+      // and the invisible-particle paint bug. Intentionally NO `will-change`.
+      sprite = document.createElement('div');
+      sprite.textContent = glyph;
       sprite.style.position = 'absolute';
       sprite.style.left = `${origin.x}px`;
       sprite.style.top = `${origin.y}px`;
@@ -110,6 +116,13 @@ function spawnBurst(layer, event, cfg) {
       sprite.style.height = `${cfg.size}px`;
       sprite.style.marginLeft = `${-cfg.size / 2}px`;
       sprite.style.marginTop = `${-cfg.size / 2}px`;
+      sprite.style.color = color;
+      sprite.style.fontSize = `${cfg.size}px`;
+      sprite.style.fontWeight = 700;
+      sprite.style.lineHeight = '1';
+      sprite.style.textAlign = 'center';
+      sprite.style.userSelect = 'none';
+      sprite.style.pointerEvents = 'none';
       layer.appendChild(sprite);
     } catch {
       continue;
