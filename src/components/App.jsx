@@ -16,6 +16,7 @@ import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
 import { useSeedStore } from '../hooks/useSeedStore.js';
+import { useAuthStore } from '../hooks/useAuthStore.js';
 import { MotionDebugPanel } from '../render/animation/MotionDebugPanel.jsx';
 
 export default function App() {
@@ -35,6 +36,7 @@ export default function App() {
   const state = useGameStore((s) => s.state);
 
   useEffect(() => {
+    useAuthStore.getState().init();
     init();
     initStats();
     initSeeds();
