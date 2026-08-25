@@ -4,7 +4,10 @@
 // db helpers so values survive reloads and aggregate across sessions.
 
 import { create } from 'zustand';
-import { loadStats, addWin, addGamePlayed, recordLoss, resetStats } from '../db/stats.js';
+import { loadStats, addWin, addGamePlayed, recordLoss as dbRecordLoss, resetStats } from '../db/stats.js';
+// Imported lazily (only used inside finalizeGame at call-time) so the circular
+// reference with useStatsStore never resolves during module evaluation.
+import { useStatsStore } from './useStatsStore.js';
 
 const EMPTY = {
   totalGamesPlayed: 0,
@@ -47,13 +50,24 @@ export const useStatisticsStore = create((set, get) => ({
   },
 
   /**
-   * Finalize the game that is about to be replaced by a new deal. If the game
-   * was not won, it is a loss: the current streak is broken (best is kept).
-   * Either way, clear the won flag for the next game.
+   * Finalize the game that is about to be replaced by a new deal. A loss is
+   * recorded (current streak broken, best kept) ONLY when the replaced game was
+   * abandoned mid-play — i.e. its timer was running and it had neither been won
+   * nor already ended by a limit. A game that was never started isn't a real
+   * game, and a game that already ended (win or limit) had its outcome recorded
+   * elsewhere, so neither should reset the streak here. The won flag is always
+   * cleared for the next game.
    */
   finalizeGame: async () => {
-    if (!get().gameWon) {
-      const stats = await recordLoss();
+    const { gameWon } = get();
+    if (gameWon) {
+      set({ gameWon: false });
+      return;
+    }
+    const s = useStatsStore.getState();
+    const inProgress = s.startTime !== null && s.endTime === null && !s.isOver;
+    if (inProgress) {
+      const stats = await dbRecordLoss();
       set({ stats });
     }
     set({ gameWon: false });

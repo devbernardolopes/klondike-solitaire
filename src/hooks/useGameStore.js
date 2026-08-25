@@ -477,6 +477,8 @@ export const useGameStore = create((set, get) => ({
    */
   dealWithSeed: (seed) => {
     cancelAutoComplete(set);
+    // Finalize the game we're replacing: a non-win in progress ends the streak.
+    useStatisticsStore.getState().finalizeGame();
     useUiStore.getState().setNoMovesDialogOpen(false);
     useUiStore.getState().clearHints();
     cancelWinCascade();
@@ -500,6 +502,8 @@ export const useGameStore = create((set, get) => ({
     const seed = seedForDate(date);
     if (seed == null) return false;
     cancelAutoComplete(set);
+    // Finalize the game we're replacing: a non-win in progress ends the streak.
+    useStatisticsStore.getState().finalizeGame();
     useUiStore.getState().setNoMovesDialogOpen(false);
     useUiStore.getState().clearHints();
     cancelWinCascade();
@@ -525,6 +529,8 @@ export const useGameStore = create((set, get) => ({
     const i = Math.max(0, Math.min(Number.isFinite(index) ? Math.floor(index) : 0, ev.seeds.length - 1));
     const seed = ev.seeds[i];
     cancelAutoComplete(set);
+    // Finalize the game we're replacing: a non-win in progress ends the streak.
+    useStatisticsStore.getState().finalizeGame();
     useUiStore.getState().setNoMovesDialogOpen(false);
     useUiStore.getState().clearHints();
     cancelWinCascade();
