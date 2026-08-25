@@ -9,9 +9,39 @@
 // Fixed fallback epoch (UTC ms) for 2026-01-01T00:00:00Z.
 const FALLBACK_UTC = Date.UTC(2026, 0, 1);
 
+// Cache of the last successfully-fetched server "now" (UTC ms), so callers can
+// resolve an authoritative date synchronously on repeat opens without paying the
+// network round-trip every time. Still sourced only from the server; the device
+// clock is never used as a value.
+let cachedServerNow = null;
+
 /** @returns {number} the hard-fallback epoch (UTC ms). */
 export function getFallbackUTC() {
   return FALLBACK_UTC;
+}
+
+/**
+ * Synchronously return the last known authoritative "now" (UTC ms), or null when
+ * the server time has not yet been fetched this session. Callers should fall
+ * back to {@link getFallbackUTC()} when this returns null.
+ * @returns {number|null}
+ */
+export function getCachedServerNow() {
+  return cachedServerNow;
+}
+
+/**
+ * Fire-and-forget refresh of the cached server time. Resolves the network call
+ * in the background and updates the cache; never rejects. Callers that need the
+ * value synchronously should read {@link getCachedServerNow()} immediately and
+ * treat this only as a later refinement.
+ * @param {number} [timeoutMs=4000]
+ * @returns {Promise<number>}
+ */
+export async function refreshServerNow(timeoutMs = 4000) {
+  const ms = await fetchServerNow(timeoutMs);
+  if (Number.isFinite(ms)) cachedServerNow = ms;
+  return ms;
 }
 
 /**
@@ -58,6 +88,7 @@ export async function fetchServerNow(timeoutMs = 4000) {
     }
     const ms = Date.UTC(data.year, data.month - 1, data.day);
     if (!Number.isFinite(ms)) return FALLBACK_UTC;
+    cachedServerNow = ms;
     return ms;
   } catch {
     // Network failure, abort, parse error — anything. Never trust the device.

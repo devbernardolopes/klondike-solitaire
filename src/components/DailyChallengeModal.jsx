@@ -24,9 +24,9 @@ import {
   dateToUTC,
   seedForDate,
 } from '../core/dailyChallenge.js';
-import { fetchServerNow, utcToYMD, getFallbackUTC } from '../utils/serverTime.js';
+import { utcToYMD, getFallbackUTC, getCachedServerNow, refreshServerNow } from '../utils/serverTime.js';
 import { loadAllDailyResults } from '../db/dailyResults.js';
-import { loadLastDailySelection, saveLastDailySelection } from '../db/dailySelection.js';
+import { loadLastDailySelection, loadLastDailySelectionSync, saveLastDailySelection } from '../db/dailySelection.js';
 import { formatTime } from '../utils/formatTime.js';
 
 const MONTH_NAMES = [
@@ -89,6 +89,13 @@ export default function DailyChallengeModal() {
 
   const panelRef = useRef(null);
   const userPicked = useRef(false);
+  // Mirror of `selected` (state) for reads inside async callbacks without
+  // re-running effects; and the open-time {today, selected} pair so a background
+  // server-time refresh can tell whether selection was still "today-bound".
+  const selectedRef = useRef(null);
+  const initialRef = useRef({ today: null, selected: null });
+
+  const applySelected = (v) => { selectedRef.current = v; setSelected(v); };
 
   const [today, setToday] = useState(fallbackDate);
   const [viewY, setViewY] = useState(() => utcToYMD(getFallbackUTC()).y);
@@ -108,47 +115,75 @@ export default function DailyChallengeModal() {
 
   const backdrop = useModalBackdrop(onDismiss);
 
-  // Load authoritative "today", completed-day results, and the last-selected day
-  // on open. Pre-selects the persisted last day when it differs from today
-  // (otherwise defaults to today), and navigates the grid to that month.
+  // Synchronously resolve the initial selection on open — BEFORE any network
+  // round-trip — so the calendar is interactive immediately and a quick "Play"
+  // cannot land on a stale (e.g. not-yet-advanced) day. Uses the cached server
+  // "today" (or the hard fallback) and the cached last-selection, both available
+  // synchronously; the network refresh below only refines these afterward.
   useEffect(() => {
     if (!open) return undefined;
     userPicked.current = false;
+
+    const nowMs = getCachedServerNow() != null ? getCachedServerNow() : getFallbackUTC();
+    const { y, m, d } = utcToYMD(nowMs);
+    const todayStr = toDateStr(y, m, d);
+    setToday(todayStr);
+    setResults({}); // clear stale completion marks; refilled by async load below
+
+    // A preferred initial date (e.g. advanced to the next day after a daily win)
+    // takes precedence and is consumed immediately. It was already validated as
+    // within the supported window at the time it was set, so we trust it.
+    const preferred = useUiStore.getState().dailyChallengeInitialDate;
+    let initial;
+    if (preferred) {
+      useUiStore.getState().setDailyChallengeInitialDate(null); // consume now
+      if (withinSupported(preferred)) initial = preferred;
+    }
+    if (!initial) {
+      const lastSel = loadLastDailySelectionSync();
+      initial = (lastSel && lastSel !== todayStr) ? lastSel : todayStr;
+    }
+    if (!withinSupported(initial)) initial = todayStr;
+
+    const ini = utcToYMD(dateToUTC(initial));
+    setViewY(ini.y);
+    setViewM(ini.m);
+    applySelected(initial);
+    initialRef.current = { today: todayStr, selected: initial };
+    return undefined;
+  }, [open]);
+
+  // Background refinement on open: load completed-day results and refresh the
+  // authoritative "today" from the server. These do NOT block the selection —
+  // they only fill completion marks and, when the player hasn't manually picked
+  // and the selection was still bound to the (possibly stale) open-time "today",
+  // nudge selection to the corrected today.
+  useEffect(() => {
+    if (!open) return undefined;
     let cancelled = false;
+
     Promise.all([
       loadAllDailyResults(),
       loadLastDailySelection(),
-      fetchServerNow(),
-    ]).then(([rows, lastSel, ms]) => {
+    ]).then(([rows]) => {
       if (cancelled) return;
       const map = {};
       rows.forEach((r) => { map[r.date] = r; });
       setResults(map);
+    });
+
+    refreshServerNow().then((ms) => {
+      if (cancelled) return;
       const { y, m, d } = utcToYMD(ms);
       const todayStr = toDateStr(y, m, d);
       setToday(todayStr);
-      if (userPicked.current) return;
-      // A preferred initial date (e.g. advanced after a daily win) takes
-      // precedence over the persisted last-selection — but only when it is a
-      // *selectable* day. If it is disabled (out of the supported window or in
-      // the future), we do nothing and keep the current day selected.
-      const preferred = useUiStore.getState().dailyChallengeInitialDate;
-      let initial;
-      if (preferred) {
-        useUiStore.getState().setDailyChallengeInitialDate(null); // consume it
-        if (withinSupported(preferred) && !isAfter(preferred, todayStr)) {
-          initial = preferred;
-        }
-      }
-      if (!initial) {
-        initial = (lastSel && lastSel !== todayStr) ? lastSel : todayStr;
-      }
-      if (!withinSupported(initial)) initial = todayStr;
-      const ini = utcToYMD(dateToUTC(initial));
-      setViewY(ini.y);
-      setViewM(ini.m);
-      setSelected(initial);
+      const wasTodayBound =
+        !userPicked.current &&
+        selectedRef.current === initialRef.current.today &&
+        initialRef.current.selected === initialRef.current.today;
+      if (wasTodayBound) applySelected(todayStr);
     });
+
     return () => { cancelled = true; };
   }, [open]);
 
@@ -178,7 +213,7 @@ export default function DailyChallengeModal() {
     const ini = utcToYMD(dateToUTC(today));
     setViewY(ini.y);
     setViewM(ini.m);
-    setSelected(today);
+    applySelected(today);
     userPicked.current = true;
   };
 
@@ -215,7 +250,7 @@ export default function DailyChallengeModal() {
           key={d}
           type="button"
           className={classes.join(' ')}
-          onClick={() => { userPicked.current = true; setSelected(dateStr); }}
+          onClick={() => { userPicked.current = true; applySelected(dateStr); }}
           aria-pressed={isSel}
           aria-label={`Day ${d}${completed ? ' (completed)' : ''}${isToday ? ' (today)' : ''}`}
         >
