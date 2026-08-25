@@ -15,6 +15,7 @@ const DEFAULTS = {
   deck: 'procedural',
   handedness: 'right',
   highlightCard: true,
+  particles: true,
 };
 
 export const useSettingsStore = create((set, get) => ({
@@ -22,6 +23,7 @@ export const useSettingsStore = create((set, get) => ({
   deck: DEFAULTS.deck,
   handedness: DEFAULTS.handedness,
   highlightCard: DEFAULTS.highlightCard,
+  particles: DEFAULTS.particles,
   loaded: false,
 
   /**
@@ -29,14 +31,15 @@ export const useSettingsStore = create((set, get) => ({
    * keys fall back to DEFAULTS. Activates the loaded (or default) deck.
    */
   init: async () => {
-    const [theme, deck, handedness, highlightCard] = await Promise.all([
+    const [theme, deck, handedness, highlightCard, particles] = await Promise.all([
       getSetting('theme', DEFAULTS.theme),
       getSetting('deck', DEFAULTS.deck),
       getSetting('handedness', DEFAULTS.handedness),
       getSetting('highlightCard', DEFAULTS.highlightCard),
+      getSetting('particles', DEFAULTS.particles),
     ]);
     setActiveDeck(deck);
-    set({ theme, deck, handedness, highlightCard, loaded: true });
+    set({ theme, deck, handedness, highlightCard, particles, loaded: true });
   },
 
   /**
@@ -70,5 +73,13 @@ export const useSettingsStore = create((set, get) => ({
   setHighlightCard: (highlightCard) => {
     set({ highlightCard });
     setSetting('highlightCard', highlightCard);
+  },
+
+  /**
+   * @param {boolean} particles  enable the foundation suit-burst particle effect
+   */
+  setParticles: (particles) => {
+    set({ particles });
+    setSetting('particles', particles);
   },
 }));

@@ -25,6 +25,8 @@ import HelpModal from './HelpModal.jsx';
  * @param {(h: 'left'|'right') => void} props.onHandednessChange
  * @param {boolean} props.highlightCard  draw the focus outline on the focused card
  * @param {(v: boolean) => void} props.onHighlightCardChange
+ * @param {boolean} props.particles  enable the foundation suit-burst effect
+ * @param {(v: boolean) => void} props.onParticlesChange
  */
 export default function SettingsModal({
   open,
@@ -37,6 +39,8 @@ export default function SettingsModal({
   onHandednessChange,
   highlightCard,
   onHighlightCardChange,
+  particles,
+  onParticlesChange,
 }) {
   const doneRef = useRef(null);
   const backdrop = useModalBackdrop(onClose);
@@ -199,6 +203,15 @@ export default function SettingsModal({
             checked={!!highlightCard}
             onChange={onHighlightCardChange}
             label="Highlight Card"
+          />
+        </div>
+
+        <div style={{ ...field, marginBottom: 20 }}>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>Foundation Particles</label>
+          <ToggleSwitch
+            checked={!!particles}
+            onChange={onParticlesChange}
+            label="Foundation Particles"
           />
         </div>
 

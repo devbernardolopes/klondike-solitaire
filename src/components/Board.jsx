@@ -14,6 +14,7 @@ import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { saveDailyResult } from '../db/dailyResults.js';
 import { useCardMoveSlide } from '../render/animation/useCardMoveSlide.js';
 import { useStockDrawSlide } from '../render/animation/useStockDrawSlide.js';
+import { useFoundationParticles } from '../render/animation/useFoundationParticles.js';
 import { playWinCascade } from '../render/animation/winCascade.js';
 import { isWon } from '../core/winDetection.js';
 import { solveAsync, STALE } from '../core/solverClient.js';
@@ -147,6 +148,7 @@ export default function Board() {
   // between piles even when they reparent across Pile components.
   useCardMoveSlide();
   useStockDrawSlide();
+  useFoundationParticles();
 
   // Win-state cascade: fire once on the false → true transition of isWon.
   const wasWon = useRef(false);

@@ -11,7 +11,7 @@
 // Drawing primitives are shared with SpriteDeckRenderer via drawCard.js.
 
 import { registerDeck } from './deckRegistry.js';
-import { drawCardFace, drawCardBack } from './drawCard.js';
+import { drawCardFace, drawCardBack, drawSuitGlyphDataURL } from './drawCard.js';
 
 /**
  * @implements {import('./deckRegistry.js').DeckRenderer}
@@ -56,6 +56,22 @@ export function createProceduralDeckRenderer({ size = 96, faceOptions } = {}) {
      */
     renderBack() {
       return render('back', (ctx) => drawCardBack(ctx, w, h));
+    },
+
+    /**
+     * Transparent suit-glyph data URL in the deck's own colors (used by the
+     * foundation particle burst). Cached per suit.
+     * @param {string} suit
+     * @returns {string}
+     */
+    renderSuit(suit) {
+      const key = `suit:${suit}`;
+      const hit = cache.get(key);
+      if (hit !== undefined) return hit;
+      const color = (faceOptions?.colorFor ?? colorOf)(suit);
+      const url = drawSuitGlyphDataURL(suit, () => color, w);
+      cache.set(key, url);
+      return url;
     },
 
     dispose() {

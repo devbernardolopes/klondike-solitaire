@@ -10,6 +10,8 @@
 //                typically a data URL (`data:image/...`) or a CSS gradient string.
 //   renderBack() -> string
 //       returns: a string for the card back (CSS background value / data URL).
+//   renderSuit(suit) -> string   (optional) a transparent data URL of the bare
+//       suit glyph (used by particle effects).
 //   dispose() -> void   (optional) release any cached atlases / canvases.
 //
 // The CardView component consumes whatever the active renderer returns and
@@ -20,6 +22,7 @@
  * @property {string} name
  * @property {(suit: string, rank: number) => string} renderCard
  * @property {() => string} renderBack
+ * @property {(suit: string) => string} [renderSuit]
  * @property {() => void} [dispose]
  */
 

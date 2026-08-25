@@ -82,4 +82,18 @@ export const MOTION = {
   // Invalid-move shake (playCardShake). The sub-steps are fractions of
   // `duration`, and `distance` is the horizontal shift on each side.
   shake:    { duration: 0.25, distance: 8 },
+
+  // Foundation particle burst: a suit-glyph explosion fired from the center of
+  // the destination foundation pile whenever a card lands there. Each particle
+  // starts at the origin and travels OUTWARD with INCREASING speed (ease
+  // 'power2.in') up to `radius` px while fading to 0. Tuned here so the whole
+  // effect is a single source of truth.
+  particles: {
+    count: 14,            // particles per burst
+    radius: 90,           // max travel distance (px) from the origin
+    size: 30,             // rendered glyph size (px)
+    duration: 0.55,       // per-particle lifetime (seconds)
+    ease: 'power2.in',    // accelerating → faster as it moves outward
+    spin: 90,             // max random rotation (deg) for a subtle tumble
+  },
 };

@@ -11,7 +11,7 @@
 // `document` canvas API is used.
 
 import { registerDeck } from './deckRegistry.js';
-import { drawCardFace, drawCardBack } from './drawCard.js';
+import { drawCardFace, drawCardBack, drawSuitGlyphDataURL } from './drawCard.js';
 
 // Row order in the atlas, indexed by rank 1..13 in columns.
 const ATLAS_SUITS = ['hearts', 'diamonds', 'clubs', 'spades'];
@@ -88,6 +88,20 @@ export function createSpriteDeckRenderer({ size = 120, atlasPath } = {}) {
      */
     renderBack() {
       return slice(0, 4 * h, 'back');
+    },
+
+    /**
+     * Transparent suit-glyph data URL (used by the foundation particle burst).
+     * The sprite atlas has no glyph-only row, so generate it directly and cache.
+     * @param {string} suit
+     * @returns {string}
+     */
+    renderSuit(suit) {
+      const key = `suit:${suit}`;
+      if (cache.has(key)) return cache.get(key);
+      const url = drawSuitGlyphDataURL(suit, undefined, w);
+      cache.set(key, url);
+      return url;
     },
 
     dispose() {

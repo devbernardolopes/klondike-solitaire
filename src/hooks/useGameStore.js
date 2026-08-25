@@ -16,6 +16,7 @@ import { randomSolvableSeed, pickSolvableSeed } from '../core/solvablePool.js';
 import { seedForDate } from '../core/dailyChallenge.js';
 import { getEvent } from '../core/specialEvents.js';
 import { enqueueFlip } from '../render/animation/flipBridge.js';
+import { enqueueParticle } from '../render/animation/particleBridge.js';
 import { cancelWinCascade } from '../render/animation/winCascade.js';
 import { MOTION } from '../render/animation/motion.js';
 import { useUiStore, whenTransitionDone } from './useUiStore.js';
@@ -249,6 +250,12 @@ function applyAutoStep(get, set, move) {
   const tid = captureFlip('auto', animIds);
   useUiStore.getState().beginTransition(tid, animIds, destLocs);
   set({ state: next, autoMoveState: {}, lastActionMeta: { type: 'auto' } });
+  // Burst particles when an auto step lands a card on a foundation (covers both
+  // the greedy peel and every step of the solver win sequence).
+  if (move.type === 'moveCards' && move.to.startsWith('foundation')) {
+    const card = findCardInState(cur, move.cardIds[0]);
+    if (card) enqueueParticle(card.suit, move.to);
+  }
   useStatsStore.getState().startTimerIfValid(cur);
   useStatsStore.getState().addMoves(1);
   return tid;
@@ -388,6 +395,16 @@ function readPile(s, loc) {
   if (loc === 'waste') return s.waste;
   const [kind, idx] = loc.split(':');
   return kind === 'foundation' ? s.foundations[Number(idx)] : s.tableau[Number(idx)];
+}
+
+/** Find a card by id anywhere in a GameState (used to read a card's suit). */
+function findCardInState(s, cardId) {
+  const piles = [s.stock, s.waste, ...s.foundations, ...s.tableau];
+  for (const pile of piles) {
+    const found = pile.find((c) => c.id === cardId);
+    if (found) return found;
+  }
+  return null;
 }
 
 // The initial game is dealt from a solvable pool seed (i.e. Winning Deal mode).
@@ -691,6 +708,11 @@ export const useGameStore = create((set, get) => ({
     if (!valid) return false;
 
     const next = applyMove(state, { type: 'moveCards', from, to, cardIds: moveIds });
+    // Burst particles from the foundation the card just reached (manual drag and
+    // tap auto-move both land here). The animation layer reads this after commit.
+    if (to.startsWith('foundation')) {
+      enqueueParticle(movingCard.suit, to);
+    }
     // Manual drag-and-drop: the DragOverlay already showed the card in hand at
     // the drop target, so don't snapshot/capture a slide from the source pile
     // (that would make the real card jump back and re-slide). Just snap it into

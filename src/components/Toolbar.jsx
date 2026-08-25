@@ -53,8 +53,10 @@ function useElapsed() {
  * @param {(h: 'left'|'right') => void} props.onHandednessChange
  * @param {boolean} props.highlightCard  draw the focus outline on the focused card
  * @param {(v: boolean) => void} props.onHighlightCardChange
+ * @param {boolean} props.particles  enable the foundation suit-burst effect
+ * @param {(v: boolean) => void} props.onParticlesChange
  */
-export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, handedness, onHandednessChange, highlightCard, onHighlightCardChange }) {
+export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, handedness, onHandednessChange, highlightCard, onHighlightCardChange, particles, onParticlesChange }) {
   const dealNewGame = useGameStore((s) => s.dealNewGame);
   const dealWithSeed = useGameStore((s) => s.dealWithSeed);
   const replayGame = useGameStore((s) => s.replayGame);
@@ -404,6 +406,8 @@ function ElapsedClock() {
         onHandednessChange={onHandednessChange}
         highlightCard={highlightCard}
         onHighlightCardChange={onHighlightCardChange}
+        particles={particles}
+        onParticlesChange={onParticlesChange}
       />
 
       <StatisticsModal
