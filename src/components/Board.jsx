@@ -330,25 +330,33 @@ export default function Board() {
     else if (state.waste.length > 0) recycleStock();
   };
 
-  // Double-tap / double-click detection on the board background only (not on a
-  // card — cards keep their single-tap auto-move). Two taps within DOUBLE_TAP_MS
-  // and a distance tolerance trigger auto-complete. Touch taps drift more than
-  // mouse clicks, so the tolerance is widened for touch input.
+  // Touch double-tap detection on the board background only (not on a card —
+  // cards keep their single-tap auto-move). Two taps within DOUBLE_TAP_MS and a
+  // distance tolerance trigger auto-complete. Touch taps drift more than mouse
+  // clicks, so the tolerance is widened (24px). Mouse/pen double-clicks are
+  // handled separately by the native `onDoubleClick` below.
   const DOUBLE_TAP_MS = 300;
-  const DOUBLE_TAP_DISTANCE_MOUSE = 6;
   const DOUBLE_TAP_DISTANCE_TOUCH = 24;
   const lastTap = useRef(null);
   const handleBoardPointerUp = (e) => {
-    if (locked || e.button !== 0) return;
+    if (e.button !== 0) return;
     if (e.target.closest('[data-card]')) return;
+    // Mouse/pen double-clicks are handled by the native `onDoubleClick` handler
+    // below (the browser matches the two clicks for us). Only the touch path
+    // needs manual tap tracking, since touch double-taps don't reliably emit a
+    // `dblclick` event. Splitting the two avoids firing auto-complete twice on
+    // a single mouse double-click.
+    if (e.pointerType !== 'touch') return;
     const now = Date.now();
     const tap = { x: e.clientX, y: e.clientY, t: now };
     const prev = lastTap.current;
+    // Record the tap BEFORE any early-return/guard so a dropped tap still
+    // refreshes the baseline. Previously the `locked` guard returned before
+    // this assignment, leaving a stale (>DOUBLE_TAP_MS) `lastTap` that broke
+    // the next pair and forced the user to repeat the double-click.
     lastTap.current = tap;
-    const maxDistance =
-      e.pointerType === 'touch'
-        ? DOUBLE_TAP_DISTANCE_TOUCH
-        : DOUBLE_TAP_DISTANCE_MOUSE;
+    if (locked) return;
+    const maxDistance = DOUBLE_TAP_DISTANCE_TOUCH;
     if (
       prev &&
       now - prev.t < DOUBLE_TAP_MS &&
@@ -359,12 +367,26 @@ export default function Board() {
     }
   };
 
+  // Native double-click on the board background is the primary, robust trigger
+  // for mouse. The browser matches the two clicks (distance + timing) for us,
+  // so this is immune to the manual 6px/distance jitter that plagued fast
+  // clickers. It deliberately ignores `anyAnimating` (a mid-tween card) because
+  // a double-click is an explicit, deliberate action — but it still blocks a
+  // finished/over/already-autoCompleting game.
+  const handleBoardDoubleClick = (e) => {
+    if (e.button !== 0) return;
+    if (e.target.closest('[data-card]')) return;
+    if (won || isOver || autoCompleting) return;
+    autoComplete();
+  };
+
   const hiddenIds = activeRun ? new Set(activeRun.map((c) => c.id)) : null;
 
   return (
     <div
       ref={boardRef}
       onPointerUp={handleBoardPointerUp}
+      onDoubleClick={handleBoardDoubleClick}
       style={{ flex: 1, minHeight: '100%', width: '100%', touchAction: 'manipulation', overflow: 'hidden' }}
     >
       {/* Centered "Autocomplete" banner shown while the game is auto-moving
