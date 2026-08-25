@@ -5,7 +5,7 @@
 import { create } from 'zustand';
 import { deal } from '../core/dealer.js';
 import { applyMove, undo as coreUndo } from '../core/moveEngine.js';
-import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, isAllTableauFaceUp, DEST_ORDER } from '../core/rules.js';
+import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, DEST_ORDER } from '../core/rules.js';
 import { isWon } from '../core/winDetection.js';
 import { solveAsync, cancelAllSolves, STALE } from '../core/solverClient.js';
 import { SOLVER_TIMEOUT, hasDeadEndMove, compressWinningSequence, isDrainedFoundationDeadEnd } from '../core/solver.js';
@@ -835,61 +835,17 @@ export const useGameStore = create((set, get) => ({
       return true;
     }
 
-    // Hard lock: auto-complete must never shuffle cards between tableau columns.
-    // Prove a full win using FOUNDATION moves only (draw/recycle of stock/waste
-    // are still permitted for plain peeling, but no tableau→tableau relocation).
-    // If no such win is provable (e.g. a buried card can only be exposed by
-    // parking a run elsewhere), silently fall back to the greedy foundation loop
-    // and leave the board to the player — no column bounces, no stall. Drawing
-    // through stock/waste is allowed here (the manual trigger may have cards to
-    // peel); the auto-trigger additionally forbids recycling (see Board.jsx).
-    set({ autoCompleting: true });
-    const run = autoCompleteRunId;
-    // Hidden cards remain somewhere in the tableau: there is no point paying for
-    // the expensive worker solver (it can't prove a full win with unknown stock
-    // order), so peel the safe foundation moves instantly via the greedy loop.
-    // This skips the ~1s search delay on a fresh deal / mid-game double-tap and
-    // matches the documented autoComplete gating. The solver is only worth
-    // running once the tableau is fully revealed (see getAutoFireSolveOptions).
-    if (!isAllTableauFaceUp(state)) {
-      runGreedy(get, set);
-      return true;
-    }
-    let solveResult;
-    try {
-      solveResult = solveAsync(state, { allowTableau: false, maxNodes: 200000, maxMs: 2000 });
-    } catch {
-      // The solver plumbing (worker creation / main-thread fallback) should
-      // never throw, but if it somehow does, release the lock and peel the safe
-      // foundation moves so the board stays usable and the run can be retried.
-      set({ autoCompleting: false, autoCompletingToWin: false });
-      runGreedy(get, set);
-      return true;
-    }
-    const { promise, cancel } = solveResult;
-    activeSolveCancel = cancel;
-    promise.then((seq) => {
-      activeSolveCancel = null;
-      // A user action (deal/move/undo) may have cancelled us while the
-      // worker was busy; if the run id changed, abandon the result entirely.
-      if (run !== autoCompleteRunId) return;
-      if (seq === STALE) {
-        set({ autoCompleting: false, autoCompletingToWin: false });
-        return;
-      }
-      if (Array.isArray(seq)) {
-        // Strip redundant tableau shuffles (none should remain under the
-        // allowTableau:false lock, but the compressor is defensive) so a stack
-        // isn't bounced between piles during the auto-complete animation.
-        // This is the genuine "to completion" run — flag it so the centered
-        // "Autocomplete" banner shows for the duration of the winning line.
-        set({ autoCompletingToWin: true });
-        runWinSequence(get, set, compressWinningSequence(seq, state));
-      } else {
-        set({ autoCompleting: false, autoCompletingToWin: false });
-        runGreedy(get, set);
-      }
-    });
+    // Manual trigger (double-click / 'a' key / toolbar button): peel every
+    // currently-playable foundation move from the waste top and the face-up
+    // tableau tops. This is foundation-only and NEVER draws from or recycles the
+    // stock — the stock must never be touched automatically. The full
+    // "to completion" run (with the centered banner) is handled exclusively by
+    // the automatic trigger in Board.jsx, which only fires when the stock is
+    // empty AND a foundation-only win is provable, and hands the proven sequence
+    // in via `opts.seq` above. If this greedy peel happens to empty the board
+    // (or reach a stock-empty, foundation-only-winnable state), the Board effect
+    // re-evaluates and takes over the to-completion run with the banner.
+    runGreedy(get, set);
     return true;
   },
 

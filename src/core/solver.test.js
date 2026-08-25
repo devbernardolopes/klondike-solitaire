@@ -743,3 +743,59 @@ test('getAutoFireSolveOptions: false when the foundation-only win needs a tablea
   assert.equal(getAutoFireSolveOptions(s), null, 'a board needing a tableau shuffle must NOT auto-fire');
 });
 
+// Simulate the greedy "auto-move visible cards" peel: repeatedly apply the next
+// foundation move (exactly what the manual autoComplete does via runGreedy). It
+// must NEVER draw from or recycle the stock, and must never relocate between
+// tableau columns — only waste-top / face-up tableau-tops to foundations.
+function greedyPeel(state, maxSteps = 200) {
+  const moves = [];
+  let cur = state;
+  for (let i = 0; i < maxSteps; i++) {
+    const fm = findFoundationMove(cur);
+    if (!fm) break;
+    const move = { type: 'moveCards', from: fm.from, to: fm.to, cardIds: [fm.cardId] };
+    moves.push(move);
+    cur = applyMove(cur, move);
+  }
+  return { state: cur, moves };
+}
+
+test('greedy foundation peel never touches the stock (no draw, no recycle)', () => {
+  const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
+  const s = createEmptyGameState();
+  s.foundations[0] = Array.from({ length: 5 }, (_, i) => c('clubs', i + 1, `cl${i + 1}`));
+  s.tableau = [
+    [c('clubs', 6, 'cl6')],
+    [c('clubs', 7, 'cl7')],
+    [], [], [], [], [],
+  ];
+  // Stock and waste both populated so any stock interaction would be detectable.
+  s.stock = [c('spades', 1, 'sA', false), c('spades', 2, 's2', false)];
+  s.waste = [c('clubs', 8, 'cl8')];
+  const before = s.stock.length;
+  const { moves } = greedyPeel(s);
+  assert.ok(moves.length > 0, 'should peel at least the waste-top and tableau-tops');
+  assert.equal(s.stock.length, before, 'stock must be untouched by a greedy peel');
+  assert.ok(
+    moves.every((m) => m.type === 'moveCards' && String(m.to).startsWith('foundation')),
+    'every greedy move must be a foundation move',
+  );
+});
+
+test('a foundation-only winning sequence (allowTableau:false, allowDraw:false) contains no draw/recycle moves', () => {
+  const c = (suit, rank, id) => createCard(suit, rank, { faceUp: true, id });
+  const s = createEmptyGameState();
+  s.foundations[0] = Array.from({ length: 13 }, (_, i) => c('spades', i + 1, `sp${i + 1}`));
+  s.foundations[1] = Array.from({ length: 13 }, (_, i) => c('clubs', i + 1, `cl${i + 1}`));
+  s.foundations[2] = Array.from({ length: 13 }, (_, i) => c('diamonds', i + 1, `d${i + 1}`));
+  s.foundations[3] = Array.from({ length: 10 }, (_, i) => c('hearts', i + 1, `h${i + 1}`));
+  s.waste = [c('hearts', 11, 'hJ')];
+  s.tableau = [[c('hearts', 12, 'hQ')], [c('hearts', 13, 'hK')], [], [], [], [], []];
+  const seq = findWinningSequence(s, { allowTableau: false, allowDraw: false });
+  assert.ok(Array.isArray(seq), 'expected a winning sequence');
+  assert.ok(
+    seq.every((m) => m.type === 'moveCards' && String(m.to).startsWith('foundation')),
+    'foundation-only solve must contain only foundation moves (no draw/recycle)',
+  );
+});
+
