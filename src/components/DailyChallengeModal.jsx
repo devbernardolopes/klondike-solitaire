@@ -8,7 +8,7 @@
 // the device clock. The deal seed for each day is pre-generated and bundled
 // (core/dailyChallenge.seedForDate).
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Crosshair } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import { useUiStore } from '../hooks/useUiStore.js';
@@ -89,13 +89,16 @@ export default function DailyChallengeModal() {
 
   const panelRef = useRef(null);
   const userPicked = useRef(false);
-  // Mirror of `selected` (state) for reads inside async callbacks without
-  // re-running effects; and the open-time {today, selected} pair so a background
-  // server-time refresh can tell whether selection was still "today-bound".
+  // Mirror of `selected` / `today` (state) for reads inside async callbacks
+  // without re-running effects; and the open-time {today, selected, usedPreferred}
+  // triple so a background refresh can tell whether selection was still
+  // "today-bound" or advanced by a win, and therefore must not be overridden.
   const selectedRef = useRef(null);
-  const initialRef = useRef({ today: null, selected: null });
+  const todayRef = useRef(fallbackDate);
+  const initialRef = useRef({ today: null, selected: null, usedPreferred: false });
 
   const applySelected = (v) => { selectedRef.current = v; setSelected(v); };
+  const applyToday = (v) => { todayRef.current = v; setToday(v); };
 
   const [today, setToday] = useState(fallbackDate);
   const [viewY, setViewY] = useState(() => utcToYMD(getFallbackUTC()).y);
@@ -120,14 +123,16 @@ export default function DailyChallengeModal() {
   // cannot land on a stale (e.g. not-yet-advanced) day. Uses the cached server
   // "today" (or the hard fallback) and the cached last-selection, both available
   // synchronously; the network refresh below only refines these afterward.
-  useEffect(() => {
+  // Runs as a layout effect so the correct month/selection is committed to the
+  // DOM before the browser paints — eliminating the flash-to-January on reload.
+  useLayoutEffect(() => {
     if (!open) return undefined;
     userPicked.current = false;
 
     const nowMs = getCachedServerNow() != null ? getCachedServerNow() : getFallbackUTC();
     const { y, m, d } = utcToYMD(nowMs);
     const todayStr = toDateStr(y, m, d);
-    setToday(todayStr);
+    applyToday(todayStr);
     setResults({}); // clear stale completion marks; refilled by async load below
 
     // A preferred initial date (e.g. advanced to the next day after a daily win)
@@ -135,9 +140,10 @@ export default function DailyChallengeModal() {
     // within the supported window at the time it was set, so we trust it.
     const preferred = useUiStore.getState().dailyChallengeInitialDate;
     let initial;
+    let usedPreferred = false;
     if (preferred) {
       useUiStore.getState().setDailyChallengeInitialDate(null); // consume now
-      if (withinSupported(preferred)) initial = preferred;
+      if (withinSupported(preferred)) { initial = preferred; usedPreferred = true; }
     }
     if (!initial) {
       const lastSel = loadLastDailySelectionSync();
@@ -149,7 +155,7 @@ export default function DailyChallengeModal() {
     setViewY(ini.y);
     setViewM(ini.m);
     applySelected(initial);
-    initialRef.current = { today: todayStr, selected: initial };
+    initialRef.current = { today: todayStr, selected: initial, usedPreferred };
     return undefined;
   }, [open]);
 
@@ -157,7 +163,10 @@ export default function DailyChallengeModal() {
   // authoritative "today" from the server. These do NOT block the selection —
   // they only fill completion marks and, when the player hasn't manually picked
   // and the selection was still bound to the (possibly stale) open-time "today",
-  // nudge selection to the corrected today.
+  // nudge selection to the corrected today. The Dexie-loaded last-selection is a
+  // graceful fallback for environments where the synchronous localStorage seed
+  // was unavailable (it is otherwise a no-op since the layout effect already
+  // applied it).
   useEffect(() => {
     if (!open) return undefined;
     let cancelled = false;
@@ -165,20 +174,33 @@ export default function DailyChallengeModal() {
     Promise.all([
       loadAllDailyResults(),
       loadLastDailySelection(),
-    ]).then(([rows]) => {
+    ]).then(([rows, lastSel]) => {
       if (cancelled) return;
       const map = {};
       rows.forEach((r) => { map[r.date] = r; });
       setResults(map);
+      if (
+        !userPicked.current &&
+        !initialRef.current.usedPreferred &&
+        lastSel &&
+        withinSupported(lastSel) &&
+        lastSel !== todayRef.current
+      ) {
+        const ini = utcToYMD(dateToUTC(lastSel));
+        setViewY(ini.y);
+        setViewM(ini.m);
+        applySelected(lastSel);
+      }
     });
 
     refreshServerNow().then((ms) => {
       if (cancelled) return;
       const { y, m, d } = utcToYMD(ms);
       const todayStr = toDateStr(y, m, d);
-      setToday(todayStr);
+      applyToday(todayStr);
       const wasTodayBound =
         !userPicked.current &&
+        !initialRef.current.usedPreferred &&
         selectedRef.current === initialRef.current.today &&
         initialRef.current.selected === initialRef.current.today;
       if (wasTodayBound) applySelected(todayStr);

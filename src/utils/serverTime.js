@@ -9,11 +9,40 @@
 // Fixed fallback epoch (UTC ms) for 2026-01-01T00:00:00Z.
 const FALLBACK_UTC = Date.UTC(2026, 0, 1);
 
+// localStorage key holding the last server "now" (UTC ms) as a string, so it can
+// be re-seeded synchronously on a full page reload (before any network call).
+const LS_KEY_SERVER_NOW = 'klondike:serverNow';
+
+// Read a synchronous, durable value from localStorage. Guarded so it is a no-op
+// in non-browser environments (e.g. `node --test`) and when storage is blocked.
+function readLocalStorageNumber(key) {
+  try {
+    if (typeof localStorage === 'undefined') return null;
+    const raw = localStorage.getItem(key);
+    if (raw == null) return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  } catch {
+    return null;
+  }
+}
+
+// Persist a value to localStorage, ignoring failures (quota/private mode).
+function writeLocalStorage(key, value) {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(key, String(value));
+  } catch {
+    /* ignore */
+  }
+}
+
 // Cache of the last successfully-fetched server "now" (UTC ms), so callers can
 // resolve an authoritative date synchronously on repeat opens without paying the
-// network round-trip every time. Still sourced only from the server; the device
-// clock is never used as a value.
-let cachedServerNow = null;
+// network round-trip every time. Seeded from localStorage at module load so a
+// hard reload still has an (almost always correct) value before paint. Still
+// sourced only from the server; the device clock is never used as a value.
+let cachedServerNow = readLocalStorageNumber(LS_KEY_SERVER_NOW);
 
 /** @returns {number} the hard-fallback epoch (UTC ms). */
 export function getFallbackUTC() {
@@ -89,6 +118,7 @@ export async function fetchServerNow(timeoutMs = 4000) {
     const ms = Date.UTC(data.year, data.month - 1, data.day);
     if (!Number.isFinite(ms)) return FALLBACK_UTC;
     cachedServerNow = ms;
+    writeLocalStorage(LS_KEY_SERVER_NOW, ms);
     return ms;
   } catch {
     // Network failure, abort, parse error — anything. Never trust the device.
