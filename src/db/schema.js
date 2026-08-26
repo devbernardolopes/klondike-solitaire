@@ -51,6 +51,17 @@ db.version(4).stores({
   playedSeeds: 'key',
   dailyResults: 'date',
 });
+// v5 adds the `syncQueue` table: the offline-first outbox of pending sync
+// operations (see db/syncQueue.js / sync/syncEngine.js). Each row is one RPC
+// op flushed in id order; unknown types are dropped rather than blocking the queue.
+db.version(5).stores({
+  games: '++id, startedAt, finishedAt, won, durationMs',
+  settings: 'key',
+  stats: 'key',
+  playedSeeds: 'key',
+  dailyResults: 'date',
+  syncQueue: '++id, type, createdAt',
+});
 
 /**
  * Insert a finished/abandoned game record.

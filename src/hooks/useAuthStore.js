@@ -9,6 +9,10 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabaseClient.js';
 
+// Guard so concurrent callers (App boot + the sync engine's ensureSignedIn)
+// share a single in-flight init rather than racing two signInAnonymously calls.
+let initPromise = null;
+
 /**
  * @typedef {Object} AuthState
  * @property {string|null} userId        Supabase user id, or null when signed out
@@ -30,39 +34,60 @@ export const useAuthStore = create((set, get) => ({
   authError: null,
 
   /**
-   * Establish or resume an anonymous auth session. Safe to call once on mount.
-   * Resolves with ready:true in all cases; never rejects.
+   * Establish or resume an anonymous auth session. Safe to call repeatedly;
+   * concurrent calls share one in-flight attempt. Resolves with ready:true in
+   * all cases; never rejects.
    */
   init: async () => {
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (session?.user) {
-        set({ ...userShape(session.user), ready: true });
-        return;
+    if (initPromise) return initPromise;
+    initPromise = (async () => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (session?.user) {
+          set({ ...userShape(session.user), ready: true });
+          return;
+        }
+      } catch {
+        // No cached session (or offline) — fall through to anonymous sign-in.
       }
-    } catch {
-      // No cached session (or offline) — fall through to anonymous sign-in.
-    }
 
-    try {
-      const { data, error } = await supabase.auth.signInAnonymously();
-      if (error) throw error;
-      if (data?.user) {
-        set({ ...userShape(data.user), ready: true });
+      try {
+        const { data, error } = await supabase.auth.signInAnonymously();
+        if (error) throw error;
+        if (data?.user) {
+          set({ ...userShape(data.user), ready: true });
+          return;
+        }
+      } catch (e) {
+        // Most likely no network on a brand-new install. Mark ready and record
+        // the error without blocking the rest of the app's init sequence.
+        set({ ready: true, authError: e?.message ?? 'Anonymous sign-in failed' });
         return;
+      } finally {
+        // Subscribe regardless of outcome so later auth changes stay in sync.
+        supabase.auth.onAuthStateChange((_event, session) => {
+          set(userShape(session?.user ?? null));
+        });
       }
-    } catch (e) {
-      // Most likely no network on a brand-new install. Mark ready and record the
-      // error without blocking the rest of the app's init sequence.
-      set({ ready: true, authError: e?.message ?? 'Anonymous sign-in failed' });
-      return;
+    })();
+    try {
+      await initPromise;
     } finally {
-      // Subscribe regardless of outcome so later auth changes stay in sync.
-      supabase.auth.onAuthStateChange((_event, session) => {
-        set(userShape(session?.user ?? null));
-      });
+      initPromise = null;
     }
+  },
+
+  /**
+   * Resolve once a user id is available, retrying init() if a previous attempt
+   * failed (e.g. no network at boot). Used by the sync engine before every flush.
+   * @returns {Promise<string|null>}
+   */
+  ensureSignedIn: async () => {
+    const { userId } = get();
+    if (userId) return userId;
+    await get().init();
+    return get().userId;
   },
 }));

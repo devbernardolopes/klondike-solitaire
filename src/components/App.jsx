@@ -17,6 +17,7 @@ import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
 import { useSeedStore } from '../hooks/useSeedStore.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
+import { startSyncEngine } from '../sync/syncEngine.js';
 import { MotionDebugPanel } from '../render/animation/MotionDebugPanel.jsx';
 
 export default function App() {
@@ -37,6 +38,7 @@ export default function App() {
 
   useEffect(() => {
     useAuthStore.getState().init();
+    startSyncEngine();
     init();
     initStats();
     initSeeds();
