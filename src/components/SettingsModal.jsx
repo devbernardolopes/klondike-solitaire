@@ -15,6 +15,7 @@ import { useSeedStore } from '../hooks/useSeedStore.js';
 import ToggleSwitch from './ToggleSwitch.jsx';
 import HelpModal from './HelpModal.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
+import AchievementsModal from './AchievementsModal.jsx';
 
 /**
  * @param {object} props
@@ -51,6 +52,7 @@ export default function SettingsModal({
   const displayName = useAuthStore((s) => s.displayName);
   const isAnonymous = useAuthStore((s) => s.isAnonymous);
   const [signOutConfirmOpen, setSignOutConfirmOpen] = useState(false);
+  const [achievementsOpen, setAchievementsOpen] = useState(false);
 
   // useAuthStore can't refresh these itself (circular import) — do it here,
   // after it has reset local caches and re-established an anonymous session.
@@ -283,6 +285,13 @@ export default function SettingsModal({
             >
               Take Snapshot
             </button>
+            <button
+              type="button"
+              style={{ ...btn }}
+              onClick={() => setAchievementsOpen(true)}
+            >
+              Achievements
+            </button>
           </div>
           <button
             type="button"
@@ -310,6 +319,11 @@ export default function SettingsModal({
         cancelText="Cancel"
         onConfirm={onConfirmSignOut}
         onCancel={() => setSignOutConfirmOpen(false)}
+      />
+
+      <AchievementsModal
+        open={achievementsOpen}
+        onClose={() => setAchievementsOpen(false)}
       />
     </>
   );
