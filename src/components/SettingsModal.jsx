@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { HelpCircle } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
+import { isModalDismissGuardActive } from '../utils/modalDismissGuard.js';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
@@ -136,8 +137,20 @@ export default function SettingsModal({
     );
   };
 
+  // Open a sub-modal, but ignore the press if a just-dismissed modal's
+  // synthesized mobile click happens to land on this button (the same guard the
+  // toolbar FABs use) — otherwise dismissing a sub-modal via its backdrop would
+  // instantly re-open it on touch.
+  const openModalGuarded = (setter) => () => {
+    if (isModalDismissGuardActive()) return;
+    setter(true);
+  };
+
   // Export the current visible board as a plain-text snapshot file.
-  const openHelp = () => useUiStore.getState().setHelpDialogOpen(true);
+  const openHelp = () => {
+    if (isModalDismissGuardActive()) return;
+    useUiStore.getState().setHelpDialogOpen(true);
+  };
 
   const handleTakeSnapshot = () => {
     const state = useGameStore.getState().state;
@@ -296,21 +309,21 @@ export default function SettingsModal({
           <button
             type="button"
             style={{ ...btn, width: '100%' }}
-            onClick={() => setAchievementsOpen(true)}
+            onClick={openModalGuarded(setAchievementsOpen)}
           >
             Achievements
           </button>
           <button
             type="button"
             style={{ ...btn, width: '100%' }}
-            onClick={() => setLeaderboardOpen(true)}
+            onClick={openModalGuarded(setLeaderboardOpen)}
           >
             Leaderboard
           </button>
           <button
             type="button"
             style={{ ...btn, width: '100%' }}
-            onClick={() => setStoreOpen(true)}
+            onClick={openModalGuarded(setStoreOpen)}
           >
             Store
           </button>
