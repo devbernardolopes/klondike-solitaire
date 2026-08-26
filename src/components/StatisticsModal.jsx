@@ -91,13 +91,13 @@ export default function StatisticsModal({ open, onClose }) {
         aria-label="Statistics"
         tabIndex={-1}
       {...backdrop}
-      style={{
+        style={{
           position: 'fixed',
           inset: 0,
           background: 'rgba(0,0,0,0.5)',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
+          justifyContent: 'center',
           zIndex: 3000,
           padding: 16,
         }}
