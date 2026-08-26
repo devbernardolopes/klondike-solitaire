@@ -467,18 +467,34 @@ export default function Board() {
               )),
             ]}
 
-        {/* Tableau: 7 columns */}
-        {state.tableau.map((pile, i) => (
-          <Pile
-            key={`t${i}`}
-            loc={`tableau:${i}`}
-            cards={pile}
-            fanned
-            metrics={metrics}
-            hiddenIds={hiddenIds}
-            onAutoMove={autoMove}
-          />
-        ))}
+        {/* Tableau: 7 columns. Wrapped in a `data-loc="tableau"` container so
+            the entire tableau band (gaps between columns, the area below short
+            columns, and the empty strip below a column's last card) is
+            hit-testable as part of the tableau. Otherwise those empty spots are
+            just board background with no `data-loc`, so a double-click there
+            wouldn't be recognized as a tableau double-click. */}
+        <div
+          data-loc="tableau"
+          style={{
+            gridColumn: '1 / -1',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(7, var(--card-width))',
+            gap: 'clamp(6px, 1.2vw, 14px)',
+            justifyContent: 'center',
+          }}
+        >
+          {state.tableau.map((pile, i) => (
+            <Pile
+              key={`t${i}`}
+              loc={`tableau:${i}`}
+              cards={pile}
+              fanned
+              metrics={metrics}
+              hiddenIds={hiddenIds}
+              onAutoMove={autoMove}
+            />
+          ))}
+        </div>
       </div>
 
       <DragOverlay dropAnimation={null} zIndex={1500}>
