@@ -33,7 +33,7 @@ const userShape = (user) => ({
 // Set the session-derived fields and fetch the profile's display name. The
 // profile query is best-effort: a network failure (offline) must not make
 // init() reject, so it is swallowed and displayName simply stays null.
-const hydrateProfile = async (user) => {
+const hydrateProfile = async (user, set) => {
   set({ ...userShape(user), ready: true });
   try {
     const { data } = await supabase
@@ -68,7 +68,7 @@ export const useAuthStore = create((set, get) => ({
           data: { session },
         } = await supabase.auth.getSession();
         if (session?.user) {
-          await hydrateProfile(session.user);
+          await hydrateProfile(session.user, set);
           return;
         }
       } catch {
@@ -79,7 +79,7 @@ export const useAuthStore = create((set, get) => ({
         const { data, error } = await supabase.auth.signInAnonymously();
         if (error) throw error;
         if (data?.user) {
-          await hydrateProfile(data.user);
+          await hydrateProfile(data.user, set);
           return;
         }
       } catch (e) {
