@@ -8,6 +8,7 @@ import { loadStats, addWin, addGamePlayed, recordLoss as dbRecordLoss, resetStat
 // Imported lazily (only used inside finalizeGame at call-time) so the circular
 // reference with useStatsStore never resolves during module evaluation.
 import { useStatsStore } from './useStatsStore.js';
+import { enqueue } from '../sync/syncEngine.js';
 
 const EMPTY = {
   totalGamesPlayed: 0,
@@ -36,17 +37,32 @@ export const useStatisticsStore = create((set, get) => ({
   /**
    * Fold a won game into the aggregates. Persists and refreshes state so the
    * Statistics modal updates live.
-   * @param {{score:number, timeMs:number, moves:number, undos:number}} win
+   * @param {{score:number, timeMs:number, moves:number, undos:number,
+   *   seed?:number, gameKind?:'winning'|'random'|'daily', dailyDate?:string|null}} win
    */
-  recordWin: async ({ score, timeMs, moves, undos }) => {
+  recordWin: async ({ score, timeMs, moves, undos, seed, gameKind, dailyDate }) => {
     const stats = await addWin({ score, timeMs, moves, undos });
     set({ stats, gameWon: true });
+    // Parallel remote-sync path: one RPC folds the win into game_results, coins,
+    // streak, personal bests, achievement checks, played-seed tracking, and Daily
+    // Challenge results atomically server-side. Dexie remains the read source of truth.
+    enqueue('submit_game_result', {
+      p_won: true,
+      p_moves: moves,
+      p_duration_ms: timeMs,
+      p_score: score,
+      p_undos: undos,
+      p_seed: seed ?? null,
+      p_game_kind: gameKind ?? null,
+      p_daily_date: dailyDate ?? null,
+    });
   },
 
   /** Increment the total-games-played counter. */
   recordGamePlayed: async () => {
     const stats = await addGamePlayed();
     set({ stats });
+    enqueue('record_game_started', {});
   },
 
   /**
@@ -69,6 +85,7 @@ export const useStatisticsStore = create((set, get) => ({
     if (inProgress) {
       const stats = await dbRecordLoss();
       set({ stats });
+      enqueue('record_game_abandoned', {});
     }
     set({ gameWon: false });
   },

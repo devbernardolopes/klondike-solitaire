@@ -19,4 +19,14 @@ export const operations = {
     const { error } = await supabase.rpc('record_game_started');
     if (error) throw error;
   },
+
+  record_game_abandoned: async () => {
+    const { error } = await supabase.rpc('record_game_abandoned');
+    if (error) throw error;
+  },
+
+  submit_game_result: async (payload) => {
+    const { error } = await supabase.rpc('submit_game_result', payload);
+    if (error) throw error;
+  },
 };

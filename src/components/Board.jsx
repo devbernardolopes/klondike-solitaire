@@ -193,7 +193,15 @@ export default function Board() {
       // Persist the just-won game's stats cumulatively. The timer is frozen
       // above, so endTime is final for this game. Runs after the snapshot so the
       // new-record flags reflect the values the player actually beat.
-      useStatisticsStore.getState().recordWin({ score, timeMs: durationMs, moves, undos });
+      useStatisticsStore.getState().recordWin({
+        score,
+        timeMs: durationMs,
+        moves,
+        undos,
+        seed: gameState.seed,
+        gameKind,
+        dailyDate: gameKind === 'daily' ? dailyDate : null,
+      });
       // If this was a Winning Deal (it carries a pool seed), remember the seed
       // so it isn't re-dealt until the whole pool has been won. Daily/Event
       // seeds are NOT pool seeds and must never be added here.
