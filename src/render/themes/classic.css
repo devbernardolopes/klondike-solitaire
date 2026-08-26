@@ -171,6 +171,19 @@
   cursor: default;
 }
 
+/* A disabled (unavailable) day must still reveal its played/won or "today"
+   marker, so the calendar reads correctly while offline or before the server
+   time resolves. These compound rules outrank .dc-cell--disabled. */
+.dc-cell--disabled.dc-cell--completed {
+  background: #d8f0dd;
+  border-color: rgba(26, 127, 55, 0.5);
+  color: #1a1a1a;
+}
+.dc-cell--disabled.dc-cell--today {
+  outline: 3px solid #1a7f37;
+  outline-offset: -1px;
+}
+
 /* Small color swatches used in the legend beneath the grid. */
 .dc-swatch {
   display: inline-block;

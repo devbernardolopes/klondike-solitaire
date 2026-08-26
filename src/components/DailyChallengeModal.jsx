@@ -26,7 +26,7 @@ import {
   dateToUTC,
   seedForDate,
 } from '../core/dailyChallenge.js';
-import { utcToYMD, getFallbackUTC, getCachedServerNow, refreshServerNow } from '../utils/serverTime.js';
+import { utcToYMD, getFallbackUTC, getCachedServerNow, refreshServerNowWithRetry } from '../utils/serverTime.js';
 import { loadAllDailyResults } from '../db/dailyResults.js';
 import { loadLastDailySelection, loadLastDailySelectionSync, saveLastDailySelection } from '../db/dailySelection.js';
 import { formatTime } from '../utils/formatTime.js';
@@ -199,8 +199,8 @@ export default function DailyChallengeModal() {
       }
     });
 
-    refreshServerNow().then((ms) => {
-      if (cancelled) return;
+    refreshServerNowWithRetry({ shouldCancel: () => cancelled }).then((ms) => {
+      if (cancelled || ms == null) return;
       const { y, m, d } = utcToYMD(ms);
       const todayStr = toDateStr(y, m, d);
       applyToday(todayStr);
@@ -442,7 +442,7 @@ export default function DailyChallengeModal() {
             </button>
             <button
               type="button"
-              disabled={!selected}
+              disabled={!selected || isAfter(selected, today) || !withinSupported(selected)}
               onClick={onPlay}
               style={{
                 ...btn,

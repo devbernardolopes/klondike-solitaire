@@ -77,9 +77,9 @@ export function getCachedServerNow() {
  * @returns {Promise<number>}
  */
 export async function refreshServerNow(timeoutMs = 4000) {
-  const ms = await fetchServerNow(timeoutMs);
-  if (Number.isFinite(ms)) cachedServerNow = ms;
-  return ms;
+  const ms = await fetchServerNowRaw(timeoutMs);
+  if (ms != null) return ms;
+  return cachedServerNow != null ? cachedServerNow : getFallbackUTC();
 }
 
 /**
@@ -104,11 +104,15 @@ export function utcToYMD(ms) {
 }
 
 /**
- * Fetch the authoritative current date (UTC) from a public time API.
+ * Low-level fetch of the authoritative current date (UTC) from a public time
+ * API. Resolves with the server epoch (ms) on success, or `null` when the
+ * request fails for any reason. On success it records the value in the cache
+ * and localStorage. Callers that need a usable "today" even on failure should
+ * use {@link fetchServerNow} / {@link refreshServerNow} instead.
  * @param {number} [timeoutMs=4000]
- * @returns {Promise<number>} UTC epoch ms (falls back to FALLBACK_UTC on error)
+ * @returns {Promise<number|null>}
  */
-export async function fetchServerNow(timeoutMs = 4000) {
+async function fetchServerNowRaw(timeoutMs = 4000) {
   try {
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     let timer = null;
@@ -119,18 +123,60 @@ export async function fetchServerNow(timeoutMs = 4000) {
       signal: controller ? controller.signal : undefined,
     });
     if (timer) clearTimeout(timer);
-    if (!res || !res.ok) return fallbackNow();
+    if (!res || !res.ok) return null;
     const data = await res.json();
     if (!data || typeof data.year !== 'number' || typeof data.month !== 'number' || typeof data.day !== 'number') {
-      return fallbackNow();
+      return null;
     }
     const ms = Date.UTC(data.year, data.month - 1, data.day);
-    if (!Number.isFinite(ms)) return fallbackNow();
+    if (!Number.isFinite(ms)) return null;
     cachedServerNow = ms;
     writeLocalStorage(LS_KEY_SERVER_NOW, ms);
     return ms;
   } catch {
     // Network failure, abort, parse error — anything. Never trust the device.
-    return fallbackNow();
+    return null;
   }
+}
+
+/**
+ * Fetch the authoritative current date (UTC) from a public time API.
+ * @param {number} [timeoutMs=4000]
+ * @returns {Promise<number>} UTC epoch ms (falls back to the last-known-good
+ *   cached time, or the hard fallback, on error — so callers always get a
+ *   usable value).
+ */
+export async function fetchServerNow(timeoutMs = 4000) {
+  const ms = await fetchServerNowRaw(timeoutMs);
+  return ms != null ? ms : fallbackNow();
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Refresh the cached server time, retrying on failure with a fixed delay and a
+ * bounded number of attempts so a flaky time API eventually resolves without
+ * the user having to close and reopen the calendar. Cancellable via
+ * `shouldCancel` (e.g. when the modal closes) to avoid stray updates/requests.
+ * @param {{timeoutMs?:number, maxAttempts?:number, delayMs?:number, shouldCancel?:()=>boolean}} [opts]
+ * @returns {Promise<number|null>} the authoritative epoch on success, or null
+ *   if all attempts failed / were cancelled.
+ */
+export async function refreshServerNowWithRetry({
+  timeoutMs = 4000,
+  maxAttempts = 5,
+  delayMs = 2000,
+  shouldCancel = null,
+} = {}) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    if (shouldCancel && shouldCancel()) return null;
+    const ms = await fetchServerNowRaw(timeoutMs);
+    if (ms != null) return ms;
+    if (attempt < maxAttempts && !(shouldCancel && shouldCancel())) {
+      await delay(delayMs);
+    }
+  }
+  return null;
 }

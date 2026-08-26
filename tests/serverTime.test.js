@@ -49,3 +49,37 @@ test('refreshServerNow does not regress the cache on failure', async () => {
 
   assert.equal(getCachedServerNow(), SEED);
 });
+
+test('refreshServerNowWithRetry returns the server time after failures', async () => {
+  // Fresh module instance so its cache starts empty.
+  const mod = await import('../src/utils/serverTime.js?retry=1');
+  let calls = 0;
+  global.fetch = async () => {
+    calls += 1;
+    if (calls < 3) throw new Error('fail');
+    return { ok: true, json: async () => ({ year: 2026, month: 8, day: 26 }) };
+  };
+
+  const ms = await mod.refreshServerNowWithRetry({ maxAttempts: 5, delayMs: 1, shouldCancel: () => false });
+
+  assert.equal(ms, SEED);
+  assert.ok(calls >= 3);
+});
+
+test('refreshServerNowWithRetry returns null after maxAttempts', async () => {
+  const mod = await import('../src/utils/serverTime.js?retry=2');
+  global.fetch = async () => { throw new Error('fail'); };
+
+  const ms = await mod.refreshServerNowWithRetry({ maxAttempts: 3, delayMs: 1, shouldCancel: () => false });
+
+  assert.equal(ms, null);
+});
+
+test('refreshServerNowWithRetry returns null when cancelled', async () => {
+  const mod = await import('../src/utils/serverTime.js?retry=3');
+  global.fetch = async () => ({ ok: true, json: async () => ({ year: 2026, month: 8, day: 26 }) });
+
+  const ms = await mod.refreshServerNowWithRetry({ maxAttempts: 3, delayMs: 1, shouldCancel: () => true });
+
+  assert.equal(ms, null);
+});
