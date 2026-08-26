@@ -129,13 +129,6 @@ export default function NewGameModal({ open, onReplay, onWinningDeal, onRandomSh
             Replay this Game{' '}
             <span style={{ fontWeight: 400, opacity: 0.8 }}>— restart the same deal</span>
           </button>
-          <button
-            type="button"
-            style={{ ...btn, marginTop: 4, opacity: 0.85 }}
-            onClick={onDismiss}
-          >
-            Cancel
-          </button>
         </div>
       </div>
     </div>

@@ -3,7 +3,7 @@
 
 import pkg from '../../package.json';
 import { useEffect, useCallback, useState, useRef } from 'react';
-import { Plus, Undo2, Settings, BarChart3, Lightbulb, Coins as CoinsIcon } from 'lucide-react';
+import { Plus, Undo2, Menu, BarChart3, Lightbulb, Coins as CoinsIcon } from 'lucide-react';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
@@ -334,10 +334,10 @@ function ElapsedClock() {
 
       <button
         style={{ ...fab, left: fabLeft(0) }}
-        aria-label="Settings"
+        aria-label="Main Menu"
         onClick={guardedFab(() => setSettingsDialogOpen(true))}
       >
-        <Settings size={20} />
+        <Menu size={20} />
       </button>
 
       <button

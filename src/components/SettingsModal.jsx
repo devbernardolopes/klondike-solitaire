@@ -48,7 +48,7 @@ export default function SettingsModal({
   particles,
   onParticlesChange,
 }) {
-  const doneRef = useRef(null);
+  const dialogRef = useRef(null);
   const backdrop = useModalBackdrop(onClose);
   const helpOpen = useUiStore((s) => s.helpDialogOpen);
   const displayName = useAuthStore((s) => s.displayName);
@@ -77,7 +77,7 @@ export default function SettingsModal({
 
   useEffect(() => {
     if (!open) return;
-    doneRef.current?.focus();
+    dialogRef.current?.focus();
     const onKey = (e) => {
       if (e.key === 'Escape') onCloseRef.current();
     };
@@ -158,9 +158,11 @@ export default function SettingsModal({
   return (
     <>
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Settings"
+        aria-label="Main Menu"
+        tabIndex={-1}
         {...backdrop}
         style={{
           position: 'fixed',
@@ -174,7 +176,7 @@ export default function SettingsModal({
         }}
       >
       <div style={panel}>
-        <h2 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700 }}>Settings</h2>
+        <h2 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700 }}>Main Menu</h2>
 
         <div style={field}>
           <label style={{ fontSize: 14, fontWeight: 600 }}>Theme</label>
@@ -265,59 +267,52 @@ export default function SettingsModal({
           )}
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
-          <div style={{ display: 'flex', gap: 12 }}>
-            <button
-              type="button"
-              aria-label="Keyboard shortcuts"
-              title="Keyboard shortcuts"
-              style={{
-                ...btn,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '8px 10px',
-              }}
-              onClick={openHelp}
-            >
-              <HelpCircle size={18} aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              style={{ ...btn }}
-              onClick={handleTakeSnapshot}
-            >
-              Take Snapshot
-            </button>
-            <button
-              type="button"
-              style={{ ...btn }}
-              onClick={() => setAchievementsOpen(true)}
-            >
-              Achievements
-            </button>
-            <button
-              type="button"
-              style={{ ...btn }}
-              onClick={() => setLeaderboardOpen(true)}
-            >
-              Leaderboard
-            </button>
-            <button
-              type="button"
-              style={{ ...btn }}
-              onClick={() => setStoreOpen(true)}
-            >
-              Store
-            </button>
-          </div>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
           <button
             type="button"
-            ref={doneRef}
-            style={{ ...btn, background: 'var(--ui-modal-btn-bg-strong)' }}
-            onClick={onClose}
+            aria-label="Keyboard shortcuts"
+            title="Keyboard shortcuts"
+            style={{
+              ...btn,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '8px 10px',
+            }}
+            onClick={openHelp}
           >
-            Done
+            <HelpCircle size={18} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            style={{ ...btn }}
+            onClick={handleTakeSnapshot}
+          >
+            Take Snapshot
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+          <button
+            type="button"
+            style={{ ...btn, width: '100%' }}
+            onClick={() => setAchievementsOpen(true)}
+          >
+            Achievements
+          </button>
+          <button
+            type="button"
+            style={{ ...btn, width: '100%' }}
+            onClick={() => setLeaderboardOpen(true)}
+          >
+            Leaderboard
+          </button>
+          <button
+            type="button"
+            style={{ ...btn, width: '100%' }}
+            onClick={() => setStoreOpen(true)}
+          >
+            Store
           </button>
         </div>
 

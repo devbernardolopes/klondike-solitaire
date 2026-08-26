@@ -13,7 +13,7 @@ import { useModalBackdrop } from './modalBackdrop.js';
  * @param {() => void} props.onClose
  */
 export default function HelpModal({ open, onClose }) {
-  const closeRef = useRef(null);
+  const dialogRef = useRef(null);
   const backdrop = useModalBackdrop(onClose);
 
   // Read the close handler via a ref so this effect runs once per open (depends
@@ -23,7 +23,7 @@ export default function HelpModal({ open, onClose }) {
 
   useEffect(() => {
     if (!open) return;
-    closeRef.current?.focus();
+    dialogRef.current?.focus();
     const onKey = (e) => {
       if (e.key === 'Escape') onCloseRef.current();
     };
@@ -75,22 +75,24 @@ export default function HelpModal({ open, onClose }) {
   ];
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Keyboard shortcuts"
-      {...backdrop}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.5)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 4000,
-        padding: 16,
-      }}
-    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Keyboard shortcuts"
+        tabIndex={-1}
+        {...backdrop}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 4000,
+          padding: 16,
+        }}
+      >
       <div style={panel}>
         <h2 style={{ margin: '0 0 14px', fontSize: 18, fontWeight: 700 }}>
           Keyboard Shortcuts
@@ -117,17 +119,6 @@ export default function HelpModal({ open, onClose }) {
               <span style={{ fontSize: 14, textAlign: 'right', flex: 1 }}>{action}</span>
             </div>
           ))}
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 18 }}>
-          <button
-            type="button"
-            ref={closeRef}
-            style={{ ...btn, background: 'var(--ui-modal-btn-bg-strong)' }}
-            onClick={onClose}
-          >
-            Close
-          </button>
         </div>
       </div>
     </div>

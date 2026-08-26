@@ -17,7 +17,7 @@ import { useAuthStore } from '../hooks/useAuthStore.js';
  * @param {() => void} props.onClose
  */
 export default function StoreModal({ open, onClose }) {
-  const doneRef = useRef(null);
+  const dialogRef = useRef(null);
   const backdrop = useModalBackdrop(onClose);
   const coins = useAuthStore((s) => s.coins);
 
@@ -34,7 +34,7 @@ export default function StoreModal({ open, onClose }) {
 
   useEffect(() => {
     if (!open) return;
-    doneRef.current?.focus();
+    dialogRef.current?.focus();
     const onKey = (e) => {
       if (e.key === 'Escape') onCloseRef.current();
     };
@@ -71,6 +71,8 @@ export default function StoreModal({ open, onClose }) {
       role="dialog"
       aria-modal="true"
       aria-label="Store"
+      tabIndex={-1}
+      ref={dialogRef}
       {...backdrop}
       style={{
         position: 'fixed',
@@ -148,17 +150,6 @@ export default function StoreModal({ open, onClose }) {
               </div>
             </div>
           ))}
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button
-            type="button"
-            ref={doneRef}
-            style={{ ...btn, background: 'var(--ui-modal-btn-bg-strong)' }}
-            onClick={onClose}
-          >
-            Done
-          </button>
         </div>
       </div>
     </div>

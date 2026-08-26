@@ -42,7 +42,7 @@ const LEADERBOARD_COLUMNS =
  * @param {() => void} props.onClose
  */
 export default function LeaderboardModal({ open, onClose }) {
-  const doneRef = useRef(null);
+  const dialogRef = useRef(null);
   const backdrop = useModalBackdrop(onClose);
   const userId = useAuthStore((s) => s.userId);
   const [activeTab, setActiveTab] = useState('coins');
@@ -54,7 +54,7 @@ export default function LeaderboardModal({ open, onClose }) {
 
   useEffect(() => {
     if (!open) return;
-    doneRef.current?.focus();
+    dialogRef.current?.focus();
     const onKey = (e) => {
       if (e.key === 'Escape') onCloseRef.current();
     };
@@ -136,6 +136,8 @@ export default function LeaderboardModal({ open, onClose }) {
       role="dialog"
       aria-modal="true"
       aria-label="Leaderboard"
+      tabIndex={-1}
+      ref={dialogRef}
       {...backdrop}
       style={{
         position: 'fixed',
@@ -204,17 +206,6 @@ export default function LeaderboardModal({ open, onClose }) {
             })}
           </div>
         )}
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
-          <button
-            type="button"
-            ref={doneRef}
-            style={{ ...btn, background: 'var(--ui-modal-btn-bg-strong)' }}
-            onClick={onClose}
-          >
-            Done
-          </button>
-        </div>
       </div>
     </div>
   );

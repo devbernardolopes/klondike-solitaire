@@ -18,7 +18,7 @@ import { ACHIEVEMENTS } from '../data/achievements.js';
  * @param {() => void} props.onClose
  */
 export default function AchievementsModal({ open, onClose }) {
-  const doneRef = useRef(null);
+  const dialogRef = useRef(null);
   const backdrop = useModalBackdrop(onClose);
   const [loading, setLoading] = useState(true);
   const [unlocked, setUnlocked] = useState(/** @type {Record<string, string>} */ ({}));
@@ -30,7 +30,7 @@ export default function AchievementsModal({ open, onClose }) {
 
   useEffect(() => {
     if (!open) return;
-    doneRef.current?.focus();
+    dialogRef.current?.focus();
     const onKey = (e) => {
       if (e.key === 'Escape') onCloseRef.current();
     };
@@ -72,17 +72,6 @@ export default function AchievementsModal({ open, onClose }) {
 
   if (!open) return null;
 
-  const btn = {
-    padding: '8px 14px',
-    borderRadius: 6,
-    border: '1px solid var(--ui-modal-btn-border)',
-    background: 'var(--ui-modal-btn-bg)',
-    color: 'var(--ui-modal-fg)',
-    cursor: 'pointer',
-    fontSize: 14,
-    fontWeight: 600,
-  };
-
   const panel = {
     background: 'var(--card-face-bg)',
     color: 'var(--card-text-black)',
@@ -105,6 +94,8 @@ export default function AchievementsModal({ open, onClose }) {
       role="dialog"
       aria-modal="true"
       aria-label="Achievements"
+      tabIndex={-1}
+      ref={dialogRef}
       {...backdrop}
       style={{
         position: 'fixed',
@@ -147,17 +138,6 @@ export default function AchievementsModal({ open, onClose }) {
             })}
           </div>
         )}
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button
-            type="button"
-            ref={doneRef}
-            style={{ ...btn, background: 'var(--ui-modal-btn-bg-strong)' }}
-            onClick={onClose}
-          >
-            Done
-          </button>
-        </div>
       </div>
     </div>
   );

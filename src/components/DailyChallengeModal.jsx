@@ -442,9 +442,6 @@ export default function DailyChallengeModal() {
 
           {/* Footer actions */}
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-            <button type="button" style={btn} onClick={onDismiss}>
-              Cancel
-            </button>
             <button
               type="button"
               disabled={!selected || isAfter(selected, today) || !withinSupported(selected)}

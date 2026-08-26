@@ -24,7 +24,7 @@ export default function StatisticsModal({ open, onClose }) {
   const stats = useStatisticsStore((s) => s.stats);
   const reset = useStatisticsStore((s) => s.reset);
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
-  const closeRef = useRef(null);
+  const dialogRef = useRef(null);
   const backdrop = useModalBackdrop(onClose);
 
   // Read the close handler via a ref so this effect runs once per open (depends
@@ -34,7 +34,7 @@ export default function StatisticsModal({ open, onClose }) {
 
   useEffect(() => {
     if (!open) return;
-    closeRef.current?.focus();
+    dialogRef.current?.focus();
     const onKey = (e) => {
       if (e.key === 'Escape') onCloseRef.current();
     };
@@ -85,9 +85,11 @@ export default function StatisticsModal({ open, onClose }) {
   return (
     <>
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label="Statistics"
+        tabIndex={-1}
       {...backdrop}
       style={{
           position: 'fixed',
@@ -95,7 +97,7 @@ export default function StatisticsModal({ open, onClose }) {
           background: 'rgba(0,0,0,0.5)',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
+          justifyContent: 'space-between',
           zIndex: 3000,
           padding: 16,
         }}
@@ -160,21 +162,13 @@ export default function StatisticsModal({ open, onClose }) {
             <span style={valueStyle}>{stats.bestStreak}</span>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 18, gap: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 18, gap: 10 }}>
             <button
               type="button"
               style={{ ...btn, background: 'var(--ui-modal-btn-bg-danger, #b23b3b)', color: '#fff' }}
               onClick={() => setConfirmResetOpen(true)}
             >
               Reset
-            </button>
-            <button
-              type="button"
-              ref={closeRef}
-              style={{ ...btn, background: 'var(--ui-modal-btn-bg-strong)' }}
-              onClick={onClose}
-            >
-              Close
             </button>
           </div>
         </div>

@@ -205,6 +205,10 @@ an `aria-live` region announces actions. Dialogs are in `components/`.
 - `CardView.jsx` — single card; canvas art from active renderer + 3D flip; tap/keyboard auto-move.
 - `SettingsModal.jsx` (+ `HelpModal.jsx`), `NewGameModal.jsx`, `ConfirmModal.jsx`,
   `WinModal.jsx`, `StatisticsModal.jsx`, `DailyChallengeModal.jsx`, `SeedInputModal.jsx` — dialogs.
+  - **Naming note:** `SettingsModal.jsx` is also referred to as the **Main Menu** — the two
+    names are interchangeable and both refer to the same component. Its visible title is
+    "Main Menu" and the toolbar button that opens it uses a hamburger (`Menu`) icon; the
+    internal store flag is still `settingsDialogOpen`. (Originally built as "Settings".)
 - `ToggleSwitch.jsx`, `modalBackdrop.js` — shared UI helpers.
 
 ## Rendering / animation (`src/render/`)
