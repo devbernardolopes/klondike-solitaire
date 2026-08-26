@@ -12,6 +12,7 @@
 // the panel), so it is never treated as an outside click.
 
 import { useRef } from 'react';
+import { markModalDismissed } from '../utils/modalDismissGuard.js';
 
 /**
  * @param {() => void} onClose  invoked when a real outside click is detected
@@ -29,6 +30,10 @@ export function useModalBackdrop(onClose) {
     if (e.button !== 0) return;
     const backdrop = e.currentTarget;
     if (downTarget.current === backdrop && e.target === backdrop) {
+      // Mark a short guard window BEFORE closing so the synthesized click at the
+      // end of this same touch gesture can't re-trigger a toolbar FAB that was
+      // underneath the backdrop (marking must be synchronous, not via React state).
+      markModalDismissed();
       onClose();
     }
     downTarget.current = null;

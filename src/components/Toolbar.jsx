@@ -5,8 +5,9 @@ import pkg from '../../package.json';
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { Plus, Undo2, Settings, BarChart3, Lightbulb, Coins as CoinsIcon } from 'lucide-react';
 import { useGameStore } from '../hooks/useGameStore.js';
-import { useUiStore, isAnyModalOpen } from '../hooks/useUiStore.js';
+import { useUiStore } from '../hooks/useUiStore.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
+import { isModalDismissGuardActive } from '../utils/modalDismissGuard.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useSound } from '../hooks/useSound.js';
 import { isWon } from '../core/winDetection.js';
@@ -92,32 +93,6 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const setGameOverDialogOpen = useUiStore((s) => s.setGameOverDialogOpen);
   const confirmNewGameDialogOpen = useUiStore((s) => s.confirmNewGameDialogOpen);
   const setConfirmNewGameDialogOpen = useUiStore((s) => s.setConfirmNewGameDialogOpen);
-
-  // True whenever any modal is open. Used to suppress the FAB reopen bug below.
-  const anyModalOpen = useUiStore(isAnyModalOpen);
-  // After a modal is dismissed, the closing gesture's synthesized `click` can
-  // land on a toolbar FAB that was underneath the full-screen backdrop, instantly
-  // re-triggering (or re-opening) that FAB's action. We block FAB pointer events
-  // for a frame once a modal transitions open → closed, so the stray click is
-  // absorbed by the board instead, then restore on the next frame.
-  const prevModalOpen = useRef(anyModalOpen);
-  const [fabsBlocked, setFabsBlocked] = useState(false);
-  useEffect(() => {
-    if (prevModalOpen.current && !anyModalOpen) {
-      setFabsBlocked(true);
-      const raf = requestAnimationFrame(() =>
-        requestAnimationFrame(() => setFabsBlocked(false)),
-      );
-      const t = setTimeout(() => setFabsBlocked(false), 250);
-      prevModalOpen.current = anyModalOpen;
-      return () => {
-        cancelAnimationFrame(raf);
-        clearTimeout(t);
-      };
-    }
-    prevModalOpen.current = anyModalOpen;
-    return undefined;
-  }, [anyModalOpen]);
 
   // Game session stats (moves / score) + live elapsed time for the HUD.
   const gameState = useGameStore((s) => s.state);
@@ -249,9 +224,15 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
     alignItems: 'center',
     justifyContent: 'center',
     padding: 10,
-    // While a modal is closing, suppress clicks on the FABs so a stray click
-    // (the tail of the dismiss gesture) can't re-trigger a button action.
-    pointerEvents: fabsBlocked ? 'none' : 'auto',
+  };
+
+  // Wraps a FAB click action so the stray `click` synthesized at the end of a
+  // mobile touch that dismissed a modal (via its backdrop) can't re-trigger the
+  // button that was underneath the backdrop. The guard is set synchronously by
+  // `useModalBackdrop` on dismiss, so it is active by the time this click fires.
+  const guardedFab = (fn) => (e) => {
+    if (isModalDismissGuardActive()) return;
+    fn(e);
   };
 
   // Bottom-left cluster, left-to-right: [Settings] [Statistics] [New Game].
@@ -348,7 +329,7 @@ function ElapsedClock() {
       <button
         style={{ ...fab, left: fabLeft(0) }}
         aria-label="Settings"
-        onClick={() => setSettingsDialogOpen(true)}
+        onClick={guardedFab(() => setSettingsDialogOpen(true))}
       >
         <Settings size={20} />
       </button>
@@ -356,7 +337,7 @@ function ElapsedClock() {
       <button
         style={{ ...fab, left: fabLeft(1) }}
         aria-label="Statistics"
-        onClick={() => setStatsDialogOpen(true)}
+        onClick={guardedFab(() => setStatsDialogOpen(true))}
       >
         <BarChart3 size={20} />
       </button>
@@ -364,7 +345,7 @@ function ElapsedClock() {
       <button
         style={{ ...fab, left: fabLeft(2) }}
         aria-label="New Game"
-        onClick={() => setNewGameDialogOpen(true)}
+        onClick={guardedFab(() => setNewGameDialogOpen(true))}
       >
         <Plus size={20} />
       </button>
@@ -373,7 +354,7 @@ function ElapsedClock() {
         style={{ ...fab, right: 16 + FAB_WIDTH + FAB_GAP, opacity: locked ? 0.4 : 1 }}
         aria-label="Hint: show available moves (H)"
         disabled={locked}
-        onClick={showHints}
+        onClick={guardedFab(showHints)}
       >
         <Lightbulb size={20} />
       </button>
@@ -382,7 +363,7 @@ function ElapsedClock() {
         style={{ ...fab, right: 16, opacity: locked || !canUndo ? 0.4 : 1 }}
         aria-label="Undo"
         disabled={locked || !canUndo}
-        onClick={undo}
+        onClick={guardedFab(undo)}
       >
         <Undo2 size={20} />
       </button>
