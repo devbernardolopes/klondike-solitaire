@@ -156,6 +156,10 @@ export default function DailyChallengeModal() {
     setViewM(ini.m);
     applySelected(initial);
     initialRef.current = { today: todayStr, selected: initial, usedPreferred };
+    // Persist the advanced day (e.g. set after a daily win) so it survives a
+    // hard reload — the in-memory store field is lost on refresh, and without
+    // this the calendar would fall back to the previously saved (played) day.
+    if (usedPreferred && initial !== todayStr) saveLastDailySelection(initial);
     return undefined;
   }, [open]);
 
