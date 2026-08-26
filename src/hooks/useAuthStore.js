@@ -8,6 +8,7 @@
 
 import { create } from 'zustand';
 import { supabase } from '../lib/supabaseClient.js';
+import { clearQueuedOps } from '../db/syncQueue.js';
 
 // Guard so concurrent callers (App boot + the sync engine's ensureSignedIn)
 // share a single in-flight init rather than racing two signInAnonymously calls.
@@ -18,6 +19,8 @@ let initPromise = null;
  * @property {string|null} userId        Supabase user id, or null when signed out
  * @property {boolean} isAnonymous       true for anonymous sessions
  * @property {boolean} ready             true once init() has resolved (success or failure)
+ * @property {string|null} displayName    profile display name, or null
+ * @property {{message:string}|null} linkConflict  active Google-link conflict, or null
  * @property {string|null} authError     last auth error message, or null
  * @property {() => Promise<void>} init  establish/resume the session
  */
@@ -27,10 +30,29 @@ const userShape = (user) => ({
   isAnonymous: user ? (user.is_anonymous ?? true) : true,
 });
 
+// Set the session-derived fields and fetch the profile's display name. The
+// profile query is best-effort: a network failure (offline) must not make
+// init() reject, so it is swallowed and displayName simply stays null.
+const hydrateProfile = async (user) => {
+  set({ ...userShape(user), ready: true });
+  try {
+    const { data } = await supabase
+      .from('profiles')
+      .select('display_name')
+      .eq('id', user.id)
+      .single();
+    if (data) set({ displayName: data.display_name });
+  } catch {
+    // Offline / profile missing — leave displayName null.
+  }
+};
+
 export const useAuthStore = create((set, get) => ({
   userId: null,
   isAnonymous: true,
   ready: false,
+  displayName: null,
+  linkConflict: null,
   authError: null,
 
   /**
@@ -46,7 +68,7 @@ export const useAuthStore = create((set, get) => ({
           data: { session },
         } = await supabase.auth.getSession();
         if (session?.user) {
-          set({ ...userShape(session.user), ready: true });
+          await hydrateProfile(session.user);
           return;
         }
       } catch {
@@ -57,7 +79,7 @@ export const useAuthStore = create((set, get) => ({
         const { data, error } = await supabase.auth.signInAnonymously();
         if (error) throw error;
         if (data?.user) {
-          set({ ...userShape(data.user), ready: true });
+          await hydrateProfile(data.user);
           return;
         }
       } catch (e) {
@@ -89,5 +111,36 @@ export const useAuthStore = create((set, get) => ({
     if (userId) return userId;
     await get().init();
     return get().userId;
+  },
+
+  /** Begin linking the current anonymous session to a Google identity. */
+  linkWithGoogle: async () => {
+    localStorage.setItem('klondike:pendingLink', '1');
+    await supabase.auth.linkIdentity({
+      provider: 'google',
+      options: { redirectTo: window.location.origin },
+    });
+    // Browser navigates to Google here; nothing after this normally runs.
+  },
+
+  /**
+   * Resolve a detected link conflict (see checkAuthRedirectResult).
+   * `accept: true` adopts the already-linked account's data per the agreed
+   * merge policy, discarding this session's queued-but-unsynced ops.
+   * `accept: false` just dismisses the dialog; nothing changes.
+   * @param {boolean} accept
+   */
+  resolveLinkConflict: async (accept) => {
+    set({ linkConflict: null });
+    if (!accept) return;
+    await clearQueuedOps();
+    localStorage.setItem('klondike:pendingProfilePull', '1');
+    await supabase.auth.signOut();
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin },
+    });
+    // Browser navigates to Google again here — this is expected: adopting
+    // the other account is a real sign-in, not a local state change.
   },
 }));

@@ -60,3 +60,13 @@ export async function markOpFailed(id, errorMessage) {
   const attempts = (row && row.attempts) || 0;
   await db.syncQueue.update(id, { attempts: attempts + 1, lastError: errorMessage });
 }
+
+/**
+ * Drop every pending op. Used when abandoning a session's queue outright (see
+ * useAuthStore.resolveLinkConflict) rather than letting it flush under a
+ * different, just-adopted identity.
+ * @returns {Promise<void>}
+ */
+export async function clearQueuedOps() {
+  await db.syncQueue.clear();
+}

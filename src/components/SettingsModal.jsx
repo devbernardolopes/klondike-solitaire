@@ -9,6 +9,7 @@ import { HelpCircle } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useUiStore } from '../hooks/useUiStore.js';
+import { useAuthStore } from '../hooks/useAuthStore.js';
 import { buildSnapshotText, snapshotModeToken } from '../core/snapshot.js';
 import ToggleSwitch from './ToggleSwitch.jsx';
 import HelpModal from './HelpModal.jsx';
@@ -45,6 +46,8 @@ export default function SettingsModal({
   const doneRef = useRef(null);
   const backdrop = useModalBackdrop(onClose);
   const helpOpen = useUiStore((s) => s.helpDialogOpen);
+  const displayName = useAuthStore((s) => s.displayName);
+  const isAnonymous = useAuthStore((s) => s.isAnonymous);
 
   // Keep the latest close handler in a ref so the open-effect can depend only on
   // `open` (running exactly once per open) instead of on the handler identity.
@@ -213,6 +216,26 @@ export default function SettingsModal({
             onChange={onParticlesChange}
             label="Foundation Particles"
           />
+        </div>
+
+        <div style={{ ...field, marginBottom: 20 }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>Account</div>
+            <div style={{ fontSize: 13, opacity: 0.8 }}>
+              {isAnonymous
+                ? `Playing as ${displayName ?? '…'}`
+                : `Signed in as ${displayName ?? '…'} (Google)`}
+            </div>
+          </div>
+          {isAnonymous && (
+            <button
+              type="button"
+              style={btn}
+              onClick={() => useAuthStore.getState().linkWithGoogle()}
+            >
+              Sign in with Google
+            </button>
+          )}
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>

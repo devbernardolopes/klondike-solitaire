@@ -18,6 +18,8 @@ import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
 import { useSeedStore } from '../hooks/useSeedStore.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { startSyncEngine } from '../sync/syncEngine.js';
+import { checkAuthRedirectResult } from '../lib/authRedirect.js';
+import ConfirmModal from './ConfirmModal.jsx';
 import { MotionDebugPanel } from '../render/animation/MotionDebugPanel.jsx';
 
 export default function App() {
@@ -35,14 +37,18 @@ export default function App() {
   const initStats = useStatisticsStore((s) => s.init);
   const initSeeds = useSeedStore((s) => s.init);
   const state = useGameStore((s) => s.state);
+  const linkConflict = useAuthStore((s) => s.linkConflict);
 
   useEffect(() => {
-    useAuthStore.getState().init();
-    startSyncEngine();
-    init();
-    initStats();
-    initSeeds();
-    useGameStore.getState().initialDeal();
+    (async () => {
+      await useAuthStore.getState().init();
+      await checkAuthRedirectResult();
+      startSyncEngine();
+      init();
+      initStats();
+      initSeeds();
+      useGameStore.getState().initialDeal();
+    })();
   }, [init, initStats, initSeeds]);
 
   // Pause/resume the play timer with tab focus. When the tab is hidden the clock
@@ -87,6 +93,15 @@ export default function App() {
       <Board />
       {import.meta.env.DEV && <MotionDebugPanel />}
       <WinModal />
+      <ConfirmModal
+        open={!!linkConflict}
+        title="Google account already linked"
+        message="This Google account is already linked to a different player profile. Continuing will switch this device to that profile's data — this device's current progress (not yet linked to any account) will not be kept."
+        confirmText="Switch to that profile"
+        cancelText="Stay on this device"
+        onConfirm={() => useAuthStore.getState().resolveLinkConflict(true)}
+        onCancel={() => useAuthStore.getState().resolveLinkConflict(false)}
+      />
     </div>
   );
 }
