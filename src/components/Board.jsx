@@ -331,12 +331,13 @@ export default function Board() {
   };
 
   // Manual double-tap / double-click detection on the board, for BOTH mouse and
-  // touch. Auto-complete fires ONLY on an EMPTY spot of a tableau column — never
-  // on a card (face-up or face-down) and never on foundations / stock / waste /
-  // the board background. Rationale:
-  //   - A double-click on a card must not auto-complete; cards have their own
-  //     single-tap auto-move. All cards (including face-down ones) carry a
-  //     `data-card` attribute, so `closest('[data-card]')` covers them.
+  // touch. Auto-complete fires on ANY empty spot of the board — i.e. anywhere
+  // the double-click does NOT land on a card. It must never fire on a card
+  // (face-up or face-down), because cards have their own single-tap auto-move;
+  // all cards (including face-down ones) carry a `data-card` attribute, so
+  // `closest('[data-card]')` covers them. Empty spots include the tableau, the
+  // foundations, the stock/waste piles, and the board background — anything that
+  // is not a card. Rationale for the broad trigger:
   //   - The distance between the two taps is irrelevant (board-wide action), so
   //     we pair by time only (DOUBLE_TAP_MS). This also makes a "double-click
   //     while sweeping the cursor across the board" work, since the browser's
@@ -353,14 +354,15 @@ export default function Board() {
     if (e.button !== 0) return;
     if (useUiStore.getState().isDragging) return;
     const onCard = e.target.closest('[data-card]');
-    const loc = e.target.closest('[data-loc]')?.getAttribute('data-loc');
-    // Only an empty spot of a tableau column may seed/fire the double-tap.
-    if (onCard || !loc?.startsWith('tableau')) return;
+    // Auto-complete on a double-tap anywhere that is NOT a card (any empty spot
+    // of the board). A card keeps its own single-tap auto-move, so a double-click
+    // on a card never auto-completes.
+    if (onCard) return;
     const now = Date.now();
     const tap = { x: e.clientX, y: e.clientY, t: now };
     const prev = lastTap.current;
-    // Record the tap only for valid empty-tableau spots, so a click on a card or
-    // elsewhere can never seed a spurious pair with a later empty-spot tap.
+    // Record the tap for any non-card spot, so two quick empty-spot taps
+    // anywhere on the board seed/fire the double-tap.
     lastTap.current = tap;
     if (won || isOver || autoCompleting) return;
     if (prev && now - prev.t < DOUBLE_TAP_MS) {
@@ -467,34 +469,18 @@ export default function Board() {
               )),
             ]}
 
-        {/* Tableau: 7 columns. Wrapped in a `data-loc="tableau"` container so
-            the entire tableau band (gaps between columns, the area below short
-            columns, and the empty strip below a column's last card) is
-            hit-testable as part of the tableau. Otherwise those empty spots are
-            just board background with no `data-loc`, so a double-click there
-            wouldn't be recognized as a tableau double-click. */}
-        <div
-          data-loc="tableau"
-          style={{
-            gridColumn: '1 / -1',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(7, var(--card-width))',
-            gap: 'clamp(6px, 1.2vw, 14px)',
-            justifyContent: 'center',
-          }}
-        >
-          {state.tableau.map((pile, i) => (
-            <Pile
-              key={`t${i}`}
-              loc={`tableau:${i}`}
-              cards={pile}
-              fanned
-              metrics={metrics}
-              hiddenIds={hiddenIds}
-              onAutoMove={autoMove}
-            />
-          ))}
-        </div>
+        {/* Tableau: 7 columns */}
+        {state.tableau.map((pile, i) => (
+          <Pile
+            key={`t${i}`}
+            loc={`tableau:${i}`}
+            cards={pile}
+            fanned
+            metrics={metrics}
+            hiddenIds={hiddenIds}
+            onAutoMove={autoMove}
+          />
+        ))}
       </div>
 
       <DragOverlay dropAnimation={null} zIndex={1500}>
