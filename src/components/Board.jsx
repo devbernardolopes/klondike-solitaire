@@ -347,6 +347,12 @@ export default function Board() {
     // `dblclick` event. Splitting the two avoids firing auto-complete twice on
     // a single mouse double-click.
     if (e.pointerType !== 'touch') return;
+    // A double-tap on tableau/foundation/empty board means "auto-complete", even
+    // when it lands on a card (a fanned column is almost entirely card elements,
+    // so the old `[data-card]` bail made most taps do nothing). Keep stock/waste
+    // taps on their existing single-tap semantics.
+    const loc = e.target.closest('[data-loc]')?.getAttribute('data-loc');
+    if (loc === 'stock' || loc === 'waste') return;
     const now = Date.now();
     const tap = { x: e.clientX, y: e.clientY, t: now };
     const prev = lastTap.current;
@@ -367,15 +373,24 @@ export default function Board() {
     }
   };
 
-  // Native double-click on the board background is the primary, robust trigger
-  // for mouse. The browser matches the two clicks (distance + timing) for us,
-  // so this is immune to the manual 6px/distance jitter that plagued fast
-  // clickers. It deliberately ignores `anyAnimating` (a mid-tween card) because
-  // a double-click is an explicit, deliberate action — but it still blocks a
-  // finished/over/already-autoCompleting game.
+  // Native double-click is the primary, robust trigger for mouse. The browser
+  // matches the two clicks (distance + timing) for us, so this is immune to the
+  // manual 6px/distance jitter that plagued fast clickers. A double-click means
+  // "auto-complete the board" — it must fire even when the cursor lands on a
+  // tableau/foundation *card* (in a fanned column nearly every pixel inside the
+  // column sits over a full-height card element, so bailing on `[data-card]`
+  // made most fast double-clicks in the tableau area do nothing — which is the
+  // bug this fixes). We only exclude `stock`/`waste`, whose double-click keeps a
+  // different meaning (stock draws, waste does a single auto-move). Everything
+  // else — tableau columns (cards *or* the empty strip), foundations, and the
+  // board background — triggers auto-complete. This deliberately ignores
+  // `anyAnimating` (a mid-tween card) because a double-click is an explicit,
+  // deliberate action, but still blocks a finished/over/already-autoCompleting
+  // game.
   const handleBoardDoubleClick = (e) => {
     if (e.button !== 0) return;
-    if (e.target.closest('[data-card]')) return;
+    const loc = e.target.closest('[data-loc]')?.getAttribute('data-loc');
+    if (loc === 'stock' || loc === 'waste') return;
     if (won || isOver || autoCompleting) return;
     autoComplete();
   };
