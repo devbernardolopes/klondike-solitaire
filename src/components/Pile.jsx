@@ -195,6 +195,7 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
   return (
     <div
       ref={setNodeRef}
+      data-pile={loc}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       tabIndex={0}

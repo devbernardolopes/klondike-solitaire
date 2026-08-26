@@ -11,6 +11,11 @@ import { create } from 'zustand';
 // store so awaiters don't need the store's set/get plumbing.
 const transitionDone = new Map();
 
+// Timeout handle for the "No hints available" banner's auto-dismiss. Held at
+// module scope (not in the store) so the timer isn't reset on every unrelated
+// re-render, and so clearing it is independent of store plumbing.
+let noHintsBannerTimer = null;
+
 /**
  * Resolve when the transition with the given id finishes animating (i.e. when
  * endTransition(tid) is next called). Used by the auto-complete loop to chain
@@ -34,7 +39,7 @@ function fireTransitionDone(tid) {
   }
 }
 
-export const useUiStore = create((set) => ({
+export const useUiStore = create((set, get) => ({
   selectedCardId: null,
   announce: '',
   noMovesDialogOpen: false,
@@ -42,6 +47,13 @@ export const useUiStore = create((set) => ({
   // Currently-displayed move hints (set by the Hint affordance). Each entry is
   // { from, to, cardId } from core/hints.js. Empty when no hints are shown.
   hints: [],
+
+  // "No hints available" banner state. `noHintsBannerActive` drives whether the
+  // centered banner is rendered; `noHintsBannerToken` increments each time the
+  // banner is freshly shown so React remounts it (replaying its 3s fade) only
+  // on a genuine new show — never when merely re-rendering mid-display.
+  noHintsBannerActive: false,
+  noHintsBannerToken: 0,
 
   // True while a dnd-kit drag is in progress. Used to keep CardView's own
   // tap→auto-move from firing on the same gesture as a drag, which could
@@ -176,31 +188,58 @@ export const useUiStore = create((set) => ({
   selectCard: (id) => set({ selectedCardId: id }),
 
   /** Show/hide the "no valid moves remaining" dialog. */
-  setNoMovesDialogOpen: (open) => set({ noMovesDialogOpen: open }),
+  setNoMovesDialogOpen: (open) => {
+    get().dismissNoHintsBanner();
+    set({ noMovesDialogOpen: open });
+  },
 
   /** Show/hide the New Game mode-picker dialog. */
-  setNewGameDialogOpen: (open) => set({ newGameDialogOpen: open }),
+  setNewGameDialogOpen: (open) => {
+    get().dismissNoHintsBanner();
+    set({ newGameDialogOpen: open });
+  },
 
   /** Show/hide the "Start a new game?" confirmation dialog. */
-  setConfirmNewGameDialogOpen: (open) => set({ confirmNewGameDialogOpen: open }),
+  setConfirmNewGameDialogOpen: (open) => {
+    get().dismissNoHintsBanner();
+    set({ confirmNewGameDialogOpen: open });
+  },
 
   /** Show/hide the options/settings dialog. */
-  setSettingsDialogOpen: (open) => set({ settingsDialogOpen: open }),
+  setSettingsDialogOpen: (s) => {
+    get().dismissNoHintsBanner();
+    set({ settingsDialogOpen: s });
+  },
 
   /** Show/hide the keyboard-shortcuts help dialog. */
-  setHelpDialogOpen: (open) => set({ helpDialogOpen: open }),
+  setHelpDialogOpen: (open) => {
+    get().dismissNoHintsBanner();
+    set({ helpDialogOpen: open });
+  },
 
   /** Show/hide the Statistics dialog. */
-  setStatsDialogOpen: (open) => set({ statsDialogOpen: open }),
+  setStatsDialogOpen: (open) => {
+    get().dismissNoHintsBanner();
+    set({ statsDialogOpen: open });
+  },
 
   /** Show/hide the Game Over dialog. */
-  setGameOverDialogOpen: (open) => set({ gameOverDialogOpen: open }),
+  setGameOverDialogOpen: (open) => {
+    get().dismissNoHintsBanner();
+    set({ gameOverDialogOpen: open });
+  },
 
   /** Show/hide the "Enter Seed" dialog. */
-  setSeedInputDialogOpen: (open) => set({ seedInputDialogOpen: open }),
+  setSeedInputDialogOpen: (open) => {
+    get().dismissNoHintsBanner();
+    set({ seedInputDialogOpen: open });
+  },
 
   /** Show/hide the Daily Challenge calendar modal. */
-  setDailyChallengeDialogOpen: (open) => set({ dailyChallengeDialogOpen: open }),
+  setDailyChallengeDialogOpen: (open) => {
+    get().dismissNoHintsBanner();
+    set({ dailyChallengeDialogOpen: open });
+  },
 
   /** Set which surface opened the Daily Challenge modal. */
   setDailyChallengeOrigin: (origin) => set({ dailyChallengeOrigin: origin }),
@@ -209,10 +248,16 @@ export const useUiStore = create((set) => ({
   setDailyChallengeInitialDate: (date) => set({ dailyChallengeInitialDate: date }),
 
   /** Show the win summary modal with the given summary payload. */
-  setWinDialog: (summary) => set({ winDialogOpen: true, winSummary: summary }),
+  setWinDialog: (summary) => {
+    get().dismissNoHintsBanner();
+    set({ winDialogOpen: true, winSummary: summary });
+  },
 
   /** Dismiss the win summary modal. */
-  closeWinDialog: () => set({ winDialogOpen: false }),
+  closeWinDialog: () => {
+    get().dismissNoHintsBanner();
+    set({ winDialogOpen: false });
+  },
 
   /** Record which mode was last used, so the "no valid moves" recovery path can reuse it. */
   setLastNewGameMode: (mode) => set({ lastNewGameMode: mode }),
@@ -239,6 +284,32 @@ export const useUiStore = create((set) => ({
 
   /** Clear all move hints. */
   clearHints: () => set({ hints: [] }),
+
+  /**
+   * Show the centered "No hints available" banner. It stays up for 3 seconds
+   * (the CSS fade lands on that timeout) and then auto-hides. If it is already
+   * showing, this is a no-op so re-triggering the hint action while it is
+   * visible (with the board still having no moves) does NOT restart/flicker it.
+   */
+  showNoHintsBanner: () =>
+    set((s) => {
+      if (s.noHintsBannerActive) return s;
+      if (noHintsBannerTimer) clearTimeout(noHintsBannerTimer);
+      noHintsBannerTimer = setTimeout(() => {
+        if (useUiStore.getState().noHintsBannerActive) {
+          useUiStore.setState({ noHintsBannerActive: false });
+        }
+      }, 3000);
+      return { noHintsBannerActive: true, noHintsBannerToken: s.noHintsBannerToken + 1 };
+    }),
+
+  /**
+   * Immediately hide the "No hints available" banner, regardless of how much of
+   * the 3-second window remains. Called by any user action other than the hint
+   * action itself (e.g. a card tap, undo, a modal button) so the banner never
+   * outlives the context that produced it.
+   */
+  dismissNoHintsBanner: () => set({ noHintsBannerActive: false }),
 
   /** Update the aria-live announcement text. */
   setAnnounce: (text) => set({ announce: text }),

@@ -359,6 +359,7 @@ function ElapsedClock() {
        <button
         style={{ ...fab, right: 16 + FAB_WIDTH + FAB_GAP, opacity: locked ? 0.4 : 1 }}
         aria-label="Hint: show available moves (H)"
+        data-hint-button
         disabled={locked}
         onClick={guardedFab(showHints)}
       >

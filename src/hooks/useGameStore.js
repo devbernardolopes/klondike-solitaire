@@ -474,6 +474,7 @@ export const useGameStore = create((set, get) => ({
    * @param {'winning'|'random'} [mode]
    */
   dealNewGame: (mode = 'random') => {
+    useUiStore.getState().dismissNoHintsBanner();
     cancelAutoComplete(set);
     useUiStore.getState().setNoMovesDialogOpen(false);
     useUiStore.getState().closeWinDialog();
@@ -542,6 +543,7 @@ export const useGameStore = create((set, get) => ({
    * @returns {boolean} whether the game was dealt
    */
   dealDaily: (date) => {
+    useUiStore.getState().dismissNoHintsBanner();
     const seed = seedForDate(date);
     if (seed == null) return false;
     cancelAutoComplete(set);
@@ -612,6 +614,7 @@ export const useGameStore = create((set, get) => ({
    * Falls back to dealNewGame(lastNewGameMode) if no spec is recorded.
    */
   replayGame: () => {
+    useUiStore.getState().dismissNoHintsBanner();
     const spec = get().replaySpec;
     if (!spec) {
       get().dealNewGame(useUiStore.getState().lastNewGameMode);
@@ -644,6 +647,7 @@ export const useGameStore = create((set, get) => ({
    * Draw from stock to waste. No-op if stock is empty (UI should offer recycle).
    */
   drawFromStock: () => {
+    useUiStore.getState().dismissNoHintsBanner();
     const { state } = get();
     if (isWon(state) || useStatsStore.getState().isOver) return;
     if (get().autoCompleting) return;
@@ -667,6 +671,7 @@ export const useGameStore = create((set, get) => ({
    * Recycle waste back into the stock.
    */
   recycleStock: () => {
+    useUiStore.getState().dismissNoHintsBanner();
     const { state } = get();
     if (isWon(state) || useStatsStore.getState().isOver) return;
     if (get().autoCompleting) return;
@@ -694,6 +699,7 @@ export const useGameStore = create((set, get) => ({
    * @returns {boolean} whether the move was applied
    */
   moveCard: (from, to, cardId, opts = {}) => {
+    useUiStore.getState().dismissNoHintsBanner();
     cancelAutoComplete(set);
     const { state } = get();
     if (isWon(state) || useStatsStore.getState().isOver) return false;
@@ -772,6 +778,7 @@ export const useGameStore = create((set, get) => ({
   },
 
   undo: () => {
+    useUiStore.getState().dismissNoHintsBanner();
     cancelAutoComplete(set);
     useUiStore.getState().setNoMovesDialogOpen(false);
     const { state } = get();
@@ -820,6 +827,7 @@ export const useGameStore = create((set, get) => ({
    * @returns {boolean} whether a move was applied
    */
   autoMove: (from, cardId) => {
+    useUiStore.getState().dismissNoHintsBanner();
     const { state, autoMoveState } = get();
     if (isWon(state) || useStatsStore.getState().isOver) return false;
     if (get().autoCompleting) return false;
@@ -871,6 +879,7 @@ export const useGameStore = create((set, get) => ({
    * @returns {boolean} whether at least one move was started
    */
   autoComplete: (force = false, opts = {}) => {
+    useUiStore.getState().dismissNoHintsBanner();
     useUiStore.getState().clearHints();
     if (autoCompleteTimer !== null) return false;
     if (isWon(get().state) || useStatsStore.getState().isOver) return false;
@@ -929,12 +938,16 @@ export const useGameStore = create((set, get) => ({
       return;
     }
     const hints = findHints(get().state);
+    if (hints.length === 0) {
+      // The current visible board has no moves the hint system recognizes —
+      // show the transient "No hints available" banner (it self-dismisses after
+      // 3s and won't restart if the hint action is re-triggered while up).
+      ui.showNoHintsBanner();
+      ui.setAnnounce('No moves available right now');
+      return;
+    }
     ui.setHints(hints);
-    ui.setAnnounce(
-      hints.length > 0
-        ? `Hint: ${hints.length} move${hints.length === 1 ? '' : 's'} available`
-        : 'No moves available right now',
-    );
+    ui.setAnnounce(`Hint: ${hints.length} move${hints.length === 1 ? '' : 's'} available`);
   },
 }));
 

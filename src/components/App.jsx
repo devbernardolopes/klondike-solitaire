@@ -12,6 +12,7 @@ import Toolbar from './Toolbar.jsx';
 import Board from './Board.jsx';
 import WinModal from './WinModal.jsx';
 import { useGameStore } from '../hooks/useGameStore.js';
+import { useUiStore } from '../hooks/useUiStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
@@ -82,6 +83,31 @@ export default function App() {
     useStatsStore.getState().setFocused(!document.hidden);
     document.addEventListener('visibilitychange', onVisibility);
     return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
+
+  // Dismiss the transient "No hints available" banner whenever the user performs
+  // any interaction other than (a) invoking the hint action or (b) a single
+  // tap/click on empty screen. We listen at the document level in the capture
+  // phase so the check runs before any per-element handler and we can precisely
+  // carve out the two non-dismissing cases:
+  //   - a click on the hint button (`[data-hint-button]`) keeps the banner;
+  //   - a click that lands on neither a card, a pile, nor a button is "empty part
+  //     of the screen" and also keeps the banner.
+  // Everything else (a card tap, undo/redo/draw/recycle/auto-complete, toolbar
+  // buttons, modal buttons) dismisses it immediately, even mid 3-second window.
+  useEffect(() => {
+    const onPointerDown = (e) => {
+      const t = e.target;
+      if (t.closest && t.closest('[data-hint-button]')) return;
+      const onInteractive =
+        (t.closest && t.closest('[data-card]')) ||
+        (t.closest && t.closest('[data-pile]')) ||
+        (t.closest && t.closest('button,[role="button"]'));
+      if (!onInteractive) return;
+      useUiStore.getState().dismissNoHintsBanner();
+    };
+    document.addEventListener('pointerdown', onPointerDown, true);
+    return () => document.removeEventListener('pointerdown', onPointerDown, true);
   }, []);
 
   return (

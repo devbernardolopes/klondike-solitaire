@@ -113,6 +113,50 @@
   }
 }
 
+/* "No hints available" banner: a centered horizontal label shown when the user
+   asks for a hint but the current visible board has no recognized moves. It is
+   only rendered while its 3-second window is active, and its CSS animation
+   spans exactly that window: a quick fade-in, a held-full-opacity plateau, then
+   a fade-out that lands on the 3-second mark (when the store removes it from the
+   DOM). Re-triggering the hint action while it is still up does NOT remount it
+   (the store holds `noHintsBannerActive`), so no flicker/restart occurs. */
+.no-hints-banner {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+  padding: 12px 28px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: clamp(16px, 2.4vw, 24px);
+  letter-spacing: 0.04em;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  animation: noHintsFade 3s ease-out forwards;
+}
+
+@keyframes noHintsFade {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.92);
+  }
+  8% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 /* Daily Challenge calendar cells. Base styling lives here; the dynamic state
    classes (today / completed / selected / disabled) layer on top. Layout
    (size + centering) is set inline in DailyChallengeModal so it's robust even

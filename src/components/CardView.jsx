@@ -156,6 +156,11 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
   const handlePointerUp = (e) => {
     if (e.button !== 0) return;
     listeners?.onPointerUp?.(e);
+    // Any tap on a card is an interaction, so dismiss the transient "No hints
+    // available" banner immediately (regardless of whether the tap yields a
+    // valid move). Taps on empty board space never reach a card's handler, so
+    // they correctly leave the banner up.
+    useUiStore.getState().dismissNoHintsBanner();
     if (!card.faceUp || locked || !onAutoMove || !downPos.current) return;
     // Never auto-move on the same gesture as a drag: doing so mid-drag relocates
     // and hides the dragged card (see useDragEngine/Board hiddenIds), which can
@@ -178,6 +183,8 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
   };
   const handleKeyDown = (e) => {
     if (!card.faceUp || locked || !onAutoMove) return;
+    // A keyboard activation of a card is an interaction; dismiss the banner.
+    useUiStore.getState().dismissNoHintsBanner();
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       clearSelection();

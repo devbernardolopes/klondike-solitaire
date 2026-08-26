@@ -125,6 +125,8 @@ export default function Board() {
   const dealNewGame = useGameStore((s) => s.dealNewGame);
   const showHints = useGameStore((s) => s.showHints);
   const clearSelection = useUiStore((s) => s.clearSelection);
+  const noHintsBannerActive = useUiStore((s) => s.noHintsBannerActive);
+  const noHintsBannerToken = useUiStore((s) => s.noHintsBannerToken);
   const setAnnounce = useUiStore((s) => s.setAnnounce);
   const announce = useUiStore((s) => s.announce);
   const handedness = useSettingsStore((s) => s.handedness);
@@ -394,6 +396,22 @@ export default function Board() {
       {autoCompletingToWin && !won && (
         <div className="auto-complete-banner" role="status" aria-live="polite">
           Autocomplete
+        </div>
+      )}
+      {/* Centered "No hints available" banner shown when the user invokes the
+          hint action but the current visible board has no moves the hint system
+          recognizes. It renders for up to 3 seconds (the CSS fade lands on that
+          timeout) and is removed the instant any other action occurs (card tap,
+          undo, a modal button, etc.) or the timeout fires. `key={token}` remounts
+          it only on a genuine new show so re-renders never replay the animation. */}
+      {noHintsBannerActive && (
+        <div
+          key={noHintsBannerToken}
+          className="no-hints-banner"
+          role="status"
+          aria-live="polite"
+        >
+          No hints available
         </div>
       )}
       {/* Screen-reader live region for keyboard/shortcut feedback. */}
