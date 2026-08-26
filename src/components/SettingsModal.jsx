@@ -16,6 +16,7 @@ import ToggleSwitch from './ToggleSwitch.jsx';
 import HelpModal from './HelpModal.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
 import AchievementsModal from './AchievementsModal.jsx';
+import LeaderboardModal from './LeaderboardModal.jsx';
 
 /**
  * @param {object} props
@@ -53,6 +54,7 @@ export default function SettingsModal({
   const isAnonymous = useAuthStore((s) => s.isAnonymous);
   const [signOutConfirmOpen, setSignOutConfirmOpen] = useState(false);
   const [achievementsOpen, setAchievementsOpen] = useState(false);
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
 
   // useAuthStore can't refresh these itself (circular import) — do it here,
   // after it has reset local caches and re-established an anonymous session.
@@ -292,6 +294,13 @@ export default function SettingsModal({
             >
               Achievements
             </button>
+            <button
+              type="button"
+              style={{ ...btn }}
+              onClick={() => setLeaderboardOpen(true)}
+            >
+              Leaderboard
+            </button>
           </div>
           <button
             type="button"
@@ -324,6 +333,11 @@ export default function SettingsModal({
       <AchievementsModal
         open={achievementsOpen}
         onClose={() => setAchievementsOpen(false)}
+      />
+
+      <LeaderboardModal
+        open={leaderboardOpen}
+        onClose={() => setLeaderboardOpen(false)}
       />
     </>
   );
