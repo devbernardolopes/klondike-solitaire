@@ -9,6 +9,15 @@
 // Fixed fallback epoch (UTC ms) for 2026-01-01T00:00:00Z.
 const FALLBACK_UTC = Date.UTC(2026, 0, 1);
 
+// On a failed server fetch we must NOT collapse "today" down to the hard
+// fallback (which equals the daily window anchor, 2026-01-01) — doing so marks
+// every later day as "future" and disables the entire calendar. When we already
+// have a known-good cached server time, keep it; only use the anchor as a last
+// resort when there is no cached value at all (first-ever load, fully offline).
+function fallbackNow() {
+  return cachedServerNow != null ? cachedServerNow : FALLBACK_UTC;
+}
+
 // localStorage key holding the last server "now" (UTC ms) as a string, so it can
 // be re-seeded synchronously on a full page reload (before any network call).
 const LS_KEY_SERVER_NOW = 'klondike:serverNow';
@@ -110,18 +119,18 @@ export async function fetchServerNow(timeoutMs = 4000) {
       signal: controller ? controller.signal : undefined,
     });
     if (timer) clearTimeout(timer);
-    if (!res || !res.ok) return FALLBACK_UTC;
+    if (!res || !res.ok) return fallbackNow();
     const data = await res.json();
     if (!data || typeof data.year !== 'number' || typeof data.month !== 'number' || typeof data.day !== 'number') {
-      return FALLBACK_UTC;
+      return fallbackNow();
     }
     const ms = Date.UTC(data.year, data.month - 1, data.day);
-    if (!Number.isFinite(ms)) return FALLBACK_UTC;
+    if (!Number.isFinite(ms)) return fallbackNow();
     cachedServerNow = ms;
     writeLocalStorage(LS_KEY_SERVER_NOW, ms);
     return ms;
   } catch {
     // Network failure, abort, parse error — anything. Never trust the device.
-    return FALLBACK_UTC;
+    return fallbackNow();
   }
 }
