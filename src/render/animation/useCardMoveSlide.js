@@ -15,6 +15,7 @@ const CONFIG_BY_TYPE = {
   auto: MOTION.auto,
   deal: MOTION.deal,
   recycle: MOTION.move,
+  undo: MOTION.undo,
 };
 
 // Module-level registry of in-flight timelines. These are intentionally NOT tied
@@ -48,7 +49,8 @@ export function useCardMoveSlide() {
       dequeueFlip('move') ||
       dequeueFlip('auto') ||
       dequeueFlip('recycle') ||
-      dequeueFlip('deal');
+      dequeueFlip('deal') ||
+      dequeueFlip('undo');
     if (!entry) return;
     const { tid, snapshot, type } = entry;
     const cfg = CONFIG_BY_TYPE[type];

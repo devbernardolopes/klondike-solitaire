@@ -744,7 +744,29 @@ export const useGameStore = create((set, get) => ({
     // Undo doesn't animate and would corrupt an in-flight tween, so block it
     // whenever any card is still moving.
     if (useUiStore.getState().animatingCards.size > 0) return;
+    // Capture the rects of the cards that undo will relocate BEFORE the state
+    // change, so the render-layer hook can tween them back as a `move` (using
+    // the independent MOTION.undo preset) instead of snapping. Derive the moved
+    // cards from the inverse of the last recorded move.
+    const last = state.moveHistory[state.moveHistory.length - 1];
+    let undoIds = [];
+    let undoDest = [];
+    if (last.type === 'moveCards') {
+      undoIds = last.cardIds.slice();
+      undoDest = [last.from];
+    } else if (last.type === 'draw') {
+      const returned = state.waste[state.waste.length - 1];
+      undoIds = returned ? [returned.id] : [];
+      undoDest = ['stock'];
+    } else if (last.type === 'recycle') {
+      undoIds = state.stock.map((c) => c.id);
+      undoDest = ['waste'];
+    }
     const next = coreUndo(state);
+    if (undoIds.length > 0) {
+      const tid = captureFlip('undo', undoIds);
+      useUiStore.getState().beginTransition(tid, undoIds, undoDest);
+    }
     set({ state: next, autoMoveState: {}, lastActionMeta: { type: 'undo' } });
     evaluateDeadEnd(get, set, next);
     useUiStore.getState().clearHints();

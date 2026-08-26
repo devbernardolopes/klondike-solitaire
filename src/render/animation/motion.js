@@ -27,6 +27,12 @@ export const MOTION = {
   // without affecting normal player moves. Consumed by useCardMoveSlide via
   // CONFIG_BY_TYPE.auto.
   auto:     { duration: 0.25, ease: 'power3.out', stagger: 0.00 },
+
+  // Undo relocation tween. Runs through the SAME useCardMoveSlide path as `move`
+  // (affected cards glide from their current position back to where undo puts
+  // them), but kept separate so it can be tuned independently of normal player
+  // moves without affecting how `move` animates. Consumed via CONFIG_BY_TYPE.undo.
+  undo:     { duration: 0.10, ease: 'power3.out', stagger: 0.00 },
   // Alternative easing for the same tween; swap to change the acceleration curve.
   // move:     { duration: 0.40, ease: 'power3.out', stagger: 0 },
 
