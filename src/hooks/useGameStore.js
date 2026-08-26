@@ -13,8 +13,10 @@ import { findHints } from '../core/hints.js';
 import { buildStandardDeck, shuffle } from '../core/Deck.js';
 import { createEmptyGameState } from '../core/GameState.js';
 import { randomSolvableSeed, pickSolvableSeed } from '../core/solvablePool.js';
+import { randomUnusedSeed, knownSeedCount } from '../core/randomSeed.js';
 import { seedForDate } from '../core/dailyChallenge.js';
 import { getEvent } from '../core/specialEvents.js';
+import { getUsedRandomSeedsSet, addUsedRandomSeed, clearUsedRandomSeeds } from '../db/usedRandomSeeds.js';
 import { enqueueFlip } from '../render/animation/flipBridge.js';
 import { enqueueParticle } from '../render/animation/particleBridge.js';
 import { cancelWinCascade } from '../render/animation/winCascade.js';
@@ -146,10 +148,16 @@ function preDealFromDeck(deck, seed) {
 // animation tweens. Used by every new-game entry point (dealNewGame,
 // replayGame, and the initial app-load deal) so the deal animation is identical
 // regardless of mode.
-function runAnimatedDeal(get, set, { seed, order, deck } = {}) {
+function runAnimatedDeal(get, set, { seed, order, deck, kind, date } = {}) {
   const usedDeck = deck ? deck.slice() : order ? order.slice() : shuffle(buildStandardDeck(), seed);
   const preDeal = preDealFromDeck(usedDeck, seed);
-  const replaySpec = seed !== undefined ? { seed } : { order: usedDeck.map((c) => ({ ...c })) };
+  // Replay preserves the originating game kind (and date for Daily) so a replayed
+  // Random deal stays labeled "Random" and is never misclassified as Winning.
+  const replaySpec = {
+    ...(seed !== undefined ? { seed } : { order: usedDeck.map((c) => ({ ...c })) }),
+    kind,
+    date,
+  };
   set({ state: preDeal, autoMoveState: {}, replaySpec, lastActionMeta: { type: 'draw' } });
   requestAnimationFrame(() => {
     cancelAutoComplete(set);
@@ -478,9 +486,18 @@ export const useGameStore = create((set, get) => ({
             if (exhausted) useSeedStore.getState().resetPlayed();
             return s;
           })()
-        : undefined;
+        : (() => {
+            // Random Shuffle: pick a 32-bit seed that is not a known data-file
+            // seed and has never been dealt before. If the entire addressable
+            // space is exhausted, recycle the used-Random history and continue.
+            const used = getUsedRandomSeedsSet();
+            if (used.size >= 0x100000000 - knownSeedCount()) clearUsedRandomSeeds();
+            const s = randomUnusedSeed(getUsedRandomSeedsSet());
+            addUsedRandomSeed(s);
+            return s;
+          })();
     useUiStore.getState().setCurrentGame(mode);
-    runAnimatedDeal(get, set, { seed: seed !== undefined ? seed : undefined });
+    runAnimatedDeal(get, set, { seed, kind: mode });
   },
 
   /**
@@ -503,7 +520,7 @@ export const useGameStore = create((set, get) => ({
     useUiStore.getState().setLastNewGameMode('winning');
     useStatsStore.getState().resetStats();
     useUiStore.getState().setCurrentGame('winning');
-    runAnimatedDeal(get, set, { seed });
+    runAnimatedDeal(get, set, { seed, kind: 'winning' });
   },
 
   /**
@@ -528,7 +545,7 @@ export const useGameStore = create((set, get) => ({
     useUiStore.getState().setLastNewGameMode('winning');
     useStatsStore.getState().resetStats();
     useUiStore.getState().setCurrentGame('daily', date);
-    runAnimatedDeal(get, set, { seed });
+    runAnimatedDeal(get, set, { seed, kind: 'daily', date });
     return true;
   },
 
@@ -555,7 +572,7 @@ export const useGameStore = create((set, get) => ({
     useUiStore.getState().setLastNewGameMode('winning');
     useStatsStore.getState().resetStats();
     useUiStore.getState().setCurrentGame('event');
-    runAnimatedDeal(get, set, { seed });
+    runAnimatedDeal(get, set, { seed, kind: 'event' });
     return true;
   },
 
@@ -576,7 +593,7 @@ export const useGameStore = create((set, get) => ({
     useUiStore.getState().setLastNewGameMode('winning');
     useStatsStore.getState().resetStats();
     useUiStore.getState().setCurrentGame('winning');
-    runAnimatedDeal(get, set, { seed: INITIAL_SEED, deck: INITIAL_DECK });
+    runAnimatedDeal(get, set, { seed: INITIAL_SEED, deck: INITIAL_DECK, kind: 'winning' });
   },
 
   /**
@@ -599,9 +616,19 @@ export const useGameStore = create((set, get) => ({
     useStatisticsStore.getState().finalizeGame();
     cancelWinCascade();
     if (useUiStore.getState().animatingCards.size > 0) return;
-    useUiStore.getState().setLastNewGameMode(spec.seed !== undefined ? 'winning' : 'random');
+    // Preserve the originating kind (and date for Daily) captured at deal time,
+    // rather than inferring it from seed presence — a Random deal now carries a
+    // seed too, so seed-presence would wrongly label it a Winning Deal.
+    const kind = spec.kind || (spec.seed !== undefined ? 'winning' : 'random');
+    const date = spec.date || null;
+    useUiStore.getState().setLastNewGameMode(kind === 'random' ? 'random' : 'winning');
+    useUiStore.getState().setCurrentGame(kind, date);
     useStatsStore.getState().resetStats();
-    runAnimatedDeal(get, set, spec.seed !== undefined ? { seed: spec.seed } : { order: spec.order });
+    runAnimatedDeal(
+      get,
+      set,
+      spec.seed !== undefined ? { seed: spec.seed, kind, date } : { order: spec.order, kind, date },
+    );
   },
 
   /**

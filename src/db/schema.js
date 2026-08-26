@@ -62,6 +62,17 @@ db.version(5).stores({
   dailyResults: 'date',
   syncQueue: '++id, type, createdAt',
 });
+// v6 adds the `usedRandomSeeds` table: one row per Random-Shuffle seed that has
+// already been dealt, so deals never repeat. Keyed by the seed itself.
+db.version(6).stores({
+  games: '++id, startedAt, finishedAt, won, durationMs',
+  settings: 'key',
+  stats: 'key',
+  playedSeeds: 'key',
+  dailyResults: 'date',
+  syncQueue: '++id, type, createdAt',
+  usedRandomSeeds: 'seed',
+});
 
 /**
  * Insert a finished/abandoned game record.

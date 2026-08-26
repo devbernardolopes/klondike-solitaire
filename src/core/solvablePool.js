@@ -2,7 +2,7 @@
 // Framework-agnostic. No React / DOM / Node-fs imports allowed in this file —
 // it ships to the browser and imports the pre-generated pool JSON directly.
 
-import solvableSeeds from '../data/solvableSeeds.json';
+import solvableSeeds from '../data/solvableSeeds.json' with { type: 'json' };
 
 /** The full pre-verified solvable seed pool. @type {number[]} */
 export const SOLVABLE_SEEDS = solvableSeeds;

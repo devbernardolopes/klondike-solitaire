@@ -17,6 +17,7 @@ import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
 import { useSeedStore } from '../hooks/useSeedStore.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
+import { initUsedRandomSeeds } from '../db/usedRandomSeeds.js';
 import { startSyncEngine } from '../sync/syncEngine.js';
 import { checkAuthRedirectResult } from '../lib/authRedirect.js';
 import ConfirmModal from './ConfirmModal.jsx';
@@ -47,6 +48,7 @@ export default function App() {
       init();
       initStats();
       initSeeds();
+      await initUsedRandomSeeds();
       useGameStore.getState().initialDeal();
     })();
   }, [init, initStats, initSeeds]);
