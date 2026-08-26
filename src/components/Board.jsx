@@ -330,69 +330,47 @@ export default function Board() {
     else if (state.waste.length > 0) recycleStock();
   };
 
-  // Touch double-tap detection on the board background only (not on a card —
-  // cards keep their single-tap auto-move). Two taps within DOUBLE_TAP_MS and a
-  // distance tolerance trigger auto-complete. Touch taps drift more than mouse
-  // clicks, so the tolerance is widened (24px). Mouse/pen double-clicks are
-  // handled separately by the native `onDoubleClick` below.
-  const DOUBLE_TAP_MS = 300;
-  const DOUBLE_TAP_DISTANCE_TOUCH = 24;
+  // Manual double-tap / double-click detection on the board, for BOTH mouse and
+  // touch. A double-tap means "auto-complete the board" and must fire even when
+  //   - the cursor lands on a card (a fanned column is almost entirely card
+  //     elements, so bailing on `[data-card]` made most fast double-clicks in the
+  //     tableau do nothing); and
+  //   - the cursor sweeps a long distance between the two clicks (the browser's
+  //     native `dblclick` is suppressed by the OS once the two clicks are farther
+  //     apart than its double-click spatial tolerance, which is exactly the
+  //     "double-click while moving" case that didn't trigger before).
+  // Auto-complete is a board-wide action, so the distance between the two taps is
+  // irrelevant — we pair them by time only (DOUBLE_TAP_MS). We only require the
+  // two taps to fall within that window, and we deliberately ignore
+  // `anyAnimating` (a double-click is an explicit, deliberate action).
+  //
+  // We skip a pointerup that is the release of a dnd-kit drag: at that moment
+  // `isDragging` is still true (CardView already relies on this to suppress its
+  // own tap→auto-move mid-drag), so returning here prevents a drag + a quick
+  // later click from being mashed into a spurious auto-complete. We also keep
+  // `stock`/`waste` on their own double-click semantics (draw / single
+  // auto-move) and never auto-complete a finished/over/already-autoCompleting
+  // game.
+  const DOUBLE_TAP_MS = 400;
   const lastTap = useRef(null);
   const handleBoardPointerUp = (e) => {
     if (e.button !== 0) return;
-    if (e.target.closest('[data-card]')) return;
-    // Mouse/pen double-clicks are handled by the native `onDoubleClick` handler
-    // below (the browser matches the two clicks for us). Only the touch path
-    // needs manual tap tracking, since touch double-taps don't reliably emit a
-    // `dblclick` event. Splitting the two avoids firing auto-complete twice on
-    // a single mouse double-click.
-    if (e.pointerType !== 'touch') return;
-    // A double-tap on tableau/foundation/empty board means "auto-complete", even
-    // when it lands on a card (a fanned column is almost entirely card elements,
-    // so the old `[data-card]` bail made most taps do nothing). Keep stock/waste
-    // taps on their existing single-tap semantics.
-    const loc = e.target.closest('[data-loc]')?.getAttribute('data-loc');
-    if (loc === 'stock' || loc === 'waste') return;
+    if (useUiStore.getState().isDragging) return;
     const now = Date.now();
     const tap = { x: e.clientX, y: e.clientY, t: now };
     const prev = lastTap.current;
     // Record the tap BEFORE any early-return/guard so a dropped tap still
     // refreshes the baseline. Previously the `locked` guard returned before
-    // this assignment, leaving a stale (>DOUBLE_TAP_MS) `lastTap` that broke
-    // the next pair and forced the user to repeat the double-click.
+    // this assignment, leaving a stale `lastTap` that broke the next pair and
+    // forced the user to repeat the double-click.
     lastTap.current = tap;
-    if (locked) return;
-    const maxDistance = DOUBLE_TAP_DISTANCE_TOUCH;
-    if (
-      prev &&
-      now - prev.t < DOUBLE_TAP_MS &&
-      Math.hypot(tap.x - prev.x, tap.y - prev.y) < maxDistance
-    ) {
-      lastTap.current = null;
-      autoComplete();
-    }
-  };
-
-  // Native double-click is the primary, robust trigger for mouse. The browser
-  // matches the two clicks (distance + timing) for us, so this is immune to the
-  // manual 6px/distance jitter that plagued fast clickers. A double-click means
-  // "auto-complete the board" — it must fire even when the cursor lands on a
-  // tableau/foundation *card* (in a fanned column nearly every pixel inside the
-  // column sits over a full-height card element, so bailing on `[data-card]`
-  // made most fast double-clicks in the tableau area do nothing — which is the
-  // bug this fixes). We only exclude `stock`/`waste`, whose double-click keeps a
-  // different meaning (stock draws, waste does a single auto-move). Everything
-  // else — tableau columns (cards *or* the empty strip), foundations, and the
-  // board background — triggers auto-complete. This deliberately ignores
-  // `anyAnimating` (a mid-tween card) because a double-click is an explicit,
-  // deliberate action, but still blocks a finished/over/already-autoCompleting
-  // game.
-  const handleBoardDoubleClick = (e) => {
-    if (e.button !== 0) return;
     const loc = e.target.closest('[data-loc]')?.getAttribute('data-loc');
     if (loc === 'stock' || loc === 'waste') return;
     if (won || isOver || autoCompleting) return;
-    autoComplete();
+    if (prev && now - prev.t < DOUBLE_TAP_MS) {
+      lastTap.current = null;
+      autoComplete();
+    }
   };
 
   const hiddenIds = activeRun ? new Set(activeRun.map((c) => c.id)) : null;
@@ -401,7 +379,6 @@ export default function Board() {
     <div
       ref={boardRef}
       onPointerUp={handleBoardPointerUp}
-      onDoubleClick={handleBoardDoubleClick}
       style={{ flex: 1, minHeight: '100%', width: '100%', touchAction: 'manipulation', overflow: 'hidden' }}
     >
       {/* Centered "Autocomplete" banner shown while the game is auto-moving
