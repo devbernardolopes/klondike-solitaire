@@ -82,6 +82,13 @@ function evaluateDeadEnd(get, set, state) {
     useUiStore.getState().setNoMovesDialogOpen(false);
     return;
   }
+  // Undoing is deliberate backward navigation; never surface the no-moves modal
+  // as a consequence of an undo (the player may be mid-reversal, re-drawing or
+  // recycling the stock). Only forward actions (draw/recycle/move/auto/deal) may
+  // open it.
+  if (state.lastActionMeta?.type === 'undo') {
+    return;
+  }
   // Cheap pre-filter: a meaningful move available right now means not stuck.
   if (hasDeadEndMove(state)) {
     useUiStore.getState().setNoMovesDialogOpen(false);
