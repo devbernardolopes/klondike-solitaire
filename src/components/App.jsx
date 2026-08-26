@@ -19,6 +19,7 @@ import { useSeedStore } from '../hooks/useSeedStore.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { initUsedRandomSeeds } from '../db/usedRandomSeeds.js';
 import { startSyncEngine } from '../sync/syncEngine.js';
+import { pullRemoteProfile } from '../sync/pullProfile.js';
 import { checkAuthRedirectResult } from '../lib/authRedirect.js';
 import ConfirmModal from './ConfirmModal.jsx';
 import { MotionDebugPanel } from '../render/animation/MotionDebugPanel.jsx';
@@ -44,6 +45,11 @@ export default function App() {
     (async () => {
       await useAuthStore.getState().init();
       await checkAuthRedirectResult();
+      // One-time cross-device pull for already-linked accounts (skipped for
+      // anonymous — there's nothing on another device to fetch).
+      if (!useAuthStore.getState().isAnonymous) {
+        pullRemoteProfile().catch((e) => console.error('Startup profile pull failed', e));
+      }
       startSyncEngine();
       init();
       initStats();
@@ -52,6 +58,18 @@ export default function App() {
       useGameStore.getState().initialDeal();
     })();
   }, [init, initStats, initSeeds]);
+
+  // Pull the linked account's latest progress from Supabase whenever the tab
+  // regains focus — cross-device sync without a manual refresh.
+  useEffect(() => {
+    const onVisible = () => {
+      if (!document.hidden && !useAuthStore.getState().isAnonymous) {
+        pullRemoteProfile().catch((e) => console.error('Background profile pull failed', e));
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
 
   // Pause/resume the play timer with tab focus. When the tab is hidden the clock
   // freezes (hidden time excluded); when it returns the clock resumes. The auto-

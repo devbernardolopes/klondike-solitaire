@@ -4,15 +4,17 @@
 // variables, panel/backdrop styling, focus-on-open, Escape/backdrop-to-close)
 // used by ConfirmModal.jsx / NewGameModal.jsx.
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { HelpCircle } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
-import { buildSnapshotText, snapshotModeToken } from '../core/snapshot.js';
+import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
+import { useSeedStore } from '../hooks/useSeedStore.js';
 import ToggleSwitch from './ToggleSwitch.jsx';
 import HelpModal from './HelpModal.jsx';
+import ConfirmModal from './ConfirmModal.jsx';
 
 /**
  * @param {object} props
@@ -48,6 +50,16 @@ export default function SettingsModal({
   const helpOpen = useUiStore((s) => s.helpDialogOpen);
   const displayName = useAuthStore((s) => s.displayName);
   const isAnonymous = useAuthStore((s) => s.isAnonymous);
+  const [signOutConfirmOpen, setSignOutConfirmOpen] = useState(false);
+
+  // useAuthStore can't refresh these itself (circular import) — do it here,
+  // after it has reset local caches and re-established an anonymous session.
+  const onConfirmSignOut = async () => {
+    setSignOutConfirmOpen(false);
+    await useAuthStore.getState().signOut();
+    await useStatisticsStore.getState().init();
+    await useSeedStore.getState().init();
+  };
 
   // Keep the latest close handler in a ref so the open-effect can depend only on
   // `open` (running exactly once per open) instead of on the handler identity.
@@ -236,6 +248,15 @@ export default function SettingsModal({
               Sign in with Google
             </button>
           )}
+          {!isAnonymous && (
+            <button
+              type="button"
+              style={btn}
+              onClick={() => setSignOutConfirmOpen(true)}
+            >
+              Sign Out
+            </button>
+          )}
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
@@ -279,6 +300,16 @@ export default function SettingsModal({
       <HelpModal
         open={helpOpen}
         onClose={() => useUiStore.getState().setHelpDialogOpen(false)}
+      />
+
+      <ConfirmModal
+        open={signOutConfirmOpen}
+        title="Sign out?"
+        message="This device will continue as a new guest. Your Google account's progress is safe on Supabase and you can sign back in anytime."
+        confirmText="Sign Out"
+        cancelText="Cancel"
+        onConfirm={onConfirmSignOut}
+        onCancel={() => setSignOutConfirmOpen(false)}
       />
     </>
   );

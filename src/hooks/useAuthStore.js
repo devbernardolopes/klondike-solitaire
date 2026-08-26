@@ -9,6 +9,9 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabaseClient.js';
 import { clearQueuedOps } from '../db/syncQueue.js';
+import { resetStats } from '../db/stats.js';
+import { savePlayedSeeds } from '../db/playedSeeds.js';
+import { db } from '../db/schema.js';
 
 // Guard so concurrent callers (App boot + the sync engine's ensureSignedIn)
 // share a single in-flight init rather than racing two signInAnonymously calls.
@@ -156,4 +159,23 @@ export const useAuthStore = create((set, get) => ({
    *  tamper-proof balance still comes from Supabase and is what wins on the
    *  next hydrateProfile() call (every boot). */
   addCoinsOptimistic: (amount) => set((s) => ({ coins: s.coins + amount })),
+
+  /**
+   * Leave a linked account. There's no true "logged out" state in this app —
+   * this clears local caches and the not-yet-synced queue (which belonged to
+   * the departing identity) and immediately establishes a brand-new anonymous
+   * session, exactly like a first-ever launch.
+   *
+   * Callers must also refresh useStatisticsStore/useSeedStore's in-memory
+   * state afterward (this store can't import them — see file header note).
+   */
+  signOut: async () => {
+    await clearQueuedOps();
+    await resetStats();
+    await savePlayedSeeds([]);
+    await db.dailyResults.clear();
+    set({ coins: 0, displayName: null });
+    await supabase.auth.signOut();
+    await get().init();
+  },
 }));

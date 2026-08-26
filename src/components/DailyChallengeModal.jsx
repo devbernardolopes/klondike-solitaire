@@ -13,6 +13,8 @@ import { Crosshair } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { useGameStore } from '../hooks/useGameStore.js';
+import { useAuthStore } from '../hooks/useAuthStore.js';
+import { pullRemoteProfile } from '../sync/pullProfile.js';
 import {
   listSupportedYears,
   isSupportedYM,
@@ -218,6 +220,14 @@ export default function DailyChallengeModal() {
     if (!open) return undefined;
     const id = setTimeout(() => panelRef.current?.focus(), 0);
     return () => clearTimeout(id);
+  }, [open]);
+
+  // Pull the linked account's latest progress when the calendar opens, so
+  // completion marks / bests reflect what another device has done.
+  useEffect(() => {
+    if (open && !useAuthStore.getState().isAnonymous) {
+      pullRemoteProfile().catch((e) => console.error('Daily Challenge profile pull failed', e));
+    }
   }, [open]);
 
   if (!open) return null;

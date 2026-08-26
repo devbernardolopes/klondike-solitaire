@@ -9,6 +9,8 @@
 
 import { useEffect, useRef } from 'react';
 import { useModalBackdrop } from './modalBackdrop.js';
+import { useAuthStore } from '../hooks/useAuthStore.js';
+import { pullRemoteProfile } from '../sync/pullProfile.js';
 
 /**
  * @param {object} props
@@ -36,6 +38,14 @@ export default function NewGameModal({ open, onReplay, onWinningDeal, onRandomSh
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
+
+  // Pull the linked account's latest progress when the picker opens, so a fresh
+  // deal starts from the most recent cross-device state.
+  useEffect(() => {
+    if (open && !useAuthStore.getState().isAnonymous) {
+      pullRemoteProfile().catch((e) => console.error('New Game profile pull failed', e));
+    }
   }, [open]);
 
   if (!open) return null;
