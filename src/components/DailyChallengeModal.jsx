@@ -110,10 +110,14 @@ export default function DailyChallengeModal() {
 
   // Dismiss returns to the New Game picker only when opened from it (not from
   // the Win modal, which already closed before opening this one). A day the
-  // player manually selected (and that isn't today) is persisted so the calendar
-  // re-opens there next time, even when the modal is dismissed without playing.
+  // player manually selected is persisted so the calendar re-opens there next
+  // time, even when the modal is dismissed without playing. This includes the
+  // current day (today) — it should be remembered exactly like any other
+  // available day.
   const onDismiss = () => {
-    if (selected && selected !== today) saveLastDailySelection(selected);
+    if (selected && withinSupported(selected) && !isAfter(selected, today)) {
+      saveLastDailySelection(selected);
+    }
     setOpen(false);
     if (useUiStore.getState().dailyChallengeOrigin === 'newgame') setNewGameOpen(true);
   };
@@ -237,9 +241,10 @@ export default function DailyChallengeModal() {
     if (isAfter(selected, today) || !withinSupported(selected)) return;
     const ok = dealDaily(selected);
     if (ok) {
-      // Remember the picked day only when it differs from today, so the calendar
-      // re-opens there next time (persisted in the DB).
-      if (selected !== today) saveLastDailySelection(selected);
+      // Remember the picked day so the calendar re-opens there next time
+      // (persisted in the DB). This includes today, which is treated like any
+      // other available day.
+      saveLastDailySelection(selected);
       setOpen(false);
     }
   };
