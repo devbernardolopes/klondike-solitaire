@@ -5,9 +5,10 @@
 // in favor of an already-linked account's, so Dexie needs to be replaced to match
 // it, not merged with it.
 //
-// coins is intentionally not pulled: there's no local coins mirror yet (that
-// arrives with the coins/store UI phase). Daily Challenge reads db/dailyResults
-// directly each time it opens, so nothing in-memory needs refreshing there.
+// Daily Challenge reads db/dailyResults directly each time it opens, so nothing
+// in-memory needs refreshing there. Coins are not local-mirrored; they are
+// re-synced from Supabase on every boot via hydrateProfile() and survive a
+// local statistics reset by design.
 
 import { supabase } from '../lib/supabaseClient.js';
 import { db } from '../db/schema.js';

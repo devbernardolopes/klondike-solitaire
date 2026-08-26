@@ -3,9 +3,10 @@
 
 import pkg from '../../package.json';
 import { useEffect, useCallback, useState, useRef } from 'react';
-import { Plus, Undo2, Settings, BarChart3, Lightbulb } from 'lucide-react';
+import { Plus, Undo2, Settings, BarChart3, Lightbulb, Coins as CoinsIcon } from 'lucide-react';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useUiStore, isAnyModalOpen } from '../hooks/useUiStore.js';
+import { useAuthStore } from '../hooks/useAuthStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useSound } from '../hooks/useSound.js';
 import { isWon } from '../core/winDetection.js';
@@ -86,6 +87,7 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const seedInputDialogOpen = useUiStore((s) => s.seedInputDialogOpen);
   const setSeedInputDialogOpen = useUiStore((s) => s.setSeedInputDialogOpen);
   const setAnnounce = useUiStore((s) => s.setAnnounce);
+  const coins = useAuthStore((s) => s.coins);
   const gameOverDialogOpen = useUiStore((s) => s.gameOverDialogOpen);
   const setGameOverDialogOpen = useUiStore((s) => s.setGameOverDialogOpen);
   const confirmNewGameDialogOpen = useUiStore((s) => s.confirmNewGameDialogOpen);
@@ -310,17 +312,24 @@ function ElapsedClock() {
                    ? `Random (seed ${gameState.seed})`
                    : `Seed: ${gameState.seed}`}
           </span>
-         <span
-           style={{
-             color: '#fff',
-             fontSize: 13,
-             marginLeft: 'auto',
-             userSelect: 'none',
-           }}
-         >
-           v{pkg.version}
-         </span>
-       </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto' }}>
+            <span
+              style={{
+                color: '#fff',
+                fontSize: 13,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                userSelect: 'none',
+              }}
+            >
+              <CoinsIcon size={14} /> {coins}
+            </span>
+            <span style={{ color: '#fff', fontSize: 13, userSelect: 'none' }}>
+              v{pkg.version}
+            </span>
+          </div>
+        </div>
 
        <div
          style={{

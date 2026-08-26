@@ -14,6 +14,13 @@ import { clearQueuedOps } from '../db/syncQueue.js';
 // share a single in-flight init rather than racing two signInAnonymously calls.
 let initPromise = null;
 
+/** Flat coin reward for a win. Must match the amount hardcoded in the
+ *  submit_game_result Postgres function (klondike_supabase_migration_002.sql,
+ *  section 8). If that ever changes to a variable reward, this becomes
+ *  purely an optimistic estimate reconciled on next boot — not a problem
+ *  today since both sides use the same flat constant. */
+export const WIN_COIN_REWARD = 10;
+
 /**
  * @typedef {Object} AuthState
  * @property {string|null} userId        Supabase user id, or null when signed out
@@ -38,12 +45,12 @@ const hydrateProfile = async (user, set) => {
   try {
     const { data } = await supabase
       .from('profiles')
-      .select('display_name')
+      .select('display_name, coins')
       .eq('id', user.id)
       .single();
-    if (data) set({ displayName: data.display_name });
+    if (data) set({ displayName: data.display_name, coins: data.coins ?? 0 });
   } catch {
-    // Offline / profile missing — leave displayName null.
+    // Offline / profile missing — leave displayName/coins at prior values.
   }
 };
 
@@ -52,6 +59,7 @@ export const useAuthStore = create((set, get) => ({
   isAnonymous: true,
   ready: false,
   displayName: null,
+  coins: 0,
   linkConflict: null,
   authError: null,
 
@@ -143,4 +151,9 @@ export const useAuthStore = create((set, get) => ({
     // Browser navigates to Google again here — this is expected: adopting
     // the other account is a real sign-in, not a local state change.
   },
+
+  /** Optimistic local bump for instant UI feedback after a win — the real,
+   *  tamper-proof balance still comes from Supabase and is what wins on the
+   *  next hydrateProfile() call (every boot). */
+  addCoinsOptimistic: (amount) => set((s) => ({ coins: s.coins + amount })),
 }));

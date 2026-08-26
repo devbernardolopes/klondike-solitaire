@@ -9,6 +9,7 @@ import { loadStats, addWin, addGamePlayed, recordLoss as dbRecordLoss, resetStat
 // reference with useStatsStore never resolves during module evaluation.
 import { useStatsStore } from './useStatsStore.js';
 import { enqueue } from '../sync/syncEngine.js';
+import { useAuthStore, WIN_COIN_REWARD } from '../hooks/useAuthStore.js';
 
 const EMPTY = {
   totalGamesPlayed: 0,
@@ -56,6 +57,9 @@ export const useStatisticsStore = create((set, get) => ({
       p_game_kind: gameKind ?? null,
       p_daily_date: dailyDate ?? null,
     });
+    // Optimistic local coin bump for instant UI feedback; the authoritative
+    // balance is re-synced from Supabase on the next boot via hydrateProfile().
+    useAuthStore.getState().addCoinsOptimistic(WIN_COIN_REWARD);
   },
 
   /** Increment the total-games-played counter. */
