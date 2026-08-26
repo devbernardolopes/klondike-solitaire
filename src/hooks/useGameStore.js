@@ -85,8 +85,9 @@ function evaluateDeadEnd(get, set, state) {
   // Undoing is deliberate backward navigation; never surface the no-moves modal
   // as a consequence of an undo (the player may be mid-reversal, re-drawing or
   // recycling the stock). Only forward actions (draw/recycle/move/auto/deal) may
-  // open it.
-  if (state.lastActionMeta?.type === 'undo') {
+  // open it. lastActionMeta lives on the store, NOT on the core GameState passed
+  // in as `state`, so it must be read via get().
+  if (get().lastActionMeta?.type === 'undo') {
     return;
   }
   // Cheap pre-filter: a meaningful move available right now means not stuck.
@@ -118,6 +119,7 @@ function evaluateDeadEnd(get, set, state) {
   promise.then((seq) => {
     if (seq === STALE) return;
     if (get().state !== captured) return; // state moved on; ignore stale result
+    if (get().lastActionMeta?.type === 'undo') return; // never assert dead-end after undo
     if (seq === SOLVER_TIMEOUT) {
       // Budget exceeded — unknown. Never assert a dead end on an unknown result.
       return;
