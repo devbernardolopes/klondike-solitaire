@@ -42,16 +42,22 @@ const userShape = (user) => ({
 
 // Set the session-derived fields and fetch the profile's display name. The
 // profile query is best-effort: a network failure (offline) must not make
-// init() reject, so it is swallowed and displayName simply stays null.
+// init() reject, so it is swallowed and displayName/coins simply stay null.
 const hydrateProfile = async (user, set) => {
   set({ ...userShape(user), ready: true });
   try {
     const { data } = await supabase
       .from('profiles')
-      .select('display_name, coins')
+      .select('display_name, coins, display_name_updated_at')
       .eq('id', user.id)
       .single();
-    if (data) set({ displayName: data.display_name, coins: data.coins ?? 0 });
+    if (data) {
+      set({
+        displayName: data.display_name,
+        coins: data.coins ?? 0,
+        displayNameUpdatedAt: data.display_name_updated_at,
+      });
+    }
   } catch {
     // Offline / profile missing — leave displayName/coins at prior values.
   }
@@ -62,6 +68,7 @@ export const useAuthStore = create((set, get) => ({
   isAnonymous: true,
   ready: false,
   displayName: null,
+  displayNameUpdatedAt: null,
   coins: 0,
   linkConflict: null,
   authError: null,
@@ -159,6 +166,28 @@ export const useAuthStore = create((set, get) => ({
    *  tamper-proof balance still comes from Supabase and is what wins on the
    *  next hydrateProfile() call (every boot). */
   addCoinsOptimistic: (amount) => set((s) => ({ coins: s.coins + amount })),
+
+  /** Live availability check while typing — debounce the caller, not this. */
+  checkDisplayNameAvailable: async (name) => {
+    const { data, error } = await supabase.rpc('check_display_name_available', {
+      p_display_name: name,
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  /**
+   * @param {string} name
+   * @throws with a human-readable message (format/cooldown/uniqueness —
+   *   all produced server-side by rename_display_name) on failure.
+   */
+  renameDisplayName: async (name) => {
+    const { error } = await supabase.rpc('rename_display_name', {
+      p_display_name: name,
+    });
+    if (error) throw new Error(error.message);
+    set({ displayName: name, displayNameUpdatedAt: new Date().toISOString() });
+  },
 
   /**
    * Leave a linked account. There's no true "logged out" state in this app —

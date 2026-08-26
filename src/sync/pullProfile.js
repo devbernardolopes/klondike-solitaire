@@ -24,7 +24,8 @@ export async function pullRemoteProfile() {
     .from('profiles')
     .select(
       'games_played, games_won, current_streak, best_streak, ' +
-        'highest_score, lowest_time_ms, lowest_moves, lowest_undos, coins',
+        'highest_score, lowest_time_ms, lowest_moves, lowest_undos, coins, ' +
+        'display_name, display_name_updated_at',
     )
     .single();
   if (profileError) throw profileError;
@@ -42,7 +43,13 @@ export async function pullRemoteProfile() {
   });
 
   // Coins ride along on every pull trigger (no separate coin path needed).
-  useAuthStore.setState({ coins: profile.coins ?? 0 });
+  // The display name + its rename cooldown timestamp are refreshed too so the
+  // Main Menu's rename affordance stays current across devices.
+  useAuthStore.setState({
+    coins: profile.coins ?? 0,
+    displayName: profile.display_name,
+    displayNameUpdatedAt: profile.display_name_updated_at,
+  });
 
   const { data: seedRows, error: seedsError } = await supabase
     .from('played_seeds')

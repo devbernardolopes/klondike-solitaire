@@ -53,11 +53,18 @@ export default function SettingsModal({
   const backdrop = useModalBackdrop(onClose);
   const helpOpen = useUiStore((s) => s.helpDialogOpen);
   const displayName = useAuthStore((s) => s.displayName);
+  const displayNameUpdatedAt = useAuthStore((s) => s.displayNameUpdatedAt);
   const isAnonymous = useAuthStore((s) => s.isAnonymous);
   const [signOutConfirmOpen, setSignOutConfirmOpen] = useState(false);
   const [achievementsOpen, setAchievementsOpen] = useState(false);
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const [storeOpen, setStoreOpen] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState('');
+  const [nameError, setNameError] = useState(null);
+  const [nameChecking, setNameChecking] = useState(false);
+  const [nameAvailable, setNameAvailable] = useState(null);
+  const nameCheckTimer = useRef(null);
 
   // useAuthStore can't refresh these itself (circular import) — do it here,
   // after it has reset local caches and re-established an anonymous session.
@@ -85,6 +92,11 @@ export default function SettingsModal({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open]);
+
+  // Cancel any in-flight debounced availability check if the modal unmounts.
+  useEffect(() => () => {
+    if (nameCheckTimer.current) clearTimeout(nameCheckTimer.current);
+  }, []);
 
   if (!open) return null;
 
@@ -151,6 +163,18 @@ export default function SettingsModal({
     if (isModalDismissGuardActive()) return;
     useUiStore.getState().setHelpDialogOpen(true);
   };
+
+  // 3-20 chars: letters, numbers, underscores only. Mirrors the server-side
+  // format check in rename_display_name so obviously-invalid input is rejected
+  // client-side without a network round-trip.
+  const NAME_PATTERN = /^[A-Za-z0-9_]{3,20}$/;
+
+  // 14-day rename cooldown (server-enforced); displayNameUpdatedAt is null
+  // until the first rename, so no cooldown is shown before that.
+  const cooldownUntil = displayNameUpdatedAt
+    ? new Date(new Date(displayNameUpdatedAt).getTime() + 14 * 24 * 60 * 60 * 1000)
+    : null;
+  const onCooldown = cooldownUntil && cooldownUntil > new Date();
 
   const handleTakeSnapshot = () => {
     const state = useGameStore.getState().state;
@@ -254,11 +278,105 @@ export default function SettingsModal({
         <div style={{ ...field, marginBottom: 20 }}>
           <div>
             <div style={{ fontSize: 14, fontWeight: 600 }}>Account</div>
-            <div style={{ fontSize: 13, opacity: 0.8 }}>
-              {isAnonymous
-                ? `Playing as ${displayName ?? '…'}`
-                : `Signed in as ${displayName ?? '…'} (Google)`}
-            </div>
+            {editingName ? (
+              <div>
+                <input
+                  value={nameInput}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setNameInput(v);
+                    setNameAvailable(null);
+                    if (!NAME_PATTERN.test(v)) {
+                      setNameError('3-20 characters: letters, numbers, underscores only.');
+                      return;
+                    }
+                    setNameError(null);
+                    setNameChecking(true);
+                    if (nameCheckTimer.current) clearTimeout(nameCheckTimer.current);
+                    nameCheckTimer.current = setTimeout(() => {
+                      useAuthStore
+                        .getState()
+                        .checkDisplayNameAvailable(v)
+                        .then((available) => {
+                          setNameChecking(false);
+                          setNameAvailable(available);
+                        })
+                        .catch(() => setNameChecking(false));
+                    }, 400);
+                  }}
+                  style={selectStyle}
+                  maxLength={20}
+                  autoFocus
+                />
+                {nameError && (
+                  <div style={{ color: 'crimson', fontSize: 12 }}>{nameError}</div>
+                )}
+                {!nameError && nameAvailable === false && (
+                  <div style={{ color: 'crimson', fontSize: 12 }}>That name is taken.</div>
+                )}
+                <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                  <button
+                    type="button"
+                    style={btn}
+                    disabled={
+                      !!nameError ||
+                      nameChecking ||
+                      nameAvailable === false ||
+                      nameInput === displayName
+                    }
+                    onClick={async () => {
+                      try {
+                        await useAuthStore.getState().renameDisplayName(nameInput);
+                        setEditingName(false);
+                      } catch (e) {
+                        setNameError(e.message);
+                      }
+                    }}
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    style={btn}
+                    onClick={() => setEditingName(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : isAnonymous ? (
+              <div style={{ fontSize: 13, opacity: 0.8 }}>
+                Playing as {displayName ?? '…'}
+              </div>
+            ) : onCooldown ? (
+              <div style={{ fontSize: 13, opacity: 0.8 }}>
+                Signed in as {displayName ?? '…'}
+                <div style={{ fontSize: 12, opacity: 0.7 }}>
+                  You can rename until {cooldownUntil.toLocaleDateString()}
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                style={{
+                  ...btn,
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  textDecoration: 'underline',
+                }}
+                onClick={() => {
+                  setNameInput(displayName ?? '');
+                  setNameError(null);
+                  setNameAvailable(null);
+                  setEditingName(true);
+                }}
+              >
+                <span style={{ fontSize: 13, opacity: 0.8 }}>
+                  Signed in as {displayName ?? '…'}
+                </span>
+              </button>
+            )}
           </div>
           {isAnonymous && (
             <button
@@ -267,6 +385,15 @@ export default function SettingsModal({
               onClick={() => useAuthStore.getState().linkWithGoogle()}
             >
               Sign in with Google
+            </button>
+          )}
+          {!isAnonymous && (
+            <button
+              type="button"
+              style={btn}
+              onClick={() => setSignOutConfirmOpen(true)}
+            >
+              Sign Out
             </button>
           )}
           {!isAnonymous && (
