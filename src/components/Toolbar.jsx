@@ -184,6 +184,12 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
     replayGame();
     play('deal');
   }, [setNoMovesDialogOpen, replayGame, play]);
+  // "Keep Going" just closes the dialog without undoing, leaving the board so
+  // the user can recycle the stock (or make another move) if they choose to.
+  const onNoMovesKeepGoing = useCallback(
+    () => setNoMovesDialogOpen(false),
+    [setNoMovesDialogOpen],
+  );
   // When a daily challenge reaches a dead end, the primary button returns to the
   // Daily Challenge calendar WITHOUT advancing the day (advancing only happens
   // on a win, via the Win modal).
@@ -407,12 +413,15 @@ function ElapsedClock() {
 
        <ConfirmModal
         open={noMovesDialogOpen}
+        dismissable={false}
         title="No moves remaining"
-        message="There don't seem to be any more valid moves. You can undo your last move, restart this exact deal, or start a new game."
+        message="There don't seem to be any more valid moves. You can keep going to recycle the stock, undo your last move, replay this exact deal, or start a new game."
         confirmText={currentGameKind === 'daily' ? 'Return to Daily Challenge' : 'New Game'}
         cancelText="Undo Last Move"
         tertiaryText="Replay this Game"
         onTertiary={onNoMovesReplay}
+        quaternaryText="Keep Going"
+        onQuaternary={onNoMovesKeepGoing}
         onConfirm={currentGameKind === 'daily' ? onNoMovesReturnDaily : onNoMovesConfirm}
         onCancel={onNoMovesCancel}
       />

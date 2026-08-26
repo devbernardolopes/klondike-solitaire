@@ -22,6 +22,11 @@ import { useModalBackdrop } from './modalBackdrop.js';
  * @param {() => void} props.onCancel
  * @param {string} [props.tertiaryText]   optional third button label (rendered leftmost)
  * @param {() => void} [props.onTertiary]  handler for the optional third button
+ * @param {string} [props.quaternaryText]  optional fourth button label (rendered leftmost, before tertiary)
+ * @param {() => void} [props.onQuaternary] handler for the optional fourth button
+ * @param {boolean} [props.dismissable]     when false, the modal cannot be dismissed by an
+ *                                          outside click/tap or the Escape key — the user must
+ *                                          pick a button explicitly (default true)
  */
 export default function ConfirmModal({
   open,
@@ -34,6 +39,9 @@ export default function ConfirmModal({
   onCancel,
   tertiaryText,
   onTertiary,
+  quaternaryText,
+  onQuaternary,
+  dismissable = true,
 }) {
   const confirmRef = useRef(null);
   const backdrop = useModalBackdrop(onCancel);
@@ -44,14 +52,14 @@ export default function ConfirmModal({
   onCancelRef.current = onCancel;
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !dismissable) return;
     confirmRef.current?.focus();
     const onKey = (e) => {
       if (e.key === 'Escape') onCancelRef.current();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open]);
+  }, [open, dismissable]);
 
   if (!open) return null;
 
@@ -82,7 +90,7 @@ export default function ConfirmModal({
       role="dialog"
       aria-modal="true"
       aria-label={title ?? message}
-      {...backdrop}
+      {...(dismissable ? backdrop : {})}
       style={{
         position: 'fixed',
         inset: 0,
@@ -100,6 +108,11 @@ export default function ConfirmModal({
         )}
         <p style={{ margin: '0 0 18px', fontSize: 14, lineHeight: 1.45 }}>{message}</p>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          {quaternaryText && onQuaternary && (
+            <button type="button" style={btn} onClick={onQuaternary}>
+              {quaternaryText}
+            </button>
+          )}
           {tertiaryText && onTertiary && (
             <button type="button" style={btn} onClick={onTertiary}>
               {tertiaryText}
