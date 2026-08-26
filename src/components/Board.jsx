@@ -331,41 +331,37 @@ export default function Board() {
   };
 
   // Manual double-tap / double-click detection on the board, for BOTH mouse and
-  // touch. A double-tap means "auto-complete the board" and must fire even when
-  //   - the cursor lands on a card (a fanned column is almost entirely card
-  //     elements, so bailing on `[data-card]` made most fast double-clicks in the
-  //     tableau do nothing); and
-  //   - the cursor sweeps a long distance between the two clicks (the browser's
-  //     native `dblclick` is suppressed by the OS once the two clicks are farther
-  //     apart than its double-click spatial tolerance, which is exactly the
-  //     "double-click while moving" case that didn't trigger before).
-  // Auto-complete is a board-wide action, so the distance between the two taps is
-  // irrelevant — we pair them by time only (DOUBLE_TAP_MS). We only require the
-  // two taps to fall within that window, and we deliberately ignore
-  // `anyAnimating` (a double-click is an explicit, deliberate action).
-  //
-  // We skip a pointerup that is the release of a dnd-kit drag: at that moment
-  // `isDragging` is still true (CardView already relies on this to suppress its
-  // own tap→auto-move mid-drag), so returning here prevents a drag + a quick
-  // later click from being mashed into a spurious auto-complete. We also keep
-  // `stock`/`waste` on their own double-click semantics (draw / single
-  // auto-move) and never auto-complete a finished/over/already-autoCompleting
-  // game.
+  // touch. Auto-complete fires ONLY on an EMPTY spot of a tableau column — never
+  // on a card (face-up or face-down) and never on foundations / stock / waste /
+  // the board background. Rationale:
+  //   - A double-click on a card must not auto-complete; cards have their own
+  //     single-tap auto-move. All cards (including face-down ones) carry a
+  //     `data-card` attribute, so `closest('[data-card]')` covers them.
+  //   - The distance between the two taps is irrelevant (board-wide action), so
+  //     we pair by time only (DOUBLE_TAP_MS). This also makes a "double-click
+  //     while sweeping the cursor across the board" work, since the browser's
+  //     native `dblclick` would otherwise be suppressed by the OS once the two
+  //     clicks exceed its spatial tolerance.
+  // We skip a pointerup that is the release of a dnd-kit drag (at that moment
+  // `isDragging` is still true — CardView relies on this to suppress its own
+  // tap→auto-move mid-drag), preventing a drag + a quick later click from being
+  // mashed into a spurious auto-complete. We also never auto-complete a
+  // finished/over/already-autoCompleting game.
   const DOUBLE_TAP_MS = 400;
   const lastTap = useRef(null);
   const handleBoardPointerUp = (e) => {
     if (e.button !== 0) return;
     if (useUiStore.getState().isDragging) return;
+    const onCard = e.target.closest('[data-card]');
+    const loc = e.target.closest('[data-loc]')?.getAttribute('data-loc');
+    // Only an empty spot of a tableau column may seed/fire the double-tap.
+    if (onCard || !loc?.startsWith('tableau')) return;
     const now = Date.now();
     const tap = { x: e.clientX, y: e.clientY, t: now };
     const prev = lastTap.current;
-    // Record the tap BEFORE any early-return/guard so a dropped tap still
-    // refreshes the baseline. Previously the `locked` guard returned before
-    // this assignment, leaving a stale `lastTap` that broke the next pair and
-    // forced the user to repeat the double-click.
+    // Record the tap only for valid empty-tableau spots, so a click on a card or
+    // elsewhere can never seed a spurious pair with a later empty-spot tap.
     lastTap.current = tap;
-    const loc = e.target.closest('[data-loc]')?.getAttribute('data-loc');
-    if (loc === 'stock' || loc === 'waste') return;
     if (won || isOver || autoCompleting) return;
     if (prev && now - prev.t < DOUBLE_TAP_MS) {
       lastTap.current = null;
