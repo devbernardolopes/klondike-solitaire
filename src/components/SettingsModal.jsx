@@ -22,6 +22,7 @@ import ConfirmModal from './ConfirmModal.jsx';
 import AchievementsModal from './AchievementsModal.jsx';
 import LeaderboardModal from './LeaderboardModal.jsx';
 import StoreModal from './StoreModal.jsx';
+import pkg from '../../package.json';
 
 /**
  * @param {object} props
@@ -236,7 +237,21 @@ export default function SettingsModal({
         }}
       >
       <div style={panel}>
-        <h2 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700 }}>Main Menu</h2>
+        <h2
+          style={{
+            margin: '0 0 16px',
+            fontSize: 18,
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          Main Menu
+          <span style={{ color: 'var(--card-text-black)', fontSize: 13, fontWeight: 400, userSelect: 'none' }}>
+            v{pkg.version}
+          </span>
+        </h2>
 
         <div style={field}>
           <label style={{ fontSize: 14, fontWeight: 600 }}>Theme</label>

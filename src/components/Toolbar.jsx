@@ -1,7 +1,6 @@
 // components/Toolbar.jsx
 // New game, undo, theme/deck switchers. Stubs OK for switchers this pass.
 
-import pkg from '../../package.json';
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { Plus, Undo2, Menu, BarChart3, Lightbulb, Coins as CoinsIcon } from 'lucide-react';
 import { useGameStore } from '../hooks/useGameStore.js';
@@ -311,9 +310,6 @@ function ElapsedClock() {
               }}
             >
               <CoinsIcon size={14} /> {coins}
-            </span>
-            <span style={{ color: '#fff', fontSize: 13, userSelect: 'none' }}>
-              v{pkg.version}
             </span>
           </div>
         </div>
