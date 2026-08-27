@@ -419,15 +419,6 @@ export default function SettingsModal({
               Sign Out
             </button>
           )}
-          {!isAnonymous && (
-            <button
-              type="button"
-              style={btn}
-              onClick={() => setSignOutConfirmOpen(true)}
-            >
-              Sign Out
-            </button>
-          )}
         </div>
 
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
