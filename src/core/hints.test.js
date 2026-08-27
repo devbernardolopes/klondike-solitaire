@@ -134,6 +134,96 @@ test('findHints restricts a waste Ace to a single left-most empty foundation (no
   assert.equal(hit.cardId, st.waste[st.waste.length - 1].id);
 });
 
+test('findHints (Ace-focus) shows ONLY a single waste Ace when exactly one Ace is visible', () => {
+  const st = createEmptyGameState();
+  const f = (s, r) => createCard(s, r, { faceUp: true });
+  const d = (s, r) => createCard(s, r, { faceUp: false });
+  // Single visible Ace: waste top = Ah. An empty foundation exists. There is also a
+  // valid 4s -> 5d tableau move that must NOT be hinted (req 1: only the Ace).
+  st.waste = [f('hearts', 1)];
+  st.foundations = [[], [], [], []];
+  st.tableau = [
+    [f('spades', 4)],
+    [f('diamonds', 5)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+  ];
+  const hints = findHints(st);
+  assert.equal(hints.length, 1, 'exactly one hint expected (Ace only)');
+  assert.equal(hints[0].from, 'waste');
+  assert.equal(hints[0].to, 'foundation:0');
+  assert.equal(hints[0].cardId, st.waste[st.waste.length - 1].id);
+});
+
+test('findHints (Ace-focus) shows ONLY a single tableau Ace when exactly one is visible', () => {
+  const st = createEmptyGameState();
+  const f = (s, r) => createCard(s, r, { faceUp: true });
+  const d = (s, r) => createCard(s, r, { faceUp: false });
+  // Single visible Ace on tableau:0 top, with an unrelated tableau move available.
+  st.foundations = [[], [], [], []];
+  st.tableau = [
+    [f('clubs', 1)],
+    [f('spades', 4)],
+    [f('diamonds', 5)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+  ];
+  const hints = findHints(st);
+  assert.equal(hints.length, 1, 'exactly one hint expected (Ace only)');
+  assert.equal(hints[0].from, 'tableau:0');
+  assert.equal(hints[0].to, 'foundation:0');
+});
+
+test('findHints (Ace-focus, multi) picks the FIRST tableau Ace when none frees a playable 2', () => {
+  const st = createEmptyGameState();
+  const f = (s, r) => createCard(s, r, { faceUp: true });
+  const d = (s, r) => createCard(s, r, { faceUp: false });
+  // Two tableau Aces (tableau:0 and tableau:1), neither frees a playable 2.
+  st.foundations = [[], [], [], []];
+  st.tableau = [
+    [f('hearts', 1)],
+    [f('spades', 1)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+  ];
+  const hints = findHints(st);
+  assert.equal(hints.length, 1, 'exactly one Ace hint expected');
+  assert.equal(hints[0].from, 'tableau:0', 'first tableau Ace must be chosen');
+  assert.equal(hints[0].to, 'foundation:0');
+});
+
+test('findHints (Ace-focus, multi) prefers the Ace that frees a playable 2 (priority 1)', () => {
+  const st = createEmptyGameState();
+  const f = (s, r) => createCard(s, r, { faceUp: true });
+  const d = (s, r) => createCard(s, r, { faceUp: false });
+  // tableau:0 top = Ah, beneath it a 2d sitting on a face-down card. A 3s sits on
+  // tableau:2, so the 2d has a legal next move -> priority 1 satisfied for tableau:0.
+  // tableau:1 top = As (no playable 2 beneath). Priority 1 must win over order, so
+  // tableau:0 is chosen even though both are tableau Aces.
+  st.foundations = [[], [], [], []];
+  st.tableau = [
+    [d('clubs', 9), f('diamonds', 2), f('hearts', 1)],
+    [f('spades', 1)],
+    [f('spades', 3)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+  ];
+  const hints = findHints(st);
+  assert.equal(hints.length, 1, 'exactly one Ace hint expected');
+  assert.equal(hints[0].from, 'tableau:0', 'priority-1 Ace must be chosen');
+  assert.equal(hints[0].to, 'foundation:0');
+});
+
 test('findHints restricts a tableau-top Ace to a single left-most empty foundation (no tableau 2)', () => {
   const st = createEmptyGameState();
   const f = (s, r) => createCard(s, r, { faceUp: true });

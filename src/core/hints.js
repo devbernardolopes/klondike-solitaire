@@ -11,7 +11,70 @@
 // buried stock/waste cards reachable after cycling) — this matches the player's
 // mental model of "available moves" and the "No moves remaining" detector.
 
-import { getAutoMoveTargets } from './rules.js';
+import { getAutoMoveTargets, canMoveToTableau } from './rules.js';
+
+// --- Ace-focus hint helpers ---------------------------------------------------
+// An Ace on a foundation is always correct progress; when any movable Ace can move
+// to an empty foundation, the hint system narrows to a single Ace->foundation hint
+// (see findHints). These helpers collect the candidates and pick WHICH Ace to show
+// when several are visible.
+
+// Movable Aces (waste top, or a tableau column's top card) that have an empty
+// foundation to move to. Only top-of-pile / waste-top Aces are movable, so a
+// buried face-up Ace is intentionally excluded.
+function collectAceCandidates(state) {
+  if (!state.foundations.some((f) => f.length === 0)) return [];
+  const candidates = [];
+  if (state.waste.length > 0) {
+    const top = state.waste[state.waste.length - 1];
+    if (top.rank === 1) candidates.push('waste');
+  }
+  state.tableau.forEach((pile, i) => {
+    if (pile.length === 0) return;
+    const top = pile[pile.length - 1];
+    if (top.faceUp && top.rank === 1) candidates.push(`tableau:${i}`);
+  });
+  return candidates;
+}
+
+// Does moving the Ace off the top of tableau column `colIdx` free a face-up 2 that
+// sits on a face-down card AND that 2 has a legal next move (priority-1 Ace)?
+function aceFreesPlayableTwo(state, colIdx) {
+  const pile = state.tableau[colIdx];
+  const aceIdx = pile.length - 1;
+  if (aceIdx < 1) return false; // no card beneath the Ace
+  const two = pile[aceIdx - 1];
+  if (!two.faceUp || two.rank !== 2) return false; // beneath must be a face-up 2
+  if (aceIdx - 2 < 0) return false; // the 2 is at the bottom — nothing under it
+  if (pile[aceIdx - 2].faceUp) return false; // the 2 must sit on a face-DOWN card
+  // The 2 has a legal next move if it can drop on a 3 of opposite color on another
+  // tableau column, or its own Ace is already on a foundation (so it can go up).
+  for (let j = 0; j < state.tableau.length; j++) {
+    if (j === colIdx) continue;
+    const tp = state.tableau[j];
+    if (tp.length === 0) continue;
+    const top = tp[tp.length - 1];
+    if (top.faceUp && canMoveToTableau(two, tp)) return true;
+  }
+  return state.foundations.some(
+    (f) => f.length > 0 && f[0].rank === 1 && f[0].suit === two.suit
+  );
+}
+
+// Pick the Ace to highlight when several are visible (req 2): among tableau Aces
+// left->right, the first that frees a playable 2 (priority 1); else the first
+// tableau Ace left->right (priority 2). A waste Ace only wins when it is the sole
+// candidate — the caller handles that case directly.
+function chooseAce(state, candidates) {
+  const tableauAces = candidates
+    .filter((l) => l.startsWith('tableau'))
+    .map((l) => Number(l.split(':')[1]))
+    .sort((a, b) => a - b);
+  for (const i of tableauAces) {
+    if (aceFreesPlayableTwo(state, i)) return `tableau:${i}`;
+  }
+  return `tableau:${tableauAces[0]}`;
+}
 
 /**
  * List every currently-available legal move from visible cards.
@@ -40,6 +103,29 @@ export function findHints(state) {
     const f = targets.filter((t) => t.startsWith('foundation'));
     return f.length > 0 ? [f[0]] : [];
   };
+
+  // Ace-focus: if any movable Ace can move to an empty foundation, the hint system
+  // highlights ONLY a single Ace->foundation move and nothing else. This keeps the
+  // board focused on the always-correct "send Aces home" progress and avoids
+  // cluttering the highlight with other moves (req 1 + req 2).
+  const aceCandidates = collectAceCandidates(state);
+  if (aceCandidates.length > 0) {
+    const chosen =
+      aceCandidates.length === 1
+        ? aceCandidates[0]
+        : chooseAce(state, aceCandidates);
+    const card =
+      chosen === 'waste'
+        ? state.waste[state.waste.length - 1]
+        : (() => {
+            const col = state.tableau[Number(chosen.split(':')[1])];
+            return col[col.length - 1];
+          })();
+    const targets = filterAceTargets(getAutoMoveTargets(state, chosen, card.id));
+    if (targets.length > 0) return [{ from: chosen, to: targets[0], cardId: card.id }];
+    // Defensive: an empty foundation existed when candidates were collected, so a
+    // foundation target must exist. Fall through to normal hints just in case.
+  }
 
   if (state.waste.length > 0) {
     const card = state.waste[state.waste.length - 1];
