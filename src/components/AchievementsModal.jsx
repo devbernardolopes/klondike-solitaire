@@ -1,16 +1,15 @@
 // components/AchievementsModal.jsx
-// Read-only display of the currently signed-in user's unlocked achievements,
-// pulled from Supabase's achievements_unlocked table. This is a nice-to-have
-// display only — it gates nothing, and a failed/offline fetch simply leaves
-// every achievement looking locked. Achievement ids/names live in
-// data/achievements.js (the DB stores only the earned ids). Mirrors the visual
-// chrome (panel/backdrop, focus-on-open, Escape/backdrop-to-close) of
+// Read-only display of achievements. The catalog is pulled from Supabase's
+// achievements_definitions table (data-driven — Bernardo manages rows directly)
+// and the user's unlocked set from achievements_unlocked. This is display only
+// — it gates nothing, and a failed/offline fetch simply shows an empty catalog
+// with nothing unlocked (never an error state). Mirrors the visual chrome
+// (panel/backdrop, focus-on-open, Escape/backdrop-to-close) of
 // SettingsModal.jsx / ConfirmModal.jsx. Reached only from Settings.
 
 import { useEffect, useRef, useState } from 'react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import { supabase } from '../lib/supabaseClient.js';
-import { ACHIEVEMENTS } from '../data/achievements.js';
 
 /**
  * @param {object} props
@@ -21,6 +20,7 @@ export default function AchievementsModal({ open, onClose }) {
   const dialogRef = useRef(null);
   const backdrop = useModalBackdrop(onClose);
   const [loading, setLoading] = useState(true);
+  const [defs, setDefs] = useState(/** @type {any[]} */ ([]));
   const [unlocked, setUnlocked] = useState(/** @type {Record<string, string>} */ ({}));
 
   // Keep the latest close handler in a ref so the open-effect depends only on
@@ -38,13 +38,15 @@ export default function AchievementsModal({ open, onClose }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
-  // Fetch the user's unlocked achievements each time the modal opens. A null
-  // client (missing env / offline) or any error is treated as "nothing unlocked"
-  // — never an error state, since this is display-only.
+  // Fetch the catalog (achievements_definitions) and the user's unlocked set
+  // each time the modal opens. A null client (missing env / offline) or any
+  // error is treated as "nothing unlocked / empty catalog" — never an error
+  // state, since this is display-only.
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
     setLoading(true);
+    setDefs([]);
     setUnlocked({});
 
     const run = async () => {
@@ -52,13 +54,23 @@ export default function AchievementsModal({ open, onClose }) {
         if (!cancelled) setLoading(false);
         return;
       }
-      const { data, error } = await supabase
-        .from('achievements_unlocked')
-        .select('achievement_id, unlocked_at');
+      const [defsRes, unlockedRes] = await Promise.all([
+        supabase
+          .from('achievements_definitions')
+          .select('id, name, description, image_path, sort_order')
+          .eq('enabled', true)
+          .order('sort_order'),
+        supabase
+          .from('achievements_unlocked')
+          .select('achievement_id, unlocked_at'),
+      ]);
       if (cancelled) return;
-      if (!error && data) {
+      if (!defsRes.error && defsRes.data) {
+        setDefs(defsRes.data);
+      }
+      if (!unlockedRes.error && unlockedRes.data) {
         const map = {};
-        for (const row of data) map[row.achievement_id] = row.unlocked_at;
+        for (const row of unlockedRes.data) map[row.achievement_id] = row.unlocked_at;
         setUnlocked(map);
       }
       setLoading(false);
@@ -115,9 +127,13 @@ export default function AchievementsModal({ open, onClose }) {
           <div style={{ opacity: 0.8, fontSize: 14, marginBottom: 16 }}>Loading…</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 18 }}>
-            {ACHIEVEMENTS.map((a) => {
+            {defs.map((a) => {
               const earnedAt = unlocked[a.id];
               const isUnlocked = Boolean(earnedAt);
+              const imageUrl =
+                a.image_path && supabase
+                  ? supabase.storage.from('achievement-images').getPublicUrl(a.image_path).data.publicUrl
+                  : null;
               return (
                 <div
                   key={a.id}
@@ -126,12 +142,30 @@ export default function AchievementsModal({ open, onClose }) {
                     borderRadius: 'var(--card-radius)',
                     padding: '10px 12px',
                     opacity: isUnlocked ? 1 : 0.5,
+                    display: 'flex',
+                    gap: 12,
+                    alignItems: 'flex-start',
                   }}
                 >
-                  <div style={{ fontSize: 14, fontWeight: 700 }}>{a.name}</div>
-                  <div style={{ fontSize: 13, margin: '2px 0 4px' }}>{a.description}</div>
-                  <div style={{ fontSize: 12, fontStyle: isUnlocked ? 'normal' : 'italic' }}>
-                    {isUnlocked ? `Unlocked ${formatDate(earnedAt)}` : 'Locked'}
+                  {imageUrl ? (
+                    <img
+                      src={imageUrl}
+                      alt=""
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 6,
+                        objectFit: 'cover',
+                        flex: '0 0 auto',
+                      }}
+                    />
+                  ) : null}
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700 }}>{a.name}</div>
+                    <div style={{ fontSize: 13, margin: '2px 0 4px' }}>{a.description}</div>
+                    <div style={{ fontSize: 12, fontStyle: isUnlocked ? 'normal' : 'italic' }}>
+                      {isUnlocked ? `Unlocked ${formatDate(earnedAt)}` : 'Locked'}
+                    </div>
                   </div>
                 </div>
               );

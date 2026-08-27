@@ -8,6 +8,7 @@
 // pipe; later steps add the real stats/seed/daily/state operations here.
 
 import { supabase } from '../lib/supabaseClient.js';
+import { useAchievementEventsStore } from '../hooks/useAchievementEventsStore.js';
 
 /**
  * @typedef {Object} OperationHandler
@@ -26,7 +27,18 @@ export const operations = {
   },
 
   submit_game_result: async (payload) => {
-    const { error } = await supabase.rpc('submit_game_result', payload);
+    const { data, error } = await supabase.rpc('submit_game_result', payload);
+    // Throw on failure exactly as before — ordering/retry behavior in the sync
+    // engine must not change.
     if (error) throw error;
+    // submit_game_result now returns { newly_unlocked_achievement_ids }. Hand
+    // any newly-unlocked ids to the achievement event store. This signal flows
+    // through the offline-first sync queue, so it may fire long after the win
+    // itself (a later boot / after reconnect) — the future toast consumer must
+    // not assume it fires mid-game.
+    const ids = data?.newly_unlocked_achievement_ids;
+    if (Array.isArray(ids) && ids.length > 0) {
+      useAchievementEventsStore.getState().announce(ids);
+    }
   },
 };
