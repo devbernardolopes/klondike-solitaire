@@ -24,6 +24,9 @@ import { pullRemoteProfile } from '../sync/pullProfile.js';
 import { checkAuthRedirectResult } from '../lib/authRedirect.js';
 import ConfirmModal from './ConfirmModal.jsx';
 import { MotionDebugPanel } from '../render/animation/MotionDebugPanel.jsx';
+import { useToastStore } from '../hooks/useToastStore.js';
+import { initAchievementToastBridge } from '../toast/achievementToastBridge.js';
+import ToastHost from './ToastHost.jsx';
 
 export default function App() {
   const theme = useSettingsStore((s) => s.theme);
@@ -43,6 +46,7 @@ export default function App() {
   const linkConflict = useAuthStore((s) => s.linkConflict);
 
   useEffect(() => {
+    let cleanupToastBridge = null;
     (async () => {
       await useAuthStore.getState().init();
       await checkAuthRedirectResult();
@@ -57,7 +61,14 @@ export default function App() {
       initSeeds();
       await initUsedRandomSeeds();
       useGameStore.getState().initialDeal();
+      useToastStore.getState().initConfig();
+      // Subscribe the toast UI to achievement-unlock signals (next to the sync
+      // engine that produces them); clean up on unmount.
+      cleanupToastBridge = initAchievementToastBridge();
     })();
+    return () => {
+      if (cleanupToastBridge) cleanupToastBridge();
+    };
   }, [init, initStats, initSeeds]);
 
   // Pull the linked account's latest progress from Supabase whenever the tab
@@ -139,6 +150,7 @@ export default function App() {
       <Board />
       {import.meta.env.DEV && <MotionDebugPanel />}
       <WinModal />
+      <ToastHost />
       <ConfirmModal
         open={!!linkConflict}
         title="Google account already linked"

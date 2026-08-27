@@ -102,4 +102,13 @@ export const MOTION = {
     ease: 'power2.in',    // accelerating → faster as it moves outward
     spin: 90,             // max random rotation (deg) for a subtle tumble
   },
+
+  // Achievement-unlock toast. `slide` controls the off-screen entrance (top
+  // slides down from -distance, bottom slides up from +distance) before the 5s
+  // dwell begins; `fade` is the opacity tween on dismiss/timeout (no slide).
+  // `distance` is the off-screen travel in px and is applied as the slide start.
+  toast: {
+    slide: { duration: 0.3, ease: 'power2.out', distance: 80 },
+    fade: { duration: 0.2, ease: 'power1.out' },
+  },
 };
