@@ -52,6 +52,30 @@ export function findHints(state) {
     for (const card of pile) {
       if (!card.faceUp) continue;
       for (const to of getAutoMoveTargets(state, from, card.id)) {
+        // An Ace already placed on a foundation must never be hinted to relocate
+        // to another (empty) foundation pile — that is a meaningless shuffle.
+        // (Defensive: foundations are never a hint source, but keep the guard.)
+        if (
+          from.startsWith('foundation') &&
+          to.startsWith('foundation') &&
+          card.rank === 1
+        ) {
+          continue;
+        }
+        // Tableau -> tableau: drop "buried-run reshuffles" that make no progress.
+        // A t->t hint is meaningful only if it (a) uncovers a face-down card in
+        // the source, (b) empties the source column (frees it — e.g. a
+        // whole-column move), or (c) moves the column's current top card (a
+        // normal re-stack). A mid-column run moved onto another non-empty column
+        // that reveals nothing new and frees nothing is a pure lateral shuffle —
+        // advisory-only and never required, so omit it from the hints.
+        if (to.startsWith('tableau')) {
+          const idx = pile.indexOf(card);
+          const revealsHidden = idx > 0 && !pile[idx - 1].faceUp;
+          const emptiesSource = idx === 0;
+          const isColumnTop = card.id === pile[pile.length - 1].id;
+          if (!revealsHidden && !emptiesSource && !isColumnTop) continue;
+        }
         // Exclude a King being "shuffled" from one tableau column onto an EMPTY
         // tableau column when doing so reveals no face-down card in its source
         // column — such a relocation is meaningless for solving the game. A King
@@ -64,15 +88,6 @@ export function findHints(state) {
           const idx = pile.indexOf(card);
           const revealsHidden = pile.slice(0, idx).some((c) => !c.faceUp);
           if (!revealsHidden) continue;
-        }
-        // An Ace already placed on a foundation must never be hinted to relocate
-        // to another (empty) foundation pile — that is a meaningless shuffle.
-        if (
-          from.startsWith('foundation') &&
-          to.startsWith('foundation') &&
-          card.rank === 1
-        ) {
-          continue;
         }
         // Record the actual grabbable card (top of its run) — for a tableau
         // this may be a buried card, not the column's top. The UI uses cardId to

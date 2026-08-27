@@ -107,6 +107,57 @@ test('findHints never relocates an Ace already on a foundation to another founda
   assert.equal(hints.length, 0);
 });
 
+test('findHints suppresses a buried-run reshuffle onto a non-empty column', () => {
+  const st = createEmptyGameState();
+  const f = (s, r) => createCard(s, r, { faceUp: true });
+  const d = (s, r) => createCard(s, r, { faceUp: false });
+  // tableau:0 bottom->top = X(face-up), 5s, 4d, 3c. The run 5s-4d-3c can legally
+  // move onto the 6c in tableau:1, but it is a mid-column run that neither reveals
+  // a hidden card nor frees the column nor is the column's top card — a pure
+  // lateral reshuffle that must be omitted from the hints.
+  st.tableau = [
+    [f('hearts', 9), f('spades', 5), f('diamonds', 4), f('clubs', 3)],
+    [f('clubs', 6)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+  ];
+  const hints = findHints(st);
+  const hit = hints.find(
+    (h) => h.from === 'tableau:0' && h.to === 'tableau:1'
+  );
+  assert.equal(
+    hit,
+    undefined,
+    'buried-run reshuffle onto a non-empty column must be excluded'
+  );
+});
+
+test('findHints keeps a top-card reshuffle onto a non-empty column', () => {
+  const st = createEmptyGameState();
+  const f = (s, r) => createCard(s, r, { faceUp: true });
+  const d = (s, r) => createCard(s, r, { faceUp: false });
+  // tableau:0 top 3c can move onto 4h in tableau:1. Although it reveals no hidden
+  // card and does not free the column, the moving card IS the column's top, so it
+  // is a normal re-stack and must remain a hint (locks the isColumnTop keep-path).
+  st.tableau = [
+    [f('hearts', 9), f('spades', 5), f('clubs', 3)],
+    [f('hearts', 4)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+  ];
+  const hints = findHints(st);
+  const hit = hints.find(
+    (h) => h.from === 'tableau:0' && h.to === 'tableau:1'
+  );
+  assert.ok(hit, 'top-card reshuffle onto a non-empty column must remain a hint');
+});
+
 test('findHints records the buried moving card, not the column top (run)', () => {
   const st = createEmptyGameState();
   const f = (s, r) => createCard(s, r, { faceUp: true });
