@@ -19,6 +19,7 @@ import { useSeedStore } from '../hooks/useSeedStore.js';
 import ToggleSwitch from './ToggleSwitch.jsx';
 import HelpModal from './HelpModal.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
+import ThemeModal from './ThemeModal.jsx';
 import AchievementsModal from './AchievementsModal.jsx';
 import LeaderboardModal from './LeaderboardModal.jsx';
 import StoreModal from './StoreModal.jsx';
@@ -28,10 +29,6 @@ import pkg from '../../package.json';
  * @param {object} props
  * @param {boolean} props.open
  * @param {() => void} props.onClose
- * @param {string} props.theme    active theme name
- * @param {(t: string) => void} props.onThemeChange
- * @param {string} props.deck     active deck/renderer name
- * @param {(d: string) => void} props.onDeckChange
  * @param {'left'|'right'} props.handedness  board pile arrangement
  * @param {(h: 'left'|'right') => void} props.onHandednessChange
  * @param {boolean} props.highlightCard  draw the focus outline on the focused card
@@ -42,10 +39,6 @@ import pkg from '../../package.json';
 export default function SettingsModal({
   open,
   onClose,
-  theme,
-  onThemeChange,
-  deck,
-  onDeckChange,
   handedness,
   onHandednessChange,
   highlightCard,
@@ -63,6 +56,7 @@ export default function SettingsModal({
   const [achievementsOpen, setAchievementsOpen] = useState(false);
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const [storeOpen, setStoreOpen] = useState(false);
+  const [themeOpen, setThemeOpen] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [nameError, setNameError] = useState(null);
@@ -253,34 +247,15 @@ export default function SettingsModal({
           </span>
         </h2>
 
-        <div style={field}>
+        <div style={{ ...field, marginBottom: 20 }}>
           <label style={{ fontSize: 14, fontWeight: 600 }}>Theme</label>
-          <select
-            value={theme}
-            onChange={(e) => onThemeChange(e.target.value)}
-            style={selectStyle}
+          <button
+            type="button"
+            style={{ ...btn, minWidth: 120 }}
+            onClick={openModalGuarded(setThemeOpen)}
           >
-            <option value="classic">Classic</option>
-            <option value="dark">Dark</option>
-            {/* TODO(next pass): register more themes */}
-          </select>
-        </div>
-
-        <div style={field}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>Deck</label>
-          <select
-            value={deck}
-            onChange={(e) => onDeckChange(e.target.value)}
-            style={selectStyle}
-          >
-            <option value="procedural">Classic</option>
-            <option value="sprite">Sprite (atlas)</option>
-            <option value="4-color">4-color</option>
-            <option value="4-color-2">4-color 2</option>
-            <option value="procedural-dark">Dark</option>
-            <option value="procedural-dark-2">Dark 2</option>
-            {/* TODO(next pass): add real deck renderers */}
-          </select>
+            Theme
+          </button>
         </div>
 
         <div style={{ ...field, marginBottom: 20 }}>
@@ -523,6 +498,11 @@ export default function SettingsModal({
       <StoreModal
         open={storeOpen}
         onClose={() => setStoreOpen(false)}
+      />
+
+      <ThemeModal
+        open={themeOpen}
+        onClose={() => setThemeOpen(false)}
       />
     </>
   );
