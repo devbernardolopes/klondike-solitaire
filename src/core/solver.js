@@ -364,6 +364,27 @@ function enumerateDeadEndMoves(s) {
     }
   }
 
+  // (c2) Foundation -> tableau retreats. A card on top of a foundation is a
+  // legal move back onto the tableau in standard Klondike, and doing so can
+  // unlock buried cards (e.g. retreating a foundation card to expose a run it
+  // was blocking). The dead-end reachability search must consider these or it
+  // will falsely flag a player as stuck when their only out is such a retreat.
+  // We skip retreats onto an EMPTY column: a foundation card has no card beneath
+  // it, so placing it on an empty column frees nothing and never enables a
+  // foundation play or a face-down uncover — it only explodes the search space
+  // (every King-topped foundation could be dropped on each of the 7 empty
+  // columns) without ever contributing to a genuine rescue.
+  for (let i = 0; i < s.foundations.length; i++) {
+    const fPile = s.foundations[i];
+    if (fPile.length === 0) continue;
+    const card = fPile[fPile.length - 1];
+    for (let j = 0; j < s.tableau.length; j++) {
+      if (s.tableau[j].length === 0) continue;
+      if (!canMoveToTableau(card, s.tableau[j])) continue;
+      moves.push({ type: 'moveCards', from: `foundation:${i}`, to: `tableau:${j}`, cardIds: [card.id] });
+    }
+  }
+
   // (d) Stock cycling — models drawing through and recycling the waste.
   if (s.stock.length > 0) {
     moves.push({ type: 'draw' });
@@ -409,6 +430,78 @@ export function hasDeadEndMove(s) {
 }
 
 /**
+ * Progress check for the dead-end reachability search. A move is "progress" iff
+ * it is a genuine foundation play or a tableau relocation that uncovers a
+ * face-down card. The subtlety: a card that was *retreated* from a foundation
+ * onto the tableau earlier in the current search path (`s` carries the set of
+ * such "on loan" ids) is NOT credited with progress when it climbs back onto its
+ * foundation — that would be a no-op cycle (foundation→tableau→foundation) and
+ * must not, on its own, keep a position "alive". Genuine rescues (e.g. a retreat
+ * that lets a buried run be uncovered) still count because the uncovering
+ * relocation is real progress regardless of the loan set.
+ *
+ * @param {import('./GameState.js').GameState} s
+ * @param {Set<string>} loan  ids currently retreated from a foundation (on loan)
+ */
+function hasProgressMoveWithLoan(s, loan) {
+  // 1. Foundation plays from visible sources, skipping cards on loan (a loaned
+  // card's only legal foundation is its own, so this precisely suppresses the
+  // foundation→tableau→foundation no-op).
+  const candidates = [];
+  if (s.waste.length > 0) candidates.push(s.waste[s.waste.length - 1]);
+  s.tableau.forEach((pile, i) => {
+    if (pile.length > 0 && pile[pile.length - 1].faceUp) {
+      candidates.push(pile[pile.length - 1]);
+    }
+  });
+  for (const card of candidates) {
+    if (loan.has(card.id)) continue;
+    for (let i = 0; i < s.foundations.length; i++) {
+      if (canMoveToFoundation(card, s.foundations[i])) return true;
+    }
+  }
+
+  // 2. A tableau relocation that uncovers a face-down card (always progress).
+  for (let i = 0; i < s.tableau.length; i++) {
+    const pile = s.tableau[i];
+    for (const card of pile) {
+      if (!card.faceUp) continue;
+      const run = getTableauRun(pile, card.id);
+      if (!run) continue;
+      const idx = pile.findIndex((c) => c.id === run[0].id);
+      const uncovers = idx > 0 && !pile[idx - 1].faceUp;
+      if (!uncovers) continue;
+      for (let b = 0; b < s.tableau.length; b++) {
+        if (b === i) continue;
+        if (canMoveToTableau(run[0], s.tableau[b])) return true;
+      }
+    }
+  }
+  return false;
+}
+
+/** Carry the on-loan set forward across a transition. */
+function nextLoan(s, loan, move) {
+  if (!move || move.type !== 'moveCards') return loan;
+  const from = String(move.from);
+  if (from.startsWith('foundation')) {
+    const id = move.cardIds[move.cardIds.length - 1];
+    const n = new Set(loan);
+    n.add(id);
+    return n;
+  }
+  if (String(move.to).startsWith('foundation')) {
+    const id = move.cardIds[move.cardIds.length - 1];
+    if (loan.has(id)) {
+      const n = new Set(loan);
+      n.delete(id);
+      return n;
+    }
+  }
+  return loan;
+}
+
+/**
  * Is *any* meaningful move reachable from this state through legal moves
  * (including stock draws / waste recycling)? A position is a dead end only when
  * NEITHER a progress move NOR a waste/stock relocation is *ever* reachable — i.e.
@@ -442,23 +535,24 @@ export function findReachableMove(state, opts = {}) {
   let nodes = 0;
   let aborted = false;
 
-  function search(s, depth) {
-    if (hasProgressMove(s) || wasteTopCanMove(s)) return true;
+  function search(s, depth, loan) {
+    if (hasProgressMoveWithLoan(s, loan) || wasteTopCanMove(s)) return true;
     if (nodes++ > maxNodes || Date.now() - start > maxMs) {
       aborted = true;
       return false;
     }
     if (depth > 256) return false; // bound pathological recursion
-    const sig = signature(s);
+    const sig = signature(s) + '|' + [...loan].sort().join(',');
     if (visited.has(sig)) return false;
     visited.add(sig);
     for (const move of enumerateDeadEndMoves(s)) {
-      if (search(applyMove(s, move), depth + 1)) return true;
+      const nLoan = nextLoan(s, loan, move);
+      if (search(applyMove(s, move), depth + 1, nLoan)) return true;
     }
     return false;
   }
 
-  return search(state, 0) ? true : aborted ? SOLVER_TIMEOUT : false;
+  return search(state, 0, new Set()) ? true : aborted ? SOLVER_TIMEOUT : false;
 }
 
 /**

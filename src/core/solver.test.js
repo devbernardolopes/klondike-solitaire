@@ -345,15 +345,16 @@ test('isDrainedFoundationDeadEnd: false when a move is still reachable', () => {
 });
 
 /**
- * Regression: the exact board reported as a dead end (Game Mode 25016), with
- * empty stock AND empty waste. The cheap hasAnyValidMove sees a non-progress
- * whole-pile King-shuffle and (misleadingly) reports a "move", but the
- * "no moves" modal must be driven by the dead-end detector, which ignores
- * those shuffles and proves no meaningful move is reachable. This is the case
- * that previously went undetected because the check was only reached on some
- * mutation paths.
+ * Regression: the board reported as a dead end (Game Mode 25016), with empty
+ * stock AND empty waste. Under the corrected dead-end detector — which now
+ * counts foundation->tableau *retreats* as legal moves — this position is NOT
+ * a dead end: a foundation retreat unlocks a buried run, so a move is reachable
+ * and the "no moves" modal must stay hidden. (Earlier versions ignored
+ * foundation retreats and wrongly flagged this stuck; that was the same class
+ * of bug as the waste->tableau false positive, so this assertion tracks the
+ * corrected behavior.)
  */
-test('reported dead-end board (Game Mode 25016) is detected as a dead end', () => {
+test('reported board (Game Mode 25016) has a foundation-retreat rescue (not a dead end)', () => {
   const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
   // Tableau arrays are BOTTOM->TOP in core; the bug report listed TOP->BOTTOM,
   // so each column below is the report reversed.
@@ -374,10 +375,11 @@ test('reported dead-end board (Game Mode 25016) is detected as a dead end', () =
     [c('diamonds', 1, 'Ad', false), c('spades', 4, '4s', false), c('spades', 11, 'Js', false), c('diamonds', 10, '10d'), c('spades', 9, '9s'), c('hearts', 8, '8h'), c('spades', 7, '7s'), c('hearts', 6, '6h'), c('spades', 5, '5s')],
   ];
   // The trap: hasAnyValidMove counts the King-shuffle as a move, so the modal
-  // must NOT be driven by it. The detector ignores those and reports no move.
+  // must NOT be driven by it. The detector now considers foundation retreats and
+  // proves a (retreat-enabled) move IS reachable, so the modal must NOT appear.
   assert.equal(hasAnyValidMove(s), true);
   assert.equal(hasDeadEndMove(s), false);
-  assert.equal(findReachableMove(s, { maxNodes: 500000, maxMs: 4000 }), false);
+  assert.equal(findReachableMove(s, { maxNodes: 500000, maxMs: 4000 }), true);
 });
 
 /**
@@ -413,13 +415,62 @@ function buildReportedRandomBoard() {
   return s;
 }
 
-test('reported random board with only a non-progress 8s->9h shuffle is a dead end', () => {
+test('reported random board with only a non-progress 8s->9h shuffle is a genuine dead end', () => {
   const s = buildReportedRandomBoard();
-  // The only moves are non-covering relocations (e.g. 8s->9h) that uncover nothing
-  // and reach no foundation play, so under progress semantics the board is stuck
-  // and the "no moves" modal must appear.
+  // The only *tableau* moves are non-covering relocations (e.g. 8s->9h) that
+  // uncover nothing and reach no foundation play, and the only foundation retreat
+  // available (e.g. 5h onto a 6) is a no-op: it cannot uncover the buried cards
+  // in column 7 (its run has no red-J landing) and the only follow-up is returning
+  // the card to its foundation. Correctly excluding such no-op loops, this position
+  // is genuinely stuck and the modal must appear.
   assert.equal(hasDeadEndMove(s), false);
   assert.equal(findReachableMove(s, { maxNodes: 500000, maxMs: 4000 }), false);
+});
+
+/**
+ * Regression for the false "No More Moves" modal reported against a board where
+ * moving 9c from the waste onto pile 1 (on top of 10h) was wrongly flagged as a
+ * dead end. The position is NOT stuck: from here a foundation retreat rescues it
+ * — 8d (foundation 4) onto 9c (pile 1), then 7d (foundation 4) onto 8c (pile 3),
+ * which unlocks 6s (pile 6) and reveals buried cards. The dead-end detector must
+ * consider foundation->tableau retreats and report a move is reachable.
+ *
+ * Constructed as the board AFTER the 9c->pile1 move: stock and waste empty, the
+ * 7 tableau columns as reported, and the four foundations as reported.
+ * Core tableau arrays are BOTTOM->TOP; the report listed TOP->BOTTOM, so each is
+ * reversed below.
+ */
+test('regression: waste->tableau followed by foundation retreat is not a dead end', () => {
+  const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
+  const s = createEmptyGameState();
+  s.stock = [];
+  s.waste = [];
+  s.foundations[0] = [c('hearts', 1, 'Ah'), c('hearts', 2, '2h')];
+  s.foundations[1] = [c('clubs', 1, 'Ac'), c('clubs', 2, '2c'), c('clubs', 3, '3c'), c('clubs', 4, '4c')];
+  s.foundations[2] = [c('spades', 1, 'As'), c('spades', 2, '2s'), c('spades', 3, '3s'), c('spades', 4, '4s')];
+  s.foundations[3] = [
+    c('diamonds', 1, 'Ad'), c('diamonds', 2, '2d'), c('diamonds', 3, '3d'), c('diamonds', 4, '4d'),
+    c('diamonds', 5, '5d'), c('diamonds', 6, '6d'), c('diamonds', 7, '7d'), c('diamonds', 8, '8d'),
+  ];
+  s.tableau = [
+    // pile 1: 9c (just placed) on top of 10h, Js, Qd, Ks
+    [c('spades', 13, 'Ks'), c('diamonds', 12, 'Qd'), c('spades', 11, 'Js'), c('hearts', 10, '10h'), c('clubs', 9, '9c')],
+    [c('hearts', 13, 'Kh'), c('clubs', 12, 'Qc'), c('hearts', 11, 'Jh'), c('clubs', 10, '10c'), c('hearts', 9, '9h'), c('spades', 8, '8s'), c('hearts', 7, '7h'), c('clubs', 6, '6c'), c('hearts', 5, '5h')],
+    [c('diamonds', 13, 'Kd'), c('spades', 12, 'Qs'), c('diamonds', 11, 'Jd'), c('clubs', 10, '10s'), c('diamonds', 9, '9d'), c('clubs', 8, '8c')],
+    [c('clubs', 13, 'Kc')],
+    // pile 5: three face-down then 10d,9s,8h,7c,6h,5s,4h (top)
+    [c('spades', 4, 'h5a', false), c('diamonds', 4, 'h5b', false), c('hearts', 4, 'h5c', false), c('diamonds', 10, '10d'), c('spades', 9, '9s'), c('hearts', 8, '8h'), c('clubs', 7, '7c'), c('hearts', 6, '6h'), c('spades', 5, '5s'), c('hearts', 4, '4h')],
+    // pile 6: two face-down then 6s (top)
+    [c('clubs', 2, 'h6a', false), c('diamonds', 2, 'h6b', false), c('spades', 6, '6s')],
+    [],
+  ];
+
+  // The cheap pre-filter sees no immediate progress/waste move, which is exactly
+  // why this position reaches the async dead-end detector in the first place.
+  assert.equal(hasDeadEndMove(s), false);
+  // A move IS reachable via a foundation retreat (8d->pile1 ...), so the modal
+  // must NOT appear.
+  assert.equal(findReachableMove(s, { maxNodes: 500000, maxMs: 4000 }), true);
 });
 
 /**
@@ -473,6 +524,49 @@ function buildStuckAfter4c3hShuffleBoard() {
 
 test('board reached after the 4c/3h column-7 -> column-3 shuffle is a genuine dead end', () => {
   const s = buildStuckAfter4c3hShuffleBoard();
+  // No *tableau* move uncovers anything and no foundation play is reachable from
+  // the visible cards. A foundation card CAN be retreated onto the tableau (e.g.
+  // 2c onto a 3), but such a retreat is a no-op: it cannot uncover the buried
+  // card (still blocked by the 6h, which has no black-7 landing) and the only
+  // follow-up is returning the card to its foundation. With foundation retreats
+  // correctly excluded from "progress", this position is genuinely stuck, so the
+  // modal must appear.
+  assert.equal(hasDeadEndMove(s), false);
+  assert.equal(findReachableMove(s, { maxNodes: 500000, maxMs: 4000 }), false);
+});
+
+/**
+ * Genuine dead-end regression: even with foundation->tableau retreats now
+ * considered, a board where EVERY tableau pile is topped by a King (Kings can
+ * only move onto an empty column, and there are none) and every foundation top
+ * is too low to retreat onto any tableau top has literally no reachable move.
+ * This pins down that the detector still reports a real dead end (so the modal
+ * still shows for boards that are truly hopeless) and that foundation retreats
+ * did not make the detector declare "never stuck".
+ */
+test('genuine dead end: all-Kings tableau, no retreat possible', () => {
+  const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
+  const s = createEmptyGameState();
+  s.stock = [];
+  s.waste = [];
+  // Foundation tops are rank 1 — a retreat needs a rank-2 opposite-color tableau
+  // top, but every tableau top is a King (rank 13), so no retreat exists.
+  s.foundations[0] = [c('clubs', 1, 'Ac')];
+  s.foundations[1] = [c('spades', 1, 'As')];
+  s.foundations[2] = [c('hearts', 1, 'Ah')];
+  s.foundations[3] = [c('diamonds', 1, 'Ad')];
+  // Each pile: a face-up card beneath a King. Kings cannot relocate (no empty
+  // column) so the buried card can never be uncovered, and no foundation play is
+  // available (tops are all Kings; waste empty).
+  s.tableau = [
+    [c('clubs', 5, 'b0'), c('spades', 13, 'K0')],
+    [c('hearts', 5, 'b1'), c('hearts', 13, 'K1')],
+    [c('diamonds', 5, 'b2'), c('clubs', 13, 'K2')],
+    [c('spades', 5, 'b3'), c('diamonds', 13, 'K3')],
+    [c('clubs', 5, 'b4'), c('hearts', 13, 'K4')],
+    [c('hearts', 5, 'b5'), c('clubs', 13, 'K5')],
+    [c('diamonds', 5, 'b6'), c('spades', 13, 'K6')],
+  ];
   assert.equal(hasDeadEndMove(s), false);
   assert.equal(findReachableMove(s, { maxNodes: 500000, maxMs: 4000 }), false);
 });
