@@ -9,6 +9,9 @@ import { HelpCircle } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import { isModalDismissGuardActive } from '../utils/modalDismissGuard.js';
 import { useGameStore } from '../hooks/useGameStore.js';
+import { deal } from '../core/dealer.js';
+import { buildSolvitaireText } from '../core/solvitaire.js';
+import { buildSnapshotText, snapshotModeToken } from '../core/snapshot.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
@@ -190,6 +193,26 @@ export default function SettingsModal({
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     useUiStore.getState().setAnnounce('Board snapshot exported');
+  };
+
+  // Export the START configuration of the current deal as a Solvitaire-format
+  // file. Unlike "Take Snapshot" this always uses the initial deal (rebuilt from
+  // the store's replaySpec) and exposes every card (no face-down placeholders).
+  const handleExportSolvitaire = () => {
+    const { replaySpec, state } = useGameStore.getState();
+    const initial = deal({ ...replaySpec, drawCount: state.drawCount });
+    const text = buildSolvitaireText(initial);
+    const filename = `solvitaire_${snapshotModeToken(state)}_${formatTimestamp(new Date())}.txt`;
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    useUiStore.getState().setAnnounce('Solvitaire deal exported');
   };
 
   return (
@@ -429,6 +452,13 @@ export default function SettingsModal({
             onClick={handleTakeSnapshot}
           >
             Take Snapshot
+          </button>
+          <button
+            type="button"
+            style={{ ...btn }}
+            onClick={handleExportSolvitaire}
+          >
+            Export
           </button>
         </div>
 
