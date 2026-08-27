@@ -107,6 +107,57 @@ test('findHints never relocates an Ace already on a foundation to another founda
   assert.equal(hints.length, 0);
 });
 
+test('findHints restricts a waste Ace to a single left-most empty foundation (no tableau 2)', () => {
+  const st = createEmptyGameState();
+  const f = (s, r) => createCard(s, r, { faceUp: true });
+  const d = (s, r) => createCard(s, r, { faceUp: false });
+  // Waste top is the Ah (Ace). Two empty foundations exist (foundation:0,1). A
+  // tableau column exposes a 2s (opposite color of hearts), a legal but pointless
+  // Ace->tableau landing. The hint must show ONLY the left-most empty foundation
+  // (foundation:0) and must NOT suggest the tableau 2.
+  st.waste = [f('hearts', 1)];
+  st.foundations = [[], [], [], []];
+  st.tableau = [
+    [f('spades', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+  ];
+  const hints = findHints(st);
+  assert.equal(hints.length, 1, 'exactly one Ace hint expected');
+  const hit = hints[0];
+  assert.equal(hit.from, 'waste');
+  assert.equal(hit.to, 'foundation:0', 'Ace must target the left-most empty foundation');
+  assert.equal(hit.cardId, st.waste[st.waste.length - 1].id);
+});
+
+test('findHints restricts a tableau-top Ace to a single left-most empty foundation (no tableau 2)', () => {
+  const st = createEmptyGameState();
+  const f = (s, r) => createCard(s, r, { faceUp: true });
+  const d = (s, r) => createCard(s, r, { faceUp: false });
+  // tableau:0 top is the Ah (Ace). Two empty foundations exist. A tableau 2s is
+  // present. The hint must show ONLY foundation:0 and no tableau target.
+  st.foundations = [[], [], [], []];
+  st.tableau = [
+    [f('hearts', 1)],
+    [f('spades', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+  ];
+  const hints = findHints(st);
+  assert.equal(hints.length, 1, 'exactly one Ace hint expected');
+  const hit = hints[0];
+  assert.equal(hit.from, 'tableau:0');
+  assert.equal(hit.to, 'foundation:0', 'Ace must target the left-most empty foundation');
+  assert.equal(hit.cardId, st.tableau[0][st.tableau[0].length - 1].id);
+});
+
 test('findHints suppresses a buried-run reshuffle onto a non-empty column', () => {
   const st = createEmptyGameState();
   const f = (s, r) => createCard(s, r, { faceUp: true });

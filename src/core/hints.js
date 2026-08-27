@@ -32,9 +32,20 @@ export function findHints(state) {
     hints.push({ from, to, cardId });
   };
 
+  // An Ace belongs on a foundation, never on a tableau. For an Ace, drop every
+  // tableau target and keep only the left-most empty foundation (getAutoMoveTargets
+  // returns targets in DEST_ORDER, so the first foundation target is the left-most
+  // empty one).
+  const filterAceTargets = (targets) => {
+    const f = targets.filter((t) => t.startsWith('foundation'));
+    return f.length > 0 ? [f[0]] : [];
+  };
+
   if (state.waste.length > 0) {
     const card = state.waste[state.waste.length - 1];
-    for (const to of getAutoMoveTargets(state, 'waste', card.id)) {
+    let targets = getAutoMoveTargets(state, 'waste', card.id);
+    if (card.rank === 1) targets = filterAceTargets(targets);
+    for (const to of targets) {
       add('waste', to, card.id);
     }
   }
@@ -51,7 +62,9 @@ export function findHints(state) {
     const from = `tableau:${i}`;
     for (const card of pile) {
       if (!card.faceUp) continue;
-      for (const to of getAutoMoveTargets(state, from, card.id)) {
+      let targets = getAutoMoveTargets(state, from, card.id);
+      if (card.rank === 1) targets = filterAceTargets(targets);
+      for (const to of targets) {
         // An Ace already placed on a foundation must never be hinted to relocate
         // to another (empty) foundation pile — that is a meaningless shuffle.
         // (Defensive: foundations are never a hint source, but keep the guard.)
