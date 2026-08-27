@@ -271,13 +271,14 @@ function ElapsedClock() {
       <div
         style={{
           display: 'flex',
+          alignItems: 'flex-start',
           gap: 8,
-          flexWrap: 'wrap',
-          alignItems: 'center',
           padding: '8px clamp(8px, 2vw, 20px)',
+          position: 'relative',
         }}
         >
-         <span
+         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+           <span
             role="button"
             tabIndex={0}
             title="Double-click to enter a specific seed"
@@ -293,39 +294,43 @@ function ElapsedClock() {
             }}
           >
              {currentGameKind === 'daily'
-                 ? `Daily Challenge: ${currentDailyDate} (seed ${gameState.seed})`
-                 : currentGameKind === 'random'
-                   ? `Random (seed ${gameState.seed})`
-                   : `Seed: ${gameState.seed}`}
-          </span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto' }}>
-            <span
-              style={{
-                color: '#fff',
-                fontSize: 13,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                userSelect: 'none',
-              }}
-            >
-              <CoinsIcon size={14} /> {coins}
-            </span>
-          </div>
-        </div>
+                  ? `Daily Challenge: ${currentDailyDate} (seed ${gameState.seed})`
+                  : currentGameKind === 'random'
+                    ? `Random (seed ${gameState.seed})`
+                    : `Seed: ${gameState.seed}`}
+           </span>
+           <span
+             style={{
+               color: '#fff',
+               fontSize: 13,
+               display: 'flex',
+               alignItems: 'center',
+               gap: 4,
+               userSelect: 'none',
+             }}
+           >
+             <CoinsIcon size={14} /> {coins}
+           </span>
+         </div>
 
-       <div
-         style={{
-           display: 'flex',
-           justifyContent: 'center',
-           gap: 'clamp(24px, 6vw, 80px)',
-           alignItems: 'center',
-           padding: '4px clamp(8px, 2vw, 20px) 10px',
-         }}
-       >
-          <span style={hudLabelStyle}>Score: {score}</span>
-          <ElapsedClock />
-          <span style={hudLabelStyle}>Moves: {moves}</span>
+         <div
+           style={{
+             position: 'absolute',
+             left: 0,
+             right: 0,
+             top: 8,
+             display: 'flex',
+             justifyContent: 'center',
+             alignItems: 'flex-start',
+             pointerEvents: 'none',
+           }}
+         >
+           <div style={{ display: 'flex', gap: 'clamp(24px, 6vw, 80px)', alignItems: 'center' }}>
+             <span style={hudLabelStyle}>Score: {score}</span>
+             <ElapsedClock />
+             <span style={hudLabelStyle}>Moves: {moves}</span>
+           </div>
+         </div>
        </div>
 
       <button
