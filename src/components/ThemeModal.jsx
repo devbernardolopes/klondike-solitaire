@@ -10,6 +10,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useModalBackdrop } from './modalBackdrop.js';
+import ModalCloseButton from './ModalCloseButton.jsx';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { getDeck, listDecks } from '../render/deck/deckRegistry.js';
@@ -68,6 +69,7 @@ export default function ThemeModal({ open, onClose }) {
   };
 
   const panel = {
+    position: 'relative',
     background: 'var(--card-face-bg)',
     color: 'var(--card-text-black)',
     border: 'var(--card-border)',
@@ -76,6 +78,9 @@ export default function ThemeModal({ open, onClose }) {
     padding: '20px 22px',
     width: 'min(92vw, 560px)',
     maxWidth: '100%',
+    height: '85vh',
+    display: 'flex',
+    flexDirection: 'column',
   };
 
   // Tile sizing mirrors the live card geometry via CSS vars so the previews
@@ -212,7 +217,8 @@ export default function ThemeModal({ open, onClose }) {
       }}
     >
       <div style={panel}>
-        <h2 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700 }}>Theme</h2>
+        <h2 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>Theme</h2>
+        <ModalCloseButton onClick={onClose} />
 
         <div
           role="tablist"
@@ -247,9 +253,11 @@ export default function ThemeModal({ open, onClose }) {
           })}
         </div>
 
-        {activeTab === 'background' && renderBackgroundTab()}
-        {activeTab === 'cardsBack' && renderCardsBackTab()}
-        {activeTab === 'cardsFace' && renderCardsFaceTab()}
+        <div className="modal-body-scroll" style={{ flex: 1, minHeight: 0 }}>
+          {activeTab === 'background' && renderBackgroundTab()}
+          {activeTab === 'cardsBack' && renderCardsBackTab()}
+          {activeTab === 'cardsFace' && renderCardsFaceTab()}
+        </div>
       </div>
     </div>
   );

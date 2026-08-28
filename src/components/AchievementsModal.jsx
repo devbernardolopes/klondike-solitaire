@@ -9,6 +9,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useModalBackdrop } from './modalBackdrop.js';
+import ModalCloseButton from './ModalCloseButton.jsx';
 import { supabase } from '../lib/supabaseClient.js';
 
 /**
@@ -85,6 +86,7 @@ export default function AchievementsModal({ open, onClose }) {
   if (!open) return null;
 
   const panel = {
+    position: 'relative',
     background: 'var(--card-face-bg)',
     color: 'var(--card-text-black)',
     border: 'var(--card-border)',
@@ -93,6 +95,9 @@ export default function AchievementsModal({ open, onClose }) {
     padding: '20px 22px',
     width: 'min(90vw, 380px)',
     maxWidth: '100%',
+    height: '85vh',
+    display: 'flex',
+    flexDirection: 'column',
   };
 
   const formatDate = (iso) => {
@@ -121,57 +126,60 @@ export default function AchievementsModal({ open, onClose }) {
       }}
     >
       <div style={panel}>
-        <h2 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700 }}>Achievements</h2>
+        <h2 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>Achievements</h2>
+        <ModalCloseButton onClick={onClose} />
 
-        {loading ? (
-          <div style={{ opacity: 0.8, fontSize: 14, marginBottom: 16 }}>Loading…</div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 18 }}>
-            {defs.map((a) => {
-              const earnedAt = unlocked[a.id];
-              const isUnlocked = Boolean(earnedAt);
-              const imageUrl =
-                a.image_path && supabase
-                  ? supabase.storage.from('achievement-images').getPublicUrl(a.image_path).data.publicUrl
-                  : null;
-              return (
-                <div
-                  key={a.id}
-                  style={{
-                    border: '1px solid var(--card-border)',
-                    borderRadius: 'var(--card-radius)',
-                    padding: '10px 12px',
-                    opacity: isUnlocked ? 1 : 0.5,
-                    display: 'flex',
-                    gap: 12,
-                    alignItems: 'flex-start',
-                  }}
-                >
-                  {imageUrl ? (
-                    <img
-                      src={imageUrl}
-                      alt=""
-                      style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 6,
-                        objectFit: 'cover',
-                        flex: '0 0 auto',
-                      }}
-                    />
-                  ) : null}
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700 }}>{a.name}</div>
-                    <div style={{ fontSize: 13, margin: '2px 0 4px' }}>{a.description}</div>
-                    <div style={{ fontSize: 12, fontStyle: isUnlocked ? 'normal' : 'italic' }}>
-                      {isUnlocked ? `Unlocked ${formatDate(earnedAt)}` : 'Locked'}
+        <div className="modal-body-scroll" style={{ flex: 1, minHeight: 0 }}>
+          {loading ? (
+            <div style={{ opacity: 0.8, fontSize: 14, marginBottom: 16 }}>Loading…</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 18 }}>
+              {defs.map((a) => {
+                const earnedAt = unlocked[a.id];
+                const isUnlocked = Boolean(earnedAt);
+                const imageUrl =
+                  a.image_path && supabase
+                    ? supabase.storage.from('achievement-images').getPublicUrl(a.image_path).data.publicUrl
+                    : null;
+                return (
+                  <div
+                    key={a.id}
+                    style={{
+                      border: '1px solid var(--card-border)',
+                      borderRadius: 'var(--card-radius)',
+                      padding: '10px 12px',
+                      opacity: isUnlocked ? 1 : 0.5,
+                      display: 'flex',
+                      gap: 12,
+                      alignItems: 'flex-start',
+                    }}
+                  >
+                    {imageUrl ? (
+                      <img
+                        src={imageUrl}
+                        alt=""
+                        style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: 6,
+                          objectFit: 'cover',
+                          flex: '0 0 auto',
+                        }}
+                      />
+                    ) : null}
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700 }}>{a.name}</div>
+                      <div style={{ fontSize: 13, margin: '2px 0 4px' }}>{a.description}</div>
+                      <div style={{ fontSize: 12, fontStyle: isUnlocked ? 'normal' : 'italic' }}>
+                        {isUnlocked ? `Unlocked ${formatDate(earnedAt)}` : 'Locked'}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

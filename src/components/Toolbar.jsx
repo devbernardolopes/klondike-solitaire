@@ -426,6 +426,7 @@ function ElapsedClock() {
         onQuaternary={onNoMovesKeepGoing}
         onConfirm={currentGameKind === 'daily' ? onNoMovesReturnDaily : onNoMovesConfirm}
         onCancel={onNoMovesCancel}
+        onCloseIcon={onNoMovesKeepGoing}
       />
 
        <ConfirmModal

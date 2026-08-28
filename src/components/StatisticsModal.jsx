@@ -9,6 +9,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
+import ModalCloseButton from './ModalCloseButton.jsx';
 import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useModalBackdrop } from './modalBackdrop.js';
@@ -61,6 +62,7 @@ export default function StatisticsModal({ open, onClose }) {
   };
 
   const panel = {
+    position: 'relative',
     background: 'var(--card-face-bg)',
     color: 'var(--card-text-black)',
     border: 'var(--card-border)',
@@ -69,6 +71,9 @@ export default function StatisticsModal({ open, onClose }) {
     padding: '20px 22px',
     width: 'min(90vw, 360px)',
     maxWidth: '100%',
+    height: '85vh',
+    display: 'flex',
+    flexDirection: 'column',
   };
 
   const row = {
@@ -103,73 +108,76 @@ export default function StatisticsModal({ open, onClose }) {
         }}
       >
         <div style={panel}>
-          <h2 style={{ margin: '0 0 14px', fontSize: 18, fontWeight: 700 }}>Statistics</h2>
+          <h2 style={{ margin: '0 0 14px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>Statistics</h2>
+          <ModalCloseButton onClick={onClose} />
 
-          <div style={row}>
-            <span style={labelStyle}>Total games played</span>
-            <span style={valueStyle}>{stats.totalGamesPlayed}</span>
-          </div>
-          <div style={row}>
-            <span style={labelStyle}>Total games won</span>
-            <span style={valueStyle}>
-              {stats.totalGamesWon}{' '}
-              <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.8 }}>
-                ({wonPct}%)
-              </span>
-            </span>
-          </div>
-          <div style={row}>
-            <span style={labelStyle}>Highest score (won)</span>
-            <span style={valueStyle}>{stats.highestScore}</span>
-          </div>
-          <div style={row}>
-            <span style={labelStyle}>Lowest time (won)</span>
-            <span style={valueStyle}>{stats.lowestTimeMs == null ? '—' : formatTime(stats.lowestTimeMs)}</span>
-          </div>
-          <div style={{ ...row, borderBottom: 'none' }}>
-            <span style={labelStyle}>Lowest moves (won)</span>
-            <span style={valueStyle}>{stats.lowestMoves == null ? '—' : stats.lowestMoves}</span>
-          </div>
-
-          <div style={{ ...row, borderTop: '1px solid var(--ui-control-border)' }}>
-            <span style={labelStyle}>Current Winning Streak</span>
-            <span
-              style={{
-                ...valueStyle,
-                color:
-                  stats.currentStreak > 0 && stats.currentStreak >= stats.bestStreak
-                    ? '#1a7f37'
-                    : 'var(--card-text-black)',
-              }}
-            >
-              {stats.currentStreak}
-              {stats.currentStreak > 0 && stats.currentStreak >= stats.bestStreak && (
-                <span
-                  style={{
-                    marginLeft: 6,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: '#e53935',
-                  }}
-                >
-                  new
+          <div className="modal-body-scroll" style={{ flex: 1, minHeight: 0 }}>
+            <div style={row}>
+              <span style={labelStyle}>Total games played</span>
+              <span style={valueStyle}>{stats.totalGamesPlayed}</span>
+            </div>
+            <div style={row}>
+              <span style={labelStyle}>Total games won</span>
+              <span style={valueStyle}>
+                {stats.totalGamesWon}{' '}
+                <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.8 }}>
+                  ({wonPct}%)
                 </span>
-              )}
-            </span>
-          </div>
-          <div style={{ ...row, borderBottom: 'none' }}>
-            <span style={labelStyle}>Best Winning Streak</span>
-            <span style={valueStyle}>{stats.bestStreak}</span>
-          </div>
+              </span>
+            </div>
+            <div style={row}>
+              <span style={labelStyle}>Highest score (won)</span>
+              <span style={valueStyle}>{stats.highestScore}</span>
+            </div>
+            <div style={row}>
+              <span style={labelStyle}>Lowest time (won)</span>
+              <span style={valueStyle}>{stats.lowestTimeMs == null ? '—' : formatTime(stats.lowestTimeMs)}</span>
+            </div>
+            <div style={{ ...row, borderBottom: 'none' }}>
+              <span style={labelStyle}>Lowest moves (won)</span>
+              <span style={valueStyle}>{stats.lowestMoves == null ? '—' : stats.lowestMoves}</span>
+            </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 18, gap: 10 }}>
-            <button
-              type="button"
-              style={{ ...btn, background: 'var(--ui-modal-btn-bg-danger, #b23b3b)', color: '#fff' }}
-              onClick={() => setConfirmResetOpen(true)}
-            >
-              Reset
-            </button>
+            <div style={{ ...row, borderTop: '1px solid var(--ui-control-border)' }}>
+              <span style={labelStyle}>Current Winning Streak</span>
+              <span
+                style={{
+                  ...valueStyle,
+                  color:
+                    stats.currentStreak > 0 && stats.currentStreak >= stats.bestStreak
+                      ? '#1a7f37'
+                      : 'var(--card-text-black)',
+                }}
+              >
+                {stats.currentStreak}
+                {stats.currentStreak > 0 && stats.currentStreak >= stats.bestStreak && (
+                  <span
+                    style={{
+                      marginLeft: 6,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: '#e53935',
+                    }}
+                  >
+                    new
+                  </span>
+                )}
+              </span>
+            </div>
+            <div style={{ ...row, borderBottom: 'none' }}>
+              <span style={labelStyle}>Best Winning Streak</span>
+              <span style={valueStyle}>{stats.bestStreak}</span>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 18, gap: 10 }}>
+              <button
+                type="button"
+                style={{ ...btn, background: 'var(--ui-modal-btn-bg-danger, #b23b3b)', color: '#fff' }}
+                onClick={() => setConfirmResetOpen(true)}
+              >
+                Reset
+              </button>
+            </div>
           </div>
         </div>
       </div>

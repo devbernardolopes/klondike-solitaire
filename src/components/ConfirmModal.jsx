@@ -9,6 +9,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useModalBackdrop } from './modalBackdrop.js';
+import ModalCloseButton from './ModalCloseButton.jsx';
 
 /**
  * @param {object} props
@@ -27,6 +28,8 @@ import { useModalBackdrop } from './modalBackdrop.js';
  * @param {boolean} [props.dismissable]     when false, the modal cannot be dismissed by an
  *                                          outside click/tap or the Escape key — the user must
  *                                          pick a button explicitly (default true)
+ * @param {() => void} [props.onCloseIcon]  handler for the top-right "X" close button. Defaults
+ *                                          to `onCancel` so the X mirrors a dismiss/close.
  */
 export default function ConfirmModal({
   open,
@@ -42,9 +45,12 @@ export default function ConfirmModal({
   quaternaryText,
   onQuaternary,
   dismissable = true,
+  onCloseIcon,
 }) {
   const confirmRef = useRef(null);
   const backdrop = useModalBackdrop(onCancel);
+  const onCloseIconRef = useRef(onCloseIcon ?? onCancel);
+  onCloseIconRef.current = onCloseIcon ?? onCancel;
 
   // Read the close handler via a ref so this effect runs once per open (depends
   // only on `open`), not whenever the handler identity changes.
@@ -75,6 +81,7 @@ export default function ConfirmModal({
   };
 
   const panel = {
+    position: 'relative',
     background: 'var(--card-face-bg)',
     color: 'var(--card-text-black)',
     border: 'var(--card-border)',
@@ -104,8 +111,14 @@ export default function ConfirmModal({
     >
       <div style={panel}>
         {title && (
-          <h2 style={{ margin: '0 0 10px', fontSize: 18, fontWeight: 700 }}>{title}</h2>
+          <h2 style={{
+            margin: '0 0 10px',
+            fontSize: 18,
+            fontWeight: 700,
+            paddingRight: 36,
+          }}>{title}</h2>
         )}
+        <ModalCloseButton onClick={() => onCloseIconRef.current?.()} />
         <p style={{ margin: '0 0 18px', fontSize: 14, lineHeight: 1.45 }}>{message}</p>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           {quaternaryText && onQuaternary && (

@@ -9,6 +9,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Coins as CoinsIcon } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
+import ModalCloseButton from './ModalCloseButton.jsx';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 
 /**
@@ -56,6 +57,7 @@ export default function StoreModal({ open, onClose }) {
   };
 
   const panel = {
+    position: 'relative',
     background: 'var(--card-face-bg)',
     color: 'var(--card-text-black)',
     border: 'var(--card-border)',
@@ -64,6 +66,9 @@ export default function StoreModal({ open, onClose }) {
     padding: '20px 22px',
     width: 'min(90vw, 420px)',
     maxWidth: '100%',
+    height: '85vh',
+    display: 'flex',
+    flexDirection: 'column',
   };
 
   return (
@@ -86,70 +91,73 @@ export default function StoreModal({ open, onClose }) {
       }}
     >
       <div style={panel}>
-        <h2 style={{ margin: '0 0 10px', fontSize: 18, fontWeight: 700 }}>Store</h2>
+        <h2 style={{ margin: '0 0 10px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>Store</h2>
+        <ModalCloseButton onClick={onClose} />
 
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            fontSize: 16,
-            fontWeight: 700,
-            marginBottom: 6,
-          }}
-        >
-          <CoinsIcon size={16} aria-hidden="true" />
-          <span>{coins}</span>
-        </div>
+        <div className="modal-body-scroll" style={{ flex: 1, minHeight: 0 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              fontSize: 16,
+              fontWeight: 700,
+              marginBottom: 6,
+            }}
+          >
+            <CoinsIcon size={16} aria-hidden="true" />
+            <span>{coins}</span>
+          </div>
 
-        <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 16 }}>
-          The store is coming soon — deck themes and helpful items will be purchasable with coins.
-        </div>
+          <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 16 }}>
+            The store is coming soon — deck themes and helpful items will be purchasable with coins.
+          </div>
 
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, 1fr)',
-            gap: 12,
-            marginBottom: 18,
-          }}
-        >
-          {items.map((item) => (
-            <div
-              key={item.id}
-              style={{
-                position: 'relative',
-                border: '1px solid var(--card-border)',
-                borderRadius: 'var(--card-radius)',
-                padding: '12px',
-                opacity: 0.5,
-                pointerEvents: 'none',
-              }}
-            >
-              <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>{item.name}</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}>
-                <CoinsIcon size={13} aria-hidden="true" />
-                <span>{item.price}</span>
-              </div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: 12,
+              marginBottom: 18,
+            }}
+          >
+            {items.map((item) => (
               <div
+                key={item.id}
                 style={{
-                  position: 'absolute',
-                  top: 8,
-                  right: 8,
-                  fontSize: 10,
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: 0.5,
-                  background: 'var(--ui-modal-btn-bg-strong)',
-                  color: 'var(--ui-modal-fg)',
-                  padding: '2px 6px',
-                  borderRadius: 4,
+                  position: 'relative',
+                  border: '1px solid var(--card-border)',
+                  borderRadius: 'var(--card-radius)',
+                  padding: '12px',
+                  opacity: 0.5,
+                  pointerEvents: 'none',
                 }}
               >
-                Coming soon
+                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>{item.name}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}>
+                  <CoinsIcon size={13} aria-hidden="true" />
+                  <span>{item.price}</span>
+                </div>
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 8,
+                    right: 8,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.5,
+                    background: 'var(--ui-modal-btn-bg-strong)',
+                    color: 'var(--ui-modal-fg)',
+                    padding: '2px 6px',
+                    borderRadius: 4,
+                  }}
+                >
+                  Coming soon
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </div>

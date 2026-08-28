@@ -11,6 +11,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Crosshair } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
+import ModalCloseButton from './ModalCloseButton.jsx';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
@@ -49,6 +50,7 @@ const btn = {
 };
 
 const panel = {
+  position: 'relative',
   background: 'var(--card-face-bg)',
   color: 'var(--card-text-black)',
   border: 'var(--card-border)',
@@ -325,9 +327,10 @@ export default function DailyChallengeModal() {
       }}
     >
       <div ref={panelRef} tabIndex={-1} style={panel}>
-        <h2 style={{ margin: '0 0 14px', fontSize: 20, fontWeight: 800, textAlign: 'center' }}>
+        <h2 style={{ margin: '0 0 14px', fontSize: 20, fontWeight: 800, textAlign: 'center', paddingRight: 36 }}>
           Daily Challenge
         </h2>
+        <ModalCloseButton onClick={onDismiss} />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Header: arrows + month/year selectors */}

@@ -9,6 +9,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useModalBackdrop } from './modalBackdrop.js';
+import ModalCloseButton from './ModalCloseButton.jsx';
 import { supabase } from '../lib/supabaseClient.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { formatTime } from '../utils/formatTime.js';
@@ -119,6 +120,7 @@ export default function LeaderboardModal({ open, onClose }) {
   });
 
   const panel = {
+    position: 'relative',
     background: 'var(--card-face-bg)',
     color: 'var(--card-text-black)',
     border: 'var(--card-border)',
@@ -127,6 +129,9 @@ export default function LeaderboardModal({ open, onClose }) {
     padding: '20px 22px',
     width: 'min(90vw, 420px)',
     maxWidth: '100%',
+    height: '85vh',
+    display: 'flex',
+    flexDirection: 'column',
   };
 
   const cfg = TABS.find((t) => t.key === activeTab);
@@ -151,7 +156,8 @@ export default function LeaderboardModal({ open, onClose }) {
       }}
     >
       <div style={panel}>
-        <h2 style={{ margin: '0 0 14px', fontSize: 18, fontWeight: 700 }}>Leaderboard</h2>
+        <h2 style={{ margin: '0 0 14px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>Leaderboard</h2>
+        <ModalCloseButton onClick={onClose} />
 
         <div
           style={{
@@ -173,39 +179,41 @@ export default function LeaderboardModal({ open, onClose }) {
           ))}
         </div>
 
-        {loading ? (
-          <div style={{ opacity: 0.7, fontSize: 14 }}>Loading…</div>
-        ) : rows.length === 0 ? (
-          <div style={{ opacity: 0.7, fontSize: 14 }}>No results yet.</div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {rows.map((row, i) => {
-              const isMe = userId != null && row.id === userId;
-              return (
-                <div
-                  key={row.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 12,
-                    padding: '8px 10px',
-                    borderRadius: 6,
-                    border: '1px solid var(--card-border)',
-                    background: isMe ? 'var(--ui-modal-btn-bg-strong)' : 'transparent',
-                    fontWeight: isMe ? 700 : 400,
-                  }}
-                >
-                  <span style={{ minWidth: 28, opacity: 0.7 }}>{i + 1}</span>
-                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {row.display_name ?? '—'}
-                  </span>
-                  <span style={{ fontWeight: 700 }}>{cfg.format(row[cfg.column])}</span>
-                </div>
-              );
-            })}
-          </div>
-        )}
+        <div className="modal-body-scroll" style={{ flex: 1, minHeight: 0 }}>
+          {loading ? (
+            <div style={{ opacity: 0.7, fontSize: 14 }}>Loading…</div>
+          ) : rows.length === 0 ? (
+            <div style={{ opacity: 0.7, fontSize: 14 }}>No results yet.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {rows.map((row, i) => {
+                const isMe = userId != null && row.id === userId;
+                return (
+                  <div
+                    key={row.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      padding: '8px 10px',
+                      borderRadius: 6,
+                      border: '1px solid var(--card-border)',
+                      background: isMe ? 'var(--ui-modal-btn-bg-strong)' : 'transparent',
+                      fontWeight: isMe ? 700 : 400,
+                    }}
+                  >
+                    <span style={{ minWidth: 28, opacity: 0.7 }}>{i + 1}</span>
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {row.display_name ?? '—'}
+                    </span>
+                    <span style={{ fontWeight: 700 }}>{cfg.format(row[cfg.column])}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

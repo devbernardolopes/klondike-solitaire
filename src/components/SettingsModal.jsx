@@ -17,6 +17,7 @@ import { useAuthStore } from '../hooks/useAuthStore.js';
 import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
 import { useSeedStore } from '../hooks/useSeedStore.js';
 import ToggleSwitch from './ToggleSwitch.jsx';
+import ModalCloseButton from './ModalCloseButton.jsx';
 import HelpModal from './HelpModal.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
 import ThemeModal from './ThemeModal.jsx';
@@ -110,6 +111,7 @@ export default function SettingsModal({
   };
 
   const panel = {
+    position: 'relative',
     background: 'var(--card-face-bg)',
     color: 'var(--card-text-black)',
     border: 'var(--card-border)',
@@ -239,13 +241,15 @@ export default function SettingsModal({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            paddingRight: 36,
           }}
         >
           Main Menu
-          <span style={{ color: 'var(--card-text-black)', fontSize: 13, fontWeight: 400, userSelect: 'none' }}>
+          <span style={{ color: 'var(--card-text-black)', fontSize: 13, fontWeight: 400, userSelect: 'none', marginRight: 36 }}>
             v{pkg.version}
           </span>
         </h2>
+        <ModalCloseButton onClick={onClose} />
 
         <div style={{ ...field, marginBottom: 20 }}>
           <label style={{ fontSize: 14, fontWeight: 600 }}>Theme</label>

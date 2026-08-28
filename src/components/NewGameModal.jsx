@@ -9,6 +9,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useModalBackdrop } from './modalBackdrop.js';
+import ModalCloseButton from './ModalCloseButton.jsx';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { pullRemoteProfile } from '../sync/pullProfile.js';
 
@@ -63,6 +64,7 @@ export default function NewGameModal({ open, onReplay, onWinningDeal, onRandomSh
   };
 
   const panel = {
+    position: 'relative',
     background: 'var(--card-face-bg)',
     color: 'var(--card-text-black)',
     border: 'var(--card-border)',
@@ -91,7 +93,8 @@ export default function NewGameModal({ open, onReplay, onWinningDeal, onRandomSh
       }}
     >
       <div style={panel}>
-        <h2 style={{ margin: '0 0 10px', fontSize: 18, fontWeight: 700 }}>New Game</h2>
+        <h2 style={{ margin: '0 0 10px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>New Game</h2>
+        <ModalCloseButton onClick={onDismiss} />
         <p style={{ margin: '0 0 18px', fontSize: 14, lineHeight: 1.45 }}>
           Current progress will be lost. Choose how to deal the new game:
         </p>

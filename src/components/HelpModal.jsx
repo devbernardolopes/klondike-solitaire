@@ -6,6 +6,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useModalBackdrop } from './modalBackdrop.js';
+import ModalCloseButton from './ModalCloseButton.jsx';
 
 /**
  * @param {object} props
@@ -45,6 +46,7 @@ export default function HelpModal({ open, onClose }) {
   };
 
   const panel = {
+    position: 'relative',
     background: 'var(--card-face-bg)',
     color: 'var(--card-text-black)',
     border: 'var(--card-border)',
@@ -94,9 +96,10 @@ export default function HelpModal({ open, onClose }) {
         }}
       >
       <div style={panel}>
-        <h2 style={{ margin: '0 0 14px', fontSize: 18, fontWeight: 700 }}>
+        <h2 style={{ margin: '0 0 14px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>
           Keyboard Shortcuts
         </h2>
+        <ModalCloseButton onClick={onClose} />
 
         <div>
           {shortcuts.map(({ keys, action }) => (
