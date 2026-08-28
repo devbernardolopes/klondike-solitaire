@@ -73,6 +73,19 @@ db.version(6).stores({
   syncQueue: '++id, type, createdAt',
   usedRandomSeeds: 'seed',
 });
+// v7 adds the `activeSession` table (single keyed row holding the in-progress
+// game for fast offline restore) and a `dedupeKey` index on `syncQueue` so the
+// offline-first outbox can collapse same-key ops (only the latest matters).
+db.version(7).stores({
+  games: '++id, startedAt, finishedAt, won, durationMs',
+  settings: 'key',
+  stats: 'key',
+  playedSeeds: 'key',
+  dailyResults: 'date',
+  syncQueue: '++id, type, createdAt, dedupeKey',
+  activeSession: 'key',
+  usedRandomSeeds: 'seed',
+});
 
 /**
  * Insert a finished/abandoned game record.

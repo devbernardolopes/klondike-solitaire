@@ -20,15 +20,25 @@ import { db } from './schema.js';
  * Append a pending operation to the outbox.
  * @param {string} type
  * @param {Object} payload
+ * @param {string} [dedupeKey]  when provided, any not-yet-flushed queued op with
+ *   the same key (regardless of type) is deleted first, so only the latest op
+ *   for that key survives. Used for value-style writes (e.g. session state)
+ *   where only the most recent matters.
  * @returns {Promise<number>} the new row id
  */
-export async function enqueueOp(type, payload) {
+export async function enqueueOp(type, payload, dedupeKey = null) {
+  if (dedupeKey) {
+    // Drop any pending op that shares this key so a still-queued clear can
+    // collapse a pending save (and vice versa). Indexed in schema v7.
+    await db.syncQueue.where('dedupeKey').equals(dedupeKey).delete();
+  }
   return db.syncQueue.add({
     type,
     payload,
     createdAt: Date.now(),
     attempts: 0,
     lastError: null,
+    dedupeKey: dedupeKey ?? undefined,
   });
 }
 

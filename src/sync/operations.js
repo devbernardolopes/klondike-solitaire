@@ -9,6 +9,7 @@
 
 import { supabase } from '../lib/supabaseClient.js';
 import { useAchievementEventsStore } from '../hooks/useAchievementEventsStore.js';
+import { useAuthStore } from '../hooks/useAuthStore.js';
 
 /**
  * @typedef {Object} OperationHandler
@@ -40,5 +41,43 @@ export const operations = {
     if (Array.isArray(ids) && ids.length > 0) {
       useAchievementEventsStore.getState().announce(ids);
     }
+  },
+
+  // Upsert the in-progress session for this (user, device). Keyed by
+  // (user_id, device_id) so every save targets the same row.
+  save_game_session: async (payload) => {
+    const userId = useAuthStore.getState().userId;
+    if (!userId) return; // flush only proceeds once a userId exists
+    const { error } = await supabase
+      .from('game_sessions')
+      .upsert(
+        {
+          user_id: userId,
+          device_id: payload.device_id,
+          board_state: payload.board_state,
+          replay_spec: payload.replay_spec,
+          moves: payload.moves,
+          score: payload.score,
+          undos: payload.undos,
+          start_time: payload.start_time,
+          paused_accum_ms: payload.paused_accum_ms,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id,device_id' }
+      );
+    if (error) throw error;
+  },
+
+  // Delete the saved session for this (user, device). The local row is deleted
+  // synchronously by the caller; this mirrors the deletion to Supabase.
+  clear_game_session: async (payload) => {
+    const userId = useAuthStore.getState().userId;
+    if (!userId) return;
+    const { error } = await supabase
+      .from('game_sessions')
+      .delete()
+      .eq('user_id', userId)
+      .eq('device_id', payload.device_id);
+    if (error) throw error;
   },
 };

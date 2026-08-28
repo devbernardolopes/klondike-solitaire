@@ -27,6 +27,11 @@ import { MotionDebugPanel } from '../render/animation/MotionDebugPanel.jsx';
 import { useToastStore } from '../hooks/useToastStore.js';
 import { initAchievementToastBridge } from '../toast/achievementToastBridge.js';
 import ToastHost from './ToastHost.jsx';
+import {
+  ensureDeviceId,
+  restoreSession,
+  initSessionPersistence,
+} from '../sync/sessionPersistence.js';
 
 export default function App() {
   const theme = useSettingsStore((s) => s.theme);
@@ -47,6 +52,7 @@ export default function App() {
 
   useEffect(() => {
     let cleanupToastBridge = null;
+    let cleanupSession = null;
     (async () => {
       await useAuthStore.getState().init();
       await checkAuthRedirectResult();
@@ -60,7 +66,16 @@ export default function App() {
       initStats();
       initSeeds();
       await initUsedRandomSeeds();
-      useGameStore.getState().initialDeal();
+      // Resolve the per-device id, then restore any in-progress session from
+      // local Dexie (or Supabase for a linked account). Skip the initial deal
+      // when a session was restored — this is a resume, not a fresh game.
+      await ensureDeviceId();
+      const restored = await restoreSession();
+      if (!restored) {
+        useGameStore.getState().initialDeal();
+      }
+      // Begin capturing session changes once the board is in its final state.
+      cleanupSession = initSessionPersistence();
       useToastStore.getState().initConfig();
       // Subscribe the toast UI to achievement-unlock signals (next to the sync
       // engine that produces them); clean up on unmount.
@@ -68,6 +83,7 @@ export default function App() {
     })();
     return () => {
       if (cleanupToastBridge) cleanupToastBridge();
+      if (cleanupSession) cleanupSession();
     };
   }, [init, initStats, initSeeds]);
 

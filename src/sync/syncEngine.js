@@ -20,14 +20,17 @@ let flushing = false;
  * Queue an operation and immediately attempt to flush.
  * @param {string} type    key into operations registry
  * @param {Object} [payload]
+ * @param {string} [dedupeKey]  when provided, collapse any not-yet-flushed queued
+ *   op sharing this key (see db/syncQueue.js enqueueOp). Existing 2-arg callers
+ *   are unaffected.
  * @returns {Promise<void>}
  */
-export async function enqueue(type, payload = {}) {
+export async function enqueue(type, payload = {}, dedupeKey = null) {
   if (!operations[type]) {
     console.error(`syncEngine: unknown operation "${type}"`);
     return;
   }
-  await enqueueOp(type, payload);
+  await enqueueOp(type, payload, dedupeKey);
   flush();
 }
 
