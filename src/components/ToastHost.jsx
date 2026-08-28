@@ -9,6 +9,7 @@ import { gsap } from '../render/animation/gsapSetup.js';
 import { MOTION } from '../render/animation/motion.js';
 import { useToastStore } from '../hooks/useToastStore.js';
 import { t } from '../i18n/strings.js';
+import { ACHIEVEMENT_PLACEHOLDER, onAchievementImageError } from '../utils/achievementImage.js';
 
 export default function ToastHost() {
   const active = useToastStore((s) => s.active);
@@ -86,13 +87,12 @@ export default function ToastHost() {
   return (
     <div style={containerStyle}>
       <div ref={cardRef} style={cardStyle} onClick={() => dismiss()} role="status" aria-live="polite">
-        {active.image ? (
-          <img
-            src={active.image}
-            alt=""
-            style={{ width: 36, height: 36, borderRadius: 6, objectFit: 'cover', flex: '0 0 auto' }}
-          />
-        ) : null}
+        <img
+          src={active.image || ACHIEVEMENT_PLACEHOLDER}
+          alt=""
+          onError={onAchievementImageError}
+          style={{ width: 36, height: 36, borderRadius: 6, objectFit: 'cover', flex: '0 0 auto' }}
+        />
         <span>{t(active.messageKey, active.params)}</span>
       </div>
     </div>

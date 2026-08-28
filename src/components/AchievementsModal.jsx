@@ -13,6 +13,7 @@ import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
 import { supabase } from '../lib/supabaseClient.js';
+import { achievementImageUrl, onAchievementImageError } from '../utils/achievementImage.js';
 
 /**
  * @param {object} props
@@ -133,10 +134,6 @@ export default function AchievementsModal({ open, onClose }) {
               {defs.map((a) => {
                 const earnedAt = unlocked[a.id];
                 const isUnlocked = Boolean(earnedAt);
-                const imageUrl =
-                  a.image_path && supabase
-                    ? supabase.storage.from('achievement-images').getPublicUrl(a.image_path).data.publicUrl
-                    : null;
                 return (
                   <div
                     key={a.id}
@@ -150,19 +147,18 @@ export default function AchievementsModal({ open, onClose }) {
                       alignItems: 'flex-start',
                     }}
                   >
-                    {imageUrl ? (
-                      <img
-                        src={imageUrl}
-                        alt=""
-                        style={{
-                          width: 40,
-                          height: 40,
-                          borderRadius: 6,
-                          objectFit: 'cover',
-                          flex: '0 0 auto',
-                        }}
-                      />
-                    ) : null}
+                    <img
+                      src={achievementImageUrl(a.image_path)}
+                      alt=""
+                      onError={onAchievementImageError}
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 6,
+                        objectFit: 'cover',
+                        flex: '0 0 auto',
+                      }}
+                    />
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 14, fontWeight: 700 }}>{a.name}</div>
                       <div style={{ fontSize: 13, margin: '2px 0 4px' }}>{a.description}</div>

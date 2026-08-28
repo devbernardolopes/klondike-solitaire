@@ -12,6 +12,7 @@
 import { supabase } from '../lib/supabaseClient.js';
 import { useAchievementEventsStore } from '../hooks/useAchievementEventsStore.js';
 import { useToastStore } from '../hooks/useToastStore.js';
+import { achievementImageUrl } from '../utils/achievementImage.js';
 
 // Session cache so the same id is never looked up twice.
 const cache = new Map();
@@ -34,9 +35,7 @@ async function resolve(id) {
         .eq('id', id)
         .single();
       if (data) {
-        const image = data.image_path
-          ? supabase.storage.from('achievement-images').getPublicUrl(data.image_path).data.publicUrl
-          : null;
+        const image = achievementImageUrl(data.image_path);
         result = { name: data.name || id, image };
       }
     } catch {
