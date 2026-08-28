@@ -11,6 +11,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
+import { useModalEscape } from '../hooks/useModalEscape.js';
+import { Z } from '../utils/modalStack.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { getDeck, listDecks } from '../render/deck/deckRegistry.js';
@@ -42,17 +44,11 @@ export default function ThemeModal({ open, onClose }) {
   const setDeck = useSettingsStore((s) => s.setDeck);
   const [activeTab, setActiveTab] = useState('background');
 
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  useModalEscape({ open, onClose, id: 'theme', z: Z.CHILD });
 
   useEffect(() => {
     if (!open) return;
     dialogRef.current?.focus();
-    const onKey = (e) => {
-      if (e.key === 'Escape') onCloseRef.current();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
   if (!open) return null;

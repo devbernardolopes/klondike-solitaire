@@ -19,6 +19,8 @@ import { useSeedStore } from '../hooks/useSeedStore.js';
 import ToggleSwitch from './ToggleSwitch.jsx';
 import ModalCloseButton from './ModalCloseButton.jsx';
 import HelpModal from './HelpModal.jsx';
+import { useModalEscape } from '../hooks/useModalEscape.js';
+import { Z } from '../utils/modalStack.js';
 import ConfirmModal from './ConfirmModal.jsx';
 import ThemeModal from './ThemeModal.jsx';
 import AchievementsModal from './AchievementsModal.jsx';
@@ -79,17 +81,24 @@ export default function SettingsModal({
   // Previously the effect listed the handler in its deps, so an unstable
   // callback — e.g. re-created on every 250ms clock tick — would re-fire it and
   // steal focus from an open <select>, snapping the dropdown shut.
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  useModalEscape({ open, onClose, id: 'settings', z: Z.BASE });
 
   useEffect(() => {
     if (!open) return;
     dialogRef.current?.focus();
-    const onKey = (e) => {
-      if (e.key === 'Escape') onCloseRef.current();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
+
+  // SettingsModal stays mounted (returns null when closed) so its local sub-modal
+  // flags (Theme / Achievements / Leaderboard / Store) persist across open/close.
+  // Clear them whenever the Main Menu is dismissed so reopening it never
+  // resurfaces a stale child modal.
+  useEffect(() => {
+    if (!open) {
+      setThemeOpen(false);
+      setAchievementsOpen(false);
+      setLeaderboardOpen(false);
+      setStoreOpen(false);
+    }
   }, [open]);
 
   // Cancel any in-flight debounced availability check if the modal unmounts.

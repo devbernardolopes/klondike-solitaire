@@ -9,6 +9,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useModalBackdrop } from './modalBackdrop.js';
+import { useModalEscape } from '../hooks/useModalEscape.js';
+import { Z } from '../utils/modalStack.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
 import { supabase } from '../lib/supabaseClient.js';
 
@@ -26,17 +28,11 @@ export default function AchievementsModal({ open, onClose }) {
 
   // Keep the latest close handler in a ref so the open-effect depends only on
   // `open` and runs exactly once per open (not on an unstable callback identity).
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  useModalEscape({ open, onClose, id: 'achievements', z: Z.CHILD });
 
   useEffect(() => {
     if (!open) return;
     dialogRef.current?.focus();
-    const onKey = (e) => {
-      if (e.key === 'Escape') onCloseRef.current();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
   // Fetch the catalog (achievements_definitions) and the user's unlocked set

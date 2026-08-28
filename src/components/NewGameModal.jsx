@@ -9,6 +9,8 @@
 
 import { useEffect, useRef } from 'react';
 import { useModalBackdrop } from './modalBackdrop.js';
+import { useModalEscape } from '../hooks/useModalEscape.js';
+import { Z } from '../utils/modalStack.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { pullRemoteProfile } from '../sync/pullProfile.js';
@@ -26,19 +28,11 @@ export default function NewGameModal({ open, onReplay, onWinningDeal, onRandomSh
   const firstBtnRef = useRef(null);
   const backdrop = useModalBackdrop(onDismiss);
 
-  // Read the dismiss handler via a ref so this effect runs once per open
-  // (depends only on `open`), not whenever the handler identity changes.
-  const onDismissRef = useRef(onDismiss);
-  onDismissRef.current = onDismiss;
+  useModalEscape({ open, onClose: onDismiss, id: 'newgame', z: Z.BASE });
 
   useEffect(() => {
     if (!open) return;
     firstBtnRef.current?.focus();
-    const onKey = (e) => {
-      if (e.key === 'Escape') onDismissRef.current();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
   // Pull the linked account's latest progress when the picker opens, so a fresh

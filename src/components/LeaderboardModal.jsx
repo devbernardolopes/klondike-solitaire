@@ -9,6 +9,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useModalBackdrop } from './modalBackdrop.js';
+import { useModalEscape } from '../hooks/useModalEscape.js';
+import { Z } from '../utils/modalStack.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
 import { supabase } from '../lib/supabaseClient.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
@@ -50,17 +52,11 @@ export default function LeaderboardModal({ open, onClose }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  useModalEscape({ open, onClose, id: 'leaderboard', z: Z.CHILD });
 
   useEffect(() => {
     if (!open) return;
     dialogRef.current?.focus();
-    const onKey = (e) => {
-      if (e.key === 'Escape') onCloseRef.current();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
   // Fetch the top 20 for the active tab whenever the modal opens or the tab

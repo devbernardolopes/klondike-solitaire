@@ -12,6 +12,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Crosshair } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
+import { useModalEscape } from '../hooks/useModalEscape.js';
+import { Z } from '../utils/modalStack.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
@@ -125,6 +127,7 @@ export default function DailyChallengeModal() {
   };
 
   const backdrop = useModalBackdrop(onDismiss);
+  useModalEscape({ open, onClose: onDismiss, id: 'daily', z: Z.CHILD });
 
   // Synchronously resolve the initial selection on open — BEFORE any network
   // round-trip — so the calendar is interactive immediately and a quick "Play"

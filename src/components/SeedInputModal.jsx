@@ -8,6 +8,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useModalBackdrop } from './modalBackdrop.js';
+import { useModalEscape } from '../hooks/useModalEscape.js';
+import { Z } from '../utils/modalStack.js';
 import { isSolvableSeed } from '../core/solvablePool.js';
 
 /**
@@ -20,8 +22,7 @@ export default function SeedInputModal({ open, onConfirm, onCancel }) {
   const inputRef = useRef(null);
   const backdrop = useModalBackdrop(onCancel);
 
-  const onCancelRef = useRef(onCancel);
-  onCancelRef.current = onCancel;
+  useModalEscape({ open, onClose: onCancel, id: 'seed', z: Z.BASE });
 
   const [value, setValue] = useState('');
   const [error, setError] = useState('');
@@ -32,11 +33,6 @@ export default function SeedInputModal({ open, onConfirm, onCancel }) {
     setError('');
     // Focus the input on open so the user can type immediately.
     requestAnimationFrame(() => inputRef.current?.focus());
-    const onKey = (e) => {
-      if (e.key === 'Escape') onCancelRef.current();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
   if (!open) return null;

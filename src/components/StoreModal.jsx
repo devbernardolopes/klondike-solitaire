@@ -9,6 +9,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Coins as CoinsIcon } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
+import { useModalEscape } from '../hooks/useModalEscape.js';
+import { Z } from '../utils/modalStack.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 
@@ -30,17 +32,11 @@ export default function StoreModal({ open, onClose }) {
     { id: 'hint-token', name: 'Hint Token', price: 10 },
   ];
 
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  useModalEscape({ open, onClose, id: 'store', z: Z.CHILD });
 
   useEffect(() => {
     if (!open) return;
     dialogRef.current?.focus();
-    const onKey = (e) => {
-      if (e.key === 'Escape') onCloseRef.current();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
   if (!open) return null;

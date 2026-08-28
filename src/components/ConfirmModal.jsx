@@ -7,9 +7,11 @@
 // the active theme (classic / dark). Rendered inline in the tree — no portal —
 // so it inherits variables from the .theme-* root container.
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useId } from 'react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
+import { useModalEscape } from '../hooks/useModalEscape.js';
+import { Z } from '../utils/modalStack.js';
 
 /**
  * @param {object} props
@@ -51,20 +53,13 @@ export default function ConfirmModal({
   const backdrop = useModalBackdrop(onCancel);
   const onCloseIconRef = useRef(onCloseIcon ?? onCancel);
   onCloseIconRef.current = onCloseIcon ?? onCancel;
+  const modalId = useId();
 
-  // Read the close handler via a ref so this effect runs once per open (depends
-  // only on `open`), not whenever the handler identity changes.
-  const onCancelRef = useRef(onCancel);
-  onCancelRef.current = onCancel;
+  useModalEscape({ open, onClose: onCancel, id: modalId, z: Z.BASE, enabled: dismissable });
 
   useEffect(() => {
     if (!open || !dismissable) return;
     confirmRef.current?.focus();
-    const onKey = (e) => {
-      if (e.key === 'Escape') onCancelRef.current();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
   }, [open, dismissable]);
 
   if (!open) return null;

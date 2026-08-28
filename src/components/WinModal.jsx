@@ -8,6 +8,8 @@
 
 import { useEffect, useRef } from 'react';
 import { useUiStore } from '../hooks/useUiStore.js';
+import { useModalEscape } from '../hooks/useModalEscape.js';
+import { Z } from '../utils/modalStack.js';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useModalBackdrop } from './modalBackdrop.js';
 import { dateToUTC, toDateStr, withinSupported, isAfter } from '../core/dailyChallenge.js';
@@ -31,16 +33,13 @@ export default function WinModal() {
   const backdrop = useModalBackdrop(closeWinDialog);
   const panelRef = useRef(null);
 
-  // Focus the panel on open, and close on Escape (consistent with ConfirmModal).
+  // Focus the panel on open; Escape closes only when this is the topmost modal.
+  useModalEscape({ open: winDialogOpen, onClose: closeWinDialog, id: 'win', z: Z.BASE });
+
   useEffect(() => {
     if (!winDialogOpen) return;
     panelRef.current?.focus();
-    const onKey = (e) => {
-      if (e.key === 'Escape') closeWinDialog();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [winDialogOpen, closeWinDialog]);
+  }, [winDialogOpen]);
 
   if (!winDialogOpen || !summary) return null;
 

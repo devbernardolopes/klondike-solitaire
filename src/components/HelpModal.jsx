@@ -6,6 +6,8 @@
 
 import { useEffect, useRef } from 'react';
 import { useModalBackdrop } from './modalBackdrop.js';
+import { useModalEscape } from '../hooks/useModalEscape.js';
+import { Z } from '../utils/modalStack.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
 
 /**
@@ -19,17 +21,11 @@ export default function HelpModal({ open, onClose }) {
 
   // Read the close handler via a ref so this effect runs once per open (depends
   // only on `open`), not whenever the handler identity changes.
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  useModalEscape({ open, onClose, id: 'help', z: Z.HELP });
 
   useEffect(() => {
     if (!open) return;
     dialogRef.current?.focus();
-    const onKey = (e) => {
-      if (e.key === 'Escape') onCloseRef.current();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
   if (!open) return null;

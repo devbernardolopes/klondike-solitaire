@@ -10,6 +10,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
+import { useModalEscape } from '../hooks/useModalEscape.js';
+import { Z } from '../utils/modalStack.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useModalBackdrop } from './modalBackdrop.js';
@@ -28,19 +30,11 @@ export default function StatisticsModal({ open, onClose }) {
   const dialogRef = useRef(null);
   const backdrop = useModalBackdrop(onClose);
 
-  // Read the close handler via a ref so this effect runs once per open (depends
-  // only on `open`), not whenever the handler identity changes.
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  useModalEscape({ open, onClose, id: 'stats', z: Z.BASE });
 
   useEffect(() => {
     if (!open) return;
     dialogRef.current?.focus();
-    const onKey = (e) => {
-      if (e.key === 'Escape') onCloseRef.current();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
   if (!open) return null;
