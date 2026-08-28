@@ -12,7 +12,6 @@
 // mental model of "available moves" and the "No moves remaining" detector.
 
 import { getAutoMoveTargets, canMoveToTableau } from './rules.js';
-import { findRescueMove, reconstructLoan, hasGenuineProgress } from './solver.js';
 
 // --- Ace-focus hint helpers ---------------------------------------------------
 // An Ace on a foundation is always correct progress; when any movable Ace can move
@@ -152,16 +151,6 @@ export function findHints(state) {
       let targets = getAutoMoveTargets(state, from, card.id);
       if (card.rank === 1) targets = filterAceTargets(targets);
       for (const to of targets) {
-        // An Ace already placed on a foundation must never be hinted to relocate
-        // to another (empty) foundation pile — that is a meaningless shuffle.
-        // (Defensive: foundations are never a hint source, but keep the guard.)
-        if (
-          from.startsWith('foundation') &&
-          to.startsWith('foundation') &&
-          card.rank === 1
-        ) {
-          continue;
-        }
         // Tableau -> tableau: drop "buried-run reshuffles" that make no progress.
         // A t->t hint is meaningful only if it (a) uncovers a face-down card in
         // the source, (b) empties the source column (frees it — e.g. a
@@ -196,21 +185,6 @@ export function findHints(state) {
       }
     }
   });
-
-  // Rescue fallback (foundation->tableau retreats). When there is NO genuine
-  // progress move available right now (no foundation play, no face-down-uncovering
-  // relocation, no waste relocation), the only meaningful out can be a card
-  // retreated from a foundation onto the tableau — a move `findHints` does not
-  // otherwise generate. The dead-end detector already models these (with an
-  // on-loan set so no-op foundation cycles are suppressed); reuse the same
-  // reachability search via `findRescueMove` to surface that move as a hint.
-  // This keeps foundation->tableau hints strictly scoped to these rescue cases
-  // and never pollutes normal play (where a genuine progress move exists).
-  const loan = reconstructLoan(state.moveHistory);
-  if (!hasGenuineProgress(state, loan)) {
-    const rescue = findRescueMove(state, loan);
-    if (rescue) add(rescue.from, rescue.to, rescue.cardId);
-  }
 
   return hints;
 }
