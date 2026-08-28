@@ -61,10 +61,6 @@ const panel = {
   padding: '20px 22px',
   width: 'min(94vw, 760px)',
   maxWidth: '100%',
-  maxHeight: '90vh',
-  height: 'min(90vh, 720px)',
-  display: 'flex',
-  flexDirection: 'column',
   outline: 'none',
 };
 
@@ -340,7 +336,7 @@ export default function DailyChallengeModal() {
         </h2>
         <ModalCloseButton onClick={onDismiss} />
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, flex: '1 1 auto', minHeight: 0, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Header: arrows + month/year selectors */}
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 44px' }}>
             <button
@@ -428,7 +424,7 @@ export default function DailyChallengeModal() {
 
           {/* Body: calendar grid + side panel */}
           <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-            <div style={{ flex: '1 1 320px', minWidth: 280, minHeight: 0, overflow: 'auto' }}>
+            <div style={{ flex: '1 1 320px', minWidth: 280 }}>
               <div style={gridStyle}>{cells}</div>
             </div>
 
