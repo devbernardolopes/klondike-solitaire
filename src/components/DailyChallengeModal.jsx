@@ -9,7 +9,7 @@
 // (core/dailyChallenge.seedForDate).
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Crosshair, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Crosshair } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
 import { useModalEscape } from '../hooks/useModalEscape.js';
@@ -62,6 +62,7 @@ const panel = {
   width: 'min(94vw, 760px)',
   maxWidth: '100%',
   maxHeight: '90vh',
+  height: 'min(90vh, 720px)',
   display: 'flex',
   flexDirection: 'column',
   outline: 'none',
@@ -81,8 +82,6 @@ const selectStyle = {
 const gridStyle = {
   display: 'grid',
   gridTemplateColumns: 'repeat(7, 1fr)',
-  gridTemplateRows: 'repeat(5, 1fr)',
-  height: '210px',
   gap: 6,
 };
 
@@ -354,12 +353,11 @@ export default function DailyChallengeModal() {
                 position: 'absolute',
                 left: 0,
                 minWidth: 36,
-                padding: 9,
                 opacity: canPrev ? 1 : 0.4,
                 cursor: canPrev ? 'pointer' : 'default',
               }}
             >
-              <ChevronLeft size={18} />
+              {'◀'}
             </button>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -420,17 +418,16 @@ export default function DailyChallengeModal() {
                 position: 'absolute',
                 right: 0,
                 minWidth: 36,
-                padding: 9,
                 opacity: canNext ? 1 : 0.4,
                 cursor: canNext ? 'pointer' : 'default',
               }}
             >
-              <ChevronRight size={18} />
+              {'▶'}
             </button>
           </div>
 
           {/* Body: calendar grid + side panel */}
-          <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'flex-start', flex: '1 1 auto', minHeight: 0 }}>
+          <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'flex-start' }}>
             <div style={{ flex: '1 1 320px', minWidth: 280, minHeight: 0, overflow: 'auto' }}>
               <div style={gridStyle}>{cells}</div>
             </div>
@@ -455,7 +452,7 @@ export default function DailyChallengeModal() {
           </div>
 
           {/* Footer actions */}
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flex: 'none' }}>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
             <button
               type="button"
               disabled={!selected || isAfter(selected, today) || !withinSupported(selected)}
