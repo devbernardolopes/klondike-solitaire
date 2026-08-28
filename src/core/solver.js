@@ -502,6 +502,47 @@ function nextLoan(s, loan, move) {
 }
 
 /**
+ * Reconstruct the set of card ids currently "on loan" — i.e. cards that were
+ * retreated from a foundation onto the tableau during play and have not yet
+ * been returned. Derived purely from `state.moveHistory` (each `moveCards`
+ * foundation->tableau adds its card; a later tableau->foundation of the same
+ * card removes it). This lets the hint system seed the dead-end reachability
+ * search with the correct loan set so multi-step retreats chain and the
+ * no-op foundation->tableau->foundation cycle is suppressed.
+ * @param {Array<object>} moveHistory
+ * @returns {Set<string>}
+ */
+export function reconstructLoan(moveHistory) {
+  const loan = new Set();
+  for (const m of moveHistory || []) {
+    if (!m || m.type !== 'moveCards') continue;
+    const from = String(m.from);
+    const to = String(m.to);
+    if (from.startsWith('foundation') && to.startsWith('tableau')) {
+      loan.add(m.cardIds[m.cardIds.length - 1]);
+    } else if (to.startsWith('foundation') && from.startsWith('tableau')) {
+      loan.delete(m.cardIds[m.cardIds.length - 1]);
+    }
+  }
+  return loan;
+}
+
+/**
+ * Is `state` "genuinely alive" right now — i.e. does it have an immediate
+ * meaningful move available (a progress move under the given `loan` set, or a
+ * waste/stock card relocatable to a tableau/foundation)? Mirrors the cheap
+ * pre-filter the dead-end detector uses, but accepts a seed `loan` so callers
+ * that already know some cards are retreated (on loan) can suppress their
+ * no-op foundation returns.
+ * @param {import('./GameState.js').GameState} state
+ * @param {Set<string>} [loan]
+ * @returns {boolean}
+ */
+export function hasGenuineProgress(state, loan = new Set()) {
+  return hasProgressMoveWithLoan(state, loan) || wasteTopCanMove(state);
+}
+
+/**
  * Is *any* meaningful move reachable from this state through legal moves
  * (including stock draws / waste recycling)? A position is a dead end only when
  * NEITHER a progress move NOR a waste/stock relocation is *ever* reachable — i.e.
@@ -524,12 +565,13 @@ function nextLoan(s, loan, move) {
  * nothing about card placement); only waste/tableau/foundation plays count.
  *
  * @param {import('./GameState.js').GameState} state
- * @param {{ maxNodes?: number, maxMs?: number }} [opts]
+ * @param {{ maxNodes?: number, maxMs?: number, loan?: Set<string> }} [opts]
  * @returns {boolean|typeof SOLVER_TIMEOUT}
  */
 export function findReachableMove(state, opts = {}) {
   const maxNodes = opts.maxNodes ?? 150000;
   const maxMs = opts.maxMs ?? 1500;
+  const seedLoan = opts.loan ?? new Set();
   const start = Date.now();
   const visited = new Set();
   let nodes = 0;
@@ -552,7 +594,89 @@ export function findReachableMove(state, opts = {}) {
     return false;
   }
 
-  return search(state, 0, new Set()) ? true : aborted ? SOLVER_TIMEOUT : false;
+  return search(state, 0, seedLoan) ? true : aborted ? SOLVER_TIMEOUT : false;
+}
+
+/** Minimum number of moves from `s` (under `loan`) to a state that has a genuine
+ * progress move available (foundation play of a non-loan card, or a face-down
+ * uncovering relocation, or a waste relocation). Returns `Infinity` if no such
+ * state is reachable within `maxDepth` / `maxNodes`. Bounded to stay cheap — it
+ * is only invoked from the rare hint-rescue fallback, over a handful of
+ * foundation->tableau candidates. */
+function shortestProgressDepth(s, loan, maxDepth, maxNodes) {
+  const visited = new Set();
+  let frontier = [{ s, loan }];
+  let depth = 0;
+  let nodes = 0;
+  while (frontier.length && depth < maxDepth) {
+    const next = [];
+    for (const { s: cur, loan: cl } of frontier) {
+      if (nodes++ > maxNodes) return Infinity;
+      if (hasProgressMoveWithLoan(cur, cl) || wasteTopCanMove(cur)) return depth;
+      const sig = signature(cur) + '|' + [...cl].sort().join(',');
+      if (visited.has(sig)) continue;
+      visited.add(sig);
+      for (const m of enumerateDeadEndMoves(cur)) {
+        next.push({ s: applyMove(cur, m), loan: nextLoan(cur, cl, m) });
+      }
+    }
+    frontier = next;
+    depth++;
+  }
+  return Infinity;
+}
+
+/**
+ * Find a foundation->tableau "rescue" move for the hint system. A rescue is a
+ * card on top of a foundation that, if retreated onto a (non-empty) tableau
+ * column, makes a *genuine* progress move reachable from the resulting state
+ * (i.e. the position is not stuck, but only once the retreat is played). This is
+ * the exact class of move the "No More Moves" detector uses to decide the board
+ * is NOT a dead end — surfaced here so the hint affordance can highlight it.
+ *
+ * The search is seeded with `loan` (the cards currently on loan from prior
+ * retreats, reconstructed by `reconstructLoan`) so a multi-step rescue (e.g.
+ * `8d F4->pile2`, then `7d F4->pile1`, then the uncovering `6s pile6->pile2`)
+ * chains correctly and no-op foundation returns are suppressed.
+ *
+ * When several foundation->tableau retreats all lead to progress, the one whose
+ * resulting state reaches that progress in the FEWEST moves is preferred — this
+ * surfaces the most direct rescue (e.g. `8d->pile2`) rather than an arbitrary
+ * lower-indexed foundation. Returns `{ from, to, cardId }`, or `null` when no
+ * foundation->tableau rescue exists (or the search is inconclusive within the
+ * budget). Only foundation->tableau moves are ever returned — this keeps the
+ * hint system's foundation retreats strictly scoped to these rescue cases and
+ * never pollutes normal play.
+ *
+ * @param {import('./GameState.js').GameState} state
+ * @param {Set<string>} [loan]  cards currently retreated (on loan)
+ * @param {{ maxNodes?: number, maxMs?: number, maxDepth?: number }} [opts]
+ * @returns {{ from: string, to: string, cardId: string }|null}
+ */
+export function findRescueMove(state, loan = new Set(), opts = {}) {
+  const maxNodes = opts.maxNodes ?? 60000;
+  const maxMs = opts.maxMs ?? 600;
+  const maxDepth = opts.maxDepth ?? 14;
+  const candidates = enumerateDeadEndMoves(state).filter(
+    (m) =>
+      m.type === 'moveCards' &&
+      String(m.from).startsWith('foundation') &&
+      String(m.to).startsWith('tableau')
+  );
+  let best = null;
+  let bestDepth = Infinity;
+  const start = Date.now();
+  for (const m of candidates) {
+    if (Date.now() - start > maxMs) break;
+    const ns = applyMove(state, m);
+    const nLoan = nextLoan(state, loan, m);
+    const d = shortestProgressDepth(ns, nLoan, maxDepth, maxNodes);
+    if (d !== Infinity && 1 + d < bestDepth) {
+      bestDepth = 1 + d;
+      best = m;
+    }
+  }
+  return best ? { from: best.from, to: best.to, cardId: best.cardIds[0] } : null;
 }
 
 /**

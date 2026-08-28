@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { createCard } from './Card.js';
 import { createEmptyGameState } from './GameState.js';
 import { findHints } from './hints.js';
+import { applyMove } from './moveEngine.js';
 
 // Build the exact board reported by the user (F1=Ah, F2=6c, F3=3d, F4=empty,
 // waste bottom->top Qd Qh 7s Js 10h 9s Kc 2s, tableau tops per report). The key
@@ -325,4 +326,80 @@ test('findHints records the buried moving card, not the column top (run)', () =>
   const topId = st.tableau[0][st.tableau[0].length - 1].id; // 7c, column top
   assert.equal(hit.cardId, movingId, 'hint cardId must be the actual moving card');
   assert.notEqual(hit.cardId, topId, 'hint cardId must NOT be the column top');
+});
+
+// Game Mode 37571: no genuine progress move exists (no foundation play, no
+// face-down-uncovering relocation), so the only meaningful out is a foundation
+// retreat. The hint system must surface that rescue instead of looping on a
+// lateral shuffle. Builds the exact reported board (listed top->bottom in the
+// report; stored bottom->top, so each pile is the reverse of the listing).
+function build37571() {
+  const f = (s, r) => createCard(s, r, { faceUp: true });
+  const fd = (id) => createCard('clubs', 2, { faceUp: false, id });
+  const st = createEmptyGameState();
+  st.foundations = [
+    [f('hearts', 1), f('hearts', 2)],
+    [f('clubs', 1), f('clubs', 2), f('clubs', 3), f('clubs', 4)],
+    [f('spades', 1), f('spades', 2), f('spades', 3), f('spades', 4)],
+    [
+      f('diamonds', 1), f('diamonds', 2), f('diamonds', 3), f('diamonds', 4),
+      f('diamonds', 5), f('diamonds', 6), f('diamonds', 7), f('diamonds', 8),
+    ],
+  ];
+  st.tableau = [
+    [f('clubs', 13), f('clubs', 12), f('hearts', 11), f('clubs', 10), f('hearts', 9), f('spades', 8)],
+    [f('spades', 13), f('diamonds', 12), f('spades', 11), f('hearts', 10), f('clubs', 9)],
+    [f('diamonds', 13), f('spades', 12), f('diamonds', 11), f('spades', 10), f('diamonds', 9), f('clubs', 8), f('hearts', 7), f('clubs', 6)],
+    [f('clubs', 13)],
+    [fd('fd1'), fd('fd2'), fd('fd3'), f('diamonds', 10), f('spades', 9), f('hearts', 8), f('clubs', 7), f('hearts', 6), f('spades', 5), f('hearts', 4)],
+    [fd('fd4'), fd('fd5'), f('spades', 6), f('hearts', 5)],
+    [],
+  ];
+  st.stock = [];
+  st.waste = [];
+  return st;
+}
+
+test('findHints surfaces the foundation->tableau rescue (Game Mode 37571)', () => {
+  let st = build37571();
+  let hints = findHints(st);
+  const rescue1 = hints.find(
+    (h) => h.from === 'foundation:3' && h.to === 'tableau:1'
+  );
+  assert.ok(rescue1, 'expected 8d (F4) -> pile 2 rescue hint');
+
+  // Perform the first retreat (8d F4 -> pile 2). The loan set now tracks it.
+  const id8d = st.foundations[3][st.foundations[3].length - 1].id;
+  st = applyMove(st, { type: 'moveCards', from: 'foundation:3', to: 'tableau:1', cardIds: [id8d] });
+  hints = findHints(st);
+  const rescue2 = hints.find(
+    (h) => h.from === 'foundation:3' && h.to === 'tableau:0'
+  );
+  assert.ok(rescue2, 'expected 7d (F4) -> pile 1 rescue hint after 8d retreat');
+
+  // Perform the second retreat (7d F4 -> pile 1). Now a face-down card on pile 6
+  // becomes uncoverable — a genuine progress move, so it is shown normally.
+  const id7d = st.foundations[3][st.foundations[3].length - 1].id;
+  st = applyMove(st, { type: 'moveCards', from: 'foundation:3', to: 'tableau:0', cardIds: [id7d] });
+  hints = findHints(st);
+  const uncover = hints.find(
+    (h) => h.from === 'tableau:5' && h.to === 'tableau:0'
+  );
+  assert.ok(uncover, 'expected 6s run -> pile 1 uncovering hint after both retreats');
+});
+
+test('findHints does not surface foundation->tableau rescues during normal play', () => {
+  // A trivially-progressing board: an Ace on the waste can go to an empty
+  // foundation. This is genuine progress, so no foundation->tableau rescue
+  // should be added (foundations stay as they are).
+  const st = createEmptyGameState();
+  const f = (s, r) => createCard(s, r, { faceUp: true });
+  st.waste = [f('hearts', 1)];
+  st.foundations = [[], [], [], []];
+  const hints = findHints(st);
+  assert.ok(hints.length > 0, 'expected the Ace->foundation hint');
+  assert.ok(
+    !hints.some((h) => h.from.startsWith('foundation')),
+    'no foundation-origin hint should be added when genuine progress exists'
+  );
 });
