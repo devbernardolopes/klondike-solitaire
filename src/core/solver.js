@@ -710,10 +710,11 @@ export function isDrainedFoundationDeadEnd(state) {
   // A drained board's search space is tiny (only tableau relocations remain), so
   // a synchronous solve is both safe and instant here — giving the modal an
   // immediate, deterministic result instead of waiting on the async worker.
-  // Only a definitive `false` (search fully exhausted, no move reachable) is a
-  // dead end; a `true` (move reachable) or SOLVER_TIMEOUT (unknown) is not.
-  const reachable = findReachableMove(state, { maxNodes: 200000, maxMs: 1500 });
-  return reachable === false;
+  // Only a definitive `null` (no winning line reachable) is a dead end; a
+  // sequence (a win is reachable) or SOLVER_TIMEOUT (unknown) is not.
+  const r = findWinningSequence(state, { maxNodes: 200000, maxMs: 1500 });
+  if (r === SOLVER_TIMEOUT) return null;
+  return r === null;
 }
 
 /**

@@ -54,16 +54,15 @@ function captureFlip(type, animIds) {
 }
 
 // Confirm a genuinely stuck position once the stock is exhausted (no draws left).
-// We ask the off-thread solver whether ANY move is reachable through legal play
-// including stock/waste cycling. "Reachable" means: a *progress* move (a foundation
-// play or a tableau relocation that uncovers a face-down card) OR any waste/stock
-// card that can relocate onto a tableau pile or foundation (even a non-covering
-// shuffle, e.g. a red 8 onto a black 9). Only when the search fully exhausts the
-// space with NEITHER kind of move reachable do we show the "no moves remaining"
-// modal — so a position that can still cycle its waste onto the board is never
-// falsely flagged, but one whose only moves are unwinnable tableau shuffles (no
-// waste/stock relocation possible) still is. A budget-exceeded (unknown) result
-// never asserts a dead end. The result is ignored if the board has changed in the
+// We ask the off-thread solver whether a *winning line* is still reachable
+// through legal play (foundation plays, tableau relocations, and stock/waste
+// cycling). The detector proves a dead end only when the solver exhausts the
+// reachable space with NO winning line — i.e. the position cannot be completed,
+// even though some pointless shuffles (e.g. a foundation retreat, or a waste card
+// onto a same-color-clamped run) may still be legal. Such shuffles must NOT keep
+// the game "alive": a position whose only moves are unwinnable tableau/foundation
+// reshuffles is a genuine dead end. A budget-exceeded (unknown) result never
+// asserts a dead end. The result is ignored if the board has changed in the
 // meantime (reference guard) or the solve was superseded (STALE).
 // Evaluate whether the current position is a genuine dead end and show/hide the
 // "No More Moves" modal accordingly. Called after every state mutation so the
@@ -72,11 +71,11 @@ function captureFlip(type, animIds) {
 // The rule (the "when" to show the modal): show it iff the position is a
 // *provable* dead end — there is no immediate progress move (a foundation play
 // or a tableau relocation that uncovers a face-down card) AND the off-thread
-// solver confirms no move is reachable through any stock-draw / waste-recycle /
-// tableau play. While the stock still holds cards (or the game is already won)
-// we never declare a dead end: a draw (or recycle-then-draw) is always an
-// available action, so a move is always possible, and we avoid paying for the
-// solver on every mid-game step.
+// solver confirms no WINNING LINE is reachable through any stock-draw /
+// waste-recycle / tableau play. While the stock still holds cards (or the game
+// is already won) we never declare a dead end: a draw (or recycle-then-draw) is
+// always an available action, so a move is always possible, and we avoid paying
+// for the solver on every mid-game step.
 function evaluateDeadEnd(get, set, state) {
   // A won game is never a dead end.
   if (isWon(state)) {
@@ -116,7 +115,7 @@ function evaluateDeadEnd(get, set, state) {
     return;
   }
   const captured = state; // each action mints a fresh state object
-  const { promise } = solveAsync(state, { maxNodes: 500000, maxMs: 4000, goal: 'move' });
+  const { promise } = solveAsync(state, { maxNodes: 500000, maxMs: 4000, goal: 'win' });
   promise.then((seq) => {
     if (seq === STALE) return;
     if (get().state !== captured) return; // state moved on; ignore stale result
@@ -125,11 +124,11 @@ function evaluateDeadEnd(get, set, state) {
       // Budget exceeded — unknown. Never assert a dead end on an unknown result.
       return;
     }
-    if (seq === true) {
-      // A legal move is reachable anywhere through cycling — not stuck.
+    if (seq) {
+      // A winning line is reachable through legal play — not stuck.
       useUiStore.getState().setNoMovesDialogOpen(false);
     } else {
-      // Search fully exhausted with no move reachable — a genuine dead end.
+      // Search fully exhausted with no winning line reachable — a genuine dead end.
       useUiStore.getState().setNoMovesDialogOpen(true);
     }
   });

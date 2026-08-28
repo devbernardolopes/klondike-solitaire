@@ -333,11 +333,24 @@ test('isDrainedFoundationDeadEnd: null when stock still has cards', () => {
   assert.equal(isDrainedFoundationDeadEnd(s), null);
 });
 
-test('isDrainedFoundationDeadEnd: false when a move is still reachable', () => {
+test('isDrainedFoundationDeadEnd: false when a win is still reachable', () => {
+  // Drained board (stock + waste empty) where the four Kings sit on the tableau
+  // tops and every lower rank is already on its foundation. Moving each King home
+  // wins, so this is NOT a dead end under the win-proving detector.
   const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
   const s = createEmptyGameState();
-  s.foundations[0] = [c('clubs', 1, 'c1'), c('clubs', 2, 'c2')];
-  s.tableau = [[c('clubs', 3, 'c3')], [], [], [], [], [], []];
+  const suits = ['clubs', 'spades', 'hearts', 'diamonds'];
+  suits.forEach((suit, i) => {
+    s.foundations[i] = [];
+    for (let r = 1; r <= 12; r++) s.foundations[i].push(c(suit, r, `${suit[0]}${r}`));
+  });
+  s.tableau = [
+    [c('clubs', 13, 'Kc')],
+    [c('spades', 13, 'Ks')],
+    [c('hearts', 13, 'Kh')],
+    [c('diamonds', 13, 'Kd')],
+    [], [], [],
+  ];
   s.stock = [];
   s.waste = [];
   s.moveHistory = [{ type: 'moveCards', from: 'waste', to: 'foundation:0', cardIds: ['x'] }];
@@ -569,6 +582,91 @@ test('genuine dead end: all-Kings tableau, no retreat possible', () => {
   ];
   assert.equal(hasDeadEndMove(s), false);
   assert.equal(findReachableMove(s, { maxNodes: 500000, maxMs: 4000 }), false);
+});
+
+// Faithful reconstruction of user-reported dead-end boards (top-to-bottom tableau
+// order per the report; '00' = a face-down card). The buried cards beneath the
+// immovable covering runs can never be uncovered, so all four foundations stay
+// blocked and the position is genuinely unwinnable.
+function buildDeadEndBoard(foundations, waste, tableaus) {
+  const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
+  const sm = { h: 'hearts', d: 'diamonds', c: 'clubs', s: 'spades' };
+  const rm = { A: 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, J: 11, Q: 12, K: 13 };
+  let bd = 0;
+  const tok = (t) => {
+    if (t === '00') return c('spades', 1, 'bd' + bd++, false);
+    const r = t.slice(0, -1);
+    const s = t.slice(-1);
+    return c(sm[s], rm[r], s + r);
+  };
+  const fArr = foundations.map((list) => list.split(',').map((x) => x.trim()).filter(Boolean).map(tok));
+  const wArr = waste.split(',').map((x) => x.trim()).filter(Boolean).map(tok);
+  const tArr = tableaus.map((list) => {
+    const toks = list.split(',').map((x) => x.trim()).filter(Boolean);
+    const fds = toks.filter((t) => t === '00').length;
+    const ups = toks.filter((t) => t !== '00');
+    const pile = [];
+    for (let i = 0; i < fds; i++) pile.push(tok('00'));
+    for (let i = ups.length - 1; i >= 0; i--) pile.push(tok(ups[i])); // top = ups[0]
+    return pile;
+  });
+  const s = createEmptyGameState();
+  s.stock = [];
+  s.waste = wArr;
+  s.foundations = fArr;
+  s.tableau = tArr;
+  return s;
+}
+
+test('Game Mode 6683 is a genuine dead end (no winning line reachable)', () => {
+  const s = buildDeadEndBoard(
+    ['Ah,2h,3h', 'As,2s,3s,4s,5s', 'Ad', 'Ac,2c,3c'],
+    '8d,10c,9c',
+    [
+      '5h,6s,7h,8s,9d,10s,Jh,Qc,Kh',
+      '6h,7s,8h,9s,10d,Jc,Qd,Ks',
+      'Qs,Kd',
+      'Js,Qh,Kc',
+      '',
+      '3d,4c,5d,6c,7d,8c,9h,00,00',
+      '5c,6d,7c,00,00,00',
+    ]
+  );
+  // The cheap pre-filter correctly sees no immediate progress move...
+  assert.equal(hasDeadEndMove(s), false);
+  // ...but the legacy move-existence detector is fooled: a foundation retreat
+  // (e.g. 5s/4s off spades) enables a lateral 4c->clubs foundation play, so
+  // findReachableMove wrongly reports the position as alive.
+  assert.equal(findReachableMove(s, { maxNodes: 500000, maxMs: 4000 }), true);
+  // The win-prover correctly proves NO winning line is reachable -> dead end.
+  assert.equal(findWinningSequence(s, { maxNodes: 500000, maxMs: 4000 }), null);
+  // The fully-drained synchronous edge case must also report a dead end.
+  const drained = {
+    ...s,
+    stock: [],
+    waste: [],
+    moveHistory: [{ type: 'moveCards', from: 'waste', to: 'foundation:0', cardIds: ['x'] }],
+  };
+  assert.equal(isDrainedFoundationDeadEnd(drained), true);
+});
+
+test('Game Mode 6471 is a genuine dead end (no winning line reachable)', () => {
+  const s = buildDeadEndBoard(
+    ['Ad,2d,3d', 'Ac', 'Ah,2h', ''],
+    '5c,Jd,6d,3c',
+    [
+      '3s,4d,5s,6h,7s,8h,9s,10h,Js',
+      '8d,9c,10d,Jc,Qh,Kc',
+      '8s,9h,10s,Jh,Qs,Kh',
+      '',
+      '6s,00,00,00',
+      '2s,3h,4s,00',
+      '4c,5h,6c,7d,8c,9d,10c,00,00,00,00,00,00',
+    ]
+  );
+  assert.equal(hasDeadEndMove(s), false);
+  assert.equal(findReachableMove(s, { maxNodes: 500000, maxMs: 4000 }), true); // legacy detector fooled
+  assert.equal(findWinningSequence(s, { maxNodes: 500000, maxMs: 4000 }), null); // win-prover: dead end
 });
 
 test('compressWinningSequence never breaks a win and can drop redundant tableau shuffles', () => {
