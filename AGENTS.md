@@ -16,6 +16,7 @@ Locally the project is here: `C:\Dev\klondike-solitaire\klondike-solitaire`.
 - `@dnd-kit/core` + `@dnd-kit/sortable` for drag-and-drop
 - Dexie.js for local persistence (settings/stats/played-seeds/daily results wired; `games` history table defined, `saveGame()` not yet called)
 - `@supabase/supabase-js` — Supabase client wired for **anonymous auth** (`lib/supabaseClient.js` + `hooks/useAuthStore.js`); intended backend for leaderboards + achievements (not yet used there)
+- Supabase schema + migrations live in `supabase/` (version-controlled; never bundled into `dist/`, so not exposed at Vercel). `klondike_supabase_schema.sql` is the base schema; `klondike_supabase_migration_00N.sql` are ordered upgrades; `submit_game_result*.sql` are DB functions. (`.other/` remains git-ignored for non-SQL scratch files.)
 - Howler.js — **stub** (no playback yet; see Stubbed)
 - GSAP — **wired** (Flip-based move/flip pipeline, win cascade, shake, foundation particle burst, dev debug panel)
 - `leva` (dev motion debug panel) and `lucide-react` (toolbar icons) as extras

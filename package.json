@@ -1,7 +1,7 @@
 {
   "name": "klondike-solitaire",
   "private": true,
-  "version": "0.0.250",
+  "version": "0.0.252",
   "type": "module",
   "scripts": {
     "dev": "vite",
