@@ -272,11 +272,12 @@ export default function DailyChallengeModal() {
 
   const selectedResult = selected ? results[selected] : null;
 
-  // Build the 31-cell day grid (days 1..31, the maximum day-of-month).
+  // Build the day grid for the actual days of this month (1..daysInMonth).
   const cells = [];
-  for (let d = 1; d <= 31; d++) {
+  const dim = daysInMonth(viewY, viewM);
+  for (let d = 1; d <= dim; d++) {
     const dateStr = toDateStr(viewY, viewM, d);
-    const validDay = d <= daysInMonth(viewY, viewM);
+    const validDay = true;
     const supported = withinSupported(dateStr);
     const future = isAfter(dateStr, today);
     const enabled = validDay && supported && !future;
@@ -306,7 +307,7 @@ export default function DailyChallengeModal() {
     } else {
       cells.push(
         <div key={d} className={classes.join(' ')} aria-hidden="true">
-          {validDay ? d : ''}
+          {d}
         </div>,
       );
     }
