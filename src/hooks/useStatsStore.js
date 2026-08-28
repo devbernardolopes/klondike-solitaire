@@ -6,6 +6,7 @@
 // real wall-clock timestamps) reflects only actively-focused play time.
 
 import { create } from 'zustand';
+import { subscribeWithSelector } from 'zustand/middleware';
 import { hasDeadEndMove } from '../core/solver.js';
 import { useStatisticsStore } from './useStatisticsStore.js';
 
@@ -14,7 +15,7 @@ import { useStatisticsStore } from './useStatisticsStore.js';
 export const MAX_TIME_MS = 60 * 60 * 1000; // 60:00
 export const MAX_MOVES = 999;
 
-export const useStatsStore = create((set, get) => ({
+export const useStatsStore = create(subscribeWithSelector((set, get) => ({
   moves: 0,
   score: 0, // not implemented yet — stays 0
   undos: 0, // number of undo actions performed in the current game
@@ -157,4 +158,4 @@ export const useStatsStore = create((set, get) => ({
       set({ endTime: Date.now() });
     }
   },
-}));
+})));

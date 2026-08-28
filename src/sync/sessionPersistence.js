@@ -6,6 +6,7 @@
 // per-action wiring, and clearing on game end is structural (delete the row).
 
 import { supabase } from '../lib/supabaseClient.js';
+import { shallow } from 'zustand/shallow';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
@@ -19,6 +20,13 @@ import { getSetting, setSetting } from '../db/schema.js';
 
 const DEDUPE_KEY = 'game_session';
 const DEVICE_ID_KEY = 'deviceId';
+
+// Trailing debounce (ms) on the *remote* enqueue only. The local Dexie write is
+// immediate (cheap, and the fast restore path); this lets a burst of legitimate
+// rapid changes (deal stagger, auto-complete cascade) settle into a single
+// Supabase upsert instead of firing one awaited network call per change.
+const REMOTE_DEBOUNCE_MS = 400;
+let saveTimer = null;
 
 let deviceId = null;
 
@@ -60,13 +68,19 @@ function buildPayload() {
   };
 }
 
-/** Persist the in-progress session locally and queue the Supabase mirror. */
+/** Persist the in-progress session locally (immediate) and queue the Supabase
+ *  mirror on a trailing debounce. */
 function saveSession() {
   try {
     const p = buildPayload();
     const { board_state, replay_spec, moves, score, undos, start_time, paused_accum_ms } = p;
     saveActiveSession({ boardState: board_state, replaySpec: replay_spec, moves, score, undos, startTime: start_time, pausedAccumMs: paused_accum_ms });
-    enqueue('save_game_session', p, DEDUPE_KEY);
+    // Coalesce bursts into a single remote upsert.
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      saveTimer = null;
+      enqueue('save_game_session', p, DEDUPE_KEY);
+    }, REMOTE_DEBOUNCE_MS);
   } catch {
     // deviceId not ready or a transient read failure — the next change re-saves.
   }
@@ -74,6 +88,12 @@ function saveSession() {
 
 /** Clear the session locally (synchronously) and queue the Supabase delete. */
 function clearSession() {
+  // Cancel any pending debounced save so it cannot fire after the clear and
+  // re-add a save row that the clear is about to delete.
+  if (saveTimer) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+  }
   clearActiveSession();
   try {
     enqueue('clear_game_session', { device_id: getDeviceId() }, DEDUPE_KEY);
@@ -83,8 +103,12 @@ function clearSession() {
 }
 
 /**
- * Subscribe to both stores; on any change, save (if the game is still in
- * progress) or clear (if it has ended). Returns an unsubscribe function.
+ * Subscribe to both stores. The handlers fire only when a *persistable* field
+ * changes (board `state` for the game store; the counters/start/end/pause-accum
+ * for the stats store) — NOT on internal bookkeeping like `autoCompleting`,
+ * `autoMoveState`, `lastActionMeta`, or `pausedAt` (which flips on every tab
+ * blur/focus but is not itself something worth persisting; `pausedAccumMs` is).
+ * Returns an unsubscribe function.
  */
 export function initSessionPersistence() {
   const handler = () => {
@@ -94,8 +118,12 @@ export function initSessionPersistence() {
       saveSession();
     }
   };
-  const unsubGame = useGameStore.subscribe(handler);
-  const unsubStats = useStatsStore.subscribe(handler);
+  const unsubGame = useGameStore.subscribe((s) => s.state, handler);
+  const unsubStats = useStatsStore.subscribe(
+    (s) => [s.moves, s.score, s.undos, s.startTime, s.endTime, s.isOver, s.pausedAccumMs],
+    handler,
+    { equalityFn: shallow },
+  );
   return () => {
     unsubGame();
     unsubStats();

@@ -3,6 +3,7 @@
 // The store NEVER implements rules itself — it delegates to core/*.
 
 import { create } from 'zustand';
+import { subscribeWithSelector } from 'zustand/middleware';
 import { deal } from '../core/dealer.js';
 import { applyMove, undo as coreUndo } from '../core/moveEngine.js';
 import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, wouldGreedyComplete, DEST_ORDER } from '../core/rules.js';
@@ -438,7 +439,7 @@ const INITIAL_PREDEAL = preDealFromDeck(INITIAL_DECK, INITIAL_SEED);
 // invokes mount effects) cannot trigger two overlapping deals.
 let initialDealDone = false;
 
-export const useGameStore = create((set, get) => ({
+export const useGameStore = create(subscribeWithSelector((set, get) => ({
   // Start as a pre-deal (all cards face-down in stock) so the very first game
   // can animate its deal on load via initialDeal() rather than appearing
   // instantly. The pre-deal and the dealt state share INITIAL_DECK's card ids.
@@ -949,7 +950,7 @@ export const useGameStore = create((set, get) => ({
     ui.setHints(hints);
     ui.setAnnounce(`Hint: ${hints.length} move${hints.length === 1 ? '' : 's'} available`);
   },
-}));
+})));
 
 /** Convenience selector for raw core state. */
 export const selectGameState = (s) => s.state;
