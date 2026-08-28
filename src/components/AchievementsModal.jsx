@@ -14,6 +14,61 @@ import { Z } from '../utils/modalStack.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
 import { supabase } from '../lib/supabaseClient.js';
 import { achievementImageUrl, onAchievementImageError } from '../utils/achievementImage.js';
+import AchievementDetailModal from './AchievementDetailModal.jsx';
+
+/**
+ * A single clickable achievement entry in the compact list. Opens the detail
+ * modal on click / Enter / Space. Hover and focus backgrounds are tracked with
+ * local state (no theme-CSS changes needed).
+ */
+function AchievementRow({ achievement, onOpen }) {
+  const [hover, setHover] = useState(false);
+  const [focus, setFocus] = useState(false);
+  const active = hover || focus;
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      aria-label={achievement.name}
+      onClick={() => onOpen(achievement)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onOpen(achievement);
+        }
+      }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onFocus={() => setFocus(true)}
+      onBlur={() => setFocus(false)}
+      style={{
+        border: '1px solid var(--card-border)',
+        borderRadius: 'var(--card-radius)',
+        padding: '10px 12px',
+        opacity: Boolean(achievement.earnedAt) ? 1 : 0.5,
+        display: 'flex',
+        gap: 12,
+        alignItems: 'flex-start',
+        cursor: 'pointer',
+        background: active ? 'var(--ui-modal-btn-bg)' : 'transparent',
+        outline: focus ? '2px solid var(--ui-modal-btn-border)' : 'none',
+        outlineOffset: 1,
+      }}
+    >
+      <img
+        src={achievementImageUrl(achievement.image_path)}
+        alt=""
+        onError={onAchievementImageError}
+        style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover', flex: '0 0 auto' }}
+      />
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 700 }}>{achievement.name}</div>
+        <div style={{ fontSize: 13, margin: '2px 0 0' }}>{achievement.description}</div>
+      </div>
+    </div>
+  );
+}
+
 
 /**
  * @param {object} props
@@ -26,6 +81,7 @@ export default function AchievementsModal({ open, onClose }) {
   const [loading, setLoading] = useState(true);
   const [defs, setDefs] = useState(/** @type {any[]} */ ([]));
   const [unlocked, setUnlocked] = useState(/** @type {Record<string, string>} */ ({}));
+  const [selected, setSelected] = useState(/** @type {any|null} */ (null));
 
   // Keep the latest close handler in a ref so the open-effect depends only on
   // `open` and runs exactly once per open (not on an unstable callback identity).
@@ -97,82 +153,53 @@ export default function AchievementsModal({ open, onClose }) {
     flexDirection: 'column',
   };
 
-  const formatDate = (iso) => {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return '';
-    return d.toLocaleDateString();
-  };
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Achievements"
-      tabIndex={-1}
-      ref={dialogRef}
-      {...backdrop}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.5)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 3100,
-        padding: 16,
-      }}
-    >
-      <div style={panel}>
-        <h2 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>Achievements</h2>
-        <ModalCloseButton onClick={onClose} />
+    <>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Achievements"
+        tabIndex={-1}
+        ref={dialogRef}
+        {...backdrop}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 3100,
+          padding: 16,
+        }}
+      >
+        <div style={panel}>
+          <h2 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>Achievements</h2>
+          <ModalCloseButton onClick={onClose} />
 
-        <div className="modal-body-scroll" style={{ flex: 1, minHeight: 0 }}>
-          {loading ? (
-            <div style={{ opacity: 0.8, fontSize: 14, marginBottom: 16 }}>Loading…</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 18 }}>
-              {defs.map((a) => {
-                const earnedAt = unlocked[a.id];
-                const isUnlocked = Boolean(earnedAt);
-                return (
-                  <div
+          <div className="modal-body-scroll" style={{ flex: 1, minHeight: 0 }}>
+            {loading ? (
+              <div style={{ opacity: 0.8, fontSize: 14, marginBottom: 16 }}>Loading…</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 18 }}>
+                {defs.map((a) => (
+                  <AchievementRow
                     key={a.id}
-                    style={{
-                      border: '1px solid var(--card-border)',
-                      borderRadius: 'var(--card-radius)',
-                      padding: '10px 12px',
-                      opacity: isUnlocked ? 1 : 0.5,
-                      display: 'flex',
-                      gap: 12,
-                      alignItems: 'flex-start',
-                    }}
-                  >
-                    <img
-                      src={achievementImageUrl(a.image_path)}
-                      alt=""
-                      onError={onAchievementImageError}
-                      style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 6,
-                        objectFit: 'cover',
-                        flex: '0 0 auto',
-                      }}
-                    />
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 700 }}>{a.name}</div>
-                      <div style={{ fontSize: 13, margin: '2px 0 4px' }}>{a.description}</div>
-                      <div style={{ fontSize: 12, fontStyle: isUnlocked ? 'normal' : 'italic' }}>
-                        {isUnlocked ? `Unlocked ${formatDate(earnedAt)}` : 'Locked'}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                    achievement={{ ...a, earnedAt: unlocked[a.id] ?? null }}
+                    onOpen={(row) => setSelected(row)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+
+      <AchievementDetailModal
+        achievement={selected}
+        open={Boolean(selected)}
+        onClose={() => setSelected(null)}
+      />
+    </>
   );
 }
