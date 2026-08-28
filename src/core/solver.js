@@ -699,6 +699,24 @@ export function findRescueMove(state, loan = new Set(), opts = {}) {
  * @param {import('./GameState.js').GameState} state
  * @returns {boolean|null}
  */
+/**
+ * Is `state` a candidate for the "No More Moves" modal at all? The modal is only
+ * ever meaningful when the board is *fully drained* — the stock AND the waste are
+ * both empty — and no immediate move exists right now. While any card remains in
+ * the stock (a draw is available) or in the waste (a recycle-then-draw is always
+ * available, which may surface a playable card), the player is not out of options,
+ * so the modal must stay hidden and the expensive solver must be skipped.
+ *
+ * @param {import('./GameState.js').GameState} state
+ * @returns {boolean}
+ */
+export function isDeadEndCandidate(state) {
+  if (hasDeadEndMove(state)) return false;
+  if (state.stock.length > 0) return false;
+  if (state.waste.length > 0) return false;
+  return true;
+}
+
 export function isDrainedFoundationDeadEnd(state) {
   if (state.stock.length !== 0 || state.waste.length !== 0) return null;
   const last = state.moveHistory[state.moveHistory.length - 1];

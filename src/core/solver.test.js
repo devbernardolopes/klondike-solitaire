@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createCard } from './Card.js';
 import { createEmptyGameState } from './GameState.js';
-import { findWinningSequence, findReachableMove, hasDeadEndMove, getAutoFireSolveOptions, isDrainedFoundationDeadEnd, SOLVER_TIMEOUT, compressWinningSequence } from './solver.js';
+import { findWinningSequence, findReachableMove, hasDeadEndMove, getAutoFireSolveOptions, isDrainedFoundationDeadEnd, isDeadEndCandidate, SOLVER_TIMEOUT, compressWinningSequence } from './solver.js';
 import { applyMove } from './moveEngine.js';
 import { isWon } from './winDetection.js';
 import { findFoundationMove, isAllTableauFaceUp, hasAnyValidMove, wouldGreedyComplete } from './rules.js';
@@ -356,6 +356,63 @@ test('isDrainedFoundationDeadEnd: false when a win is still reachable', () => {
   s.moveHistory = [{ type: 'moveCards', from: 'waste', to: 'foundation:0', cardIds: ['x'] }];
   assert.equal(isDrainedFoundationDeadEnd(s), false);
 });
+
+// --- isDeadEndCandidate (gates whether the "No More Moves" modal is even a candidate) ---
+
+test('isDeadEndCandidate: false while the stock still has cards (a draw is available)', () => {
+  const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
+  const s = createEmptyGameState();
+  s.stock = [c('clubs', 1, 'x')];
+  s.waste = [];
+  // No immediate move, but a draw exists, so the modal must not be a candidate.
+  assert.equal(isDeadEndCandidate(s), false);
+});
+
+test('isDeadEndCandidate: false while the waste still has cards (a recycle is always available)', () => {
+  // Regression for Game Mode 6683 after drawing 9c: stock empty, waste holds
+  // Kc/Kd that become playable after a recycle, yet findWinningSequence proves
+  // the position unwinnable. Because the waste is non-empty a recycle is always
+  // available, so the board is NOT a dead-end candidate and the modal must stay
+  // hidden (it must not fire merely because the position is unwinnable).
+  const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
+  const s = createEmptyGameState();
+  s.foundations[0] = [c('hearts', 1, 'Ah')];
+  s.foundations[1] = [c('spades', 1, 'As'), c('spades', 2, '2s')];
+  s.foundations[2] = [c('diamonds', 1, 'Ad')];
+  s.waste = [c('clubs', 13, 'Kc'), c('diamonds', 13, 'Kd'), c('clubs', 9, '9c')];
+  s.stock = [];
+  s.tableau = [
+    [c('diamonds', 3, '3d')], [c('clubs', 5, '5c')], [c('spades', 12, 'Qs')],
+    [], [c('clubs', 3, '3c')], [c('hearts', 5, '5h')], [c('diamonds', 6, '6d')],
+  ];
+  assert.equal(isDeadEndCandidate(s), false);
+});
+
+test('isDeadEndCandidate: false when an immediate move exists', () => {
+  const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
+  const s = createEmptyGameState();
+  // Waste top Kc can move straight onto the empty 4th column — an immediate move.
+  s.waste = [c('clubs', 13, 'Kc')];
+  s.stock = [];
+  s.tableau = [[], [], [], [], [], [], []];
+  assert.equal(isDeadEndCandidate(s), false);
+});
+
+test('isDeadEndCandidate: true only when fully drained with no immediate move', () => {
+  const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
+  const s = createEmptyGameState();
+  s.stock = [];
+  s.waste = [];
+  s.foundations[0] = [c('hearts', 1, 'Ah')];
+  s.foundations[1] = [c('spades', 1, 'As'), c('spades', 2, '2s')];
+  s.foundations[2] = [c('diamonds', 1, 'Ad')];
+  s.tableau = [
+    [c('diamonds', 3, '3d')], [c('clubs', 5, '5c')], [c('spades', 12, 'Qs')],
+    [], [c('clubs', 3, '3c')], [c('hearts', 5, '5h')], [c('diamonds', 6, '6d')],
+  ];
+  assert.equal(isDeadEndCandidate(s), true);
+});
+
 
 /**
  * Regression: the board reported as a dead end (Game Mode 25016), with empty

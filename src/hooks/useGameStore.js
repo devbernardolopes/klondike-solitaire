@@ -9,7 +9,7 @@ import { applyMove, undo as coreUndo } from '../core/moveEngine.js';
 import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, wouldGreedyComplete, DEST_ORDER } from '../core/rules.js';
 import { isWon } from '../core/winDetection.js';
 import { solveAsync, cancelAllSolves, STALE } from '../core/solverClient.js';
-import { SOLVER_TIMEOUT, hasDeadEndMove, compressWinningSequence, isDrainedFoundationDeadEnd } from '../core/solver.js';
+import { SOLVER_TIMEOUT, hasDeadEndMove, compressWinningSequence, isDrainedFoundationDeadEnd, isDeadEndCandidate } from '../core/solver.js';
 import { findHints } from '../core/hints.js';
 import { buildStandardDeck, shuffle } from '../core/Deck.js';
 import { createEmptyGameState } from '../core/GameState.js';
@@ -53,29 +53,28 @@ function captureFlip(type, animIds) {
   return enqueueFlip(type, rects);
 }
 
-// Confirm a genuinely stuck position once the stock is exhausted (no draws left).
-// We ask the off-thread solver whether a *winning line* is still reachable
-// through legal play (foundation plays, tableau relocations, and stock/waste
-// cycling). The detector proves a dead end only when the solver exhausts the
-// reachable space with NO winning line — i.e. the position cannot be completed,
-// even though some pointless shuffles (e.g. a foundation retreat, or a waste card
-// onto a same-color-clamped run) may still be legal. Such shuffles must NOT keep
-// the game "alive": a position whose only moves are unwinnable tableau/foundation
-// reshuffles is a genuine dead end. A budget-exceeded (unknown) result never
-// asserts a dead end. The result is ignored if the board has changed in the
-// meantime (reference guard) or the solve was superseded (STALE).
 // Evaluate whether the current position is a genuine dead end and show/hide the
 // "No More Moves" modal accordingly. Called after every state mutation so the
 // modal is reliable regardless of which action reached the position.
 //
-// The rule (the "when" to show the modal): show it iff the position is a
-// *provable* dead end — there is no immediate progress move (a foundation play
-// or a tableau relocation that uncovers a face-down card) AND the off-thread
-// solver confirms no WINNING LINE is reachable through any stock-draw /
-// waste-recycle / tableau play. While the stock still holds cards (or the game
-// is already won) we never declare a dead end: a draw (or recycle-then-draw) is
-// always an available action, so a move is always possible, and we avoid paying
-// for the solver on every mid-game step.
+// The rule (the "when" to show the modal): show it ONLY when the board is fully
+// drained — the stock AND the waste are both empty — and no immediate move exists.
+// That is the sole moment the player truly has no action left, so "No More Moves"
+// is literally true. While any card remains in the stock (a draw is available) or
+// in the waste (a recycle-then-draw is always available, and may surface a
+// playable card such as a King onto an empty column), the player is not out of
+// options, so the modal stays hidden and the solver is skipped.
+//
+// For a fully-drained position we then ask the off-thread solver whether a
+// *winning line* is still reachable. The detector proves a dead end only when the
+// solver exhausts the reachable space with NO winning line — i.e. the position
+// cannot be completed, even though some pointless shuffles (e.g. a foundation
+// retreat, or a waste card onto a same-color-clamped run) may still be legal.
+// Such shuffles must NOT keep the game "alive": a fully-drained position whose
+// only moves are unwinnable tableau/foundation reshuffles is a genuine dead end.
+// A budget-exceeded (unknown) result never asserts a dead end. The result is
+// ignored if the board has changed in the meantime (reference guard) or the solve
+// was superseded (STALE).
 function evaluateDeadEnd(get, set, state) {
   // A won game is never a dead end.
   if (isWon(state)) {
@@ -90,15 +89,13 @@ function evaluateDeadEnd(get, set, state) {
   if (get().lastActionMeta?.type === 'undo') {
     return;
   }
-  // Cheap pre-filter: a meaningful move available right now means not stuck.
-  if (hasDeadEndMove(state)) {
-    useUiStore.getState().setNoMovesDialogOpen(false);
-    return;
-  }
-  // While cards remain in the stock (or the waste can still be recycled into it)
-  // the player can always draw, so we cannot yet conclude a dead end — and we
-  // skip the expensive solver. Just ensure the modal is closed.
-  if (state.stock.length > 0) {
+  // The "No More Moves" modal is only a candidate once the board is fully drained
+  // (stock AND waste empty) with no immediate move available: that is the only
+  // moment the player truly has no action left. While any card remains in the
+  // stock (a draw is available) or in the waste (a recycle-then-draw is always
+  // available, and may expose a playable card), the player is not out of options —
+  // never surface the modal, and skip the expensive solver.
+  if (!isDeadEndCandidate(state)) {
     useUiStore.getState().setNoMovesDialogOpen(false);
     return;
   }
