@@ -161,4 +161,15 @@ export const useStatsStore = create(subscribeWithSelector((set, get) => ({
       set({ endTime: Date.now() });
     }
   },
+
+  /**
+   * True when a real game is in progress: the timer has started, has not ended,
+   * and the game is not over (no win, no hard limit). Used to decide whether a
+   * new/replacement deal must be confirmed before discarding progress. Mirrors
+   * the `timerRunning` check in Board.jsx's `n` shortcut.
+   */
+  isInProgress: () => {
+    const s = get();
+    return s.startTime != null && s.endTime == null && !s.isOver;
+  },
 })));

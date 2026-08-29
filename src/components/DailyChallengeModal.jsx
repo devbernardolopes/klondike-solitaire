@@ -17,6 +17,7 @@ import { Z } from '../utils/modalStack.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
+import { useStatsStore } from '../hooks/useStatsStore.js';
 import { pullRemoteProfile } from '../sync/pullProfile.js';
 import {
   listSupportedYears,
@@ -244,13 +245,23 @@ export default function DailyChallengeModal() {
   const onPlay = () => {
     if (!selected) return;
     if (isAfter(selected, today) || !withinSupported(selected)) return;
-    const ok = dealDaily(selected);
-    if (ok) {
-      // Remember the picked day so the calendar re-opens there next time
-      // (persisted in the DB). This includes today, which is treated like any
-      // other available day.
-      saveLastDailySelection(selected);
-      setOpen(false);
+    const run = () => {
+      const ok = dealDaily(selected);
+      if (ok) {
+        // Remember the picked day so the calendar re-opens there next time
+        // (persisted in the DB). This includes today, which is treated like any
+        // other available day.
+        saveLastDailySelection(selected);
+        setOpen(false);
+      }
+    };
+    // If a game is in progress, stash the deal behind the "discard current game?"
+    // confirmation (which records a loss on confirm); otherwise deal immediately.
+    if (useStatsStore.getState().isInProgress()) {
+      useUiStore.getState().setPendingStartDeal(run);
+      useUiStore.getState().setConfirmNewGameDialogOpen(true);
+    } else {
+      run();
     }
   };
 

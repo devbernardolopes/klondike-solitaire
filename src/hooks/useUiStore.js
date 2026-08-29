@@ -206,11 +206,15 @@ export const useUiStore = create((set, get) => ({
   newGameDialogOpen: false,
   lastNewGameMode: 'winning', // 'winning' | 'random'
 
-  // "Start a new game?" confirmation dialog. Shown (via the `n` shortcut) only
-  // when a game is in progress (timer running) to avoid silently discarding
-  // progress. When the game is not started or has finished, `n` deals directly
-  // with no prompt.
+  // "Start a new game?" confirmation dialog. Shown whenever a game is in progress
+  // (timer running) and the user tries to start or replay a deal from ANY path
+  // (the `n` shortcut, the New Game picker's Winning Deal / Random Shuffle /
+  // Replay buttons, the Seed Input "Play", or the Daily Challenge "Play") — so an
+  // in-progress game is never silently discarded. When no game is in progress it
+  // deals directly with no prompt. `pendingStartDeal` holds the thunk to run on
+  // confirm (the specific deal/replay action the user requested).
   confirmNewGameDialogOpen: false,
+  pendingStartDeal: null,
 
   // Options/settings modal (Theme / Deck / Hand).
   settingsDialogOpen: false,
@@ -267,6 +271,10 @@ export const useUiStore = create((set, get) => ({
     get().dismissNoHintsBanner();
     set({ confirmNewGameDialogOpen: open });
   },
+
+  /** Store the deal/replay thunk to run if the user confirms discarding the
+   *  current game. Cleared on confirm or cancel. */
+  setPendingStartDeal: (thunk) => set({ pendingStartDeal: thunk }),
 
   /** Show/hide the options/settings dialog. */
   setSettingsDialogOpen: (s) => {

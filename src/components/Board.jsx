@@ -282,12 +282,16 @@ export default function Board() {
         if (anyAnimating || isOver || autoCompleting) return;
         if (e.key === 'n' || e.key === 'N') {
            clearSelection();
-           // If a game is in progress (timer started, not yet finished), ask
-           // for confirmation before discarding progress. A game that hasn't
-           // started or has already finished deals immediately with no prompt.
+           // If a game is in progress (timer started, not yet finished), stash the
+           // deal behind the "discard current game?" confirmation. A game that
+           // hasn't started or has already finished deals immediately with no prompt.
            const stats = useStatsStore.getState();
            const timerRunning = stats.startTime !== null && stats.endTime === null && !stats.isOver;
            if (timerRunning) {
+             useUiStore.getState().setPendingStartDeal(() => {
+               useGameStore.getState().dealNewGame(useUiStore.getState().lastNewGameMode);
+               useUiStore.getState().setAnnounce('New game dealt');
+             });
              useUiStore.getState().setConfirmNewGameDialogOpen(true);
              setAnnounce('Confirm new game');
            } else {

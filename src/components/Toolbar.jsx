@@ -15,6 +15,7 @@ import SettingsModal from './SettingsModal.jsx';
 import SeedInputModal from './SeedInputModal.jsx';
 import DailyChallengeModal from './DailyChallengeModal.jsx';
 import { formatTime } from '../utils/formatTime.js';
+import { Z } from '../utils/modalStack.js';
 
 /**
  * Live elapsed game time. Derived from a fixed start/end timestamp (not from
@@ -112,32 +113,55 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
     setHelpDialogOpen(false);
   }, [setSettingsDialogOpen, setHelpDialogOpen]);
   const closeNewGame = useCallback(() => setNewGameDialogOpen(false), [setNewGameDialogOpen]);
+
+  // Shared guard: if a game is currently in progress, stash the requested deal/
+  // replay action behind the "discard current game?" confirmation dialog
+  // (which records a loss on confirm); otherwise run it immediately. Every new/
+  // replacement-deal entry point routes through this so an in-progress game is
+  // never silently discarded.
+  const startDealOrConfirm = useCallback((action) => {
+    if (useStatsStore.getState().isInProgress()) {
+      useUiStore.getState().setPendingStartDeal(action);
+      useUiStore.getState().setConfirmNewGameDialogOpen(true);
+    } else {
+      action();
+    }
+  }, []);
+
   const onReplay = useCallback(() => {
-    setNewGameDialogOpen(false);
-    replayGame();
-    play('deal');
-  }, [setNewGameDialogOpen, replayGame, play]);
+    startDealOrConfirm(() => {
+      setNewGameDialogOpen(false);
+      replayGame();
+      play('deal');
+    });
+  }, [startDealOrConfirm, setNewGameDialogOpen, replayGame, play]);
   const onWinningDeal = useCallback(() => {
-    setNewGameDialogOpen(false);
-    dealNewGame('winning');
-    play('deal');
-  }, [setNewGameDialogOpen, dealNewGame, play]);
+    startDealOrConfirm(() => {
+      setNewGameDialogOpen(false);
+      dealNewGame('winning');
+      play('deal');
+    });
+  }, [startDealOrConfirm, setNewGameDialogOpen, dealNewGame, play]);
   const onRandomShuffle = useCallback(() => {
-    setNewGameDialogOpen(false);
-    dealNewGame('random');
-    play('deal');
-  }, [setNewGameDialogOpen, dealNewGame, play]);
+    startDealOrConfirm(() => {
+      setNewGameDialogOpen(false);
+      dealNewGame('random');
+      play('deal');
+    });
+  }, [startDealOrConfirm, setNewGameDialogOpen, dealNewGame, play]);
   const onDailyChallenge = useCallback(() => {
     setNewGameDialogOpen(false);
     setDailyChallengeOrigin('newgame');
     setDailyChallengeDialogOpen(true);
   }, [setNewGameDialogOpen, setDailyChallengeOrigin, setDailyChallengeDialogOpen]);
   const onSeedConfirm = useCallback((seed) => {
-    setSeedInputDialogOpen(false);
-    dealWithSeed(seed);
-    play('deal');
-    setAnnounce(`New game: seed ${seed}`);
-  }, [setSeedInputDialogOpen, dealWithSeed, play, setAnnounce]);
+    startDealOrConfirm(() => {
+      setSeedInputDialogOpen(false);
+      dealWithSeed(seed);
+      play('deal');
+      setAnnounce(`New game: seed ${seed}`);
+    });
+  }, [startDealOrConfirm, setSeedInputDialogOpen, dealWithSeed, play, setAnnounce]);
   const onSeedCancel = useCallback(() => {
     setSeedInputDialogOpen(false);
   }, [setSeedInputDialogOpen]);
@@ -199,10 +223,10 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   }, [setGameOverDialogOpen, dealNewGame, lastNewGameMode]);
   const onConfirmNewGame = useCallback(() => {
     setConfirmNewGameDialogOpen(false);
-    dealNewGame(lastNewGameMode);
-    play('deal');
-    setAnnounce('New game dealt');
-  }, [setConfirmNewGameDialogOpen, dealNewGame, lastNewGameMode, play, setAnnounce]);
+    const action = useUiStore.getState().pendingStartDeal;
+    useUiStore.getState().setPendingStartDeal(null);
+    if (action) action();
+  }, [setConfirmNewGameDialogOpen]);
 
   const btn = {
     padding: '6px 10px',
@@ -439,11 +463,16 @@ function ElapsedClock() {
       <ConfirmModal
         open={confirmNewGameDialogOpen}
         title="Start a new game?"
-        message="The current game is in progress. Starting a new game will discard your current progress."
+        zIndex={Z.GRANDCHILD}
+        z={Z.GRANDCHILD}
+        message="The current game is in progress. Starting a new game will discard your current progress. This game will count as a loss and be recorded in your statistics."
         confirmText="New Game"
         cancelText="Cancel"
         onConfirm={onConfirmNewGame}
-        onCancel={() => setConfirmNewGameDialogOpen(false)}
+        onCancel={() => {
+          useUiStore.getState().setPendingStartDeal(null);
+          setConfirmNewGameDialogOpen(false);
+        }}
       />
     </>
   );
