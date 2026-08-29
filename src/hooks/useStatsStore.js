@@ -7,7 +7,6 @@
 
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import { hasDeadEndMove } from '../core/solver.js';
 import { useStatisticsStore } from './useStatisticsStore.js';
 
 // Hard limits that end the game. Reaching either freezes the session so only a
@@ -116,17 +115,21 @@ export const useStatsStore = create(subscribeWithSelector((set, get) => ({
   },
 
   /**
-   * Start the timer if it isn't already running and at least one valid move
-   * exists in the current state.
+   * Start the timer on the first successful player action, if it isn't already
+   * running. `state` is the board after the action that triggered this call; the
+   * gate is intentionally absent because this is only ever invoked following a
+   * validated move/draw/recycle, so a real action has already occurred.
    * @param {import('../core/GameState.js').GameState} state
    */
   startTimerIfValid: (state) => {
     if (get().startTime !== null) return;
-    // Don't start the clock on a hopeless board: a position whose only "moves"
-    // are non-progress shuffles (e.g. sliding a whole pile onto an empty column)
-    // still reports hasAnyValidMove=true, but hasDeadEndMove correctly ignores
-    // them. We only begin counting once a real move exists or is reachable.
-    if (!hasDeadEndMove(state)) return;
+    // startTimerIfValid is only ever called after a successful, validated
+    // draw/recycle/move (the action has already mutated the board), so a real
+    // action has occurred by the time we reach here. Start counting immediately
+    // rather than gating on hasDeadEndMove, which ignores stock draws and
+    // non-progress shuffles and would otherwise leave the clock at 00:00 on the
+    // ~9% of deals (and any restored/draw-only position) whose only first move is
+    // a stock draw.
     set({ startTime: Date.now() });
     // A new game's clock has just begun — count it as a game played. This fires
     // exactly once per game because we early-returned above when already running.
