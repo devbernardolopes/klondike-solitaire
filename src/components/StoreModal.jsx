@@ -179,7 +179,12 @@ export default function StoreModal({ open, onClose }) {
                     type="button"
                     onClick={() => setConfirmItem(item)}
                     disabled={!canAfford || busyId === item.id}
-                    style={btn}
+                    aria-disabled={!canAfford}
+                    style={{
+                      ...btn,
+                      opacity: !canAfford ? 0.5 : 1,
+                      cursor: !canAfford ? 'not-allowed' : 'pointer',
+                    }}
                   >
                     <CoinsIcon size={12} aria-hidden="true" /> {item.price}
                   </button>
