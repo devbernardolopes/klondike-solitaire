@@ -81,6 +81,8 @@ export default function LeaderboardModal({ open, onClose }) {
         .limit(20);
       if (cfg.ascending) {
         query = query.not(cfg.column, 'is', null);
+      } else {
+        query = query.gt(cfg.column, 0);
       }
       const { data, error } = await query;
       if (cancelled) return;
