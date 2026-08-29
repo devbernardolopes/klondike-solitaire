@@ -62,6 +62,13 @@ export function useCardMoveSlide() {
     // Park every card that moved at its OLD position (via a transform offset),
     // then collect the nodes so we can tween them all together.
     const moved = [];
+    // Each moved card's wrapper <div> (Pile.jsx, `zIndex: i`) controls its
+    // stacking order in the shared root stacking context. While sliding, a card
+    // can pass over piles whose cards have a higher `i`, which would render the
+    // moving card BEHIND them. Lift each moved wrapper above all resting cards
+    // for the duration of the tween, preserving the run's own relative order via
+    // `+base`, then restore the original z-index on completion.
+    const movers = [];
     document.querySelectorAll('[data-card]').forEach((el) => {
       const id = el.getAttribute('data-flip-id') || el.getAttribute('data-card');
       const oldRect = snapshot.get(id);
@@ -71,7 +78,14 @@ export function useCardMoveSlide() {
       const dy = oldRect.top - newRect.top;
       if (dx === 0 && dy === 0) return;
       gsap.set(el, { x: dx, y: dy });
+      const wrap = el.parentElement;
+      const prevZ = wrap ? wrap.style.zIndex : '';
+      if (wrap) {
+        const base = parseInt(prevZ || '0', 10) || 0;
+        wrap.style.zIndex = String(2000 + base);
+      }
       moved.push(el);
+      movers.push({ wrap, prevZ });
     });
 
     // Nothing actually moved (e.g. a no-op capture): release the lock at once so
@@ -85,6 +99,11 @@ export function useCardMoveSlide() {
     const tl = gsap.timeline({
       onComplete: () => {
         completed = true;
+        // Restore each moved wrapper's original z-index so the next render's
+        // React-controlled value is what stays in effect.
+        movers.forEach(({ wrap, prevZ }) => {
+          if (wrap) wrap.style.zIndex = prevZ;
+        });
         const i = activeTweens.indexOf(tl);
         if (i >= 0) activeTweens.splice(i, 1);
         useUiStore.getState().endTransition(tid);
