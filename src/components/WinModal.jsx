@@ -43,7 +43,7 @@ export default function WinModal() {
 
   if (!winDialogOpen || !summary) return null;
 
-  const { score, timeMs, moves, undos, newScore, newTime, newMoves, newUndos, bestScore, bestTimeMs, bestMoves, bestUndos, dailyDate, seed } = summary;
+  const { score, timeMs, moves, newScore, newTime, newMoves, bestScore, bestTimeMs, bestMoves, dailyDate, seed } = summary;
 
   const onNewGame = () => {
     closeWinDialog();
@@ -224,12 +224,6 @@ export default function WinModal() {
             value={String(moves)}
             best={bestMoves == null ? '—' : String(bestMoves)}
             isNew={newMoves}
-          />
-          <StatRow
-            label="Undos"
-            value={String(undos)}
-            best={bestUndos == null ? '—' : String(bestUndos)}
-            isNew={newUndos}
           />
         </div>
 
