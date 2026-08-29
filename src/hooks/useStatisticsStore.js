@@ -4,7 +4,7 @@
 // db helpers so values survive reloads and aggregate across sessions.
 
 import { create } from 'zustand';
-import { loadStats, addWin, recordLoss as dbRecordLoss, resetStats } from '../db/stats.js';
+import { loadStats, addWin, addGamePlayed, recordLoss as dbRecordLoss, resetStats } from '../db/stats.js';
 // Imported lazily (only used inside finalizeGame at call-time) so the circular
 // reference with useStatsStore never resolves during module evaluation.
 import { useStatsStore } from './useStatsStore.js';
