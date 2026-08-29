@@ -76,6 +76,7 @@ export default function StoreModal({ open, onClose }) {
   };
 
   const panel = {
+    position: 'relative',
     background: 'var(--card-face-bg)',
     color: 'var(--card-text-black)',
     border: 'var(--card-border)',
