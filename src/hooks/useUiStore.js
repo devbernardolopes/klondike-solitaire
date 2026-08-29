@@ -85,10 +85,73 @@ export const useUiStore = create((set, get) => ({
   // blocks everything in the components regardless.
   animatingCards: new Set(),
   animatingLocs: new Set(),
+  // Cards currently in the STOCK→WASTE *slide* portion of a draw (i.e. after the
+  // flip finished but before the card has settled in the waste). Unlike
+  // `animatingCards`, a sliding card is NOT fully locked: it cannot be dragged,
+  // but a tap may auto-move it (cancelSlide + move) if a valid target exists.
+  slidingCards: new Set(),
+  // Cards currently playing the "no valid move" shake. Like `slidingCards`, a
+  // shaking card cannot be dragged, but a tap may auto-move it (cancelShake +
+  // move) if a valid target appears.
+  shakingCards: new Set(),
   // Map of transition id → { cards:Set, locs:Set } so endTransition can release
   // exactly the cards/locs a finished move had reserved.
   activeTransitions: {},
   fullLock: false,
+
+  /**
+   * Promote a drawn card from the fully-locked flip phase into the slide phase.
+   * Called by useStockDrawSlide's slide tween `onStart`: releases the card from
+   * the full `animatingCards` lock (so a tap can reach it) and from the `waste`
+   * loc lock (so it can be moved OUT of waste), while keeping `stock` busy and
+   * adding it to `slidingCards` (which blocks drag). The same `tid` is retained
+   * so endTransition at slide completion releases everything cleanly.
+   * @param {string} cardId
+   * @param {number} tid
+   */
+  promoteDrawToSlide: (cardId, tid) =>
+    set((s) => {
+      const animatingCards = new Set(s.animatingCards);
+      animatingCards.delete(cardId);
+      const slidingCards = new Set(s.slidingCards);
+      slidingCards.add(cardId);
+      const animatingLocs = new Set(s.animatingLocs);
+      animatingLocs.delete('waste');
+      const active = { ...s.activeTransitions };
+      if (active[tid]) {
+        const t = active[tid];
+        const cards = new Set(t.cards);
+        cards.delete(cardId);
+        const locs = new Set(t.locs);
+        locs.delete('waste');
+        active[tid] = { cards, locs };
+      }
+      return { animatingCards, slidingCards, animatingLocs, activeTransitions: active };
+    }),
+
+  /** Remove a card from the slide set (called when the slide finishes or is cancelled). */
+  endDrawSlide: (cardId) =>
+    set((s) => {
+      const slidingCards = new Set(s.slidingCards);
+      slidingCards.delete(cardId);
+      return { slidingCards };
+    }),
+
+  /** Mark a card as shaking (called by playCardShake on start). */
+  addShaking: (cardId) =>
+    set((s) => {
+      const shakingCards = new Set(s.shakingCards);
+      shakingCards.add(cardId);
+      return { shakingCards };
+    }),
+
+  /** Clear a card's shaking flag (called by playCardShake on complete or cancel). */
+  removeShaking: (cardId) =>
+    set((s) => {
+      const shakingCards = new Set(s.shakingCards);
+      shakingCards.delete(cardId);
+      return { shakingCards };
+    }),
 
   /**
    * Reserve the cards/locators a transition is about to animate. Called by the

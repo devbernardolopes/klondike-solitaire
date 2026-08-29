@@ -20,6 +20,8 @@ import { getEvent } from '../core/specialEvents.js';
 import { getUsedRandomSeedsSet, addUsedRandomSeed, clearUsedRandomSeeds } from '../db/usedRandomSeeds.js';
 import { enqueueFlip } from '../render/animation/flipBridge.js';
 import { enqueueParticle } from '../render/animation/particleBridge.js';
+import { cancelDrawSlide } from '../render/animation/useStockDrawSlide.js';
+import { cancelShake } from '../render/animation/playCardShake.js';
 import { cancelWinCascade } from '../render/animation/winCascade.js';
 import { MOTION } from '../render/animation/motion.js';
 import { useUiStore, whenTransitionDone } from './useUiStore.js';
@@ -483,7 +485,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     // block on real in-flight per-card transitions (a stray move being clobbered
     // by the deal reset).
     cancelWinCascade();
-    if (useUiStore.getState().animatingCards.size > 0) return;
+    if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) return;
     useUiStore.getState().setLastNewGameMode(mode);
     useStatsStore.getState().resetStats();
     const seed =
@@ -523,7 +525,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     useUiStore.getState().setNoMovesDialogOpen(false);
     useUiStore.getState().clearHints();
     cancelWinCascade();
-    if (useUiStore.getState().animatingCards.size > 0) return;
+    if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) return;
     useUiStore.getState().setLastNewGameMode('winning');
     useStatsStore.getState().resetStats();
     useUiStore.getState().setCurrentGame('winning');
@@ -549,7 +551,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     useUiStore.getState().setNoMovesDialogOpen(false);
     useUiStore.getState().clearHints();
     cancelWinCascade();
-    if (useUiStore.getState().animatingCards.size > 0) return false;
+    if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) return false;
     useUiStore.getState().setLastNewGameMode('winning');
     useStatsStore.getState().resetStats();
     useUiStore.getState().setCurrentGame('daily', date);
@@ -576,7 +578,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     useUiStore.getState().setNoMovesDialogOpen(false);
     useUiStore.getState().clearHints();
     cancelWinCascade();
-    if (useUiStore.getState().animatingCards.size > 0) return false;
+    if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) return false;
     useUiStore.getState().setLastNewGameMode('winning');
     useStatsStore.getState().resetStats();
     useUiStore.getState().setCurrentGame('event');
@@ -597,7 +599,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     useUiStore.getState().setNoMovesDialogOpen(false);
     useUiStore.getState().clearHints();
     cancelWinCascade();
-    if (useUiStore.getState().animatingCards.size > 0) return;
+    if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) return;
     useUiStore.getState().setLastNewGameMode('winning');
     useStatsStore.getState().resetStats();
     useUiStore.getState().setCurrentGame('winning');
@@ -624,7 +626,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     // Finalize the game we're replacing: a non-win ends the streak (best kept).
     useStatisticsStore.getState().finalizeGame();
     cancelWinCascade();
-    if (useUiStore.getState().animatingCards.size > 0) return;
+    if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) return;
     // Preserve the originating kind (and date for Daily) captured at deal time,
     // rather than inferring it from seed presence — a Random deal now carries a
     // seed too, so seed-presence would wrongly label it a Winning Deal.
@@ -702,12 +704,6 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     if (isWon(state) || useStatsStore.getState().isOver) return false;
     if (get().autoCompleting) return false;
     if (from === to) return false;
-    // Granular blocking: only refuse if a card being moved here is still in
-    // flight, or if the destination (or a pile currently receiving another
-    // card) is busy. The source pile stays interactive so the rest of the
-    // board can be played during an unrelated animation.
-    const { animatingCards, animatingLocs } = useUiStore.getState();
-    if (animatingLocs.has(to) || animatingLocs.has(from)) return false;
 
     const srcPile = readPile(state, from);
 
@@ -735,9 +731,8 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     const moveIds = run.map((c) => c.id).reverse();
     const movingCard = run[0]; // bottom of the run is what lands on the destination
     if (!movingCard || !movingCard.faceUp) return false;
-    // Refuse if any card we'd lift is still animating in flight.
-    if (moveIds.some((id) => animatingCards.has(id))) return false;
 
+    // Rules validity (pure, state-only — independent of any in-flight animation).
     const destPile = readPile(state, to);
     // Foundations accept only a single card; tableau accepts a run.
     const valid =
@@ -745,6 +740,25 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
         ? moveIds.length === 1 && canMoveToFoundation(movingCard, destPile)
         : canMoveToTableau(movingCard, destPile);
     if (!valid) return false;
+
+    // Granular blocking: only refuse if the destination (or a pile currently
+    // receiving another card) is busy, or if any moved card is still in flight
+    // on an UNRELATED animation. The source pile stays interactive so the rest
+    // of the board can be played during an unrelated animation.
+    const { animatingCards, animatingLocs, slidingCards, shakingCards } = useUiStore.getState();
+    if (animatingLocs.has(to) || animatingLocs.has(from)) return false;
+    if (moveIds.some((id) => animatingCards.has(id))) return false;
+
+    // The move is genuinely applicable. If any moved card is mid-draw-slide or
+    // mid-shake, cancel that animation now (releasing its lock) so this move's
+    // own transition can take over. This runs ONLY after the validity + non-busy
+    // checks above passed, so a tap on a sliding/shaking card with no real move
+    // does NOTHING — the slide/shake keeps running rather than snapping into
+    // place or re-triggering.
+    moveIds.forEach((id) => {
+      if (slidingCards.has(id)) cancelDrawSlide(id);
+      if (shakingCards.has(id)) cancelShake(id);
+    });
 
     const next = applyMove(state, { type: 'moveCards', from, to, cardIds: moveIds });
     // Burst particles from the foundation the card just reached (manual drag and
@@ -783,7 +797,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     if (state.moveHistory.length === 0 || useStatsStore.getState().isOver) return;
     // Undo doesn't animate and would corrupt an in-flight tween, so block it
     // whenever any card is still moving.
-    if (useUiStore.getState().animatingCards.size > 0) return;
+    if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) return;
     // Capture the rects of the cards that undo will relocate BEFORE the state
     // change, so the render-layer hook can tween them back as a `move` (using
     // the independent MOTION.undo preset) instead of snapping. Derive the moved
@@ -884,7 +898,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     // (no interaction during animation). The automatic trigger from an
     // obvious-win state passes force:true because that state is reached BY an
     // animating move, and the running sequence keeps the lock held itself.
-    if (!force && useUiStore.getState().animatingCards.size > 0) return false;
+    if (!force && useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) return false;
 
     const state = get().state;
 

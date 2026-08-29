@@ -138,7 +138,7 @@ export default function Board() {
   // like new-game/undo/auto-complete). `stockWasteBusy` only blocks
   // draw/recycle. Card/pile-level interaction is gated per-card / per-pile by
   // the components themselves, so non-involved cards stay playable mid-animation.
-  const anyAnimating = useUiStore((s) => s.animatingCards.size > 0);
+  const anyAnimating = useUiStore((s) => s.animatingCards.size + s.slidingCards.size > 0);
   const stockWasteBusy = useUiStore(
     (s) => s.animatingLocs.has('stock') || s.animatingLocs.has('waste'),
   );

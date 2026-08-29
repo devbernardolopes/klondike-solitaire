@@ -138,7 +138,16 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
   // Block only this card if it is the one physically in flight. Every other
   // card stays interactive during an unrelated animation.
   const isAnimating = useUiStore((s) => s.animatingCards.has(card.id));
-  const locked = won || isOver || isAnimating || autoCompleting;
+  // Mid-draw-slide (flip done, still gliding to waste) or mid-shake. These are
+  // NOT fully locked: drag is blocked, but a tap may auto-move (cancel+move) if
+  // a valid target exists. See handlePointerUp / handleKeyDown.
+  const isSliding = useUiStore((s) => s.slidingCards.has(card.id));
+  const isShaking = useUiStore((s) => s.shakingCards.has(card.id));
+  // Global / flip locks that fully block the card (no tap, no drag).
+  const hardBlock = won || isOver || autoCompleting || isAnimating;
+  // Drag is blocked during flip, slide, and shake.
+  const dragDisabled = !card.faceUp || hardBlock || isSliding || isShaking;
+  const locked = hardBlock;
   const selectedCardId = useUiStore((s) => s.selectedCardId);
   const highlightCard = useSettingsStore((s) => s.highlightCard);
   const selectCard = useUiStore((s) => s.selectCard);
@@ -147,7 +156,7 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
   const { attributes, listeners, setNodeRef } = useDraggable({
     id: card.id,
     data: { from, cardId: card.id },
-    disabled: !card.faceUp || locked,
+    disabled: dragDisabled,
   });
 
   const flipRef = useRef(null);
@@ -169,7 +178,7 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
     // valid move). Taps on empty board space never reach a card's handler, so
     // they correctly leave the banner up.
     useUiStore.getState().dismissNoHintsBanner();
-    if (!card.faceUp || locked || !onAutoMove || !downPos.current) return;
+    if (!card.faceUp || hardBlock || !onAutoMove || !downPos.current) return;
     // Never auto-move on the same gesture as a drag: doing so mid-drag relocates
     // and hides the dragged card (see useDragEngine/Board hiddenIds), which can
     // leave it stuck invisible. The drag lifecycle owns the move in that case.
@@ -177,6 +186,18 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
     const dx = e.clientX - downPos.current.x;
     const dy = e.clientY - downPos.current.y;
     if (Math.hypot(dx, dy) < CLICK_DISTANCE) {
+      // Flip phase: fully locked — ignore the tap entirely.
+      if (isAnimating) {
+        downPos.current = null;
+        return;
+      }
+      // Slide / shake: a tap MAY auto-move (if a valid target now exists) but
+      // must NEVER drag and must NEVER shake on a miss — invalid taps do nothing.
+      if (isSliding || isShaking) {
+        onAutoMove(from, card.id);
+        downPos.current = null;
+        return;
+      }
       const ok = onAutoMove(from, card.id);
       if (!ok) playCardShake(e.currentTarget);
     }
@@ -190,12 +211,20 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
     if (card.faceUp && !locked) selectCard(card.id);
   };
   const handleKeyDown = (e) => {
-    if (!card.faceUp || locked || !onAutoMove) return;
+    if (!card.faceUp || hardBlock || !onAutoMove) return;
     // A keyboard activation of a card is an interaction; dismiss the banner.
     useUiStore.getState().dismissNoHintsBanner();
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       clearSelection();
+      // Flip phase: fully locked.
+      if (isAnimating) return;
+      // Slide / shake: keyboard acts like a tap — may auto-move, never shakes.
+      if (isSliding || isShaking) {
+        const ok = onAutoMove(from, card.id);
+        if (ok) setAnnounce(`Auto-moved ${rankLabel(card.rank)} of ${card.suit}`);
+        return;
+      }
       const ok = onAutoMove(from, card.id);
       if (ok) {
         setAnnounce(`Auto-moved ${rankLabel(card.rank)} of ${card.suit}`);
@@ -222,7 +251,7 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
       data-flip-id={card.id}
       style={{
         visibility: hidden ? 'hidden' : 'visible',
-        cursor: locked ? 'default' : 'grab',
+        cursor: dragDisabled ? 'default' : 'grab',
         touchAction: 'none',
         WebkitUserSelect: 'none',
         WebkitTouchCallout: 'none',

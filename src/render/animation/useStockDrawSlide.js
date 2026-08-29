@@ -5,12 +5,31 @@ import { dequeueFlip } from './flipBridge.js';
 import { useGameStore } from '../../hooks/useGameStore.js';
 import { useUiStore } from '../../hooks/useUiStore.js';
 
-// Module-level registry of the in-flight draw tween. Kept out of the effect's
-// per-run cleanup so a concurrent, unrelated move (which re-runs this effect)
-// can't kill the still-sliding draw. The store guards draws while stock/waste
-// are busy, so at most one draw animates at a time anyway; the registry exists
-// purely to survive effect re-runs. Killed only on unmount.
-const activeDrawTweens = [];
+// Module-level registry of the in-flight draw tween, keyed by the drawn card's
+// id. Kept out of the effect's per-run cleanup so a concurrent, unrelated move
+// (which re-runs this effect) can't kill the still-sliding draw. The store
+// guards draws while stock/waste are busy, so at most one draw animates at a
+// time anyway; the registry exists purely to survive effect re-runs and to let
+// a mid-slide tap cancel THIS card's slide (see cancelDrawSlide). Killed only
+// on unmount or explicit cancel.
+const drawTweens = new Map(); // cardId -> { tl, tid, cardNode, inner, wrap, prevWrapZ }
+
+/**
+ * Cancel a card's in-flight stock→waste slide (e.g. because the player tapped
+ * it to auto-move it elsewhere). Kills the GSAP timeline WITHOUT firing its
+ * onComplete (so the leftover inline transform stays on the node, letting
+ * useCardMoveSlide snapshot the mid-slide position and animate from there),
+ * then releases the slide lock so moveCard's subsequent transition can run.
+ * @param {string} cardId
+ */
+export function cancelDrawSlide(cardId) {
+  const rec = drawTweens.get(cardId);
+  if (!rec) return;
+  rec.tl.kill();
+  drawTweens.delete(cardId);
+  useUiStore.getState().endDrawSlide(cardId);
+  useUiStore.getState().endTransition(rec.tid);
+}
 
 /**
  * Stock → waste draw animation: the revealed card flips face-up in place at the
@@ -72,6 +91,10 @@ export function useStockDrawSlide() {
     const prevWrapZ = wrap ? wrap.style.zIndex : '';
     if (wrap) wrap.style.zIndex = '10000';
 
+    // The drawn card id — used to promote the lock from the flip phase to the
+    // slide phase (and to let a mid-slide tap cancel THIS card's slide).
+    const drawnId = cardNode.getAttribute('data-card');
+
     const sRect = stockPile.getBoundingClientRect();
     const wRect = wastePile.getBoundingClientRect();
     const dx = sRect.left - wRect.left;
@@ -93,8 +116,8 @@ export function useStockDrawSlide() {
         gsap.set(cardNode, { x: 0, y: 0, clearProps: 'zIndex' });
         gsap.set(inner, { rotateY: 0 });
         if (wrap) wrap.style.zIndex = prevWrapZ;
-        const i = activeDrawTweens.indexOf(tl);
-        if (i >= 0) activeDrawTweens.splice(i, 1);
+        drawTweens.delete(drawnId);
+        useUiStore.getState().endDrawSlide(drawnId);
         useUiStore.getState().endTransition(tid);
       },
     });
@@ -104,21 +127,29 @@ export function useStockDrawSlide() {
       duration: flip.duration,
       ease: flip.ease,
     });
-    // Phase 2: slide horizontally to the waste pile position.
+    // Phase 2: slide horizontally to the waste pile position. When this slide
+    // begins, promote the card from the fully-locked flip phase to the slide
+    // phase (flip stays locked; slide blocks drag but allows a tap auto-move).
     tl.to(
       cardNode,
-      { x: 0, y: 0, duration: slide.duration, ease: slide.ease },
+      {
+        x: 0,
+        y: 0,
+        duration: slide.duration,
+        ease: slide.ease,
+        onStart: () => useUiStore.getState().promoteDrawToSlide(drawnId, tid),
+      },
       '>'
     );
-    activeDrawTweens.push(tl);
+    drawTweens.set(drawnId, { tl, tid, cardNode, inner, wrap, prevWrapZ });
     // No per-rerun cleanup that kills `tl`: see the module-level registry note.
   }, [state, lastActionMeta]);
 
   // Kill the draw tween only when the board unmounts.
   useEffect(() => {
     return () => {
-      activeDrawTweens.forEach((t) => t.kill());
-      activeDrawTweens.length = 0;
+      drawTweens.forEach((t) => t.tl.kill());
+      drawTweens.clear();
     };
   }, []);
 }
