@@ -25,7 +25,7 @@ export async function pullRemoteProfile() {
     .select(
       'games_played, games_won, current_streak, best_streak, ' +
         'highest_score, lowest_time_ms, lowest_moves, lowest_undos, coins, ' +
-        'display_name, display_name_updated_at',
+        'coins_earned_total, coins_spent_total, display_name, display_name_updated_at',
     )
     .single();
   if (profileError) throw profileError;
@@ -52,6 +52,8 @@ export async function pullRemoteProfile() {
 
   useAuthStore.setState({
     coins: profile.coins ?? 0,
+    coinsEarnedTotal: profile.coins_earned_total ?? 0,
+    coinsSpentTotal: profile.coins_spent_total ?? 0,
     displayName: profile.display_name,
     displayNameUpdatedAt: profile.display_name_updated_at,
     ownedItemIds: ownedRows.map((r) => r.item_id),

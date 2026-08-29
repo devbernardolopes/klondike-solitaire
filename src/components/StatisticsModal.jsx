@@ -8,12 +8,14 @@
 // a confirmation dialog so an accidental tap can't wipe history.
 
 import { useEffect, useRef, useState } from 'react';
+import { Coins as CoinsIcon } from 'lucide-react';
 import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
 import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useGameStore } from '../hooks/useGameStore.js';
+import { useAuthStore } from '../hooks/useAuthStore.js';
 import { useModalBackdrop } from './modalBackdrop.js';
 import ConfirmModal from './ConfirmModal.jsx';
 import { formatTime } from '../utils/formatTime.js';
@@ -26,6 +28,8 @@ import { formatTime } from '../utils/formatTime.js';
 export default function StatisticsModal({ open, onClose }) {
   const stats = useStatisticsStore((s) => s.stats);
   const reset = useStatisticsStore((s) => s.reset);
+  const coinsEarnedTotal = useAuthStore((s) => s.coinsEarnedTotal);
+  const coinsSpentTotal = useAuthStore((s) => s.coinsSpentTotal);
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
   const dialogRef = useRef(null);
   const backdrop = useModalBackdrop(onClose);
@@ -161,6 +165,21 @@ export default function StatisticsModal({ open, onClose }) {
             <div style={{ ...row, borderBottom: 'none' }}>
               <span style={labelStyle}>Best Winning Streak</span>
               <span style={valueStyle}>{stats.bestStreak}</span>
+            </div>
+
+            <div style={{ ...row, borderTop: '1px solid var(--ui-control-border)' }}>
+              <span style={labelStyle}>Coins Earned</span>
+              <span style={valueStyle}>
+                <CoinsIcon size={13} aria-hidden="true" style={{ marginRight: 4, verticalAlign: -2 }} />
+                {coinsEarnedTotal}
+              </span>
+            </div>
+            <div style={{ ...row, borderBottom: 'none' }}>
+              <span style={labelStyle}>Coins Spent</span>
+              <span style={valueStyle}>
+                <CoinsIcon size={13} aria-hidden="true" style={{ marginRight: 4, verticalAlign: -2 }} />
+                {coinsSpentTotal}
+              </span>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 18, gap: 10 }}>

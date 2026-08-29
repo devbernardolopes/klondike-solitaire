@@ -48,13 +48,15 @@ const hydrateProfile = async (user, set) => {
   try {
     const { data } = await supabase
       .from('profiles')
-      .select('display_name, coins, display_name_updated_at')
+      .select('display_name, coins, coins_earned_total, coins_spent_total, display_name_updated_at')
       .eq('id', user.id)
       .single();
     if (data) {
       set({
         displayName: data.display_name,
         coins: data.coins ?? 0,
+        coinsEarnedTotal: data.coins_earned_total ?? 0,
+        coinsSpentTotal: data.coins_spent_total ?? 0,
         displayNameUpdatedAt: data.display_name_updated_at,
       });
     }
@@ -70,6 +72,8 @@ export const useAuthStore = create((set, get) => ({
   displayName: null,
   displayNameUpdatedAt: null,
   coins: 0,
+  coinsEarnedTotal: 0,
+  coinsSpentTotal: 0,
   ownedItemIds: [],
   linkConflict: null,
   authError: null,
@@ -163,10 +167,16 @@ export const useAuthStore = create((set, get) => ({
     // the other account is a real sign-in, not a local state change.
   },
 
-  /** Optimistic local bump for instant UI feedback after a win — the real,
-   *  tamper-proof balance still comes from Supabase and is what wins on the
-   *  next hydrateProfile() call (every boot). */
-  addCoinsOptimistic: (amount) => set((s) => ({ coins: s.coins + amount })),
+  // Optimistic local bump for instant UI feedback after a win — the real,
+  // tamper-proof balance still comes from Supabase and is what wins on the
+  // next hydrateProfile() call (every boot). A coin award always credits both
+  // the balance and the lifetime-earned total together (mirrors
+  // submit_game_result crediting coins and coins_earned_total in the same
+  // update). Purchases are the only place coins decrease, and coins_spent_total
+  // is bumped separately in purchaseItem() below since only that path knows the
+  // price paid.
+  addCoinsOptimistic: (amount) =>
+    set((s) => ({ coins: s.coins + amount, coinsEarnedTotal: s.coinsEarnedTotal + amount })),
 
   /** Live availability check while typing — debounce the caller, not this. */
   checkDisplayNameAvailable: async (name) => {
@@ -196,12 +206,15 @@ export const useAuthStore = create((set, get) => ({
    * On success, coins/ownedItemIds are set from the RPC's own return
    * value — never computed client-side.
    * @param {string} itemId
+   * @param {number} price  item's price, for the optimistic coinsSpentTotal
+   *   bump — coins itself is still taken from the RPC's return value.
    */
-  purchaseItem: async (itemId) => {
+  purchaseItem: async (itemId, price) => {
     const { data, error } = await supabase.rpc('purchase_item', { p_item_id: itemId });
     if (error) throw new Error(error.message);
     set((s) => ({
       coins: data.coins,
+      coinsSpentTotal: s.coinsSpentTotal + price,
       ownedItemIds: s.ownedItemIds.includes(itemId)
         ? s.ownedItemIds
         : [...s.ownedItemIds, itemId],

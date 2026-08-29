@@ -55,7 +55,7 @@ export default function StoreModal({ open, onClose }) {
     setError(null);
     setBusyId(item.id);
     try {
-      await purchaseItem(item.id);
+      await purchaseItem(item.id, item.price);
       setInfoItem(item);
     } catch (e) {
       setError(e.message);

@@ -1,10 +1,28 @@
--- submit_game_result — canonical body (mirrors klondike_supabase_migration_009.sql)
--- Return type is jsonb: { "newly_unlocked_achievement_ids": text[] }.
--- coins_earned_total is now credited alongside coins on every award, and
--- both lifetime totals (total_coins_earned / total_coins_spent) are exposed
--- in the achievement evaluation context. Every other side effect is
--- unchanged from the previous version.
+-- ============================================================
+-- Klondike Solitaire — Supabase migration 009 (lifetime coin stats)
+-- Paste into: Supabase Dashboard > SQL Editor > New query > Run
+-- ============================================================
 
+-- ------------------------------------------------------------
+-- 1. coins_earned_total — lifetime earnings, mirrors coins_spent_total
+--    (added in migration 007). Together with `coins` (current balance)
+--    these three fields let achievements/statistics reference "how
+--    much have they ever earned/spent" independent of what they've
+--    since spent or currently hold.
+-- ------------------------------------------------------------
+alter table public.profiles
+  add column if not exists coins_earned_total integer not null default 0;
+
+alter table public.profiles
+  add constraint coins_earned_total_nonneg check (coins_earned_total >= 0);
+
+-- ------------------------------------------------------------
+-- 2. submit_game_result — credit coins_earned_total alongside coins on
+--    every award, and expose both lifetime totals in the achievement
+--    evaluation context (as total_coins_earned / total_coins_spent) so
+--    new achievements can key off them. Every other side effect is
+--    byte-for-byte unchanged from the current version.
+-- ------------------------------------------------------------
 create or replace function public.submit_game_result(
   p_won boolean,
   p_moves integer,
