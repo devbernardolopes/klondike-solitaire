@@ -19,11 +19,39 @@ const DEFAULTS = {
   particles: true,
 };
 
+// Synchronous mirrors of the settings that affect first paint (theme + board
+// layout). IndexedDB/Dexie is async and cannot be read before React paints, so
+// we also persist these to localStorage on every change and seed the store's
+// initial state from there. This prevents the classic flash-of-default-theme
+// (or wrong handedness) on reload/refresh: the store already holds the saved
+// value at first render, before the async Dexie init() resolves.
+const LS_KEYS = {
+  theme: 'klondike:theme',
+  handedness: 'klondike:handedness',
+};
+
+function readLS(key, fallback) {
+  try {
+    const v = localStorage.getItem(key);
+    return v == null ? fallback : v;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeLS(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* storage may be unavailable (private mode); Dexie remains the source of truth */
+  }
+}
+
 export const useSettingsStore = create((set, get) => ({
-  theme: DEFAULTS.theme,
+  theme: readLS(LS_KEYS.theme, DEFAULTS.theme),
   deck: DEFAULTS.deck,
   cardBack: DEFAULTS.cardBack,
-  handedness: DEFAULTS.handedness,
+  handedness: readLS(LS_KEYS.handedness, DEFAULTS.handedness),
   highlightCard: DEFAULTS.highlightCard,
   particles: DEFAULTS.particles,
   seenThemeItemIds: [],
@@ -53,6 +81,7 @@ export const useSettingsStore = create((set, get) => ({
   setTheme: (theme) => {
     set({ theme });
     setSetting('theme', theme);
+    writeLS(LS_KEYS.theme, theme);
   },
 
   /**
@@ -78,6 +107,7 @@ export const useSettingsStore = create((set, get) => ({
   setHandedness: (handedness) => {
     set({ handedness });
     setSetting('handedness', handedness);
+    writeLS(LS_KEYS.handedness, handedness);
   },
 
   /**
