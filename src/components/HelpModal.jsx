@@ -65,7 +65,6 @@ export default function HelpModal({ open, onClose }) {
   const shortcuts = [
     { keys: 'N', action: 'New game' },
     { keys: 'D', action: 'Draw from stock (recycles when stock is empty)' },
-    { keys: 'R', action: 'Recycle waste back to stock' },
     { keys: 'U', action: 'Undo' },
     { keys: 'A', action: 'Auto-complete to foundations' },
     { keys: 'H', action: 'Show hints' },

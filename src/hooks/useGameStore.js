@@ -674,6 +674,10 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     const { state } = get();
     if (isWon(state) || useStatsStore.getState().isOver) return;
     if (get().autoCompleting) return;
+    // Klondike rule: the waste may only be recycled back into the stock when the
+    // stock is empty. If the stock is non-empty, a draw is still available, so a
+    // recycle is illegal — ignore it rather than merging waste into stock.
+    if (state.stock.length > 0) return;
     // Recycle slides every waste card back into the stock, so block only while
     // the stock/waste pair is already animating.
     const { animatingLocs } = useUiStore.getState();

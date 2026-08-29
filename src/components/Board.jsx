@@ -305,13 +305,7 @@ export default function Board() {
           else if (useGameStore.getState().state.waste.length > 0) recycleStock();
           setAnnounce('Drew from stock');
           break;
-        case 'r':
-          clearSelection();
-          if (stockWasteBusy) return;
-          recycleStock();
-          setAnnounce('Recycled waste to stock');
-          break;
-         case 'u':
+          case 'u':
            clearSelection();
            undo();
            setAnnounce('Undo');
