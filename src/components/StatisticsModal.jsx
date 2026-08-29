@@ -48,6 +48,11 @@ export default function StatisticsModal({ open, onClose }) {
       ? Math.round((stats.totalGamesWon / stats.totalGamesPlayed) * 100)
       : 0;
 
+  const avgTimeMs =
+    stats.totalGamesWon > 0 ? stats.totalTimeMsWon / stats.totalGamesWon : null;
+  const avgMoves =
+    stats.totalGamesWon > 0 ? stats.totalMovesWon / stats.totalGamesWon : null;
+
   const btn = {
     padding: '8px 14px',
     borderRadius: 6,
@@ -131,9 +136,17 @@ export default function StatisticsModal({ open, onClose }) {
               <span style={labelStyle}>Lowest time (won)</span>
               <span style={valueStyle}>{stats.lowestTimeMs == null ? '—' : formatTime(stats.lowestTimeMs)}</span>
             </div>
-            <div style={{ ...row, borderBottom: 'none' }}>
+            <div style={row}>
               <span style={labelStyle}>Lowest moves (won)</span>
               <span style={valueStyle}>{stats.lowestMoves == null ? '—' : stats.lowestMoves}</span>
+            </div>
+            <div style={row}>
+              <span style={labelStyle}>Average time (won)</span>
+              <span style={valueStyle}>{avgTimeMs == null ? '—' : formatTime(avgTimeMs)}</span>
+            </div>
+            <div style={{ ...row, borderBottom: 'none' }}>
+              <span style={labelStyle}>Average moves (won)</span>
+              <span style={valueStyle}>{avgMoves == null ? '—' : Math.round(avgMoves)}</span>
             </div>
 
             <div style={{ ...row, borderTop: '1px solid var(--ui-control-border)' }}>
@@ -198,7 +211,7 @@ export default function StatisticsModal({ open, onClose }) {
       <ConfirmModal
         open={confirmResetOpen}
         title="Reset statistics?"
-        message="This will permanently remove all saved score, time, moves, undos, winning streaks, and games-played data. This cannot be undone."
+        message="This clears your games played, wins, personal bests, and winning streaks. Your coins, achievements, and Daily Challenge history are not affected. This cannot be undone."
         confirmText="Reset"
         cancelText="Cancel"
         onConfirm={() => {

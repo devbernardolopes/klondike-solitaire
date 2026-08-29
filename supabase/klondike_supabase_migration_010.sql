@@ -1,13 +1,86 @@
--- submit_game_result — canonical body (mirrors klondike_supabase_migration_010.sql)
--- Return type is jsonb: { "newly_unlocked_achievement_ids": text[] }.
--- total_time_ms_won and total_moves_won are now credited alongside the
--- existing win aggregates (lowest_time_ms, lowest_moves, etc.) so the client
--- can derive "Average Time (Won)" / "Average Moves (Won)" as
--- total_time_ms_won / games_won and total_moves_won / games_won. Both are
--- zeroed by the new reset_statistics() RPC along with the rest of the
--- Statistics-modal fields. Every other side effect is unchanged from the
--- previous version.
+-- ============================================================
+-- Klondike Solitaire — Supabase migration 010
+-- Paste into: Supabase Dashboard > SQL Editor > New query > Run
+--
+-- Two independent additions:
+--
+-- 1. Fixes the "Reset statistics" bug: profiles is select-only for
+--    clients (mutated only via SECURITY DEFINER RPCs, per the schema's
+--    own convention), so the Statistics modal's local-only Dexie reset
+--    was always going to be overwritten by the next pullRemoteProfile()
+--    pull (boot, tab refocus, Daily Challenge / New Game modal open) or
+--    by the next submit_game_result win, since neither ever touched the
+--    server row. This adds a reset_statistics() RPC that zeroes exactly
+--    the fields the Statistics modal displays, and nothing else:
+--      - games_played, games_won, current_streak, best_streak
+--      - highest_score, lowest_time_ms, lowest_moves, lowest_undos
+--      - total_time_ms_won, total_moves_won (see #2 below)
+--    It deliberately does NOT touch: coins / coins_earned_total /
+--    coins_spent_total / owned_items (currency + purchases survive a
+--    stats reset by design, same as the Phase 4 decision), achievements
+--    (already permanent once unlocked — check_achievements only ever
+--    inserts an achievement_id once per user, so this needs no change),
+--    played_seeds (dedup bookkeeping, not a displayed stat), or
+--    daily_results (Daily Challenge history, conceptually separate from
+--    lifetime Statistics).
+--
+-- 2. Adds "Average Time (Won)" / "Average Moves (Won)" to the
+--    Statistics modal. These are computed client-side as
+--    total_time_ms_won / games_won and total_moves_won / games_won, so
+--    two new lifetime-sum columns are added and folded into on every
+--    win alongside the existing aggregates. Being part of the
+--    resettable stat set, they're zeroed by reset_statistics() too.
+-- ============================================================
 
+-- ------------------------------------------------------------
+-- 1. New accumulator columns on profiles.
+-- ------------------------------------------------------------
+alter table public.profiles
+  add column if not exists total_time_ms_won bigint not null default 0,
+  add column if not exists total_moves_won bigint not null default 0;
+
+-- ------------------------------------------------------------
+-- 2. reset_statistics — zeroes only the Statistics-modal fields for the
+--    calling user. Everything else on profiles (coins, coins totals,
+--    display name, owned items) is untouched, as are achievements_unlocked,
+--    played_seeds, and daily_results.
+-- ------------------------------------------------------------
+create or replace function public.reset_statistics()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id uuid := auth.uid();
+begin
+  if v_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  update public.profiles
+  set games_played = 0,
+      games_won = 0,
+      current_streak = 0,
+      best_streak = 0,
+      highest_score = 0,
+      lowest_time_ms = null,
+      lowest_moves = null,
+      lowest_undos = null,
+      total_time_ms_won = 0,
+      total_moves_won = 0,
+      updated_at = now()
+  where id = v_user_id;
+end;
+$$;
+
+grant execute on function public.reset_statistics() to authenticated;
+
+-- ------------------------------------------------------------
+-- 3. submit_game_result — unchanged except for folding p_duration_ms /
+--    p_moves into the two new lifetime sums on a win. Full body restated
+--    (matches the canonical mirror in submit_game_result.sql).
+-- ------------------------------------------------------------
 create or replace function public.submit_game_result(
   p_won boolean,
   p_moves integer,

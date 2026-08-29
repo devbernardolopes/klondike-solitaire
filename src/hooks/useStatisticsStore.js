@@ -20,6 +20,8 @@ const EMPTY = {
   lowestUndos: null,
   currentStreak: 0,
   bestStreak: 0,
+  totalTimeMsWon: 0,
+  totalMovesWon: 0,
 };
 
 export const useStatisticsStore = create((set, get) => ({
@@ -102,9 +104,11 @@ export const useStatisticsStore = create((set, get) => ({
    */
   reset: async (countCurrentGame = false) => {
     const stats = await resetStats();
+    enqueue('reset_statistics', {});
     if (countCurrentGame) {
       const withPlayed = await addGamePlayed();
       set({ stats: withPlayed });
+      enqueue('record_game_started', {});
     } else {
       set({ stats });
     }

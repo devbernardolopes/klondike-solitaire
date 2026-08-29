@@ -24,7 +24,8 @@ export async function pullRemoteProfile() {
     .from('profiles')
     .select(
       'games_played, games_won, current_streak, best_streak, ' +
-        'highest_score, lowest_time_ms, lowest_moves, lowest_undos, coins, ' +
+        'highest_score, lowest_time_ms, lowest_moves, lowest_undos, ' +
+        'total_time_ms_won, total_moves_won, coins, ' +
         'coins_earned_total, coins_spent_total, display_name, display_name_updated_at',
     )
     .single();
@@ -40,6 +41,8 @@ export async function pullRemoteProfile() {
     lowestUndos: profile.lowest_undos,
     currentStreak: profile.current_streak,
     bestStreak: profile.best_streak,
+    totalTimeMsWon: profile.total_time_ms_won,
+    totalMovesWon: profile.total_moves_won,
   });
 
   // Coins ride along on every pull trigger (no separate coin path needed).

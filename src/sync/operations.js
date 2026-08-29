@@ -27,6 +27,11 @@ export const operations = {
     if (error) throw error;
   },
 
+  reset_statistics: async () => {
+    const { error } = await supabase.rpc('reset_statistics');
+    if (error) throw error;
+  },
+
   submit_game_result: async (payload) => {
     const { data, error } = await supabase.rpc('submit_game_result', payload);
     // Throw on failure exactly as before — ordering/retry behavior in the sync

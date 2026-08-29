@@ -17,6 +17,8 @@ const EMPTY = {
   lowestUndos: null,
   currentStreak: 0,
   bestStreak: 0,
+  totalTimeMsWon: 0,
+  totalMovesWon: 0,
 };
 
 /**
@@ -67,6 +69,8 @@ export async function addWin({ score, timeMs, moves, undos }) {
     // Best is raised immediately whenever a new record streak is reached, so the
     // Statistics modal can highlight the current streak the moment it equals/exceeds best.
     bestStreak: Math.max(cur.bestStreak || 0, streak),
+    totalTimeMsWon: (cur.totalTimeMsWon || 0) + timeMs,
+    totalMovesWon: (cur.totalMovesWon || 0) + moves,
     totalGamesPlayed: cur.totalGamesPlayed,
   };
   await saveStats(next);
