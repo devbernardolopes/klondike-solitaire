@@ -26,6 +26,7 @@ export const useSettingsStore = create((set, get) => ({
   handedness: DEFAULTS.handedness,
   highlightCard: DEFAULTS.highlightCard,
   particles: DEFAULTS.particles,
+  seenThemeItemIds: [],
   loaded: false,
 
   /**
@@ -33,16 +34,17 @@ export const useSettingsStore = create((set, get) => ({
    * keys fall back to DEFAULTS. Activates the loaded (or default) deck.
    */
   init: async () => {
-    const [theme, deck, cardBack, handedness, highlightCard, particles] = await Promise.all([
+    const [theme, deck, cardBack, handedness, highlightCard, particles, seenThemeItemIds] = await Promise.all([
       getSetting('theme', DEFAULTS.theme),
       getSetting('deck', DEFAULTS.deck),
       getSetting('cardBack', DEFAULTS.cardBack),
       getSetting('handedness', DEFAULTS.handedness),
       getSetting('highlightCard', DEFAULTS.highlightCard),
       getSetting('particles', DEFAULTS.particles),
+      getSetting('seenThemeItemIds', []),
     ]);
     setActiveDeck(deck);
-    set({ theme, deck, cardBack, handedness, highlightCard, particles, loaded: true });
+    set({ theme, deck, cardBack, handedness, highlightCard, particles, seenThemeItemIds, loaded: true });
   },
 
   /**
@@ -92,5 +94,19 @@ export const useSettingsStore = create((set, get) => ({
   setParticles: (particles) => {
     set({ particles });
     setSetting('particles', particles);
+  },
+
+  /**
+   * Mark theme items as having been seen in the Theme modal so their "New"
+   * badge stops showing. Merges with the existing set and persists to Dexie.
+   * @param {string[]} ids
+   */
+  markThemeItemsSeen: (ids) => {
+    if (!ids || ids.length === 0) return;
+    set((s) => {
+      const next = Array.from(new Set([...s.seenThemeItemIds, ...ids]));
+      setSetting('seenThemeItemIds', next);
+      return { seenThemeItemIds: next };
+    });
   },
 }));

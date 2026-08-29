@@ -32,6 +32,10 @@ import { Z } from '../utils/modalStack.js';
  *                                          pick a button explicitly (default true)
  * @param {() => void} [props.onCloseIcon]  handler for the top-right "X" close button. Defaults
  *                                          to `onCancel` so the X mirrors a dismiss/close.
+ * @param {number} [props.zIndex]           stacking z-index; raise above a parent CHILD modal
+ *                                          (e.g. 3200 when launched from StoreModal at 3100).
+ * @param {number} [props.z]                stacking level for Escape targeting (see modalStack);
+ *                                          must match `zIndex` so the topmost modal closes first.
  */
 export default function ConfirmModal({
   open,
@@ -48,6 +52,8 @@ export default function ConfirmModal({
   onQuaternary,
   dismissable = true,
   onCloseIcon,
+  zIndex = Z.BASE,
+  z = Z.BASE,
 }) {
   const confirmRef = useRef(null);
   const backdrop = useModalBackdrop(onCancel);
@@ -55,7 +61,7 @@ export default function ConfirmModal({
   onCloseIconRef.current = onCloseIcon ?? onCancel;
   const modalId = useId();
 
-  useModalEscape({ open, onClose: onCancel, id: modalId, z: Z.BASE, enabled: dismissable });
+  useModalEscape({ open, onClose: onCancel, id: modalId, z, enabled: dismissable });
 
   useEffect(() => {
     if (!open || !dismissable) return;
@@ -100,7 +106,7 @@ export default function ConfirmModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 3000,
+        zIndex: zIndex,
         padding: 16,
       }}
     >

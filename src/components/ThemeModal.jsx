@@ -17,6 +17,7 @@ import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { getDeck, listDecks } from '../render/deck/deckRegistry.js';
 import { getCardBack } from '../render/deck/cardBackRegistry.js';
+import { fetchStoreCatalog } from '../data/storeCatalog.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 
 const TABS = [
@@ -27,16 +28,26 @@ const TABS = [
 
 const BACKGROUNDS = ['classic', 'dark'];
 
-// Maps a store_items.id (kind='card_back') to a cardBackRegistry key. With only
-// one item today this is a simple literal; if the catalog grows, this is the
-// single place to keep item-id → registry-key in sync (no extra Supabase fetch
-// needed just for this picker).
-const CARD_BACK_ITEMS = { 'card-back-red': 'red' };
-
 // A fixed representative card (Ace of Spades) used so every deck face tile
 // clearly shows that deck's color/background differences.
 const PREVIEW_SUIT = 'spades';
 const PREVIEW_RANK = 1;
+
+// Badge shown on a freshly-acquired theme item tile the first time the Theme
+// modal is opened after purchase (cleared via useSettingsStore.seenThemeItemIds).
+const NEW_BADGE = {
+  position: 'absolute',
+  top: 4,
+  left: 4,
+  fontSize: 11,
+  fontWeight: 700,
+  lineHeight: 1,
+  color: '#fff',
+  background: 'var(--card-text-red, #d12b3b)',
+  borderRadius: 4,
+  padding: '2px 5px',
+  pointerEvents: 'none',
+};
 
 /**
  * @param {object} props
@@ -50,16 +61,31 @@ export default function ThemeModal({ open, onClose }) {
   const deck = useSettingsStore((s) => s.deck);
   const cardBack = useSettingsStore((s) => s.cardBack);
   const setCardBack = useSettingsStore((s) => s.setCardBack);
+  const seenThemeItemIds = useSettingsStore((s) => s.seenThemeItemIds);
+  const markThemeItemsSeen = useSettingsStore((s) => s.markThemeItemsSeen);
   const ownedItemIds = useAuthStore((s) => s.ownedItemIds);
   const setTheme = useSettingsStore((s) => s.setTheme);
   const setDeck = useSettingsStore((s) => s.setDeck);
   const [activeTab, setActiveTab] = useState('background');
+  const [catalogItems, setCatalogItems] = useState([]);
+  const [newIds, setNewIds] = useState([]);
 
   useModalEscape({ open, onClose, id: 'theme', z: Z.CHILD });
 
   useEffect(() => {
     if (!open) return;
     dialogRef.current?.focus();
+    fetchStoreCatalog()
+      .then((data) => {
+        setCatalogItems(data);
+        // On first open after acquiring, flag owned theme items as "New" so the
+        // user notices them; mark them seen immediately so later opens don't.
+        const themeIds = data.filter((it) => it.kind === 'card_back').map((it) => it.id);
+        const fresh = ownedItemIds.filter((id) => themeIds.includes(id) && !seenThemeItemIds.includes(id));
+        setNewIds(fresh);
+        if (fresh.length) markThemeItemsSeen(fresh);
+      })
+      .catch(() => setCatalogItems([]));
   }, [open]);
 
   if (!open) return null;
@@ -93,6 +119,7 @@ export default function ThemeModal({ open, onClose }) {
   // Tile sizing mirrors the live card geometry via CSS vars so the previews
   // match exactly what is rendered on the board for the current device.
   const tileBase = {
+    position: 'relative',
     boxSizing: 'border-box',
     width: 'var(--card-width)',
     height: 'var(--card-height)',
@@ -151,25 +178,37 @@ export default function ThemeModal({ open, onClose }) {
     </div>
   );
 
-  // Default (the active deck's own back) plus any owned card-back overrides.
+  // Default (the active deck's own back) plus any owned card-back overrides,
+  // driven by the store catalog so newly-purchased items appear automatically
+  // on this tab using the same registry preview as the Store modal fallback.
   const renderCardsBackTab = () => {
+    const ownedCardBacks = catalogItems.filter(
+      (it) => it.kind === 'card_back' && ownedItemIds.includes(it.id),
+    );
     const tiles = [
       { key: 'default', label: 'Default', img: getDeck(deck).renderBack() },
-      ...Object.entries(CARD_BACK_ITEMS)
-        .filter(([itemId]) => ownedItemIds.includes(itemId))
-        .map(([, key]) => ({ key, label: getCardBack(key).name, img: getCardBack(key).renderBack() })),
+      ...ownedCardBacks.map((it) => {
+        const back = getCardBack(it.asset_ref);
+        return {
+          key: it.asset_ref,
+          id: it.id,
+          label: back ? back.name : it.name,
+          img: back ? back.renderBack() : getDeck(deck).renderBack(),
+        };
+      }),
     ];
     return (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, var(--card-width))', gap: 14 }}>
         {tiles.map((t) => {
           const selected = t.key === cardBack;
+          const isNew = t.id ? newIds.includes(t.id) : false;
           return (
             <button
               key={t.key}
               type="button"
               role="button"
               aria-pressed={selected}
-              aria-label={`Cards Back: ${t.label}${selected ? ' (selected)' : ''}`}
+              aria-label={`Cards Back: ${t.label}${selected ? ' (selected)' : ''}${isNew ? ' (new)' : ''}`}
               onClick={() => {
                 setCardBack(t.key);
                 announce(`${t.label} card back selected`);
@@ -179,7 +218,9 @@ export default function ThemeModal({ open, onClose }) {
                 ...(selected ? selectedBorder : null),
                 backgroundImage: `url(${t.img})`,
               }}
-            />
+            >
+              {isNew && <span style={NEW_BADGE}>New</span>}
+            </button>
           );
         })}
       </div>

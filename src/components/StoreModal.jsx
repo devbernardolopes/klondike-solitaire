@@ -2,6 +2,11 @@
 // Store reached from Settings. Fetches the store_items catalog (public read)
 // and cross-references useAuthStore's ownedItemIds to show Buy/Owned per
 // item. purchase_item() is the only write path — see migration 007.
+//
+// Theme-related items (e.g. card backs) render with the SAME technique as the
+// Theme modal when they have no image_path: the card-back registry preview.
+// Buying is gated behind a confirmation dialog, and a successful purchase of a
+// theme item shows an info dialog pointing the user to the right Theme tab.
 
 import { useEffect, useRef, useState } from 'react';
 import { Coins as CoinsIcon } from 'lucide-react';
@@ -9,8 +14,12 @@ import { useModalBackdrop } from './modalBackdrop.js';
 import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
+import ConfirmModal from './ConfirmModal.jsx';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { supabase } from '../lib/supabaseClient.js';
+import { fetchStoreCatalog, isThemeKind, tabLabelForKind } from '../data/storeCatalog.js';
+import { storeItemImageUrl, onStoreItemImageError } from '../utils/storeItemImage.js';
+import { getCardBack } from '../render/deck/cardBackRegistry.js';
 
 /**
  * @param {object} props
@@ -27,27 +36,27 @@ export default function StoreModal({ open, onClose }) {
   const [items, setItems] = useState([]);
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState(null);
+  const [confirmItem, setConfirmItem] = useState(null);
+  const [infoItem, setInfoItem] = useState(null);
 
   useModalEscape({ open, onClose, id: 'store', z: Z.CHILD });
 
   useEffect(() => {
     if (!open) return;
     dialogRef.current?.focus();
-    supabase
-      .from('store_items')
-      .select('id, name, description, price')
-      .eq('enabled', true)
-      .order('sort_order')
-      .then(({ data }) => setItems(data ?? []));
+    fetchStoreCatalog()
+      .then((data) => setItems(data))
+      .catch(() => setItems([]));
   }, [open]);
 
   if (!open) return null;
 
-  const handleBuy = async (item) => {
+  const doBuy = async (item) => {
     setError(null);
     setBusyId(item.id);
     try {
       await purchaseItem(item.id);
+      setInfoItem(item);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -75,6 +84,36 @@ export default function StoreModal({ open, onClose }) {
     padding: '20px 22px',
     width: 'min(90vw, 420px)',
     maxWidth: '100%',
+  };
+
+  // Renders a store item's visual the same way the Theme modal does for theme
+  // items: an image when present, otherwise the card-back registry preview for
+  // theme kinds, otherwise nothing (caller shows the text name beside it).
+  const renderPreview = (item) => {
+    const imgUrl = storeItemImageUrl(item.image_path);
+    const previewSize = { width: 46, height: 64, borderRadius: 6, border: '1px solid var(--card-border)', flex: '0 0 auto' };
+    if (imgUrl) {
+      return (
+        <img
+          src={imgUrl}
+          alt=""
+          onError={onStoreItemImageError}
+          style={{ ...previewSize, objectFit: 'cover', background: 'var(--card-face-bg)' }}
+        />
+      );
+    }
+    if (isThemeKind(item.kind)) {
+      const back = getCardBack(item.asset_ref);
+      if (back) {
+        return (
+          <span
+            aria-hidden="true"
+            style={{ ...previewSize, display: 'inline-block', backgroundImage: `url(${back.renderBack()})`, backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat' }}
+          />
+        );
+      }
+    }
+    return <span aria-hidden="true" style={{ ...previewSize, background: 'var(--card-face-bg)' }} />;
   };
 
   return (
@@ -123,10 +162,12 @@ export default function StoreModal({ open, onClose }) {
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
+                  gap: 12,
                   marginBottom: 10,
                 }}
               >
-                <div>
+                {renderPreview(item)}
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>{item.name}</div>
                   <div style={{ fontSize: 12, opacity: 0.75 }}>{item.description}</div>
                 </div>
@@ -135,7 +176,7 @@ export default function StoreModal({ open, onClose }) {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => handleBuy(item)}
+                    onClick={() => setConfirmItem(item)}
                     disabled={!canAfford || busyId === item.id}
                     style={btn}
                   >
@@ -147,6 +188,34 @@ export default function StoreModal({ open, onClose }) {
           })}
         </div>
       </div>
+
+      <ConfirmModal
+        open={!!confirmItem}
+        title="Confirm purchase"
+        message={confirmItem ? `Buy ${confirmItem.name} for ${confirmItem.price} coins?` : ''}
+        confirmText="Buy"
+        cancelText="Cancel"
+        zIndex={Z.GRANDCHILD}
+        z={Z.GRANDCHILD}
+        onConfirm={() => {
+          const item = confirmItem;
+          setConfirmItem(null);
+          if (item) doBuy(item);
+        }}
+        onCancel={() => setConfirmItem(null)}
+      />
+
+      <ConfirmModal
+        open={!!infoItem}
+        title={infoItem ? infoItem.name : ''}
+        message={infoItem ? `${infoItem.name} is now available in the Theme modal under the ${tabLabelForKind(infoItem.kind)} tab.` : ''}
+        confirmText="OK"
+        hideCancel
+        zIndex={Z.GRANDCHILD}
+        z={Z.GRANDCHILD}
+        onConfirm={() => setInfoItem(null)}
+        onCancel={() => setInfoItem(null)}
+      />
     </div>
   );
 }
