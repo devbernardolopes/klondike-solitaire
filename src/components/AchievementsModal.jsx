@@ -7,7 +7,7 @@
 // (panel/backdrop, focus-on-open, Escape/backdrop-to-close) of
 // SettingsModal.jsx / ConfirmModal.jsx. Reached only from Settings.
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
@@ -15,6 +15,8 @@ import ModalCloseButton from './ModalCloseButton.jsx';
 import { supabase } from '../lib/supabaseClient.js';
 import { achievementImageUrl, onAchievementImageError } from '../utils/achievementImage.js';
 import AchievementDetailModal from './AchievementDetailModal.jsx';
+import ConfirmModal from './ConfirmModal.jsx';
+import { useAuthStore } from '../hooks/useAuthStore.js';
 
 /**
  * A single achievement entry in the compact list. Unlocked entries are
@@ -85,10 +87,13 @@ function AchievementRow({ achievement, onOpen }) {
 export default function AchievementsModal({ open, onClose }) {
   const dialogRef = useRef(null);
   const backdrop = useModalBackdrop(onClose);
+  const userId = useAuthStore((s) => s.userId);
   const [loading, setLoading] = useState(true);
   const [defs, setDefs] = useState(/** @type {any[]} */ ([]));
   const [unlocked, setUnlocked] = useState(/** @type {Record<string, string>} */ ({}));
   const [selected, setSelected] = useState(/** @type {any|null} */ (null));
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   // Keep the latest close handler in a ref so the open-effect depends only on
   // `open` and runs exactly once per open (not on an unstable callback identity).
@@ -99,49 +104,67 @@ export default function AchievementsModal({ open, onClose }) {
     dialogRef.current?.focus();
   }, [open]);
 
-  // Fetch the catalog (achievements_definitions) and the user's unlocked set
-  // each time the modal opens. A null client (missing env / offline) or any
-  // error is treated as "nothing unlocked / empty catalog" — never an error
-  // state, since this is display-only.
-  useEffect(() => {
+  // Fetch the catalog (achievements_definitions) and the user's unlocked set.
+  // A null client (missing env / offline) or any error is treated as
+  // "nothing unlocked / empty catalog" — never an error state, since this is
+  // display-only. Exposed as `load` so it can be re-run after a reset to
+  // refresh the unlocked set without closing the modal.
+  const load = useCallback(async (cancelledRef) => {
     if (!open) return;
-    let cancelled = false;
     setLoading(true);
     setDefs([]);
     setUnlocked({});
 
-    const run = async () => {
-      if (!supabase) {
-        if (!cancelled) setLoading(false);
-        return;
-      }
-      const [defsRes, unlockedRes] = await Promise.all([
-        supabase
-          .from('achievements_definitions')
-          .select('id, name, description, image_path, sort_order')
-          .eq('enabled', true)
-          .order('sort_order'),
-        supabase
-          .from('achievements_unlocked')
-          .select('achievement_id, unlocked_at'),
-      ]);
-      if (cancelled) return;
-      if (!defsRes.error && defsRes.data) {
-        setDefs(defsRes.data);
-      }
-      if (!unlockedRes.error && unlockedRes.data) {
-        const map = {};
-        for (const row of unlockedRes.data) map[row.achievement_id] = row.unlocked_at;
-        setUnlocked(map);
-      }
-      setLoading(false);
-    };
-    run();
-
-    return () => {
-      cancelled = true;
-    };
+    if (!supabase) {
+      if (!cancelledRef.current) setLoading(false);
+      return;
+    }
+    const [defsRes, unlockedRes] = await Promise.all([
+      supabase
+        .from('achievements_definitions')
+        .select('id, name, description, image_path, sort_order')
+        .eq('enabled', true)
+        .order('sort_order'),
+      supabase
+        .from('achievements_unlocked')
+        .select('achievement_id, unlocked_at'),
+    ]);
+    if (cancelledRef.current) return;
+    if (!defsRes.error && defsRes.data) {
+      setDefs(defsRes.data);
+    }
+    if (!unlockedRes.error && unlockedRes.data) {
+      const map = {};
+      for (const row of unlockedRes.data) map[row.achievement_id] = row.unlocked_at;
+      setUnlocked(map);
+    }
+    setLoading(false);
   }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const cancelledRef = { current: false };
+    load(cancelledRef);
+    return () => {
+      cancelledRef.current = true;
+    };
+  }, [open, load]);
+
+  // Delete all of the user's unlocked achievements via the privileged
+  // reset_achievements() RPC, then re-fetch so every row flips to locked.
+  // Best-effort: swallow any error and just refresh — this is display-only.
+  const handleReset = async () => {
+    setConfirmOpen(false);
+    if (!supabase || !userId) return;
+    setResetting(true);
+    try {
+      await supabase.rpc('reset_achievements');
+    } catch {
+      // Offline / RPC missing — fall through to a refresh anyway.
+    }
+    await load({ current: false });
+    setResetting(false);
+  };
 
   if (!open) return null;
 
@@ -199,6 +222,26 @@ export default function AchievementsModal({ open, onClose }) {
               </div>
             )}
           </div>
+
+          <button
+            type="button"
+            disabled={!supabase || !userId || resetting}
+            onClick={() => setConfirmOpen(true)}
+            style={{
+              marginTop: 12,
+              padding: '10px 14px',
+              borderRadius: 6,
+              border: '1px solid var(--ui-modal-btn-border)',
+              background: 'var(--ui-modal-btn-bg)',
+              color: 'var(--ui-modal-fg)',
+              cursor: (!supabase || !userId || resetting) ? 'not-allowed' : 'pointer',
+              fontSize: 14,
+              fontWeight: 600,
+              opacity: (!supabase || !userId) ? 0.5 : 1,
+            }}
+          >
+            {resetting ? 'Resetting…' : 'Reset Achievements'}
+          </button>
         </div>
       </div>
 
@@ -206,6 +249,18 @@ export default function AchievementsModal({ open, onClose }) {
         achievement={selected}
         open={Boolean(selected)}
         onClose={() => setSelected(null)}
+      />
+
+      <ConfirmModal
+        open={confirmOpen}
+        zIndex={Z.GRANDCHILD}
+        z={Z.GRANDCHILD}
+        title="Reset Achievements?"
+        message="This will clear all of your unlocked achievements. They can be earned again by playing."
+        confirmText="Reset"
+        cancelText="Cancel"
+        onConfirm={handleReset}
+        onCancel={() => setConfirmOpen(false)}
       />
     </>
   );
