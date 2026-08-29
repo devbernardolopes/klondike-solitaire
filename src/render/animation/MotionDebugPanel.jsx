@@ -9,6 +9,20 @@ export function MotionDebugPanel() {
     duration: { value: MOTION.deal.duration, min: 0.05, max: 1, step: 0.01, onChange: (v) => (MOTION.deal.duration = v) },
     stagger:  { value: MOTION.deal.stagger,  min: 0,    max: 0.2, step: 0.005, onChange: (v) => (MOTION.deal.stagger = v) },
   });
+  useControls('auto', {
+    duration: { value: MOTION.auto.duration, min: 0.05, max: 1, step: 0.01, onChange: (v) => (MOTION.auto.duration = v) },
+  });
+  useControls('undo', {
+    duration: { value: MOTION.undo.duration, min: 0.05, max: 1, step: 0.01, onChange: (v) => (MOTION.undo.duration = v) },
+  });
+  useControls('draw', {
+    duration:  { value: MOTION.draw.duration,  min: 0.05, max: 1, step: 0.01, onChange: (v) => (MOTION.draw.duration = v) },
+    overshoot: { value: MOTION.draw.overshoot, min: 0,    max: 40, step: 1, onChange: (v) => (MOTION.draw.overshoot = v) },
+  });
+  useControls('autoComplete', {
+    mode:       { value: MOTION.autoComplete.mode, options: ['sequential', 'overlap'], onChange: (v) => (MOTION.autoComplete.mode = v) },
+    stepDelay:  { value: MOTION.autoComplete.stepDelay, min: 0, max: 1000, step: 10, onChange: (v) => (MOTION.autoComplete.stepDelay = v) },
+  });
   useControls('flipCard', {
     duration: { value: MOTION.flipCard.duration, min: 0.05, max: 1, step: 0.01, onChange: (v) => (MOTION.flipCard.duration = v) },
   });
