@@ -150,7 +150,7 @@ export async function restoreSession() {
         .from('game_sessions')
         .select('board_state, replay_spec, moves, score, undos, start_time, paused_accum_ms, updated_at')
         .eq('device_id', getDeviceId())
-        .single();
+        .maybeSingle();
       if (!error && data) {
         applyRestore(data, Date.parse(data.updated_at));
         return true;
