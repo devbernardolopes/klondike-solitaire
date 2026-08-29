@@ -29,6 +29,7 @@ function render(key, baseColor, size = 96) {
 const BACKS = {
   red: { name: 'Red', renderBack: () => render('red', '#7a1f2b') },
   green: { name: 'Green', renderBack: () => render('green', '#118324') },
+  black: { name: 'Black', renderBack: () => render('black', '#252222') },
 };
 
 export function getCardBack(key) {
