@@ -26,6 +26,7 @@ import AchievementsModal from './AchievementsModal.jsx';
 import LeaderboardModal from './LeaderboardModal.jsx';
 import StoreModal from './StoreModal.jsx';
 import SettingsOptionsModal from './SettingsOptionsModal.jsx';
+import StatisticsModal from './StatisticsModal.jsx';
 import pkg from '../../package.json';
 
 /**
@@ -61,6 +62,7 @@ export default function SettingsModal({
   const [storeOpen, setStoreOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
   const [settingsOptionsOpen, setSettingsOptionsOpen] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [nameError, setNameError] = useState(null);
@@ -97,6 +99,7 @@ export default function SettingsModal({
     if (!open) {
       setThemeOpen(false);
       setSettingsOptionsOpen(false);
+      setStatsOpen(false);
       setAchievementsOpen(false);
       setLeaderboardOpen(false);
       setStoreOpen(false);
@@ -262,6 +265,37 @@ export default function SettingsModal({
           >
             Theme
           </button>
+          <button
+            type="button"
+            style={{ ...btn, width: '100%' }}
+            onClick={() => setStatsOpen(true)}
+          >
+            Statistics
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+          <button
+            type="button"
+            style={{ ...btn, width: '100%' }}
+            onClick={() => setAchievementsOpen(true)}
+          >
+            Achievements
+          </button>
+          <button
+            type="button"
+            style={{ ...btn, width: '100%' }}
+            onClick={() => setLeaderboardOpen(true)}
+          >
+            Leaderboard
+          </button>
+          <button
+            type="button"
+            style={{ ...btn, width: '100%' }}
+            onClick={() => setStoreOpen(true)}
+          >
+            Store
+          </button>
         </div>
 
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
@@ -293,30 +327,6 @@ export default function SettingsModal({
             onClick={handleExportSolvitaire}
           >
             Export
-          </button>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
-          <button
-            type="button"
-            style={{ ...btn, width: '100%' }}
-            onClick={() => setAchievementsOpen(true)}
-          >
-            Achievements
-          </button>
-          <button
-            type="button"
-            style={{ ...btn, width: '100%' }}
-            onClick={() => setLeaderboardOpen(true)}
-          >
-            Leaderboard
-          </button>
-          <button
-            type="button"
-            style={{ ...btn, width: '100%' }}
-            onClick={() => setStoreOpen(true)}
-          >
-            Store
           </button>
         </div>
 
@@ -490,6 +500,11 @@ export default function SettingsModal({
         onHighlightCardChange={onHighlightCardChange}
         particles={particles}
         onParticlesChange={onParticlesChange}
+      />
+
+      <StatisticsModal
+        open={statsOpen}
+        onClose={() => setStatsOpen(false)}
       />
     </>
   );

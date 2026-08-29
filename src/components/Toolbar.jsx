@@ -2,7 +2,7 @@
 // New game, undo, theme/deck switchers. Stubs OK for switchers this pass.
 
 import { useEffect, useCallback, useState, useRef } from 'react';
-import { Plus, Undo2, Menu, BarChart3, Lightbulb, Coins as CoinsIcon } from 'lucide-react';
+import { Plus, Undo2, Menu, Lightbulb, Coins as CoinsIcon } from 'lucide-react';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
@@ -12,7 +12,6 @@ import { isWon } from '../core/winDetection.js';
 import ConfirmModal from './ConfirmModal.jsx';
 import NewGameModal from './NewGameModal.jsx';
 import SettingsModal from './SettingsModal.jsx';
-import StatisticsModal from './StatisticsModal.jsx';
 import SeedInputModal from './SeedInputModal.jsx';
 import DailyChallengeModal from './DailyChallengeModal.jsx';
 import { formatTime } from '../utils/formatTime.js';
@@ -81,8 +80,6 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const settingsDialogOpen = useUiStore((s) => s.settingsDialogOpen);
   const setSettingsDialogOpen = useUiStore((s) => s.setSettingsDialogOpen);
   const setHelpDialogOpen = useUiStore((s) => s.setHelpDialogOpen);
-  const statsDialogOpen = useUiStore((s) => s.statsDialogOpen);
-  const setStatsDialogOpen = useUiStore((s) => s.setStatsDialogOpen);
   const seedInputDialogOpen = useUiStore((s) => s.seedInputDialogOpen);
   const setSeedInputDialogOpen = useUiStore((s) => s.setSeedInputDialogOpen);
   const setAnnounce = useUiStore((s) => s.setAnnounce);
@@ -114,7 +111,6 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
     setSettingsDialogOpen(false);
     setHelpDialogOpen(false);
   }, [setSettingsDialogOpen, setHelpDialogOpen]);
-  const closeStats = useCallback(() => setStatsDialogOpen(false), [setStatsDialogOpen]);
   const closeNewGame = useCallback(() => setNewGameDialogOpen(false), [setNewGameDialogOpen]);
   const onReplay = useCallback(() => {
     setNewGameDialogOpen(false);
@@ -332,14 +328,6 @@ function ElapsedClock() {
       </button>
 
       <button
-        style={{ ...fab, left: fabLeft(1) }}
-        aria-label="Statistics"
-        onClick={() => setStatsDialogOpen(true)}
-      >
-        <BarChart3 size={20} />
-      </button>
-
-      <button
         style={{ ...fab, left: fabLeft(2) }}
         aria-label="New Game"
         onClick={() => setNewGameDialogOpen(true)}
@@ -396,11 +384,6 @@ function ElapsedClock() {
         onHighlightCardChange={onHighlightCardChange}
         particles={particles}
         onParticlesChange={onParticlesChange}
-      />
-
-      <StatisticsModal
-        open={statsDialogOpen}
-        onClose={closeStats}
       />
 
        <ConfirmModal
