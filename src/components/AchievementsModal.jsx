@@ -17,43 +17,50 @@ import { achievementImageUrl, onAchievementImageError } from '../utils/achieveme
 import AchievementDetailModal from './AchievementDetailModal.jsx';
 
 /**
- * A single clickable achievement entry in the compact list. Opens the detail
- * modal on click / Enter / Space. Hover and focus backgrounds are tracked with
- * local state (no theme-CSS changes needed).
+ * A single achievement entry in the compact list. Unlocked entries are
+ * clickable (open the detail modal on click / Enter / Space) and keyboard
+ * focusable. Locked entries are inert: dimmed, removed from the tab order, and
+ * not activatable. Hover/focus backgrounds are tracked with local state (no
+ * theme-CSS changes needed).
  */
 function AchievementRow({ achievement, onOpen }) {
   const [hover, setHover] = useState(false);
   const [focus, setFocus] = useState(false);
-  const active = hover || focus;
+  const unlocked = Boolean(achievement.earnedAt);
+  const active = (hover || focus) && unlocked;
   return (
     <div
-      role="button"
-      tabIndex={0}
-      aria-label={achievement.name}
-      onClick={() => onOpen(achievement)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onOpen(achievement);
-        }
-      }}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      onFocus={() => setFocus(true)}
-      onBlur={() => setFocus(false)}
       style={{
         border: '1px solid var(--card-border)',
         borderRadius: 'var(--card-radius)',
         padding: '10px 12px',
-        opacity: Boolean(achievement.earnedAt) ? 1 : 0.5,
+        opacity: unlocked ? 1 : 0.5,
         display: 'flex',
         gap: 12,
         alignItems: 'flex-start',
-        cursor: 'pointer',
+        cursor: unlocked ? 'pointer' : 'default',
         background: active ? 'var(--ui-modal-btn-bg)' : 'transparent',
         outline: focus ? '2px solid var(--ui-modal-btn-border)' : 'none',
         outlineOffset: 1,
       }}
+      {...(unlocked
+        ? {
+            role: 'button',
+            tabIndex: 0,
+            'aria-label': achievement.name,
+            onClick: () => onOpen(achievement),
+            onKeyDown: (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onOpen(achievement);
+              }
+            },
+            onMouseEnter: () => setHover(true),
+            onMouseLeave: () => setHover(false),
+            onFocus: () => setFocus(true),
+            onBlur: () => setFocus(false),
+          }
+        : { 'aria-disabled': true })}
     >
       <img
         src={achievementImageUrl(achievement.image_path)}

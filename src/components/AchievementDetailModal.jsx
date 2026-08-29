@@ -90,7 +90,7 @@ export default function AchievementDetailModal({ achievement, open, onClose }) {
             marginBottom: 14,
           }}
         />
-        <h2 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>{achievement.name}</h2>
+        <h2 style={{ margin: '0 0 10px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>{achievement.name}</h2>
         <div style={{ fontSize: 14, lineHeight: 1.4, marginBottom: 14 }}>{achievement.description}</div>
         <div style={{ fontSize: 13, fontStyle: isUnlocked ? 'normal' : 'italic' }}>
           {isUnlocked ? `Unlocked ${formatDate(achievement.earnedAt)}` : 'Locked'}
