@@ -45,10 +45,16 @@ export async function pullRemoteProfile() {
   // Coins ride along on every pull trigger (no separate coin path needed).
   // The display name + its rename cooldown timestamp are refreshed too so the
   // Main Menu's rename affordance stays current across devices.
+  const { data: ownedRows, error: ownedError } = await supabase
+    .from('owned_items')
+    .select('item_id');
+  if (ownedError) throw ownedError;
+
   useAuthStore.setState({
     coins: profile.coins ?? 0,
     displayName: profile.display_name,
     displayNameUpdatedAt: profile.display_name_updated_at,
+    ownedItemIds: ownedRows.map((r) => r.item_id),
   });
 
   const { data: seedRows, error: seedsError } = await supabase

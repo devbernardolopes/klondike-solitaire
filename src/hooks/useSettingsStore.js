@@ -13,6 +13,7 @@ import { getSetting, setSetting } from '../db/schema.js';
 const DEFAULTS = {
   theme: 'classic',
   deck: 'procedural',
+  cardBack: 'default',
   handedness: 'right',
   highlightCard: true,
   particles: true,
@@ -21,6 +22,7 @@ const DEFAULTS = {
 export const useSettingsStore = create((set, get) => ({
   theme: DEFAULTS.theme,
   deck: DEFAULTS.deck,
+  cardBack: DEFAULTS.cardBack,
   handedness: DEFAULTS.handedness,
   highlightCard: DEFAULTS.highlightCard,
   particles: DEFAULTS.particles,
@@ -31,15 +33,16 @@ export const useSettingsStore = create((set, get) => ({
    * keys fall back to DEFAULTS. Activates the loaded (or default) deck.
    */
   init: async () => {
-    const [theme, deck, handedness, highlightCard, particles] = await Promise.all([
+    const [theme, deck, cardBack, handedness, highlightCard, particles] = await Promise.all([
       getSetting('theme', DEFAULTS.theme),
       getSetting('deck', DEFAULTS.deck),
+      getSetting('cardBack', DEFAULTS.cardBack),
       getSetting('handedness', DEFAULTS.handedness),
       getSetting('highlightCard', DEFAULTS.highlightCard),
       getSetting('particles', DEFAULTS.particles),
     ]);
     setActiveDeck(deck);
-    set({ theme, deck, handedness, highlightCard, particles, loaded: true });
+    set({ theme, deck, cardBack, handedness, highlightCard, particles, loaded: true });
   },
 
   /**
@@ -57,6 +60,14 @@ export const useSettingsStore = create((set, get) => ({
     setActiveDeck(deck);
     set({ deck });
     setSetting('deck', deck);
+  },
+
+  /**
+   * @param {string} cardBack  'default' or a cardBackRegistry key
+   */
+  setCardBack: (cardBack) => {
+    set({ cardBack });
+    setSetting('cardBack', cardBack);
   },
 
   /**

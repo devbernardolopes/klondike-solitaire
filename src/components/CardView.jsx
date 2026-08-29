@@ -13,6 +13,7 @@ import { useUiStore } from '../hooks/useUiStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
 import { isWon } from '../core/winDetection.js';
 import { getDeck } from '../render/deck/deckRegistry.js';
+import { getCardBack } from '../render/deck/cardBackRegistry.js';
 
 const RANK_LABEL = {
   1: 'A',
@@ -45,11 +46,18 @@ export function CardFace({ card, zIndex = 0, innerRef }) {
   };
 
   const deck = useSettingsStore((s) => s.deck);
+  const cardBack = useSettingsStore((s) => s.cardBack);
   const faceImg = useMemo(
     () => getDeck(deck).renderCard(card.suit, card.rank),
     [card.suit, card.rank, deck],
   );
-  const backImg = useMemo(() => getDeck(deck).renderBack(), [deck]);
+  const backImg = useMemo(() => {
+    if (cardBack !== 'default') {
+      const back = getCardBack(cardBack);
+      if (back) return back.renderBack();
+    }
+    return getDeck(deck).renderBack();
+  }, [deck, cardBack]);
 
   const front = (
     <div

@@ -16,6 +16,8 @@ import { Z } from '../utils/modalStack.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { getDeck, listDecks } from '../render/deck/deckRegistry.js';
+import { getCardBack } from '../render/deck/cardBackRegistry.js';
+import { useAuthStore } from '../hooks/useAuthStore.js';
 
 const TABS = [
   { id: 'background', label: 'Background' },
@@ -24,6 +26,12 @@ const TABS = [
 ];
 
 const BACKGROUNDS = ['classic', 'dark'];
+
+// Maps a store_items.id (kind='card_back') to a cardBackRegistry key. With only
+// one item today this is a simple literal; if the catalog grows, this is the
+// single place to keep item-id → registry-key in sync (no extra Supabase fetch
+// needed just for this picker).
+const CARD_BACK_ITEMS = { 'card-back-red': 'red' };
 
 // A fixed representative card (Ace of Spades) used so every deck face tile
 // clearly shows that deck's color/background differences.
@@ -40,6 +48,9 @@ export default function ThemeModal({ open, onClose }) {
   const backdrop = useModalBackdrop(onClose);
   const theme = useSettingsStore((s) => s.theme);
   const deck = useSettingsStore((s) => s.deck);
+  const cardBack = useSettingsStore((s) => s.cardBack);
+  const setCardBack = useSettingsStore((s) => s.setCardBack);
+  const ownedItemIds = useAuthStore((s) => s.ownedItemIds);
   const setTheme = useSettingsStore((s) => s.setTheme);
   const setDeck = useSettingsStore((s) => s.setDeck);
   const [activeTab, setActiveTab] = useState('background');
@@ -140,24 +151,37 @@ export default function ThemeModal({ open, onClose }) {
     </div>
   );
 
-  // Single tile: the current card back. Always selected; clicking is a no-op
-  // (there is only the current back for now).
+  // Default (the active deck's own back) plus any owned card-back overrides.
   const renderCardsBackTab = () => {
-    const backImg = getDeck(deck).renderBack();
+    const tiles = [
+      { key: 'default', label: 'Default', img: getDeck(deck).renderBack() },
+      ...Object.entries(CARD_BACK_ITEMS)
+        .filter(([itemId]) => ownedItemIds.includes(itemId))
+        .map(([, key]) => ({ key, label: getCardBack(key).name, img: getCardBack(key).renderBack() })),
+    ];
     return (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, var(--card-width))', gap: 14 }}>
-        <button
-          type="button"
-          role="button"
-          aria-pressed
-          aria-label="Cards Back: current"
-          onClick={() => {}}
-          style={{
-            ...tileBase,
-            ...selectedBorder,
-            backgroundImage: `url(${backImg})`,
-          }}
-        />
+        {tiles.map((t) => {
+          const selected = t.key === cardBack;
+          return (
+            <button
+              key={t.key}
+              type="button"
+              role="button"
+              aria-pressed={selected}
+              aria-label={`Cards Back: ${t.label}${selected ? ' (selected)' : ''}`}
+              onClick={() => {
+                setCardBack(t.key);
+                announce(`${t.label} card back selected`);
+              }}
+              style={{
+                ...tileBase,
+                ...(selected ? selectedBorder : null),
+                backgroundImage: `url(${t.img})`,
+              }}
+            />
+          );
+        })}
       </div>
     );
   };

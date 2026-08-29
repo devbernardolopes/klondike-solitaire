@@ -70,6 +70,7 @@ export const useAuthStore = create((set, get) => ({
   displayName: null,
   displayNameUpdatedAt: null,
   coins: 0,
+  ownedItemIds: [],
   linkConflict: null,
   authError: null,
 
@@ -187,6 +188,25 @@ export const useAuthStore = create((set, get) => ({
     });
     if (error) throw new Error(error.message);
     set({ displayName: name, displayNameUpdatedAt: new Date().toISOString() });
+  },
+
+  /**
+   * Buys an item via purchase_item(); throws with the server's message
+   * (insufficient coins / already owned / unknown item) on failure.
+   * On success, coins/ownedItemIds are set from the RPC's own return
+   * value — never computed client-side.
+   * @param {string} itemId
+   */
+  purchaseItem: async (itemId) => {
+    const { data, error } = await supabase.rpc('purchase_item', { p_item_id: itemId });
+    if (error) throw new Error(error.message);
+    set((s) => ({
+      coins: data.coins,
+      ownedItemIds: s.ownedItemIds.includes(itemId)
+        ? s.ownedItemIds
+        : [...s.ownedItemIds, itemId],
+    }));
+    return data;
   },
 
   /**

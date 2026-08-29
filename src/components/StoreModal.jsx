@@ -1,10 +1,7 @@
 // components/StoreModal.jsx
-// Deliberate visual-only stub of the in-game store. Shows the player's coin
-// balance and a few placeholder items with prices + "Coming soon" badges, but
-// has NO purchase logic, inventory, or persistence yet. Reached from Settings.
-// Mirrors the visual chrome (panel/backdrop, focus-on-open, Escape/backdrop-to-
-// close) of SettingsModal.jsx. Out of scope for this pass: real purchasing,
-// owned-item tracking, coin spending.
+// Store reached from Settings. Fetches the store_items catalog (public read)
+// and cross-references useAuthStore's ownedItemIds to show Buy/Owned per
+// item. purchase_item() is the only write path — see migration 007.
 
 import { useEffect, useRef, useState } from 'react';
 import { Coins as CoinsIcon } from 'lucide-react';
@@ -13,6 +10,7 @@ import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
 import { useAuthStore } from '../hooks/useAuthStore.js';
+import { supabase } from '../lib/supabaseClient.js';
 
 /**
  * @param {object} props
@@ -23,23 +21,39 @@ export default function StoreModal({ open, onClose }) {
   const dialogRef = useRef(null);
   const backdrop = useModalBackdrop(onClose);
   const coins = useAuthStore((s) => s.coins);
+  const ownedItemIds = useAuthStore((s) => s.ownedItemIds);
+  const purchaseItem = useAuthStore((s) => s.purchaseItem);
 
-  // Placeholder catalog — prices are display-only for now.
-  const items = [
-    { id: 'dark-deck', name: 'Dark Deck', price: 50 },
-    { id: '4-color-deck', name: '4-Color Deck', price: 50 },
-    { id: 'card-back-blue', name: 'Card Back: Blue', price: 25 },
-    { id: 'hint-token', name: 'Hint Token', price: 10 },
-  ];
+  const [items, setItems] = useState([]);
+  const [busyId, setBusyId] = useState(null);
+  const [error, setError] = useState(null);
 
   useModalEscape({ open, onClose, id: 'store', z: Z.CHILD });
 
   useEffect(() => {
     if (!open) return;
     dialogRef.current?.focus();
+    supabase
+      .from('store_items')
+      .select('id, name, description, price')
+      .eq('enabled', true)
+      .order('sort_order')
+      .then(({ data }) => setItems(data ?? []));
   }, [open]);
 
   if (!open) return null;
+
+  const handleBuy = async (item) => {
+    setError(null);
+    setBusyId(item.id);
+    try {
+      await purchaseItem(item.id);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   const btn = {
     padding: '8px 14px',
@@ -53,7 +67,6 @@ export default function StoreModal({ open, onClose }) {
   };
 
   const panel = {
-    position: 'relative',
     background: 'var(--card-face-bg)',
     color: 'var(--card-text-black)',
     border: 'var(--card-border)',
@@ -62,9 +75,6 @@ export default function StoreModal({ open, onClose }) {
     padding: '20px 22px',
     width: 'min(90vw, 420px)',
     maxWidth: '100%',
-    height: '85vh',
-    display: 'flex',
-    flexDirection: 'column',
   };
 
   return (
@@ -91,69 +101,50 @@ export default function StoreModal({ open, onClose }) {
         <ModalCloseButton onClick={onClose} />
 
         <div className="modal-body-scroll" style={{ flex: 1, minHeight: 0 }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              fontSize: 16,
-              fontWeight: 700,
-              marginBottom: 6,
-            }}
-          >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 16, fontWeight: 700, marginBottom: 16 }}>
             <CoinsIcon size={16} aria-hidden="true" />
             <span>{coins}</span>
           </div>
 
-          <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 16 }}>
-            The store is coming soon — deck themes and helpful items will be purchasable with coins.
-          </div>
+          {error && (
+            <div style={{ color: '#d12b3b', fontSize: 13, marginBottom: 12 }}>{error}</div>
+          )}
 
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, 1fr)',
-              gap: 12,
-              marginBottom: 18,
-            }}
-          >
-            {items.map((item) => (
+          {items.map((item) => {
+            const owned = ownedItemIds.includes(item.id);
+            const canAfford = coins >= item.price;
+            return (
               <div
                 key={item.id}
                 style={{
-                  position: 'relative',
                   border: '1px solid var(--card-border)',
                   borderRadius: 'var(--card-radius)',
-                  padding: '12px',
-                  opacity: 0.5,
-                  pointerEvents: 'none',
+                  padding: 12,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 10,
                 }}
               >
-                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>{item.name}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}>
-                  <CoinsIcon size={13} aria-hidden="true" />
-                  <span>{item.price}</span>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>{item.name}</div>
+                  <div style={{ fontSize: 12, opacity: 0.75 }}>{item.description}</div>
                 </div>
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: 8,
-                    right: 8,
-                    fontSize: 10,
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    letterSpacing: 0.5,
-                    background: 'var(--ui-modal-btn-bg-strong)',
-                    color: 'var(--ui-modal-fg)',
-                    padding: '2px 6px',
-                    borderRadius: 4,
-                  }}
-                >
-                  Coming soon
-                </div>
+                {owned ? (
+                  <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.7 }}>Owned</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleBuy(item)}
+                    disabled={!canAfford || busyId === item.id}
+                    style={btn}
+                  >
+                    <CoinsIcon size={12} aria-hidden="true" /> {item.price}
+                  </button>
+                )}
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
       </div>
     </div>

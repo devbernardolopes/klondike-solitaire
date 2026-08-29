@@ -107,11 +107,11 @@ export function drawCardFace(ctx, suit, rank, w, h, { colorFor = colorOf, backgr
  * @param {number} w
  * @param {number} h
  */
-export function drawCardBack(ctx, w, h) {
+export function drawCardBack(ctx, w, h, { baseColor = '#2b3a67' } = {}) {
   const radius = Math.max(4, Math.round(w * 0.07));
 
   roundRect(ctx, 0, 0, w, h, radius);
-  ctx.fillStyle = '#2b3a67';
+  ctx.fillStyle = baseColor;
   ctx.fill();
 
   // Simple repeating diagonal motif.
