@@ -6,12 +6,13 @@
 // mode or replay the exact same deal. Dismissed by clicking outside the panel,
 // pressing Escape, or either button.
 
-import { useEffect, useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useModalBackdrop } from './modalBackdrop.js';
+import { useModalEnter } from '../render/animation/useModalEnter.js';
 import { dateToUTC, toDateStr, withinSupported, isAfter } from '../core/dailyChallenge.js';
 import { utcToYMD, getCachedServerNow, getFallbackUTC } from '../utils/serverTime.js';
 import { formatTime } from '../utils/formatTime.js';
@@ -30,16 +31,24 @@ export default function WinModal() {
   const dealNewGame = useGameStore((s) => s.dealNewGame);
   const replayGame = useGameStore((s) => s.replayGame);
 
-  const backdrop = useModalBackdrop(closeWinDialog);
   const panelRef = useRef(null);
 
-  // Focus the panel on open; Escape closes only when this is the topmost modal.
-  useModalEscape({ open: winDialogOpen, onClose: closeWinDialog, id: 'win', z: Z.BASE });
+  // Entrance animation: the panel grows from a tiny centered size to full size.
+  // While it is still animating (`entering`), the modal must not be dismissable
+  // or interactable — so both the backdrop close and Escape are gated, and the
+  // panel itself blocks pointer/keyboard input (and is aria-hidden). Focus only
+  // moves to the panel once the entrance completes.
+  const entering = useModalEnter({
+    panelRef,
+    open: winDialogOpen,
+    onEnterDone: () => panelRef.current?.focus(),
+  });
 
-  useEffect(() => {
-    if (!winDialogOpen) return;
-    panelRef.current?.focus();
-  }, [winDialogOpen]);
+  const backdrop = useModalBackdrop(entering ? () => {} : closeWinDialog);
+
+  // Focus the panel on open; Escape closes only when this is the topmost modal
+  // and the entrance animation has finished.
+  useModalEscape({ open: winDialogOpen, onClose: closeWinDialog, id: 'win', z: Z.BASE, enabled: !entering });
 
   if (!winDialogOpen || !summary) return null;
 
@@ -98,6 +107,8 @@ export default function WinModal() {
     width: 'min(90vw, 380px)',
     maxWidth: '100%',
     outline: 'none',
+    transformOrigin: 'center center',
+    pointerEvents: entering ? 'none' : 'auto',
   };
 
   // Column header: "Current" and "Best" sit above the two value columns.
@@ -183,7 +194,7 @@ export default function WinModal() {
         padding: 16,
       }}
     >
-       <div ref={panelRef} tabIndex={-1} style={panel}>
+       <div ref={panelRef} tabIndex={-1} aria-hidden={entering} style={panel}>
          <h2
            style={{
              margin: '0 0 14px',

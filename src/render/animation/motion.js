@@ -111,4 +111,20 @@ export const MOTION = {
     slide: { duration: 0.3, ease: 'power2.out', distance: 80 },
     fade: { duration: 0.2, ease: 'power1.out' },
   },
+
+  // Modal entrance animation. Used by WinModal via useModalEnter (reusable for
+  // any modal). The panel starts at `fromScale` (a fraction of its final size,
+  // centered) and grows to `toScale` (1 = actual size) with a slight overshoot
+  // pop. `duration` is the grow speed in seconds; `ease` is the GSAP easing
+  // curve — swap to e.g. 'power3.out' for a calmer, no-overshoot feel. The
+  // opacity tween fades the panel in as it grows. Add new effect types here
+  // (e.g. modalSlideUp) and consume them from a future variant of the hook.
+  modalEnter: {
+    fromScale: 0.1,         // starting size as a fraction of final (0.1 = very small)
+    toScale: 1,             // final size
+    fromOpacity: 0,         // starting opacity (0 = invisible) — fades in as it grows
+    toOpacity: 1,
+    duration: 0.45,         // grow speed in seconds
+    ease: 'back.out(1.7)',  // slight overshoot pop; fully tunable
+  },
 };
