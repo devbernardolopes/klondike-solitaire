@@ -25,6 +25,7 @@ import ThemeModal from './ThemeModal.jsx';
 import AchievementsModal from './AchievementsModal.jsx';
 import LeaderboardModal from './LeaderboardModal.jsx';
 import StoreModal from './StoreModal.jsx';
+import SettingsOptionsModal from './SettingsOptionsModal.jsx';
 import pkg from '../../package.json';
 
 /**
@@ -59,6 +60,7 @@ export default function SettingsModal({
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const [storeOpen, setStoreOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
+  const [settingsOptionsOpen, setSettingsOptionsOpen] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [nameError, setNameError] = useState(null);
@@ -94,6 +96,7 @@ export default function SettingsModal({
   useEffect(() => {
     if (!open) {
       setThemeOpen(false);
+      setSettingsOptionsOpen(false);
       setAchievementsOpen(false);
       setLeaderboardOpen(false);
       setStoreOpen(false);
@@ -244,45 +247,77 @@ export default function SettingsModal({
         </h2>
         <ModalCloseButton onClick={onClose} />
 
-        <div style={{ ...field, marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>Theme</label>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
           <button
             type="button"
-            style={{ ...btn, minWidth: 120 }}
+            style={{ ...btn, width: '100%' }}
+            onClick={() => setSettingsOptionsOpen(true)}
+          >
+            Settings
+          </button>
+          <button
+            type="button"
+            style={{ ...btn, width: '100%' }}
             onClick={() => setThemeOpen(true)}
           >
             Theme
           </button>
         </div>
 
-        <div style={{ ...field, marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>Hand</label>
-          <select
-            value={handedness}
-            onChange={(e) => onHandednessChange(e.target.value)}
-            style={selectStyle}
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+          <button
+            type="button"
+            aria-label="Keyboard shortcuts"
+            title="Keyboard shortcuts"
+            style={{
+              ...btn,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '8px 10px',
+            }}
+            onClick={() => useUiStore.getState().setHelpDialogOpen(true)}
           >
-            <option value="left">Left</option>
-            <option value="right">Right</option>
-          </select>
+            <HelpCircle size={18} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            style={{ ...btn }}
+            onClick={handleTakeSnapshot}
+          >
+            Take Snapshot
+          </button>
+          <button
+            type="button"
+            style={{ ...btn }}
+            onClick={handleExportSolvitaire}
+          >
+            Export
+          </button>
         </div>
 
-        <div style={{ ...field, marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>Highlight Card</label>
-          <ToggleSwitch
-            checked={!!highlightCard}
-            onChange={onHighlightCardChange}
-            label="Highlight Card"
-          />
-        </div>
-
-        <div style={{ ...field, marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>Foundation Particles</label>
-          <ToggleSwitch
-            checked={!!particles}
-            onChange={onParticlesChange}
-            label="Foundation Particles"
-          />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+          <button
+            type="button"
+            style={{ ...btn, width: '100%' }}
+            onClick={() => setAchievementsOpen(true)}
+          >
+            Achievements
+          </button>
+          <button
+            type="button"
+            style={{ ...btn, width: '100%' }}
+            onClick={() => setLeaderboardOpen(true)}
+          >
+            Leaderboard
+          </button>
+          <button
+            type="button"
+            style={{ ...btn, width: '100%' }}
+            onClick={() => setStoreOpen(true)}
+          >
+            Store
+          </button>
         </div>
 
         <div style={{ ...field, marginBottom: 20 }}>
@@ -408,62 +443,6 @@ export default function SettingsModal({
           )}
         </div>
 
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
-          <button
-            type="button"
-            aria-label="Keyboard shortcuts"
-            title="Keyboard shortcuts"
-            style={{
-              ...btn,
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '8px 10px',
-            }}
-            onClick={() => useUiStore.getState().setHelpDialogOpen(true)}
-          >
-            <HelpCircle size={18} aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            style={{ ...btn }}
-            onClick={handleTakeSnapshot}
-          >
-            Take Snapshot
-          </button>
-          <button
-            type="button"
-            style={{ ...btn }}
-            onClick={handleExportSolvitaire}
-          >
-            Export
-          </button>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
-          <button
-            type="button"
-            style={{ ...btn, width: '100%' }}
-            onClick={() => setAchievementsOpen(true)}
-          >
-            Achievements
-          </button>
-          <button
-            type="button"
-            style={{ ...btn, width: '100%' }}
-            onClick={() => setLeaderboardOpen(true)}
-          >
-            Leaderboard
-          </button>
-          <button
-            type="button"
-            style={{ ...btn, width: '100%' }}
-            onClick={() => setStoreOpen(true)}
-          >
-            Store
-          </button>
-        </div>
-
       </div>
     </div>
 
@@ -500,6 +479,17 @@ export default function SettingsModal({
       <ThemeModal
         open={themeOpen}
         onClose={() => setThemeOpen(false)}
+      />
+
+      <SettingsOptionsModal
+        open={settingsOptionsOpen}
+        onClose={() => setSettingsOptionsOpen(false)}
+        handedness={handedness}
+        onHandednessChange={onHandednessChange}
+        highlightCard={highlightCard}
+        onHighlightCardChange={onHighlightCardChange}
+        particles={particles}
+        onParticlesChange={onParticlesChange}
       />
     </>
   );

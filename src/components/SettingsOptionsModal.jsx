@@ -1,0 +1,143 @@
+// components/SettingsOptionsModal.jsx
+// "Settings" sub-modal reached from the Main Menu. Holds the Hand, Highlight
+// Card, and Foundation Particles preferences. Mirrors the visual chrome and
+// dismissal behavior (close button top-right, Escape / outside-tap to close, and
+// tapping its own trigger while open) of ThemeModal.jsx / SettingsModal.jsx.
+
+import { useEffect, useRef } from 'react';
+import { useModalBackdrop } from './modalBackdrop.js';
+import { useModalEscape } from '../hooks/useModalEscape.js';
+import { Z } from '../utils/modalStack.js';
+import ModalCloseButton from './ModalCloseButton.jsx';
+import ToggleSwitch from './ToggleSwitch.jsx';
+
+/**
+ * @param {object} props
+ * @param {boolean} props.open
+ * @param {() => void} props.onClose
+ * @param {'left'|'right'} props.handedness  board pile arrangement
+ * @param {(h: 'left'|'right') => void} props.onHandednessChange
+ * @param {boolean} props.highlightCard  draw the focus outline on the focused card
+ * @param {(v: boolean) => void} props.onHighlightCardChange
+ * @param {boolean} props.particles  enable the foundation suit-burst effect
+ * @param {(v: boolean) => void} props.onParticlesChange
+ */
+export default function SettingsOptionsModal({
+  open,
+  onClose,
+  handedness,
+  onHandednessChange,
+  highlightCard,
+  onHighlightCardChange,
+  particles,
+  onParticlesChange,
+}) {
+  const dialogRef = useRef(null);
+  const backdrop = useModalBackdrop(onClose);
+
+  useModalEscape({ open, onClose, id: 'settings-options', z: Z.CHILD });
+
+  useEffect(() => {
+    if (!open) return;
+    dialogRef.current?.focus();
+  }, [open]);
+
+  if (!open) return null;
+
+  const btn = {
+    padding: '8px 14px',
+    borderRadius: 6,
+    border: '1px solid var(--ui-modal-btn-border)',
+    background: 'var(--ui-modal-btn-bg)',
+    color: 'var(--ui-modal-fg)',
+    cursor: 'pointer',
+    fontSize: 14,
+    fontWeight: 600,
+  };
+
+  const panel = {
+    position: 'relative',
+    background: 'var(--card-face-bg)',
+    color: 'var(--card-text-black)',
+    border: 'var(--card-border)',
+    borderRadius: 'var(--card-radius)',
+    boxShadow: '0 8px 28px rgba(0,0,0,0.45)',
+    padding: '20px 22px',
+    width: 'min(90vw, 360px)',
+    maxWidth: '100%',
+  };
+
+  const selectStyle = {
+    padding: '6px 10px',
+    borderRadius: 6,
+    color: 'var(--ui-control-fg)',
+    background: 'var(--ui-control-bg)',
+    border: '1px solid var(--ui-control-border)',
+    fontSize: 14,
+    cursor: 'pointer',
+  };
+
+  const field = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 14,
+  };
+
+  return (
+    <div
+      ref={dialogRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Settings"
+      tabIndex={-1}
+      {...backdrop}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 3200,
+        padding: 16,
+      }}
+    >
+      <div style={panel}>
+        <h2 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>Settings</h2>
+        <ModalCloseButton onClick={onClose} />
+
+        <div style={{ ...field, marginBottom: 20 }}>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>Hand</label>
+          <select
+            value={handedness}
+            onChange={(e) => onHandednessChange(e.target.value)}
+            style={selectStyle}
+          >
+            <option value="left">Left</option>
+            <option value="right">Right</option>
+          </select>
+        </div>
+
+        <div style={{ ...field, marginBottom: 20 }}>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>Highlight Card</label>
+          <ToggleSwitch
+            checked={!!highlightCard}
+            onChange={onHighlightCardChange}
+            label="Highlight Card"
+          />
+        </div>
+
+        <div style={{ ...field, marginBottom: 0 }}>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>Foundation Particles</label>
+          <ToggleSwitch
+            checked={!!particles}
+            onChange={onParticlesChange}
+            label="Foundation Particles"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
