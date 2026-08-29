@@ -6,6 +6,7 @@ import { MOTION } from './motion.js';
 // with dnd-kit's drag transforms or the Flip position pipeline.
 export function playCardShake(node) {
   if (!node) return;
+  if (gsap.isTweening(node)) return;
   const { duration, distance } = MOTION.shake;
   gsap.timeline({ onComplete: () => gsap.set(node, { clearProps: 'transform' }) })
     .to(node, { x: -distance, duration: duration * 0.15, ease: 'power2.out' })

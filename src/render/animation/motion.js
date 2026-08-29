@@ -87,7 +87,7 @@ export const MOTION = {
 
   // Invalid-move shake (playCardShake). The sub-steps are fractions of
   // `duration`, and `distance` is the horizontal shift on each side.
-  shake:    { duration: 0.25, distance: 8 },
+  shake:    { duration: 0.35, distance: 8 },
 
   // Foundation particle burst: a suit-glyph explosion fired from the center of
   // the destination foundation pile whenever a card lands there. Each particle
