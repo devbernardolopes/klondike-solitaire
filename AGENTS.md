@@ -212,6 +212,30 @@ an `aria-live` region announces actions. Dialogs are in `components/`.
     internal store flag is still `settingsDialogOpen`. (Originally built as "Settings".)
 - `ToggleSwitch.jsx`, `modalBackdrop.js` — shared UI helpers.
 
+## Modal dismissal rule
+
+Every dialog is built from the shared primitives `useModalBackdrop` + `ModalCloseButton`
++ `useModalEscape` (see `modalStack.js` for the `Z` stacking levels). This contract
+enforces outside-tap and Escape dismissal **automatically**:
+
+- A modal is dismissed by tapping/clicking **outside** its panel (the backdrop) **or**
+  pressing Escape. Tapping the exact trigger that opened the modal while it is already
+  open also counts as "outside" and **dismisses it** — it must NOT re-open.
+- The stray `click` that mobile browsers synthesize at the end of a touch gesture that
+  closed a modal (landing on the trigger/FAB/row underneath the backdrop) is swallowed
+  centrally inside `useModalBackdrop`, so re-opening cannot happen. **Do not** re-add
+  per-button guards like the old `isModalDismissGuardActive()` check — the infrastructure
+  owns this; per-button guards were the fragile pattern that got forgotten and caused
+  regressions (e.g. the Achievements detail modal re-opening on mobile).
+- **Non-dismissable modals are the only exception.** The "No More Moves" dialog (a
+  `ConfirmModal` with `dismissable={false}`) must NOT be closable by outside tap — it
+  deliberately omits the `backdrop` handlers (see `ConfirmModal.jsx`). Any future modal
+  that must ignore outside taps follows the same `dismissable={false}` / "don't spread
+  `backdrop`" convention.
+- **When adding a new modal,** just use the three shared primitives and it gets correct
+  dismissal (including the no-reopen guarantee) for free. No extra click-suppression code
+  is needed or wanted at the call site.
+
 ## Rendering / animation (`src/render/`)
 
 - `deck/` — `deckRegistry.js`, `drawCard.js` (shared canvas primitives), the two renderers.

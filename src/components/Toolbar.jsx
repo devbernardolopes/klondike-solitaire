@@ -6,7 +6,6 @@ import { Plus, Undo2, Menu, BarChart3, Lightbulb, Coins as CoinsIcon } from 'luc
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
-import { isModalDismissGuardActive } from '../utils/modalDismissGuard.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useSound } from '../hooks/useSound.js';
 import { isWon } from '../core/winDetection.js';
@@ -231,15 +230,6 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
     padding: 10,
   };
 
-  // Wraps a FAB click action so the stray `click` synthesized at the end of a
-  // mobile touch that dismissed a modal (via its backdrop) can't re-trigger the
-  // button that was underneath the backdrop. The guard is set synchronously by
-  // `useModalBackdrop` on dismiss, so it is active by the time this click fires.
-  const guardedFab = (fn) => (e) => {
-    if (isModalDismissGuardActive()) return;
-    fn(e);
-  };
-
   // Bottom-left cluster, left-to-right: [Settings] [Statistics] [New Game].
   // Each is fixed-bottom and ~40px wide with a 12px gap; the third sits 2 slots
   // in from the edge.
@@ -336,7 +326,7 @@ function ElapsedClock() {
       <button
         style={{ ...fab, left: fabLeft(0) }}
         aria-label="Main Menu"
-        onClick={guardedFab(() => setSettingsDialogOpen(true))}
+        onClick={() => setSettingsDialogOpen(true)}
       >
         <Menu size={20} />
       </button>
@@ -344,7 +334,7 @@ function ElapsedClock() {
       <button
         style={{ ...fab, left: fabLeft(1) }}
         aria-label="Statistics"
-        onClick={guardedFab(() => setStatsDialogOpen(true))}
+        onClick={() => setStatsDialogOpen(true)}
       >
         <BarChart3 size={20} />
       </button>
@@ -352,7 +342,7 @@ function ElapsedClock() {
       <button
         style={{ ...fab, left: fabLeft(2) }}
         aria-label="New Game"
-        onClick={guardedFab(() => setNewGameDialogOpen(true))}
+        onClick={() => setNewGameDialogOpen(true)}
       >
         <Plus size={20} />
       </button>
@@ -362,7 +352,7 @@ function ElapsedClock() {
         aria-label="Hint: show available moves (H)"
         data-hint-button
         disabled={locked}
-        onClick={guardedFab(showHints)}
+        onClick={showHints}
       >
         <Lightbulb size={20} />
       </button>
@@ -371,7 +361,7 @@ function ElapsedClock() {
         style={{ ...fab, right: 16, opacity: locked || !canUndo ? 0.4 : 1 }}
         aria-label="Undo"
         disabled={locked || !canUndo}
-        onClick={guardedFab(undo)}
+        onClick={undo}
       >
         <Undo2 size={20} />
       </button>

@@ -7,7 +7,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { HelpCircle } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
-import { isModalDismissGuardActive } from '../utils/modalDismissGuard.js';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { deal } from '../core/dealer.js';
 import { buildSolvitaireText } from '../core/solvitaire.js';
@@ -158,21 +157,6 @@ export default function SettingsModal({
     );
   };
 
-  // Open a sub-modal, but ignore the press if a just-dismissed modal's
-  // synthesized mobile click happens to land on this button (the same guard the
-  // toolbar FABs use) — otherwise dismissing a sub-modal via its backdrop would
-  // instantly re-open it on touch.
-  const openModalGuarded = (setter) => () => {
-    if (isModalDismissGuardActive()) return;
-    setter(true);
-  };
-
-  // Export the current visible board as a plain-text snapshot file.
-  const openHelp = () => {
-    if (isModalDismissGuardActive()) return;
-    useUiStore.getState().setHelpDialogOpen(true);
-  };
-
   // 3-20 chars: letters, numbers, underscores only. Mirrors the server-side
   // format check in rename_display_name so obviously-invalid input is rejected
   // client-side without a network round-trip.
@@ -265,7 +249,7 @@ export default function SettingsModal({
           <button
             type="button"
             style={{ ...btn, minWidth: 120 }}
-            onClick={openModalGuarded(setThemeOpen)}
+            onClick={() => setThemeOpen(true)}
           >
             Theme
           </button>
@@ -436,7 +420,7 @@ export default function SettingsModal({
               justifyContent: 'center',
               padding: '8px 10px',
             }}
-            onClick={openHelp}
+            onClick={() => useUiStore.getState().setHelpDialogOpen(true)}
           >
             <HelpCircle size={18} aria-hidden="true" />
           </button>
@@ -460,21 +444,21 @@ export default function SettingsModal({
           <button
             type="button"
             style={{ ...btn, width: '100%' }}
-            onClick={openModalGuarded(setAchievementsOpen)}
+            onClick={() => setAchievementsOpen(true)}
           >
             Achievements
           </button>
           <button
             type="button"
             style={{ ...btn, width: '100%' }}
-            onClick={openModalGuarded(setLeaderboardOpen)}
+            onClick={() => setLeaderboardOpen(true)}
           >
             Leaderboard
           </button>
           <button
             type="button"
             style={{ ...btn, width: '100%' }}
-            onClick={openModalGuarded(setStoreOpen)}
+            onClick={() => setStoreOpen(true)}
           >
             Store
           </button>
