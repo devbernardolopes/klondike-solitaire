@@ -88,9 +88,28 @@ export function useCardMoveSlide() {
       movers.push({ wrap, prevZ });
     });
 
+    // During a deal, the cards being dealt fly out from the face-down stock. We
+    // want them to appear BENEATH the remaining face-down stock cards (as if
+    // pulled from under the pile) while they overlap the stock region, but still
+    // ON TOP of every other pile (tableau/foundation/waste) as they land. The
+    // stock pile wrapper has no z-index of its own, so it does not create a
+    // stacking context; giving it a value above the movers' `2000 + base` groups
+    // its face-down cards at that level, above the dealt cards, without touching
+    // the movers' own lift (they stay above all other piles). Restored below.
+    let stockWrap = null;
+    let prevStockZ = '';
+    if (type === 'deal') {
+      stockWrap = document.querySelector('[data-pile="stock"]');
+      if (stockWrap) {
+        prevStockZ = stockWrap.style.zIndex;
+        stockWrap.style.zIndex = '3000';
+      }
+    }
+
     // Nothing actually moved (e.g. a no-op capture): release the lock at once so
     // it never sticks.
     if (moved.length === 0) {
+      if (stockWrap) stockWrap.style.zIndex = prevStockZ;
       useUiStore.getState().endTransition(tid);
       return;
     }
@@ -104,6 +123,8 @@ export function useCardMoveSlide() {
         movers.forEach(({ wrap, prevZ }) => {
           if (wrap) wrap.style.zIndex = prevZ;
         });
+        // Drop the temporary stock-pile stacking context created for the deal.
+        if (stockWrap) stockWrap.style.zIndex = prevStockZ;
         const i = activeTweens.indexOf(tl);
         if (i >= 0) activeTweens.splice(i, 1);
         useUiStore.getState().endTransition(tid);
