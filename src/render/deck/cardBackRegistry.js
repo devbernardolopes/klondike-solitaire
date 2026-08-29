@@ -31,6 +31,7 @@ const BACKS = {
   green: { name: 'Green', renderBack: () => render('green', '#118324') },
   black: { name: 'Black', renderBack: () => render('black', '#252222') },
   golden: { name: 'Golden', renderBack: () => render('golden', '#a67c00') },
+  purple: { name: 'Purple', renderBack: () => render('purple', '#5e065e') },
 };
 
 export function getCardBack(key) {
