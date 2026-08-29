@@ -9,7 +9,7 @@
 // (core/dailyChallenge.seedForDate).
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Crosshair } from 'lucide-react';
+import { Crosshair, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
 import { useModalEscape } from '../hooks/useModalEscape.js';
@@ -353,7 +353,7 @@ export default function DailyChallengeModal() {
                 cursor: canPrev ? 'pointer' : 'default',
               }}
             >
-              {'◀'}
+              <ChevronLeft size={18} />
             </button>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -385,23 +385,6 @@ export default function DailyChallengeModal() {
                   <option key={y} value={y}>{y}</option>
                 ))}
               </select>
-              <button
-                type="button"
-                aria-label="Go to today"
-                title="Go to today"
-                onClick={onGoToday}
-                style={{
-                  ...btn,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: 6,
-                  minWidth: 32,
-                  cursor: 'pointer',
-                }}
-              >
-                <Crosshair size={18} />
-              </button>
             </div>
 
             <button
@@ -418,7 +401,7 @@ export default function DailyChallengeModal() {
                 cursor: canNext ? 'pointer' : 'default',
               }}
             >
-              {'▶'}
+              <ChevronRight size={18} />
             </button>
           </div>
 
@@ -448,7 +431,24 @@ export default function DailyChallengeModal() {
           </div>
 
           {/* Footer actions */}
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'space-between' }}>
+            <button
+              type="button"
+              aria-label="Go to today"
+              title="Go to today"
+              onClick={onGoToday}
+              style={{
+                ...btn,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 6,
+                minWidth: 32,
+                cursor: 'pointer',
+              }}
+            >
+              <Crosshair size={18} />
+            </button>
             <button
               type="button"
               disabled={!selected || isAfter(selected, today) || !withinSupported(selected)}
