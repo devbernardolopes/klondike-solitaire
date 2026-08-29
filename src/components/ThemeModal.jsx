@@ -66,7 +66,11 @@ export default function ThemeModal({ open, onClose }) {
   const ownedItemIds = useAuthStore((s) => s.ownedItemIds);
   const setTheme = useSettingsStore((s) => s.setTheme);
   const setDeck = useSettingsStore((s) => s.setDeck);
-  const [activeTab, setActiveTab] = useState('background');
+  const setThemeModalTab = useSettingsStore((s) => s.setThemeModalTab);
+  const validTab = (t) => (TABS.some((x) => x.id === t) ? t : 'background');
+  const [activeTab, setActiveTab] = useState(() =>
+    validTab(useSettingsStore.getState().themeModalTab),
+  );
   const [catalogItems, setCatalogItems] = useState([]);
   const [newIds, setNewIds] = useState([]);
 
@@ -75,6 +79,9 @@ export default function ThemeModal({ open, onClose }) {
   useEffect(() => {
     if (!open) return;
     dialogRef.current?.focus();
+    // Restore the last-selected tab persisted in settings (read fresh from the
+    // store to avoid a stale closure, and guard against an unknown stored id).
+    setActiveTab(validTab(useSettingsStore.getState().themeModalTab));
     fetchStoreCatalog()
       .then((data) => {
         setCatalogItems(data);
@@ -299,7 +306,10 @@ export default function ThemeModal({ open, onClose }) {
                 type="button"
                 role="tab"
                 aria-selected={active}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  setThemeModalTab(tab.id);
+                }}
                 style={{
                   ...btn,
                   background: active ? 'var(--ui-modal-btn-bg-strong)' : 'var(--ui-modal-btn-bg)',

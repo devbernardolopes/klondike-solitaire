@@ -55,6 +55,7 @@ export const useSettingsStore = create((set, get) => ({
   highlightCard: DEFAULTS.highlightCard,
   particles: DEFAULTS.particles,
   seenThemeItemIds: [],
+  themeModalTab: 'background',
   loaded: false,
 
   /**
@@ -62,7 +63,7 @@ export const useSettingsStore = create((set, get) => ({
    * keys fall back to DEFAULTS. Activates the loaded (or default) deck.
    */
   init: async () => {
-    const [theme, deck, cardBack, handedness, highlightCard, particles, seenThemeItemIds] = await Promise.all([
+    const [theme, deck, cardBack, handedness, highlightCard, particles, seenThemeItemIds, themeModalTab] = await Promise.all([
       getSetting('theme', DEFAULTS.theme),
       getSetting('deck', DEFAULTS.deck),
       getSetting('cardBack', DEFAULTS.cardBack),
@@ -70,9 +71,10 @@ export const useSettingsStore = create((set, get) => ({
       getSetting('highlightCard', DEFAULTS.highlightCard),
       getSetting('particles', DEFAULTS.particles),
       getSetting('seenThemeItemIds', []),
+      getSetting('themeModalTab', 'background'),
     ]);
     setActiveDeck(deck);
-    set({ theme, deck, cardBack, handedness, highlightCard, particles, seenThemeItemIds, loaded: true });
+    set({ theme, deck, cardBack, handedness, highlightCard, particles, seenThemeItemIds, themeModalTab, loaded: true });
   },
 
   /**
@@ -124,6 +126,15 @@ export const useSettingsStore = create((set, get) => ({
   setParticles: (particles) => {
     set({ particles });
     setSetting('particles', particles);
+  },
+
+  /**
+   * Persist the last-selected Theme modal tab so re-opening restores it.
+   * @param {string} tab  one of the ThemeModal TABS ids
+   */
+  setThemeModalTab: (tab) => {
+    set({ themeModalTab: tab });
+    setSetting('themeModalTab', tab);
   },
 
   /**
