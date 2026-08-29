@@ -343,6 +343,33 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
           }}
         />
       )}
+
+      {/* Stock count badge: number of face-down cards still in the stock, shown
+          bottom-left of the pile. Hidden once the stock is empty (the empty
+          state keeps its own ↻ recycle affordance). `cards` for the stock pile
+          is exactly the face-down stock array, so its length is the count. */}
+      {kind === 'stock' && cards.length > 0 && (
+        <span
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            bottom: 4,
+            left: 4,
+            zIndex: 950,
+            pointerEvents: 'none',
+            background: 'rgba(0,0,0,0.55)',
+            color: '#fff',
+            borderRadius: 6,
+            padding: '1px 5px',
+            fontSize: 12,
+            fontWeight: 700,
+            fontVariantNumeric: 'tabular-nums',
+            userSelect: 'none',
+          }}
+        >
+          {cards.length}
+        </span>
+      )}
     </div>
   );
 }

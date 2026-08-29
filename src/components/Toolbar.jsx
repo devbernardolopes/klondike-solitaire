@@ -239,6 +239,17 @@ const hudLabelStyle = {
   fontSize: 22,
   fontWeight: 700,
   userSelect: 'none',
+  fontVariantNumeric: 'tabular-nums',
+};
+
+// Fixed-width, right-aligned slot for a HUD numeric value so the label (e.g.
+// "Moves:") stays put as the number of digits grows (0 -> 10 -> 100). Without
+// this the whole HUD cell widens and the centered row re-centers, shifting the
+// label leftward. 3ch covers the 999 move limit.
+const hudNumStyle = {
+  display: 'inline-block',
+  minWidth: '3ch',
+  textAlign: 'right',
 };
 
 /**
@@ -249,7 +260,11 @@ const hudLabelStyle = {
  */
 function ElapsedClock() {
   const elapsed = useElapsed();
-  return <span style={hudLabelStyle}>Time: {elapsed}</span>;
+  return (
+    <span style={hudLabelStyle}>
+      Time: <span style={hudNumStyle}>{elapsed}</span>
+    </span>
+  );
 }
 
   return (
@@ -257,14 +272,20 @@ function ElapsedClock() {
       <div
         style={{
           display: 'flex',
-          alignItems: 'flex-start',
-          gap: 8,
+          flexDirection: 'column',
+          gap: 6,
           padding: '8px clamp(8px, 2vw, 20px)',
-          position: 'relative',
+          width: '100%',
         }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
         >
-         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-           <span
+          <span
             role="button"
             tabIndex={0}
             title="Double-click to enter a specific seed"
@@ -279,45 +300,44 @@ function ElapsedClock() {
               outline: 'none',
             }}
           >
-             {currentGameKind === 'daily'
-                  ? `Daily Challenge: ${currentDailyDate} (seed ${gameState.seed})`
-                  : currentGameKind === 'random'
-                    ? `Random (seed ${gameState.seed})`
-                    : `Seed: ${gameState.seed}`}
-           </span>
-           <span
-             style={{
-               color: '#fff',
-               fontSize: 13,
-               display: 'flex',
-               alignItems: 'center',
-               gap: 4,
-               userSelect: 'none',
-             }}
-           >
-             <CoinsIcon size={14} /> {coins}
-           </span>
-         </div>
+            {currentGameKind === 'daily'
+              ? `Daily Challenge: ${currentDailyDate} (seed ${gameState.seed})`
+              : currentGameKind === 'random'
+                ? `Random (seed ${gameState.seed})`
+                : `Seed: ${gameState.seed}`}
+          </span>
+          <span
+            style={{
+              color: '#fff',
+              fontSize: 13,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              userSelect: 'none',
+            }}
+          >
+            <CoinsIcon size={14} /> {coins}
+          </span>
+        </div>
 
-         <div
-           style={{
-             position: 'absolute',
-             left: 0,
-             right: 0,
-             top: 8,
-             display: 'flex',
-             justifyContent: 'center',
-             alignItems: 'flex-start',
-             pointerEvents: 'none',
-           }}
-         >
-           <div style={{ display: 'flex', gap: 'clamp(24px, 6vw, 80px)', alignItems: 'center' }}>
-             <span style={hudLabelStyle}>Score: {score}</span>
-             <ElapsedClock />
-             <span style={hudLabelStyle}>Moves: {moves}</span>
-           </div>
-         </div>
-       </div>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: 'clamp(24px, 6vw, 80px)',
+            alignItems: 'center',
+            pointerEvents: 'none',
+          }}
+        >
+          <span style={hudLabelStyle}>
+            Score: <span style={hudNumStyle}>{score}</span>
+          </span>
+          <ElapsedClock />
+          <span style={hudLabelStyle}>
+            Moves: <span style={hudNumStyle}>{moves}</span>
+          </span>
+        </div>
+      </div>
 
       <button
         style={{ ...fab, left: fabLeft(0) }}
