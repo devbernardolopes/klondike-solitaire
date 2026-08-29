@@ -272,9 +272,6 @@ export default function SettingsModal({
           >
             Statistics
           </button>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
           <button
             type="button"
             style={{ ...btn, width: '100%' }}

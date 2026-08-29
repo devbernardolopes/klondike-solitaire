@@ -226,9 +226,9 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
     padding: 10,
   };
 
-  // Bottom-left cluster, left-to-right: [Settings] [Statistics] [New Game].
-  // Each is fixed-bottom and ~40px wide with a 12px gap; the third sits 2 slots
-  // in from the edge.
+  // Bottom-left cluster, left-to-right: [Main Menu] [New Game].
+  // Each is fixed-bottom and ~40px wide with a 12px gap (FAB_GAP), matching the
+  // Hint/Undo spacing on the bottom-right.
   const FAB_WIDTH = 40;
   const FAB_GAP = 12;
   const fabLeft = (slot) => 16 + slot * (FAB_WIDTH + FAB_GAP);
@@ -328,7 +328,7 @@ function ElapsedClock() {
       </button>
 
       <button
-        style={{ ...fab, left: fabLeft(2) }}
+        style={{ ...fab, left: fabLeft(1) }}
         aria-label="New Game"
         onClick={() => setNewGameDialogOpen(true)}
       >
