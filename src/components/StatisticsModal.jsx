@@ -28,6 +28,11 @@ import { formatTime } from '../utils/formatTime.js';
 export default function StatisticsModal({ open, onClose }) {
   const stats = useStatisticsStore((s) => s.stats);
   const reset = useStatisticsStore((s) => s.reset);
+  const isGameInProgress = () => {
+    const live = useStatsStore.getState();
+    const won = useGameStore.getState().isWon();
+    return live.startTime !== null && !live.isOver && !won;
+  };
   const coinsEarnedTotal = useAuthStore((s) => s.coinsEarnedTotal);
   const coinsSpentTotal = useAuthStore((s) => s.coinsSpentTotal);
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
@@ -211,18 +216,25 @@ export default function StatisticsModal({ open, onClose }) {
       <ConfirmModal
         open={confirmResetOpen}
         title="Reset statistics?"
-        message="This clears your games played, wins, personal bests, and winning streaks. Your coins, achievements, and Daily Challenge history are not affected. This cannot be undone."
+        message={
+          "This clears your games played, wins, personal bests, and winning streaks. " +
+          "Your coins, achievements, and Daily Challenge history are not affected. " +
+          "This cannot be undone." +
+          (isGameInProgress()
+            ? " Your current game is in progress and will be discarded and replayed (the same as choosing Replay this Game)."
+            : "")
+        }
         confirmText="Reset"
         cancelText="Cancel"
         onConfirm={() => {
           setConfirmResetOpen(false);
-          // If a game is currently in progress (timer running and not won),
-          // count it so Total Games Played resets to 1 instead of 0. A won (or
-          // hard-limit) game is over, so it must reset to 0.
-          const live = useStatsStore.getState();
-          const won = useGameStore.getState().isWon();
-          const inProgress = live.startTime !== null && !live.isOver && !won;
-          reset(inProgress);
+          // If a game is currently in progress (timer running and not won), the
+          // reset zeroes stats (Total Games Played -> 0) and the in-progress game
+          // is discarded and re-dealt — equivalent to clicking "Replay this Game".
+          // A won (or hard-limit) game is already over, so it is just reset.
+          const inProgress = isGameInProgress();
+          reset();
+          if (inProgress) useGameStore.getState().replayGame();
         }}
         onCancel={() => setConfirmResetOpen(false)}
       />

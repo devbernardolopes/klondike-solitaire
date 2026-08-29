@@ -4,7 +4,7 @@
 // db helpers so values survive reloads and aggregate across sessions.
 
 import { create } from 'zustand';
-import { loadStats, addWin, addGamePlayed, recordLoss as dbRecordLoss, resetStats } from '../db/stats.js';
+import { loadStats, addWin, recordLoss as dbRecordLoss, resetStats } from '../db/stats.js';
 // Imported lazily (only used inside finalizeGame at call-time) so the circular
 // reference with useStatsStore never resolves during module evaluation.
 import { useStatsStore } from './useStatsStore.js';
@@ -97,20 +97,15 @@ export const useStatisticsStore = create((set, get) => ({
   },
 
   /**
-   * Clear all cumulative statistics.
-   * @param {boolean} [countCurrentGame]  when true (a game is in progress, i.e.
-   *   its timer is running), Total Games Played is set to 1 so the ongoing game
-   *   is still counted instead of being wiped to 0.
+   * Clear all cumulative statistics, both locally (Dexie) and on the server
+   * (via the `reset_statistics` RPC, flushed by the offline-first sync queue).
+   * The caller is responsible for any in-progress game: discarding and re-dealing
+   * it must be done separately (e.g. useGameStore.replayGame) so the reset does
+   * not count the abandoned game as played.
    */
-  reset: async (countCurrentGame = false) => {
+  reset: async () => {
     const stats = await resetStats();
     enqueue('reset_statistics', {});
-    if (countCurrentGame) {
-      const withPlayed = await addGamePlayed();
-      set({ stats: withPlayed });
-      enqueue('record_game_started', {});
-    } else {
-      set({ stats });
-    }
+    set({ stats });
   },
 }));
