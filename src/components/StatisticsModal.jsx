@@ -77,7 +77,7 @@ export default function StatisticsModal({ open, onClose }) {
     borderRadius: 'var(--ui-modal-panel-radius)',
     boxShadow: '0 8px 28px rgba(0,0,0,0.45)',
     padding: '20px 22px',
-    width: 'min(90vw, 360px)',
+    width: 'min(90vw, 420px)',
     maxWidth: '100%',
     height: '85vh',
     display: 'flex',
@@ -199,17 +199,25 @@ export default function StatisticsModal({ open, onClose }) {
                 {coinsSpentTotal}
               </span>
             </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 18, gap: 10 }}>
-              <button
-                type="button"
-                style={{ ...btn, background: 'var(--ui-modal-btn-bg-danger, #b23b3b)', color: '#fff' }}
-                onClick={() => setConfirmResetOpen(true)}
-              >
-                Reset
-              </button>
-            </div>
           </div>
+
+          <button
+            type="button"
+            style={{
+              marginTop: 12,
+              padding: '10px 14px',
+              borderRadius: 6,
+              border: '1px solid var(--ui-modal-btn-border)',
+              background: 'var(--ui-modal-btn-bg-danger, #b23b3b)',
+              color: '#fff',
+              cursor: 'pointer',
+              fontSize: 14,
+              fontWeight: 600,
+            }}
+            onClick={() => setConfirmResetOpen(true)}
+          >
+            Reset
+          </button>
         </div>
       </div>
 

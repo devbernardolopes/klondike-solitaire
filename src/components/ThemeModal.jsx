@@ -115,7 +115,7 @@ export default function ThemeModal({ open, onClose }) {
     borderRadius: 'var(--ui-modal-panel-radius)',
     boxShadow: '0 8px 28px rgba(0,0,0,0.45)',
     padding: '20px 22px',
-    width: 'min(92vw, 560px)',
+    width: 'min(90vw, 420px)',
     maxWidth: '100%',
     height: '85vh',
     display: 'flex',
@@ -151,7 +151,7 @@ export default function ThemeModal({ open, onClose }) {
       ...ownedFelts.map((it) => ({ asset_ref: it.asset_ref, id: it.id, label: it.name })),
     ];
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, var(--card-width))', gap: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, var(--card-width))', gap: 14, justifyContent: 'center' }}>
         {tiles.map((t) => {
           const selected = t.asset_ref === theme;
           const isNew = t.id ? newIds.includes(t.id) : false;
@@ -208,7 +208,7 @@ export default function ThemeModal({ open, onClose }) {
   };
 
   const renderInterfaceTab = () => (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, var(--card-width))', gap: 14 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, var(--card-width))', gap: 14, justifyContent: 'center' }}>
       {FREE_BACKGROUNDS.slice(0, 2).map((t) => {
         const selected = t === interfaceTheme;
         return (
@@ -261,7 +261,7 @@ export default function ThemeModal({ open, onClose }) {
       }),
     ];
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, var(--card-width))', gap: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, var(--card-width))', gap: 14, justifyContent: 'center' }}>
         {tiles.map((t) => {
           const selected = t.key === cardBack;
           const isNew = t.id ? newIds.includes(t.id) : false;
@@ -294,7 +294,7 @@ export default function ThemeModal({ open, onClose }) {
   const renderCardsFaceTab = () => {
     const faces = listDecks().filter((d) => d !== 'sprite');
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, var(--card-width))', gap: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, var(--card-width))', gap: 14, justifyContent: 'center' }}>
         {faces.map((d) => {
           const selected = d === deck;
           const faceImg = getDeck(d).renderCard(PREVIEW_SUIT, PREVIEW_RANK);

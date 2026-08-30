@@ -132,8 +132,11 @@ export default function SettingsModal({
     borderRadius: 'var(--ui-modal-panel-radius)',
     boxShadow: '0 8px 28px rgba(0,0,0,0.45)',
     padding: '20px 22px',
-    width: 'min(90vw, 360px)',
+    width: 'min(90vw, 420px)',
     maxWidth: '100%',
+    height: '85vh',
+    display: 'flex',
+    flexDirection: 'column',
   };
 
   const selectStyle = {
@@ -250,204 +253,206 @@ export default function SettingsModal({
         </h2>
         <ModalCloseButton onClick={onClose} />
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
-          <button
-            type="button"
-            style={{ ...btn, width: '100%' }}
-            onClick={() => setSettingsOptionsOpen(true)}
-          >
-            Settings
-          </button>
-          <button
-            type="button"
-            style={{ ...btn, width: '100%' }}
-            onClick={() => setThemeOpen(true)}
-          >
-            Theme
-          </button>
-          <button
-            type="button"
-            style={{ ...btn, width: '100%' }}
-            onClick={() => setStatsOpen(true)}
-          >
-            Statistics
-          </button>
-          <button
-            type="button"
-            style={{ ...btn, width: '100%' }}
-            onClick={() => setAchievementsOpen(true)}
-          >
-            Achievements
-          </button>
-          <button
-            type="button"
-            style={{ ...btn, width: '100%' }}
-            onClick={() => setLeaderboardOpen(true)}
-          >
-            Leaderboard
-          </button>
-          <button
-            type="button"
-            style={{ ...btn, width: '100%' }}
-            onClick={() => setStoreOpen(true)}
-          >
-            Store
-          </button>
-        </div>
+        <div className="modal-body-scroll" style={{ flex: 1, minHeight: 0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+            <button
+              type="button"
+              style={{ ...btn, width: '100%' }}
+              onClick={() => setSettingsOptionsOpen(true)}
+            >
+              Settings
+            </button>
+            <button
+              type="button"
+              style={{ ...btn, width: '100%' }}
+              onClick={() => setThemeOpen(true)}
+            >
+              Theme
+            </button>
+            <button
+              type="button"
+              style={{ ...btn, width: '100%' }}
+              onClick={() => setStatsOpen(true)}
+            >
+              Statistics
+            </button>
+            <button
+              type="button"
+              style={{ ...btn, width: '100%' }}
+              onClick={() => setAchievementsOpen(true)}
+            >
+              Achievements
+            </button>
+            <button
+              type="button"
+              style={{ ...btn, width: '100%' }}
+              onClick={() => setLeaderboardOpen(true)}
+            >
+              Leaderboard
+            </button>
+            <button
+              type="button"
+              style={{ ...btn, width: '100%' }}
+              onClick={() => setStoreOpen(true)}
+            >
+              Store
+            </button>
+          </div>
 
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
-          <button
-            type="button"
-            aria-label="Keyboard shortcuts"
-            title="Keyboard shortcuts"
-            style={{
-              ...btn,
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '8px 10px',
-            }}
-            onClick={() => useUiStore.getState().setHelpDialogOpen(true)}
-          >
-            <HelpCircle size={18} aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            style={{ ...btn }}
-            onClick={handleTakeSnapshot}
-          >
-            Take Snapshot
-          </button>
-          <button
-            type="button"
-            style={{ ...btn }}
-            onClick={handleExportSolvitaire}
-          >
-            Export
-          </button>
-        </div>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+            <button
+              type="button"
+              aria-label="Keyboard shortcuts"
+              title="Keyboard shortcuts"
+              style={{
+                ...btn,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '8px 10px',
+              }}
+              onClick={() => useUiStore.getState().setHelpDialogOpen(true)}
+            >
+              <HelpCircle size={18} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              style={{ ...btn }}
+              onClick={handleTakeSnapshot}
+            >
+              Take Snapshot
+            </button>
+            <button
+              type="button"
+              style={{ ...btn }}
+              onClick={handleExportSolvitaire}
+            >
+              Export
+            </button>
+          </div>
 
-        <div style={{ ...field, marginBottom: 20 }}>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 600 }}>Account</div>
-            {editingName ? (
-              <div>
-                <input
-                  value={nameInput}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setNameInput(v);
-                    setNameAvailable(null);
-                    if (!NAME_PATTERN.test(v)) {
-                      setNameError('3-20 characters: letters, numbers, underscores only.');
-                      return;
-                    }
-                    setNameError(null);
-                    setNameChecking(true);
-                    if (nameCheckTimer.current) clearTimeout(nameCheckTimer.current);
-                    nameCheckTimer.current = setTimeout(() => {
-                      useAuthStore
-                        .getState()
-                        .checkDisplayNameAvailable(v)
-                        .then((available) => {
-                          setNameChecking(false);
-                          setNameAvailable(available);
-                        })
-                        .catch(() => setNameChecking(false));
-                    }, 400);
-                  }}
-                  style={selectStyle}
-                  maxLength={20}
-                  autoFocus
-                />
-                {nameError && (
-                  <div style={{ color: 'crimson', fontSize: 12 }}>{nameError}</div>
-                )}
-                {!nameError && nameAvailable === false && (
-                  <div style={{ color: 'crimson', fontSize: 12 }}>That name is taken.</div>
-                )}
-                <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-                  <button
-                    type="button"
-                    style={btn}
-                    disabled={
-                      !!nameError ||
-                      nameChecking ||
-                      nameAvailable === false ||
-                      nameInput === displayName
-                    }
-                    onClick={async () => {
-                      try {
-                        await useAuthStore.getState().renameDisplayName(nameInput);
-                        setEditingName(false);
-                      } catch (e) {
-                        setNameError(e.message);
+          <div style={{ ...field, marginBottom: 20 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>Account</div>
+              {editingName ? (
+                <div>
+                  <input
+                    value={nameInput}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setNameInput(v);
+                      setNameAvailable(null);
+                      if (!NAME_PATTERN.test(v)) {
+                        setNameError('3-20 characters: letters, numbers, underscores only.');
+                        return;
                       }
+                      setNameError(null);
+                      setNameChecking(true);
+                      if (nameCheckTimer.current) clearTimeout(nameCheckTimer.current);
+                      nameCheckTimer.current = setTimeout(() => {
+                        useAuthStore
+                          .getState()
+                          .checkDisplayNameAvailable(v)
+                          .then((available) => {
+                            setNameChecking(false);
+                            setNameAvailable(available);
+                          })
+                          .catch(() => setNameChecking(false));
+                      }, 400);
                     }}
-                  >
-                    Save
-                  </button>
-                  <button
-                    type="button"
-                    style={btn}
-                    onClick={() => setEditingName(false)}
-                  >
-                    Cancel
-                  </button>
+                    style={selectStyle}
+                    maxLength={20}
+                    autoFocus
+                  />
+                  {nameError && (
+                    <div style={{ color: 'crimson', fontSize: 12 }}>{nameError}</div>
+                  )}
+                  {!nameError && nameAvailable === false && (
+                    <div style={{ color: 'crimson', fontSize: 12 }}>That name is taken.</div>
+                  )}
+                  <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                    <button
+                      type="button"
+                      style={btn}
+                      disabled={
+                        !!nameError ||
+                        nameChecking ||
+                        nameAvailable === false ||
+                        nameInput === displayName
+                      }
+                      onClick={async () => {
+                        try {
+                          await useAuthStore.getState().renameDisplayName(nameInput);
+                          setEditingName(false);
+                        } catch (e) {
+                          setNameError(e.message);
+                        }
+                      }}
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      style={btn}
+                      onClick={() => setEditingName(false)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ) : isAnonymous ? (
-              <div style={{ fontSize: 13, opacity: 0.8 }}>
-                Playing as {displayName ?? '…'}
-              </div>
-            ) : onCooldown ? (
-              <div style={{ fontSize: 13, opacity: 0.8 }}>
-                Signed in as {displayName ?? '…'}
-                <div style={{ fontSize: 12, opacity: 0.7 }}>
-                  You can rename until {cooldownUntil.toLocaleDateString()}
+              ) : isAnonymous ? (
+                <div style={{ fontSize: 13, opacity: 0.8 }}>
+                  Playing as {displayName ?? '…'}
                 </div>
-              </div>
-            ) : (
+              ) : onCooldown ? (
+                <div style={{ fontSize: 13, opacity: 0.8 }}>
+                  Signed in as {displayName ?? '…'}
+                  <div style={{ fontSize: 12, opacity: 0.7 }}>
+                    You can rename until {cooldownUntil.toLocaleDateString()}
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  style={{
+                    ...btn,
+                    background: 'transparent',
+                    border: 'none',
+                    padding: 0,
+                    textDecoration: 'underline',
+                  }}
+                  onClick={() => {
+                    setNameInput(displayName ?? '');
+                    setNameError(null);
+                    setNameAvailable(null);
+                    setEditingName(true);
+                  }}
+                >
+                  <span style={{ fontSize: 13, opacity: 0.8 }}>
+                    Signed in as {displayName ?? '…'}
+                  </span>
+                </button>
+              )}
+            </div>
+            {isAnonymous && (
               <button
                 type="button"
-                style={{
-                  ...btn,
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 0,
-                  textDecoration: 'underline',
-                }}
-                onClick={() => {
-                  setNameInput(displayName ?? '');
-                  setNameError(null);
-                  setNameAvailable(null);
-                  setEditingName(true);
-                }}
+                style={btn}
+                onClick={() => useAuthStore.getState().linkWithGoogle()}
               >
-                <span style={{ fontSize: 13, opacity: 0.8 }}>
-                  Signed in as {displayName ?? '…'}
-                </span>
+                Sign in with Google
+              </button>
+            )}
+            {!isAnonymous && (
+              <button
+                type="button"
+                style={btn}
+                onClick={() => setSignOutConfirmOpen(true)}
+              >
+                Sign Out
               </button>
             )}
           </div>
-          {isAnonymous && (
-            <button
-              type="button"
-              style={btn}
-              onClick={() => useAuthStore.getState().linkWithGoogle()}
-            >
-              Sign in with Google
-            </button>
-          )}
-          {!isAnonymous && (
-            <button
-              type="button"
-              style={btn}
-              onClick={() => setSignOutConfirmOpen(true)}
-            >
-              Sign Out
-            </button>
-          )}
         </div>
 
       </div>
