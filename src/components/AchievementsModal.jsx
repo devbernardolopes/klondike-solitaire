@@ -89,6 +89,7 @@ export default function AchievementsModal({ open, onClose }) {
   const backdrop = useModalBackdrop(onClose);
   const userId = useAuthStore((s) => s.userId);
   const [loading, setLoading] = useState(true);
+  const [loaded, setLoaded] = useState(false);
   const [defs, setDefs] = useState(/** @type {any[]} */ ([]));
   const [unlocked, setUnlocked] = useState(/** @type {Record<string, string>} */ ({}));
   const [selected, setSelected] = useState(/** @type {any|null} */ (null));
@@ -112,11 +113,15 @@ export default function AchievementsModal({ open, onClose }) {
   const load = useCallback(async (cancelledRef) => {
     if (!open) return;
     setLoading(true);
+    setLoaded(false);
     setDefs([]);
     setUnlocked({});
 
     if (!supabase) {
-      if (!cancelledRef.current) setLoading(false);
+      if (!cancelledRef.current) {
+        setLoaded(false);
+        setLoading(false);
+      }
       return;
     }
     const [defsRes, unlockedRes] = await Promise.all([
@@ -130,14 +135,17 @@ export default function AchievementsModal({ open, onClose }) {
         .select('achievement_id, unlocked_at'),
     ]);
     if (cancelledRef.current) return;
-    if (!defsRes.error && defsRes.data) {
+    const defsOk = !defsRes.error && defsRes.data;
+    const unlockedOk = !unlockedRes.error && unlockedRes.data;
+    if (defsOk) {
       setDefs(defsRes.data);
     }
-    if (!unlockedRes.error && unlockedRes.data) {
+    if (unlockedOk) {
       const map = {};
       for (const row of unlockedRes.data) map[row.achievement_id] = row.unlocked_at;
       setUnlocked(map);
     }
+    setLoaded(defsOk && unlockedOk);
     setLoading(false);
   }, [open]);
 
@@ -223,25 +231,26 @@ export default function AchievementsModal({ open, onClose }) {
             )}
           </div>
 
-          <button
-            type="button"
-            disabled={!supabase || !userId || resetting}
-            onClick={() => setConfirmOpen(true)}
-            style={{
-              marginTop: 12,
-              padding: '10px 14px',
-              borderRadius: 6,
-              border: '1px solid var(--ui-modal-btn-border)',
-              background: 'var(--ui-modal-btn-bg)',
-              color: 'var(--ui-modal-fg)',
-              cursor: (!supabase || !userId || resetting) ? 'not-allowed' : 'pointer',
-              fontSize: 14,
-              fontWeight: 600,
-              opacity: (!supabase || !userId) ? 0.5 : 1,
-            }}
-          >
-            {resetting ? 'Resetting…' : 'Reset Achievements'}
-          </button>
+          {loaded && Object.keys(unlocked).length > 0 && (
+            <button
+              type="button"
+              disabled={resetting}
+              onClick={() => setConfirmOpen(true)}
+              style={{
+                marginTop: 12,
+                padding: '10px 14px',
+                borderRadius: 6,
+                border: '1px solid var(--ui-modal-btn-border)',
+                background: 'var(--ui-modal-btn-bg)',
+                color: 'var(--ui-modal-fg)',
+                cursor: resetting ? 'not-allowed' : 'pointer',
+                fontSize: 14,
+                fontWeight: 600,
+              }}
+            >
+              {resetting ? 'Resetting…' : 'Reset Achievements'}
+            </button>
+          )}
         </div>
       </div>
 
