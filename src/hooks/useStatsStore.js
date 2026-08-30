@@ -53,6 +53,7 @@ export const useStatsStore = create(subscribeWithSelector((set, get) => ({
    */
   setFocused: (focused) => {
     const { startTime, endTime, isOver, pausedAt, pausedAccumMs } = get();
+    console.debug('[timer] setFocused', focused, { startTime, pausedAt, pausedAccumMs });
     if (startTime === null || endTime !== null || isOver) {
       // Nothing live to pause. Clear any stale marker defensively.
       if (pausedAt !== null) set({ pausedAt: null });
