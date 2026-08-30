@@ -1,0 +1,24 @@
+.theme-midnight {
+  --felt-color: #0d1b2a;
+  --felt-color-dark: #0a1520;
+}
+
+.theme-forest {
+  --felt-color: #1a3c2a;
+  --felt-color-dark: #122b1e;
+}
+
+.theme-desert {
+  --felt-color: #c2a878;
+  --felt-color-dark: #a68c5e;
+}
+
+.theme-noir {
+  --felt-color: #1a1a1a;
+  --felt-color-dark: #0f0f0f;
+}
+
+.theme-retro-crt {
+  --felt-color: #111811;
+  --felt-color-dark: #0b110b;
+}

@@ -27,7 +27,7 @@ const TABS = [
   { id: 'cardsFace', label: 'Cards Face' },
 ];
 
-const BACKGROUNDS = ['classic', 'dark'];
+const FREE_BACKGROUNDS = ['classic', 'dark', 'midnight', 'forest', 'desert'];
 
 // A fixed representative card (Ace of Spades) used so every deck face tile
 // clearly shows that deck's color/background differences.
@@ -82,15 +82,11 @@ export default function ThemeModal({ open, onClose }) {
   useEffect(() => {
     if (!open) return;
     dialogRef.current?.focus();
-    // Restore the last-selected tab persisted in settings (read fresh from the
-    // store to avoid a stale closure, and guard against an unknown stored id).
     setActiveTab(validTab(useSettingsStore.getState().themeModalTab));
     fetchStoreCatalog()
       .then((data) => {
         setCatalogItems(data);
-        // On first open after acquiring, flag owned theme items as "New" so the
-        // user notices them; mark them seen immediately so later opens don't.
-        const themeIds = data.filter((it) => it.kind === 'card_back').map((it) => it.id);
+        const themeIds = data.filter((it) => it.kind === 'card_back' || it.kind === 'table_felt').map((it) => it.id);
         const fresh = ownedItemIds.filter((id) => themeIds.includes(id) && !seenThemeItemIds.includes(id));
         setNewIds(fresh);
         if (fresh.length) markThemeItemsSeen(fresh);
@@ -148,53 +144,72 @@ export default function ThemeModal({ open, onClose }) {
 
   const announce = (msg) => useUiStore.getState().setAnnounce(msg);
 
-  // One tile per background theme: the felt-color swatch, scoped to that theme's
-  // CSS variables so the preview is accurate regardless of the active theme.
-  const renderBackgroundTab = () => (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, var(--card-width))', gap: 14 }}>
-      {BACKGROUNDS.map((t) => {
-        const selected = t === theme;
-        return (
-          <button
-            key={t}
-            type="button"
-            role="button"
-            aria-pressed={selected}
-            aria-label={`Background: ${t}${selected ? ' (selected)' : ''}`}
-            onClick={() => {
-              setTheme(t);
-              announce(`${t} background selected`);
-            }}
-            style={{
-              ...tileBase,
-              ...(selected ? selectedBorder : null),
-              background: 'none',
-              display: 'inline-block',
-            }}
-          >
-            <span
-              className={`theme-${t}`}
-              style={{
-                display: 'block',
-                width: '100%',
-                height: '100%',
-                borderRadius: 'var(--card-radius)',
-                background: 'var(--felt-color)',
+  const renderBackgroundTab = () => {
+    const ownedFelts = catalogItems.filter((it) => it.kind === 'table_felt' && ownedItemIds.includes(it.id));
+    const tiles = [
+      ...FREE_BACKGROUNDS.map((asset_ref) => ({ asset_ref, id: null, label: asset_ref })),
+      ...ownedFelts.map((it) => ({ asset_ref: it.asset_ref, id: it.id, label: it.name })),
+    ];
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, var(--card-width))', gap: 14 }}>
+        {tiles.map((t) => {
+          const selected = t.asset_ref === theme;
+          const isNew = t.id ? newIds.includes(t.id) : false;
+          return (
+            <button
+              key={t.asset_ref}
+              type="button"
+              role="button"
+              aria-pressed={selected}
+              aria-label={`Background: ${t.label}${selected ? ' (selected)' : ''}${isNew ? ' (new)' : ''}`}
+              onClick={() => {
+                setTheme(t.asset_ref);
+                announce(`${t.label} background selected`);
               }}
-            />
-          </button>
-        );
-      })}
-    </div>
-  );
+              style={{
+                ...tileBase,
+                ...(selected ? selectedBorder : null),
+                background: 'none',
+                display: 'inline-block',
+                overflow: 'hidden',
+              }}
+            >
+              <span
+                className={`theme-${t.asset_ref}`}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '100%',
+                  height: '100%',
+                  borderRadius: 'var(--card-radius)',
+                  background: 'var(--felt-color)',
+                }}
+              >
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: '42%',
+                    height: '52%',
+                    borderRadius: 'var(--card-radius)',
+                    background: 'var(--card-face-bg, #fbfbf7)',
+                    border: '1px solid var(--card-border, rgba(0,0,0,0.18))',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.35)',
+                    display: 'block',
+                  }}
+                />
+              </span>
+              {isNew && <span style={NEW_BADGE}>New</span>}
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
 
-  // One tile per interface theme: a UI sample (button surface using that
-  // theme's UI variables, scoped via the `ui-<name>` class so the preview is
-  // accurate regardless of the active interface theme). Selecting it changes
-  // only the UI chrome, never the board/Background look.
   const renderInterfaceTab = () => (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, var(--card-width))', gap: 14 }}>
-      {BACKGROUNDS.map((t) => {
+      {FREE_BACKGROUNDS.slice(0, 2).map((t) => {
         const selected = t === interfaceTheme;
         return (
           <button

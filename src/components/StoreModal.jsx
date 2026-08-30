@@ -87,9 +87,6 @@ export default function StoreModal({ open, onClose }) {
     maxWidth: '100%',
   };
 
-  // Renders a store item's visual the same way the Theme modal does for theme
-  // items: an image when present, otherwise the card-back registry preview for
-  // theme kinds, otherwise nothing (caller shows the text name beside it).
   const renderPreview = (item) => {
     const imgUrl = storeItemImageUrl(item.image_path);
     const previewSize = { width: 46, height: 64, borderRadius: 6, border: '1px solid var(--card-border)', flex: '0 0 auto' };
@@ -104,6 +101,33 @@ export default function StoreModal({ open, onClose }) {
       );
     }
     if (isThemeKind(item.kind)) {
+      if (item.kind === 'table_felt') {
+        return (
+          <span
+            aria-hidden="true"
+            className={`theme-${item.asset_ref}`}
+            style={{
+              ...previewSize,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'var(--felt-color)',
+            }}
+          >
+            <span
+              style={{
+                width: '60%',
+                height: '58%',
+                borderRadius: 4,
+                background: 'var(--card-face-bg, #fbfbf7)',
+                border: '1px solid rgba(0,0,0,0.18)',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                display: 'block',
+              }}
+            />
+          </span>
+        );
+      }
       const back = getCardBack(item.asset_ref);
       if (back) {
         return (

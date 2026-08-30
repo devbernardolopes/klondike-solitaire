@@ -4,6 +4,7 @@
 
 import '../render/themes/classic.css';
 import '../render/themes/dark.css';
+import '../render/themes/felts.css';
 // Side-effect imports register the deck renderers with the registry.
 import '../render/deck/SpriteDeckRenderer.js';
 import '../render/deck/ProceduralDeckRenderer.js';

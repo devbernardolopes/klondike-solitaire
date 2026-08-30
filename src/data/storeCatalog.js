@@ -10,12 +10,12 @@
 
 import { supabase } from '../lib/supabaseClient.js';
 
-// Currently the only kind is 'card_back'; widen as new theme kinds ship.
-const THEME_KINDS = new Set(['card_back']);
+const THEME_KINDS = new Set(['card_back', 'table_felt']);
 
 /** @type {Record<string, string>} kind → Theme-modal tab label. */
 const TAB_LABEL_BY_KIND = {
   card_back: 'Cards Back',
+  table_felt: 'Background',
 };
 
 let cache = null;
