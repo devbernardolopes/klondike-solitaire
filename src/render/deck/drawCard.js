@@ -41,15 +41,32 @@ export function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-function drawGlyph(ctx, text, color, x, y, fontPx, flip) {
+function drawGlyph(ctx, text, color, x, y, fontPx, flip, weight = 700) {
   ctx.save();
   ctx.translate(x, y);
   if (flip) ctx.rotate(Math.PI);
   ctx.fillStyle = color;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = `700 ${fontPx}px system-ui, sans-serif`;
+  ctx.font = `${weight} ${fontPx}px system-ui, sans-serif`;
   ctx.fillText(text, 0, 0);
+  ctx.restore();
+}
+
+function drawUnderline(ctx, color, x, y, w, flip) {
+  const len = w * 0.22;
+  const thickness = Math.max(1, w * 0.022);
+  const offsetY = w * 0.06;
+  ctx.save();
+  ctx.translate(x, y);
+  if (flip) ctx.rotate(Math.PI);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = thickness;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-len / 2, offsetY);
+  ctx.lineTo(len / 2, offsetY);
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -67,10 +84,14 @@ function drawGlyph(ctx, text, color, x, y, fontPx, flip) {
  *        or a light-brightened palette for dark decks.
  * @param {string} [opts.background]  card face fill; defaults to off-white.
  * @param {string} [opts.border]      card face stroke; defaults to a faint black.
+ * @param {(suit: string) => number} [opts.weightFor]  font weight resolver; defaults to 700.
+ * @param {(suit: string) => string} [opts.decorationFor]  returns 'underline' to add a non-color cue beneath corner suit glyphs.
  */
-export function drawCardFace(ctx, suit, rank, w, h, { colorFor = colorOf, background = '#fbfbf7', border = 'rgba(0,0,0,0.18)' } = {}) {
+export function drawCardFace(ctx, suit, rank, w, h, { colorFor = colorOf, background = '#fbfbf7', border = 'rgba(0,0,0,0.18)', weightFor, decorationFor } = {}) {
   const radius = Math.max(4, Math.round(w * 0.07));
   const color = colorFor(suit);
+  const weight = weightFor ? weightFor(suit) : 700;
+  const decoration = decorationFor ? decorationFor(suit) : null;
   const glyph = SUIT_GLYPH[suit];
   const label = rankLabel(rank);
 
@@ -82,22 +103,29 @@ export function drawCardFace(ctx, suit, rank, w, h, { colorFor = colorOf, backgr
   ctx.strokeStyle = border;
   ctx.stroke();
 
-  // Corner indices (top-left, and mirrored bottom-right).
   const cornerFont = Math.round(w * 0.2);
   const cornerX = w * 0.2;
   const cornerTopY = w * 0.26;
   const cornerBotY = h - w * 0.26;
-  drawGlyph(ctx, label, color, cornerX, cornerTopY, cornerFont, false);
-  drawGlyph(ctx, glyph, color, cornerX, cornerTopY + cornerFont * 0.9, cornerFont, false);
-  drawGlyph(ctx, label, color, w - cornerX, cornerBotY, cornerFont, true);
-  drawGlyph(ctx, glyph, color, w - cornerX, cornerBotY - cornerFont * 0.9, cornerFont, true);
+  const glyphTopY = cornerTopY + cornerFont * 0.9;
+  const glyphBotY = cornerBotY - cornerFont * 0.9;
+  drawGlyph(ctx, label, color, cornerX, cornerTopY, cornerFont, false, weight);
+  drawGlyph(ctx, glyph, color, cornerX, glyphTopY, cornerFont, false, weight);
+  if (decoration === 'underline') {
+    drawUnderline(ctx, color, cornerX, glyphTopY, w, false);
+    drawUnderline(ctx, color, w - cornerX, glyphBotY, w, true);
+  }
+  drawGlyph(ctx, label, color, w - cornerX, cornerBotY, cornerFont, true, weight);
+  drawGlyph(ctx, glyph, color, w - cornerX, glyphBotY, cornerFont, true, weight);
 
-  // Large centered rank + suit in the body.
   const centerFont = Math.round(w * 0.5);
   const cx = w / 2;
   const cy = h / 2;
-  drawGlyph(ctx, label, color, cx, cy - centerFont * 0.45, centerFont, false);
-  drawGlyph(ctx, glyph, color, cx, cy + centerFont * 0.55, centerFont, false);
+  drawGlyph(ctx, label, color, cx, cy - centerFont * 0.45, centerFont, false, weight);
+  drawGlyph(ctx, glyph, color, cx, cy + centerFont * 0.55, centerFont, false, weight);
+  if (decoration === 'underline') {
+    drawUnderline(ctx, color, cx, cy + centerFont * 0.55, centerFont * 1.6, false);
+  }
 }
 
 /**

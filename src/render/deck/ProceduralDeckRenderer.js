@@ -134,3 +134,94 @@ registerDeck(
     },
   })
 );
+
+// High-contrast: Okabe-Ito color-blind safe 4-color palette on white.
+// Vermillion / amber / teal / blue remain distinguishable under
+// deuteranopia/protanopia/tritanopia. Non-color cue: weight + underline
+// makes each suit separable without color (2x2 matrix: weight 700 vs 800
+// crossed with plain vs underline — clubs/spades heavy, diamonds/spades underlined).
+const HIGH_CONTRAST = {
+  hearts: '#D55E00',
+  diamonds: '#E69F00',
+  clubs: '#009E73',
+  spades: '#0072B2',
+};
+
+const hcWeightFor = (s) => (s === 'clubs' || s === 'spades' ? 800 : 700);
+const hcDecorationFor = (s) => (s === 'diamonds' || s === 'spades' ? 'underline' : null);
+
+registerDeck(
+  'high-contrast',
+  createProceduralDeckRenderer({
+    faceOptions: {
+      colorFor: (s) => HIGH_CONTRAST[s],
+      background: '#ffffff',
+      border: '#000000',
+      weightFor: hcWeightFor,
+      decorationFor: hcDecorationFor,
+    },
+  })
+);
+
+const HIGH_CONTRAST_DARK = {
+  hearts: '#ff7a3d',
+  diamonds: '#ffca28',
+  clubs: '#26c6a0',
+  spades: '#64b5f6',
+};
+
+registerDeck(
+  'high-contrast-dark',
+  createProceduralDeckRenderer({
+    faceOptions: {
+      colorFor: (s) => HIGH_CONTRAST_DARK[s],
+      background: '#232936',
+      border: 'rgba(255,255,255,0.28)',
+      weightFor: hcWeightFor,
+      decorationFor: hcDecorationFor,
+    },
+  })
+);
+
+// Pastel: low-saturation 4-color palette on off-white.
+// Spades darkened to muted slate (#6B6B8A) for contrast on light face.
+// Same non-color cue as high-contrast so suits remain distinguishable.
+const PASTEL = {
+  hearts: '#e8a0b0',
+  diamonds: '#8ec8e8',
+  clubs: '#a8d5a2',
+  spades: '#6b6b8a',
+};
+
+registerDeck(
+  'pastel',
+  createProceduralDeckRenderer({
+    faceOptions: {
+      colorFor: (s) => PASTEL[s],
+      background: '#fbfbf7',
+      border: 'rgba(0,0,0,0.14)',
+      weightFor: hcWeightFor,
+      decorationFor: hcDecorationFor,
+    },
+  })
+);
+
+const PASTEL_DARK = {
+  hearts: '#f4b5c0',
+  diamonds: '#a8d8ea',
+  clubs: '#b8e6b8',
+  spades: '#c9c9e8',
+};
+
+registerDeck(
+  'pastel-dark',
+  createProceduralDeckRenderer({
+    faceOptions: {
+      colorFor: (s) => PASTEL_DARK[s],
+      background: '#232936',
+      border: 'rgba(255,255,255,0.22)',
+      weightFor: hcWeightFor,
+      decorationFor: hcDecorationFor,
+    },
+  })
+);
