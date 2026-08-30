@@ -126,10 +126,10 @@ export default function SettingsModal({
 
   const panel = {
     position: 'relative',
-    background: 'var(--card-face-bg)',
-    color: 'var(--card-text-black)',
-    border: 'var(--card-border)',
-    borderRadius: 'var(--card-radius)',
+    background: 'var(--ui-modal-panel-bg)',
+    color: 'var(--ui-modal-panel-fg)',
+    border: 'var(--ui-modal-panel-border)',
+    borderRadius: 'var(--ui-modal-panel-radius)',
     boxShadow: '0 8px 28px rgba(0,0,0,0.45)',
     padding: '20px 22px',
     width: 'min(90vw, 360px)',
@@ -244,7 +244,7 @@ export default function SettingsModal({
           }}
         >
           Main Menu
-          <span style={{ color: 'var(--card-text-black)', fontSize: 13, fontWeight: 400, userSelect: 'none', marginRight: 36 }}>
+          <span style={{ color: 'var(--ui-modal-panel-fg)', fontSize: 13, fontWeight: 400, userSelect: 'none', marginRight: 36 }}>
             v{pkg.version}
           </span>
         </h2>

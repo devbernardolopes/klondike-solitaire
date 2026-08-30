@@ -12,6 +12,7 @@ import { getSetting, setSetting } from '../db/schema.js';
 
 const DEFAULTS = {
   theme: 'classic',
+  interfaceTheme: 'classic',
   deck: 'procedural',
   cardBack: 'default',
   handedness: 'right',
@@ -27,6 +28,7 @@ const DEFAULTS = {
 // value at first render, before the async Dexie init() resolves.
 const LS_KEYS = {
   theme: 'klondike:theme',
+  interfaceTheme: 'klondike:interfaceTheme',
   handedness: 'klondike:handedness',
 };
 
@@ -49,13 +51,14 @@ function writeLS(key, value) {
 
 export const useSettingsStore = create((set, get) => ({
   theme: readLS(LS_KEYS.theme, DEFAULTS.theme),
+  interfaceTheme: readLS(LS_KEYS.interfaceTheme, DEFAULTS.interfaceTheme),
   deck: DEFAULTS.deck,
   cardBack: DEFAULTS.cardBack,
   handedness: readLS(LS_KEYS.handedness, DEFAULTS.handedness),
   highlightCard: DEFAULTS.highlightCard,
   particles: DEFAULTS.particles,
   seenThemeItemIds: [],
-  themeModalTab: 'background',
+  themeModalTab: 'interface',
   loaded: false,
 
   /**
@@ -63,8 +66,9 @@ export const useSettingsStore = create((set, get) => ({
    * keys fall back to DEFAULTS. Activates the loaded (or default) deck.
    */
   init: async () => {
-    const [theme, deck, cardBack, handedness, highlightCard, particles, seenThemeItemIds, themeModalTab] = await Promise.all([
+    const [theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, seenThemeItemIds, themeModalTab] = await Promise.all([
       getSetting('theme', DEFAULTS.theme),
+      getSetting('interfaceTheme', DEFAULTS.interfaceTheme),
       getSetting('deck', DEFAULTS.deck),
       getSetting('cardBack', DEFAULTS.cardBack),
       getSetting('handedness', DEFAULTS.handedness),
@@ -74,7 +78,7 @@ export const useSettingsStore = create((set, get) => ({
       getSetting('themeModalTab', 'background'),
     ]);
     setActiveDeck(deck);
-    set({ theme, deck, cardBack, handedness, highlightCard, particles, seenThemeItemIds, themeModalTab, loaded: true });
+    set({ theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, seenThemeItemIds, themeModalTab, loaded: true });
   },
 
   /**
@@ -84,6 +88,16 @@ export const useSettingsStore = create((set, get) => ({
     set({ theme });
     setSetting('theme', theme);
     writeLS(LS_KEYS.theme, theme);
+  },
+
+  /**
+   * @param {string} interfaceTheme  'classic' | 'dark' — the UI chrome look,
+   *   independent of the board/Background theme.
+   */
+  setInterfaceTheme: (interfaceTheme) => {
+    set({ interfaceTheme });
+    setSetting('interfaceTheme', interfaceTheme);
+    writeLS(LS_KEYS.interfaceTheme, interfaceTheme);
   },
 
   /**

@@ -27,7 +27,7 @@ import { formatTime } from '../utils/formatTime.js';
 
 /** @type {LeaderboardTab[]} */
 const TABS = [
-  { key: 'coins', label: 'Coins', column: 'coins', ascending: false, format: (v) => String(v ?? 0) },
+  { key: 'coins', label: 'Coins', column: 'coins_earned_total', ascending: false, format: (v) => String(v ?? 0) },
   { key: 'games_won', label: 'Games Won', column: 'games_won', ascending: false, format: (v) => String(v ?? 0) },
   { key: 'best_streak', label: 'Best Streak', column: 'best_streak', ascending: false, format: (v) => String(v ?? 0) },
   { key: 'highest_score', label: 'Highest Score', column: 'highest_score', ascending: false, format: (v) => String(v ?? 0) },
@@ -36,7 +36,7 @@ const TABS = [
 ];
 
 const LEADERBOARD_COLUMNS =
-  'id, display_name, coins, games_played, games_won, current_streak, ' +
+  'id, display_name, coins, coins_earned_total, games_played, games_won, current_streak, ' +
   'best_streak, highest_score, lowest_time_ms, lowest_moves, lowest_undos';
 
 /**
@@ -78,7 +78,7 @@ export default function LeaderboardModal({ open, onClose }) {
         .from('leaderboard')
         .select(LEADERBOARD_COLUMNS)
         .order(cfg.column, { ascending: cfg.ascending })
-        .limit(20);
+        .limit(100);
       if (cfg.ascending) {
         query = query.not(cfg.column, 'is', null);
       } else {
@@ -119,10 +119,10 @@ export default function LeaderboardModal({ open, onClose }) {
 
   const panel = {
     position: 'relative',
-    background: 'var(--card-face-bg)',
-    color: 'var(--card-text-black)',
-    border: 'var(--card-border)',
-    borderRadius: 'var(--card-radius)',
+    background: 'var(--ui-modal-panel-bg)',
+    color: 'var(--ui-modal-panel-fg)',
+    border: 'var(--ui-modal-panel-border)',
+    borderRadius: 'var(--ui-modal-panel-radius)',
     boxShadow: '0 8px 28px rgba(0,0,0,0.45)',
     padding: '20px 22px',
     width: 'min(90vw, 420px)',
@@ -196,7 +196,7 @@ export default function LeaderboardModal({ open, onClose }) {
                       gap: 12,
                       padding: '8px 10px',
                       borderRadius: 6,
-                      border: '1px solid var(--card-border)',
+                      border: isMe ? '2px solid var(--ui-leaderboard-me-border)' : '1px solid var(--ui-modal-panel-border)',
                       background: isMe ? 'var(--ui-modal-btn-bg-strong)' : 'transparent',
                       fontWeight: isMe ? 700 : 400,
                     }}

@@ -54,10 +54,10 @@ const btn = {
 
 const panel = {
   position: 'relative',
-  background: 'var(--card-face-bg)',
-  color: 'var(--card-text-black)',
-  border: 'var(--card-border)',
-  borderRadius: 'var(--card-radius)',
+  background: 'var(--ui-modal-panel-bg)',
+  color: 'var(--ui-modal-panel-fg)',
+  border: 'var(--ui-modal-panel-border)',
+  borderRadius: 'var(--ui-modal-panel-radius)',
   boxShadow: '0 8px 28px rgba(0,0,0,0.45)',
   padding: '20px 22px',
   width: 'min(94vw, 760px)',
@@ -68,9 +68,9 @@ const panel = {
 const selectStyle = {
   padding: '6px 10px',
   borderRadius: 6,
-  border: '1px solid var(--card-border)',
-  background: 'var(--card-face-bg)',
-  color: 'var(--card-text-black)',
+  border: '1px solid var(--ui-control-border)',
+  background: 'var(--ui-control-bg)',
+  color: 'var(--ui-control-fg)',
   fontSize: 14,
   fontWeight: 600,
   cursor: 'pointer',
@@ -422,7 +422,7 @@ export default function DailyChallengeModal() {
               <div style={gridStyle}>{cells}</div>
             </div>
 
-            <div style={{ flex: '1 1 220px', minWidth: 200, borderLeft: '1px solid var(--card-border)', paddingLeft: 16 }}>
+            <div style={{ flex: '1 1 220px', minWidth: 200, borderLeft: '1px solid var(--ui-modal-panel-border)', paddingLeft: 16 }}>
               <h3 style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 700 }}>Best Result</h3>
               {selected ? (
                 <div style={{ fontSize: 13, lineHeight: 1.6 }}>
@@ -436,7 +436,7 @@ export default function DailyChallengeModal() {
                   </div>
                 </div>
               ) : (
-                <div style={{ color: 'var(--card-text-black)', opacity: 0.75 }}>Select a day to see its best result.</div>
+                <div style={{ color: 'var(--ui-modal-panel-fg)', opacity: 0.75 }}>Select a day to see its best result.</div>
               )}
             </div>
           </div>

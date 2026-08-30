@@ -98,10 +98,10 @@ export default function WinModal() {
   };
 
   const panel = {
-    background: 'var(--card-face-bg)',
-    color: 'var(--card-text-black)',
-    border: 'var(--card-border)',
-    borderRadius: 'var(--card-radius)',
+    background: 'var(--ui-modal-panel-bg)',
+    color: 'var(--ui-modal-panel-fg)',
+    border: 'var(--ui-modal-panel-border)',
+    borderRadius: 'var(--ui-modal-panel-radius)',
     boxShadow: '0 8px 28px rgba(0,0,0,0.45)',
     padding: '22px 24px',
     width: 'min(90vw, 380px)',
@@ -120,7 +120,7 @@ export default function WinModal() {
         gap: 8,
         paddingBottom: 4,
         marginBottom: 2,
-        borderBottom: '2px solid var(--card-border)',
+        borderBottom: '2px solid var(--ui-modal-panel-border)',
       }}
     >
       <span />
@@ -143,7 +143,7 @@ export default function WinModal() {
         alignItems: 'baseline',
         gap: 8,
         padding: '8px 0',
-        borderBottom: '1px solid var(--card-border)',
+        borderBottom: '1px solid var(--ui-modal-panel-border)',
       }}
     >
       <span style={{ fontSize: 14, fontWeight: 600 }}>{label}</span>
@@ -152,7 +152,7 @@ export default function WinModal() {
           style={{
             fontSize: 20,
             fontWeight: 700,
-            color: isNew ? NEW_VALUE_COLOR : 'var(--card-text-black)',
+            color: isNew ? NEW_VALUE_COLOR : 'var(--ui-modal-panel-fg)',
           }}
         >
           {value}
@@ -168,7 +168,7 @@ export default function WinModal() {
           fontSize: 18,
           fontWeight: 700,
           textAlign: 'right',
-          color: 'var(--card-text-black)',
+                color: 'var(--ui-modal-panel-fg)',
           opacity: 0.8,
         }}
       >
@@ -213,7 +213,7 @@ export default function WinModal() {
                fontSize: 14,
                fontWeight: 600,
                margin: '0 0 14px',
-               color: 'var(--card-text-black)',
+          color: 'var(--ui-modal-panel-fg)',
                opacity: 0.85,
              }}
            >

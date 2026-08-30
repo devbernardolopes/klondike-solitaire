@@ -10,6 +10,8 @@ import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
 import ToggleSwitch from './ToggleSwitch.jsx';
+import { useAuthStore } from '../hooks/useAuthStore.js';
+import { supabase } from '../lib/supabaseClient.js';
 
 /**
  * @param {object} props
@@ -34,6 +36,8 @@ export default function SettingsOptionsModal({
 }) {
   const dialogRef = useRef(null);
   const backdrop = useModalBackdrop(onClose);
+  const leaderboardVisible = useAuthStore((s) => s.leaderboardVisible);
+  const setLeaderboardVisible = useAuthStore((s) => s.setLeaderboardVisible);
 
   useModalEscape({ open, onClose, id: 'settings-options', z: Z.CHILD });
 
@@ -57,10 +61,10 @@ export default function SettingsOptionsModal({
 
   const panel = {
     position: 'relative',
-    background: 'var(--card-face-bg)',
-    color: 'var(--card-text-black)',
-    border: 'var(--card-border)',
-    borderRadius: 'var(--card-radius)',
+    background: 'var(--ui-modal-panel-bg)',
+    color: 'var(--ui-modal-panel-fg)',
+    border: 'var(--ui-modal-panel-border)',
+    borderRadius: 'var(--ui-modal-panel-radius)',
     boxShadow: '0 8px 28px rgba(0,0,0,0.45)',
     padding: '20px 22px',
     width: 'min(90vw, 360px)',
@@ -129,12 +133,22 @@ export default function SettingsOptionsModal({
           />
         </div>
 
-        <div style={{ ...field, marginBottom: 0 }}>
+        <div style={{ ...field, marginBottom: 20 }}>
           <label style={{ fontSize: 14, fontWeight: 600 }}>Foundation Particles</label>
           <ToggleSwitch
             checked={!!particles}
             onChange={onParticlesChange}
             label="Foundation Particles"
+          />
+        </div>
+
+        <div style={{ ...field, marginBottom: 0 }}>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>Appear on Leaderboard</label>
+          <ToggleSwitch
+            checked={!!leaderboardVisible}
+            onChange={(v) => setLeaderboardVisible(v)}
+            label="Appear on Leaderboard"
+            disabled={!supabase}
           />
         </div>
       </div>

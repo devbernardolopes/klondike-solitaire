@@ -77,10 +77,10 @@ export default function SeedInputModal({ open, onConfirm, onCancel }) {
   };
 
   const panel = {
-    background: 'var(--card-face-bg)',
-    color: 'var(--card-text-black)',
-    border: 'var(--card-border)',
-    borderRadius: 'var(--card-radius)',
+    background: 'var(--ui-modal-panel-bg)',
+    color: 'var(--ui-modal-panel-fg)',
+    border: 'var(--ui-modal-panel-border)',
+    borderRadius: 'var(--ui-modal-panel-radius)',
     boxShadow: '0 8px 28px rgba(0,0,0,0.45)',
     padding: '20px 22px',
     width: 'min(90vw, 360px)',
@@ -93,9 +93,9 @@ export default function SeedInputModal({ open, onConfirm, onCancel }) {
     padding: '8px 10px',
     fontSize: 16,
     borderRadius: 6,
-    border: '1px solid var(--card-border)',
-    background: 'var(--card-face-bg)',
-    color: 'var(--card-text-black)',
+    border: '1px solid var(--ui-control-border)',
+    background: 'var(--ui-control-bg)',
+    color: 'var(--ui-control-fg)',
   };
 
   return (

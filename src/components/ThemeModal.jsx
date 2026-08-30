@@ -21,6 +21,7 @@ import { fetchStoreCatalog } from '../data/storeCatalog.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 
 const TABS = [
+  { id: 'interface', label: 'Interface' },
   { id: 'background', label: 'Background' },
   { id: 'cardsBack', label: 'Cards Back' },
   { id: 'cardsFace', label: 'Cards Face' },
@@ -58,6 +59,7 @@ export default function ThemeModal({ open, onClose }) {
   const dialogRef = useRef(null);
   const backdrop = useModalBackdrop(onClose);
   const theme = useSettingsStore((s) => s.theme);
+  const interfaceTheme = useSettingsStore((s) => s.interfaceTheme);
   const deck = useSettingsStore((s) => s.deck);
   const cardBack = useSettingsStore((s) => s.cardBack);
   const setCardBack = useSettingsStore((s) => s.setCardBack);
@@ -65,9 +67,10 @@ export default function ThemeModal({ open, onClose }) {
   const markThemeItemsSeen = useSettingsStore((s) => s.markThemeItemsSeen);
   const ownedItemIds = useAuthStore((s) => s.ownedItemIds);
   const setTheme = useSettingsStore((s) => s.setTheme);
+  const setInterfaceTheme = useSettingsStore((s) => s.setInterfaceTheme);
   const setDeck = useSettingsStore((s) => s.setDeck);
   const setThemeModalTab = useSettingsStore((s) => s.setThemeModalTab);
-  const validTab = (t) => (TABS.some((x) => x.id === t) ? t : 'background');
+  const validTab = (t) => (TABS.some((x) => x.id === t) ? t : 'interface');
   const [activeTab, setActiveTab] = useState(() =>
     validTab(useSettingsStore.getState().themeModalTab),
   );
@@ -110,10 +113,10 @@ export default function ThemeModal({ open, onClose }) {
 
   const panel = {
     position: 'relative',
-    background: 'var(--card-face-bg)',
-    color: 'var(--card-text-black)',
-    border: 'var(--card-border)',
-    borderRadius: 'var(--card-radius)',
+    background: 'var(--ui-modal-panel-bg)',
+    color: 'var(--ui-modal-panel-fg)',
+    border: 'var(--ui-modal-panel-border)',
+    borderRadius: 'var(--ui-modal-panel-radius)',
     boxShadow: '0 8px 28px rgba(0,0,0,0.45)',
     padding: '20px 22px',
     width: 'min(92vw, 560px)',
@@ -179,6 +182,44 @@ export default function ThemeModal({ open, onClose }) {
                 background: 'var(--felt-color)',
               }}
             />
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  // One tile per interface theme: a UI sample (button surface using that
+  // theme's UI variables, scoped via the `ui-<name>` class so the preview is
+  // accurate regardless of the active interface theme). Selecting it changes
+  // only the UI chrome, never the board/Background look.
+  const renderInterfaceTab = () => (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, var(--card-width))', gap: 14 }}>
+      {BACKGROUNDS.map((t) => {
+        const selected = t === interfaceTheme;
+        return (
+          <button
+            key={t}
+            type="button"
+            role="button"
+            aria-pressed={selected}
+            aria-label={`Interface: ${t}${selected ? ' (selected)' : ''}`}
+            onClick={() => {
+              setInterfaceTheme(t);
+              announce(`${t} interface selected`);
+            }}
+            className={`ui-${t}`}
+            style={{
+              ...tileBase,
+              ...(selected ? selectedBorder : null),
+              background: 'var(--ui-modal-btn-bg)',
+              border: '1px solid var(--ui-modal-btn-border)',
+              color: 'var(--ui-modal-fg)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <span style={{ fontSize: 13, fontWeight: 700 }}>{t}</span>
           </button>
         );
       })}
@@ -294,7 +335,7 @@ export default function ThemeModal({ open, onClose }) {
             display: 'flex',
             gap: 8,
             marginBottom: 18,
-            borderBottom: '1px solid var(--card-border)',
+            borderBottom: '1px solid var(--ui-modal-panel-border)',
             paddingBottom: 10,
           }}
         >
@@ -325,6 +366,7 @@ export default function ThemeModal({ open, onClose }) {
         </div>
 
         <div className="modal-body-scroll" style={{ flex: 1, minHeight: 0 }}>
+          {activeTab === 'interface' && renderInterfaceTab()}
           {activeTab === 'background' && renderBackgroundTab()}
           {activeTab === 'cardsBack' && renderCardsBackTab()}
           {activeTab === 'cardsFace' && renderCardsFaceTab()}

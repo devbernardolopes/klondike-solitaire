@@ -38,6 +38,11 @@
      affordances so they read differently at a glance (shape/animation also differ). */
   --hint-source: #ffd54a; /* warm gold — pick-up / origin */
   --hint-target: #34d6ff; /* cyan — drop / destination */
+}
+
+/* Interface (UI chrome) theme — see classic.css for notes. Independent of the
+   board/Background theme. */
+.ui-dark {
   color-scheme: dark;
 
   /* UI controls (selects + modal buttons) */
@@ -48,6 +53,15 @@
   --ui-modal-btn-bg: rgba(255, 255, 255, 0.12);
   --ui-modal-btn-bg-strong: rgba(255, 255, 255, 0.22);
   --ui-modal-btn-border: rgba(255, 255, 255, 0.25);
+
+  /* Modal panel surface */
+  --ui-modal-panel-bg: #1e222b;
+  --ui-modal-panel-fg: #e6e6e6;
+  --ui-modal-panel-border: 1px solid rgba(255, 255, 255, 0.12);
+  --ui-modal-panel-radius: 6px;
+
+  /* Distinct border marking the signed-in user's own row on the leaderboard */
+  --ui-leaderboard-me-border: #5aa9ff;
 }
 
 /* Native dropdown option list: keep text/background readable in the popup. */

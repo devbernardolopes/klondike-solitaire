@@ -35,6 +35,7 @@ import {
 
 export default function App() {
   const theme = useSettingsStore((s) => s.theme);
+  const interfaceTheme = useSettingsStore((s) => s.interfaceTheme);
   const deck = useSettingsStore((s) => s.deck);
   const handedness = useSettingsStore((s) => s.handedness);
   const highlightCard = useSettingsStore((s) => s.highlightCard);
@@ -139,7 +140,7 @@ export default function App() {
 
   return (
     <div
-      className={`theme-${theme}`}
+      className={`theme-${theme} ui-${interfaceTheme}`}
       style={{
         minHeight: '100%',
         background: 'var(--felt-color)',

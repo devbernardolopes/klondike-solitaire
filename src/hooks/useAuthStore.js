@@ -48,7 +48,7 @@ const hydrateProfile = async (user, set) => {
   try {
     const { data } = await supabase
       .from('profiles')
-      .select('display_name, coins, coins_earned_total, coins_spent_total, display_name_updated_at')
+      .select('display_name, coins, coins_earned_total, coins_spent_total, display_name_updated_at, leaderboard_visible')
       .eq('id', user.id)
       .single();
     if (data) {
@@ -58,6 +58,7 @@ const hydrateProfile = async (user, set) => {
         coinsEarnedTotal: data.coins_earned_total ?? 0,
         coinsSpentTotal: data.coins_spent_total ?? 0,
         displayNameUpdatedAt: data.display_name_updated_at,
+        leaderboardVisible: data.leaderboard_visible ?? true,
       });
     }
   } catch {
@@ -74,6 +75,7 @@ export const useAuthStore = create((set, get) => ({
   coins: 0,
   coinsEarnedTotal: 0,
   coinsSpentTotal: 0,
+  leaderboardVisible: true,
   ownedItemIds: [],
   linkConflict: null,
   authError: null,
@@ -198,6 +200,25 @@ export const useAuthStore = create((set, get) => ({
     });
     if (error) throw new Error(error.message);
     set({ displayName: name, displayNameUpdatedAt: new Date().toISOString() });
+  },
+
+  /**
+   * Toggle the caller's visibility on the public leaderboard (profiles.
+   * leaderboard_visible). Optimistic local update; the real value still comes
+   * from Supabase on next hydrateProfile(). Reverts on RPC failure.
+   * @param {boolean} visible
+   */
+  setLeaderboardVisible: async (visible) => {
+    const prev = get().leaderboardVisible;
+    set({ leaderboardVisible: visible });
+    try {
+      if (!supabase) return;
+      const { error } = await supabase.rpc('set_leaderboard_visible', { p_visible: visible });
+      if (error) throw error;
+    } catch (e) {
+      set({ leaderboardVisible: prev });
+      throw e;
+    }
   },
 
   /**
