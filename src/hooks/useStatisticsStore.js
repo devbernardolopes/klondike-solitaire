@@ -72,13 +72,27 @@ export const useStatisticsStore = create((set, get) => ({
   },
 
   /**
+   * End a losing (non-winning) game: the current streak is broken, the best
+   * streak is preserved. Invoked both when a game is abandoned mid-play (from
+   * finalizeGame) and when a hard limit ends the game at game-over time (from
+   * useStatsStore.freeze), so a loss ends the streak the moment it's decided.
+   * @returns {Promise<CumulativeStats>} the updated row
+   */
+  recordLoss: async () => {
+    const stats = await dbRecordLoss();
+    set({ stats, gameWon: false });
+    enqueue('record_game_abandoned', {});
+  },
+
+  /**
    * Finalize the game that is about to be replaced by a new deal. A loss is
    * recorded (current streak broken, best kept) ONLY when the replaced game was
    * abandoned mid-play — i.e. its timer was running and it had neither been won
    * nor already ended by a limit. A game that was never started isn't a real
-   * game, and a game that already ended (win or limit) had its outcome recorded
-   * elsewhere, so neither should reset the streak here. The won flag is always
-   * cleared for the next game.
+   * game, and a game that already ended had its outcome recorded at that moment
+   * (recordWin on a win; recordLoss via useStatsStore.freeze on a limit), so
+   * neither should re-record the streak here. The won flag is always cleared
+   * for the next game.
    */
   finalizeGame: async () => {
     const { gameWon } = get();
@@ -89,9 +103,7 @@ export const useStatisticsStore = create((set, get) => ({
     const s = useStatsStore.getState();
     const inProgress = s.startTime !== null && s.endTime === null && !s.isOver;
     if (inProgress) {
-      const stats = await dbRecordLoss();
-      set({ stats });
-      enqueue('record_game_abandoned', {});
+      await get().recordLoss();
     }
     set({ gameWon: false });
   },

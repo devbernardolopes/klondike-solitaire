@@ -100,6 +100,14 @@ export const useStatsStore = create(subscribeWithSelector((set, get) => ({
     if (startTime !== null && endTime === null) {
       set({ endTime: reason === 'time' ? startTime + MAX_TIME_MS : Date.now() });
     }
+    // Game Over is a loss: break the winning streak immediately (mirrors
+    // recordWin at win time and recordGamePlayed at timer-start time). This is
+    // the "elsewhere" finalizeGame expects for a limit-ended game. The guard
+    // above ensures it fires exactly once per game-over, and a won game bails
+    // here (endTime already pinned), so wins never double-count a loss.
+    if (startTime !== null) {
+      useStatisticsStore.getState().recordLoss();
+    }
   },
 
   /**

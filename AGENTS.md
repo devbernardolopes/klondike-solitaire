@@ -142,15 +142,21 @@ activates the renderer in `deckRegistry`.
 Moves counter, score (currently always 0 — not yet implemented), undos, and a wall-clock-based
 play timer with **focus-loss pause** (hidden tab time is excluded via `pausedAt`/`pausedAccumMs`).
 Enforces hard game-over limits: `MAX_TIME_MS` (60:00) and `MAX_MOVES` (999); reaching either
-calls `freeze(reason)` and locks all interaction. The timer only starts once a real move exists
+calls `freeze(reason)` and locks all interaction. `freeze` also records the loss immediately
+(via `useStatisticsStore.recordLoss`, mirroring `recordWin` at win time and `recordGamePlayed`
+at timer-start time), so the winning streak is reset the moment a limit is hit — Game Over is
+a loss, not a streak-preserving outcome. The timer only starts once a real move exists
 (`hasDeadEndMove`). Not persisted (per product decision).
 
 ### `src/hooks/useStatisticsStore.js` (persisted, Dexie `stats` table)
 
 Cumulative, cross-session aggregates: `totalGamesPlayed`, `totalGamesWon`, `highestScore`,
 `lowestTimeMs`, `lowestMoves`, `lowestUndos`, `currentStreak`, `bestStreak`. `recordWin` folds a
-win in; `recordGamePlayed` counts a started game; `finalizeGame` breaks the streak only when a
-mid-play game is abandoned; `reset` zeroes everything. Loaded via `init()`; updated through
+win in; `recordGamePlayed` counts a started game; `recordLoss` breaks the current streak
+(preserving the best streak) and is invoked both by `finalizeGame` for an abandoned mid-play
+game and by `useStatsStore.freeze` when a hard limit ends the game; `finalizeGame` only records
+a loss for an in-progress (not-yet-ended) game, since a won or limit-ended game has its outcome
+recorded at that moment. `reset` zeroes everything. Loaded via `init()`; updated through
 `db/stats.js`.
 
 ### `src/hooks/useSeedStore.js` (persisted, Dexie `playedSeeds` table)
