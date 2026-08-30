@@ -122,7 +122,11 @@ export const useStatsStore = create(subscribeWithSelector((set, get) => ({
    * @param {import('../core/GameState.js').GameState} state
    */
   startTimerIfValid: (state) => {
-    if (get().startTime !== null) return;
+    // if (get().startTime !== null) return;
+    if (get().startTime !== null) {
+      console.debug('[timer] already running:', get().startTime);
+      return;
+    }
     // startTimerIfValid is only ever called after a successful, validated
     // draw/recycle/move (the action has already mutated the board), so a real
     // action has occurred by the time we reach here. Start counting immediately
@@ -131,6 +135,9 @@ export const useStatsStore = create(subscribeWithSelector((set, get) => ({
     // ~9% of deals (and any restored/draw-only position) whose only first move is
     // a stock draw.
     set({ startTime: Date.now() });
+
+    console.debug('[timer] started:', get().startTime);
+
     // A new game's clock has just begun — count it as a game played. This fires
     // exactly once per game because we early-returned above when already running.
     useStatisticsStore.getState().recordGamePlayed();
