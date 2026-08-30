@@ -225,3 +225,92 @@ registerDeck(
     },
   })
 );
+
+// 2-color high-contrast on warm parchment — wholly different hues from
+// Okabe-Ito (burgundy vs teal), traditional pairing hearts+diamonds vs
+// spades+clubs. New background #fdf6e3 distinguishes from #ffffff.
+const HIGH_CONTRAST_2 = {
+  hearts: '#6A1B2A',
+  diamonds: '#6A1B2A',
+  spades: '#0E4D6B',
+  clubs: '#0E4D6B',
+};
+
+registerDeck(
+  'high-contrast-2',
+  createProceduralDeckRenderer({
+    faceOptions: {
+      colorFor: (s) => HIGH_CONTRAST_2[s],
+      background: '#fdf6e3',
+      border: 'rgba(60,40,20,0.22)',
+      weightFor: hcWeightFor,
+      decorationFor: hcDecorationFor,
+    },
+  })
+);
+
+// 2-color high-contrast dark on deep navy — bright coral vs turquoise on
+// new background #1a2744 (not #232936), traditional pairing.
+const HIGH_CONTRAST_DARK_2 = {
+  hearts: '#FF6B6B',
+  diamonds: '#FF6B6B',
+  spades: '#4ECDC4',
+  clubs: '#4ECDC4',
+};
+
+registerDeck(
+  'high-contrast-dark-2',
+  createProceduralDeckRenderer({
+    faceOptions: {
+      colorFor: (s) => HIGH_CONTRAST_DARK_2[s],
+      background: '#1a2744',
+      border: 'rgba(255,255,255,0.20)',
+      weightFor: hcWeightFor,
+      decorationFor: hcDecorationFor,
+    },
+  })
+);
+
+// 2-color pastel on kraft — wholly different dusty hues on new background
+// #f5ecd7 (not #fbfbf7), traditional pairing.
+const PASTEL_2 = {
+  hearts: '#c97b84',
+  diamonds: '#c97b84',
+  spades: '#6ba3b7',
+  clubs: '#6ba3b7',
+};
+
+registerDeck(
+  'pastel-2',
+  createProceduralDeckRenderer({
+    faceOptions: {
+      colorFor: (s) => PASTEL_2[s],
+      background: '#f5ecd7',
+      border: 'rgba(60,40,20,0.16)',
+      weightFor: hcWeightFor,
+      decorationFor: hcDecorationFor,
+    },
+  })
+);
+
+// 2-color pastel dark on muted grape — pale blush vs pale mist on new
+// background #2a2438 (not #232936), traditional pairing.
+const PASTEL_DARK_2 = {
+  hearts: '#e8b4b8',
+  diamonds: '#e8b4b8',
+  spades: '#a8d0d8',
+  clubs: '#a8d0d8',
+};
+
+registerDeck(
+  'pastel-dark-2',
+  createProceduralDeckRenderer({
+    faceOptions: {
+      colorFor: (s) => PASTEL_DARK_2[s],
+      background: '#2a2438',
+      border: 'rgba(255,255,255,0.18)',
+      weightFor: hcWeightFor,
+      decorationFor: hcDecorationFor,
+    },
+  })
+);
