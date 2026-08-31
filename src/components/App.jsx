@@ -28,6 +28,8 @@ import { MotionDebugPanel } from '../render/animation/MotionDebugPanel.jsx';
 import { useToastStore } from '../hooks/useToastStore.js';
 import { initAchievementToastBridge } from '../toast/achievementToastBridge.js';
 import ToastHost from './ToastHost.jsx';
+import SpecialEventsModal from './SpecialEventsModal.jsx';
+import EventDetailModal from './EventDetailModal.jsx';
 import {
   ensureDeviceId,
   restoreSession,
@@ -170,6 +172,8 @@ export default function App() {
       <Board />
       {import.meta.env.DEV && <MotionDebugPanel />}
       <WinModal />
+      <SpecialEventsModal />
+      <EventDetailModal />
       <ToastHost />
       <ConfirmModal
         open={!!linkConflict}

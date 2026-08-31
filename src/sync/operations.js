@@ -85,4 +85,9 @@ export const operations = {
       .eq('device_id', payload.device_id);
     if (error) throw error;
   },
+
+  record_event_win: async (payload) => {
+    const { error } = await supabase.rpc('record_event_win', { p_event_id: payload.event_id, p_seed: payload.seed });
+    if (error) throw error;
+  },
 };

@@ -156,6 +156,10 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
     setDailyChallengeOrigin('newgame');
     setDailyChallengeDialogOpen(true);
   }, [setNewGameDialogOpen, setDailyChallengeOrigin, setDailyChallengeDialogOpen]);
+  const onSpecialEvents = useCallback(() => {
+    setNewGameDialogOpen(false);
+    useUiStore.getState().setSpecialEventsOpen(true);
+  }, [setNewGameDialogOpen]);
   const onSeedConfirm = useCallback((seed) => {
     startDealOrConfirm(() => {
       setSeedInputDialogOpen(false);
@@ -415,6 +419,7 @@ function ElapsedClock() {
         onWinningDeal={onWinningDeal}
         onRandomShuffle={onRandomShuffle}
         onDailyChallenge={onDailyChallenge}
+        onSpecialEvents={onSpecialEvents}
         onDismiss={closeNewGame}
       />
 

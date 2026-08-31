@@ -12,6 +12,9 @@ import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
 import { useSeedStore } from '../hooks/useSeedStore.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { saveDailyResult } from '../db/dailyResults.js';
+import { recordEventWin } from '../db/eventProgress.js';
+import { getEvents } from '../repo/seedRepository.js';
+import { enqueue } from '../sync/syncEngine.js';
 import { useCardMoveSlide } from '../render/animation/useCardMoveSlide.js';
 import { useStockDrawSlide } from '../render/animation/useStockDrawSlide.js';
 import { useFoundationParticles } from '../render/animation/useFoundationParticles.js';
@@ -214,6 +217,25 @@ export default function Board() {
       // count in the global cumulative stats (handled by recordWin above).
       if (gameKind === 'daily' && dailyDate) {
         saveDailyResult(dailyDate, { seed: gameState.seed, score, timeMs: durationMs, moves });
+      }
+      if (gameKind === 'event' && gameState.seed !== undefined) {
+        (async () => {
+          const curEvent = useUiStore.getState().eventDetailId;
+          let matchedEventId = curEvent;
+          if (!matchedEventId) {
+            try {
+              const evs = await getEvents();
+              const found = evs.find((e) => e.seeds.includes(gameState.seed));
+              matchedEventId = found ? found.id : null;
+            } catch {}
+          }
+          if (matchedEventId) {
+            recordEventWin(matchedEventId, gameState.seed);
+            try {
+              enqueue('record_event_win', { event_id: matchedEventId, seed: gameState.seed }).catch(() => {});
+            } catch {}
+          }
+        })();
       }
     }
     wasWon.current = won;

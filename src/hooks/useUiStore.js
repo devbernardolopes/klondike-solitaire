@@ -232,6 +232,9 @@ export const useUiStore = create((set, get) => ({
   // (re)start that exact, pre-verified solvable deal.
   seedInputDialogOpen: false,
 
+  specialEventsOpen: false,
+  eventDetailId: null,
+
   // Daily Challenge calendar modal: month/year navigation + per-day status and
   // a "Play" button that starts the selected day's deal. `dailyChallengeOrigin`
   // records what opened it so dismissal can return to the right place:
@@ -304,6 +307,15 @@ export const useUiStore = create((set, get) => ({
   setSeedInputDialogOpen: (open) => {
     get().dismissNoHintsBanner();
     set({ seedInputDialogOpen: open });
+  },
+
+  setSpecialEventsOpen: (open) => {
+    get().dismissNoHintsBanner();
+    set({ specialEventsOpen: open });
+  },
+  setEventDetailOpen: (id) => {
+    get().dismissNoHintsBanner();
+    set({ eventDetailId: id });
   },
 
   /** Show/hide the Daily Challenge calendar modal. */
@@ -403,6 +415,8 @@ export const isAnyModalOpen = (s) =>
   s.seedInputDialogOpen ||
   s.winDialogOpen ||
   s.dailyChallengeDialogOpen ||
+  s.specialEventsOpen ||
+  s.eventDetailId != null ||
   s.confirmNewGameDialogOpen;
 
 /**

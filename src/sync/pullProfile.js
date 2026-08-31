@@ -84,6 +84,19 @@ export async function pullRemoteProfile() {
     })),
   );
 
+  const { data: eventRows, error: eventError } = await supabase.from('event_results').select('event_id, seed');
+  if (!eventError && eventRows) {
+    await db.eventProgress.clear();
+    const byEvent = new Map();
+    for (const r of eventRows) {
+      if (!byEvent.has(r.event_id)) byEvent.set(r.event_id, []);
+      byEvent.get(r.event_id).push(r.seed);
+    }
+    for (const [eventId, wonSeeds] of byEvent.entries()) {
+      await db.eventProgress.put({ eventId, wonSeeds, wins: wonSeeds.length });
+    }
+  }
+
   // Refresh in-memory state so the UI reflects the pull immediately.
   await useStatisticsStore.getState().init();
   await useSeedStore.getState().init();

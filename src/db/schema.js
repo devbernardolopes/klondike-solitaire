@@ -99,6 +99,20 @@ db.version(8).stores({
   usedRandomSeeds: 'seed',
   seedCache: 'key',
 });
+// v9 adds the `eventProgress` table: per-event win tracking for progressive image reveal.
+// One row per eventId; wonSeeds is the set of seeds (by index) already completed.
+db.version(9).stores({
+  games: '++id, startedAt, finishedAt, won, durationMs',
+  settings: 'key',
+  stats: 'key',
+  playedSeeds: 'key',
+  dailyResults: 'date',
+  syncQueue: '++id, type, createdAt, dedupeKey',
+  activeSession: 'key',
+  usedRandomSeeds: 'seed',
+  seedCache: 'key',
+  eventProgress: 'eventId',
+});
 
 /**
  * Insert a finished/abandoned game record.

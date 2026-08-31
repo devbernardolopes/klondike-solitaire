@@ -22,9 +22,10 @@ import { pullRemoteProfile } from '../sync/pullProfile.js';
  * @param {() => void} props.onWinningDeal
  * @param {() => void} props.onRandomShuffle
  * @param {() => void} props.onDailyChallenge  // open the Daily Challenge calendar
+ * @param {() => void} props.onSpecialEvents
  * @param {() => void} props.onDismiss   // Escape / backdrop click / explicit close — does nothing else
  */
-export default function NewGameModal({ open, onReplay, onWinningDeal, onRandomShuffle, onDailyChallenge, onDismiss }) {
+export default function NewGameModal({ open, onReplay, onWinningDeal, onRandomShuffle, onDailyChallenge, onSpecialEvents, onDismiss }) {
   const firstBtnRef = useRef(null);
   const backdrop = useModalBackdrop(onDismiss);
 
@@ -117,6 +118,14 @@ export default function NewGameModal({ open, onReplay, onWinningDeal, onRandomSh
           >
             Daily Challenge{' '}
             <span style={{ fontWeight: 400, opacity: 0.8 }}>— a new deal every day</span>
+          </button>
+          <button
+            type="button"
+            style={{ ...btn, textAlign: 'left' }}
+            onClick={onSpecialEvents}
+          >
+            Special Events{' '}
+            <span style={{ fontWeight: 400, opacity: 0.8 }}>— themed collections</span>
           </button>
           <button
             type="button"
