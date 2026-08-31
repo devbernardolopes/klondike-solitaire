@@ -250,8 +250,9 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
           : 'var(--card-height)',
         position: 'relative',
         borderRadius: 'var(--card-radius)',
-        border: fanned ? '1px solid transparent' : '1px solid rgba(255,255,255,0.18)',
-        background: fanned ? 'transparent' : 'rgba(0,0,0,0.12)',
+        border: fanned ? '1px solid transparent' : 'var(--pile-empty-border, 1px solid rgba(255,255,255,0.18))',
+        background: fanned ? 'transparent' : 'var(--pile-empty-bg, rgba(0,0,0,0.12))',
+        boxShadow: fanned ? 'none' : 'var(--pile-empty-shadow, none)',
         cursor: onClick && !locked ? 'pointer' : 'default',
         outlineOffset: 2,
       }}
@@ -270,8 +271,9 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
                 ? `${visualPileHeight}px`
                 : `calc(var(--card-height) + ${Math.max(effectiveLenForVisual - 1, 0)} * var(--tableau-fan))`,
             borderRadius: 'var(--card-radius)',
-            border: '1px solid rgba(255,255,255,0.18)',
-            background: 'rgba(0,0,0,0.12)',
+            border: 'var(--pile-empty-border, 1px solid rgba(255,255,255,0.18))',
+            background: 'var(--pile-empty-bg, rgba(0,0,0,0.12))',
+            boxShadow: 'var(--pile-empty-shadow, none)',
             pointerEvents: 'none',
             zIndex: 0,
           }}
@@ -286,7 +288,7 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: 'rgba(255,255,255,0.38)',
+            color: 'rgba(255,255,255,0.42)',
             fontFamily: 'system-ui, sans-serif',
             fontWeight: 700,
             fontSize: 'calc(var(--card-width) * 0.5)',
@@ -294,6 +296,8 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
             userSelect: 'none',
             pointerEvents: 'none',
             zIndex: 0,
+            textShadow: '0 1px 6px rgba(0,0,0,0.35)',
+            opacity: cards.length === 0 ? 1 : 0.18,
           }}
         >
           A

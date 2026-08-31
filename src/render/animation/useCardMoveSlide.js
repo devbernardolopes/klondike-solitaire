@@ -118,6 +118,7 @@ export function useCardMoveSlide() {
     const tl = gsap.timeline({
       onComplete: () => {
         completed = true;
+        moved.forEach((el) => gsap.set(el, { clearProps: 'scale,boxShadow' }));
         // Restore each moved wrapper's original z-index so the next render's
         // React-controlled value is what stays in effect.
         movers.forEach(({ wrap, prevZ }) => {
@@ -130,12 +131,19 @@ export function useCardMoveSlide() {
         useUiStore.getState().endTransition(tid);
       },
     });
+    const isLifted = type === 'move' || type === 'auto';
+    if (isLifted) {
+      moved.forEach((el) => gsap.set(el, { scale: 1.04, boxShadow: '0 14px 32px rgba(0,0,0,0.45), 0 5px 12px rgba(0,0,0,0.35)' }));
+    }
     tl.to(moved, {
       x: 0,
       y: 0,
+      scale: 1,
+      boxShadow: '0 4px 10px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.28)',
       duration: cfg.duration,
       ease: cfg.ease,
       stagger: cfg.stagger ?? 0,
+      clearProps: isLifted ? '' : 'scale,boxShadow',
     });
     activeTweens.push(tl);
 

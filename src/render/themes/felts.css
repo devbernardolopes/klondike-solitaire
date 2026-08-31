@@ -22,3 +22,31 @@
   --felt-color: #111811;
   --felt-color-dark: #0b110b;
 }
+
+.theme-emerald-depth {
+  --felt-color: #0e4a32;
+  --felt-color-dark: #08281c;
+  --felt-bg: radial-gradient(120% 90% at 50% 35%, #1e8a5c 0%, #0e4a32 55%, #08281c 100%);
+  --felt-vignette: radial-gradient(ellipse at center, transparent 62%, rgba(0, 0, 0, 0.42) 100%);
+}
+
+.theme-midnight-velvet {
+  --felt-color: #0a1020;
+  --felt-color-dark: #050a16;
+  --felt-bg: radial-gradient(130% 100% at 50% 30%, #1a2744 0%, #0a1020 60%, #050a16 100%);
+  --felt-vignette: radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.5) 100%);
+}
+
+.theme-crimson-baize {
+  --felt-color: #7a1f2b;
+  --felt-color-dark: #4a0f18;
+  --felt-bg: radial-gradient(125% 95% at 50% 32%, #a83242 0%, #7a1f2b 52%, #4a0f18 100%);
+  --felt-vignette: radial-gradient(ellipse at center, transparent 62%, rgba(0, 0, 0, 0.45) 100%);
+}
+
+.theme-desert-mirage {
+  --felt-color: #d4b896;
+  --felt-color-dark: #8c6a43;
+  --felt-bg: radial-gradient(125% 95% at 50% 30%, #e8d5b5 0%, #c9a87a 45%, #8c6a43 100%);
+  --felt-vignette: radial-gradient(ellipse at center, transparent 65%, rgba(60, 40, 15, 0.28) 100%);
+}

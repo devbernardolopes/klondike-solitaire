@@ -6,6 +6,10 @@ const BACKGROUNDS = {
   desert: { name: 'Desert', felt: '#c2a878' },
   noir: { name: 'Noir', felt: '#1a1a1a' },
   'retro-crt': { name: 'Retro CRT', felt: '#111811' },
+  'emerald-depth': { name: 'Emerald Depth', felt: '#0e4a32' },
+  'midnight-velvet': { name: 'Midnight Velvet', felt: '#0a1020' },
+  'crimson-baize': { name: 'Crimson Baize', felt: '#7a1f2b' },
+  'desert-mirage': { name: 'Desert Mirage', felt: '#d4b896' },
 };
 
 export function getBackground(key) {

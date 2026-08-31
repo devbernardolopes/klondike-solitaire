@@ -27,7 +27,7 @@ const TABS = [
   { id: 'cardsFace', label: 'Cards Face' },
 ];
 
-const FREE_BACKGROUNDS = ['classic', 'dark', 'midnight', 'forest', 'desert'];
+const FREE_BACKGROUNDS = ['classic', 'dark', 'midnight', 'forest', 'desert', 'emerald-depth', 'midnight-velvet', 'crimson-baize', 'desert-mirage'];
 
 // A fixed representative card (Ace of Spades) used so every deck face tile
 // clearly shows that deck's color/background differences.
@@ -190,7 +190,7 @@ export default function ThemeModal({ open, onClose }) {
                   width: '100%',
                   height: '100%',
                   borderRadius: 'var(--card-radius)',
-                  background: 'var(--felt-color)',
+                  background: 'var(--felt-bg, var(--felt-color))',
                 }}
               >
                 <span

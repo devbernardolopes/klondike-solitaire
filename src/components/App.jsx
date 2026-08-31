@@ -148,28 +148,42 @@ export default function App() {
       className={`theme-${theme} ui-${interfaceTheme}`}
       style={{
         minHeight: '100%',
-        background: 'var(--felt-color)',
+        background: 'var(--felt-bg, var(--felt-color))',
         display: 'flex',
         flexDirection: 'column',
+        position: 'relative',
+        isolation: 'isolate',
         userSelect: 'none',
         WebkitUserSelect: 'none',
         WebkitTouchCallout: 'none',
       }}
       onContextMenu={(e) => e.preventDefault()}
     >
-      <Toolbar
-        theme={theme}
-        onThemeChange={setTheme}
-        deck={deck}
-        onDeckChange={setDeck}
-        handedness={handedness}
-        onHandednessChange={setHandedness}
-        highlightCard={highlightCard}
-        onHighlightCardChange={setHighlightCard}
-        particles={particles}
-        onParticlesChange={setParticles}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'var(--felt-vignette, none)',
+          pointerEvents: 'none',
+          zIndex: 0,
+        }}
       />
-      <Board />
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', minHeight: '100%', flex: 1 }}>
+        <Toolbar
+          theme={theme}
+          onThemeChange={setTheme}
+          deck={deck}
+          onDeckChange={setDeck}
+          handedness={handedness}
+          onHandednessChange={setHandedness}
+          highlightCard={highlightCard}
+          onHighlightCardChange={setHighlightCard}
+          particles={particles}
+          onParticlesChange={setParticles}
+        />
+        <Board />
+      </div>
       {import.meta.env.DEV && <MotionDebugPanel />}
       <WinModal />
       <SpecialEventsModal />
