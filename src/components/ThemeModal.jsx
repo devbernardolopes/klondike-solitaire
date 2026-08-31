@@ -4,8 +4,7 @@
 // like the live card and renders the actual element it represents (no labels):
 //   - Background: the felt color of each theme (Classic, Dark)
 //   - Cards Back: the current card back
-//   - Cards Face: one tile per deck renderer (excluding the sprite/atlas deck)
-// Tabs always have exactly one active selection. Picking a tile activates it
+//   - Cards Face: one tile per registered deck renderer// Tabs always have exactly one active selection. Picking a tile activates it
 // immediately. Mirrors the modal chrome of SettingsModal.jsx / StoreModal.jsx.
 
 import { useEffect, useRef, useState } from 'react';
@@ -298,11 +297,10 @@ export default function ThemeModal({ open, onClose }) {
     );
   };
 
-  // One tile per (non-sprite) deck: the Ace of Spades face from that deck.
+  // One tile per deck: the Ace of Spades face from that deck.
   const renderCardsFaceTab = () => {
     const ownedDecks = catalogItems.filter((it) => it.kind === 'deck' && ownedItemIds.includes(it.id));
     const tiles = listDecks()
-      .filter((d) => d !== 'sprite')
       .map((d) => {
         const item = ownedDecks.find((it) => it.asset_ref === d);
         const img = getDeck(d).renderCard(PREVIEW_SUIT, PREVIEW_RANK);

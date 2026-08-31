@@ -1,9 +1,9 @@
 // render/deck/drawCard.js
 //
-// Shared canvas drawing primitives for card faces and backs. Used by both the
-// ProceduralDeckRenderer (which draws each card directly) and the
-// SpriteDeckRenderer (which composes an atlas and slices it). Keeping the
-// drawing logic in one place guarantees both renderers produce identical art.
+// Shared canvas drawing primitives for card faces and backs. Used by
+// ProceduralDeckRenderer, which draws each card directly onto its own
+// canvas. Keeping the drawing logic in one place keeps every deck variant
+// visually consistent.
 //
 // Must remain framework-free (no React/DOM-logic imports) so the core stays
 // unit-testable; only the browser `document` canvas API is used here.

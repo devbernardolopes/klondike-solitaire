@@ -7,8 +7,6 @@
 //
 // Must remain framework-free (no React/DOM-logic imports) so the core stays
 // unit-testable; only the browser `document` canvas API is used here.
-//
-// Drawing primitives are shared with SpriteDeckRenderer via drawCard.js.
 
 import { registerDeck } from './deckRegistry.js';
 import { drawCardFace, drawCardBack, drawLargeValueCardFace, colorOf } from './drawCard.js';
@@ -350,6 +348,60 @@ registerDeck(
     faceOptions: {
       colorFor: (s) => LARGE_VALUE_DARK[s],
       background: '#232936',
+      border: 'rgba(255,255,255,0.22)',
+      weightFor: (s) => 800,
+    },
+  })
+);
+
+ registerDeck(
+   'large-value-dark',
+   createProceduralDeckRenderer({
+     faceOptions: {
+       colorFor: (s) => LARGE_VALUE_DARK[s],
+       background: '#232936',
+       border: 'rgba(255,255,255,0.22)',
+       weightFor: (s) => 800,
+     },
+   })
+ );
+
+// Large-value dark #2: near-black background (not #232936), magenta/cyan
+// pairing for strong separation from the slate-blue original.
+const LARGE_VALUE_DARK_2 = {
+  hearts: '#ff7ab6',
+  diamonds: '#ff7ab6',
+  clubs: '#7ad7ff',
+  spades: '#7ad7ff',
+};
+
+registerDeck(
+  'large-value-dark-2',
+  createProceduralDeckRenderer({
+    faceOptions: {
+      colorFor: (s) => LARGE_VALUE_DARK_2[s],
+      background: '#181425',
+      border: 'rgba(255,255,255,0.24)',
+      weightFor: (s) => 800,
+    },
+  })
+);
+
+// Large-value dark #3: deep navy background, warm amber/teal pairing for a
+// third distinct dark large-value option.
+const LARGE_VALUE_DARK_3 = {
+  hearts: '#ffcf5c',
+  diamonds: '#ffcf5c',
+  clubs: '#5ce1c0',
+  spades: '#5ce1c0',
+};
+
+registerDeck(
+  'large-value-dark-3',
+  createProceduralDeckRenderer({
+    faceOptions: {
+      colorFor: (s) => LARGE_VALUE_DARK_3[s],
+      background: '#0f1420',
       border: 'rgba(255,255,255,0.22)',
       weightFor: (s) => 800,
     },

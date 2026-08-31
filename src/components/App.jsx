@@ -7,7 +7,6 @@ import '../render/themes/dark.css';
 import '../render/themes/felts.css';
 import { applyFeltTexture } from '../render/themes/feltTextures.js';
 // Side-effect imports register the deck renderers with the registry.
-import '../render/deck/SpriteDeckRenderer.js';
 import '../render/deck/ProceduralDeckRenderer.js';
 import { useEffect } from 'react';
 import Toolbar from './Toolbar.jsx';
