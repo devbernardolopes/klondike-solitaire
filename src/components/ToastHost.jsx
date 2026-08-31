@@ -8,7 +8,7 @@ import { useEffect, useRef } from 'react';
 import { gsap } from '../render/animation/gsapSetup.js';
 import { MOTION } from '../render/animation/motion.js';
 import { useToastStore } from '../hooks/useToastStore.js';
-import { ACHIEVEMENT_PLACEHOLDER, onAchievementImageError } from '../utils/achievementImage.js';
+import { onAchievementImageError } from '../utils/achievementImage.js';
 
 export default function ToastHost() {
   const active = useToastStore((s) => s.active);
@@ -86,12 +86,14 @@ export default function ToastHost() {
   return (
     <div style={containerStyle}>
       <div ref={cardRef} style={cardStyle} onClick={() => dismiss()} role="status" aria-live="polite">
-        <img
-          src={active.image || ACHIEVEMENT_PLACEHOLDER}
-          alt=""
-          onError={onAchievementImageError}
-          style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', flex: '0 0 auto' }}
-        />
+        {active.image ? (
+          <img
+            src={active.image}
+            alt=""
+            onError={onAchievementImageError}
+            style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', flex: '0 0 auto' }}
+          />
+        ) : null}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 15, fontWeight: 700, textAlign: 'center', lineHeight: 1.25 }}>{active.name}</div>
           {active.description ? (

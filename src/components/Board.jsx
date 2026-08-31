@@ -18,6 +18,7 @@ import { enqueue } from '../sync/syncEngine.js';
 import { useCardMoveSlide } from '../render/animation/useCardMoveSlide.js';
 import { useStockDrawSlide } from '../render/animation/useStockDrawSlide.js';
 import { useFoundationParticles } from '../render/animation/useFoundationParticles.js';
+import { useToastStore } from '../hooks/useToastStore.js';
 import { playWinCascade } from '../render/animation/winCascade.js';
 import { isWon } from '../core/winDetection.js';
 import { solveAsync, STALE } from '../core/solverClient.js';
@@ -195,6 +196,13 @@ export default function Board() {
         dailyDate: gameKind === 'daily' ? dailyDate : null,
         seed: gameState.seed,
       });
+      const nextStreak = (prev.currentStreak || 0) + 1;
+      if (nextStreak > (prev.bestStreak || 0)) {
+        useToastStore.getState().push({
+          name: `New Best Streak: ${nextStreak}!`,
+          description: `You've won ${nextStreak} game${nextStreak === 1 ? '' : 's'} in a row — new personal record.`,
+        });
+      }
       // Persist the just-won game's stats cumulatively. The timer is frozen
       // above, so endTime is final for this game. Runs after the snapshot so the
       // new-record flags reflect the values the player actually beat.
