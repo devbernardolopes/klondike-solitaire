@@ -33,7 +33,7 @@ test('checkTimeLimit does not trigger after a win (endTime pinned)', () => {
   reset();
   // Simulate a won game: clock started, then stopTimer() pinned endTime.
   // NOTE: use a startTime far enough in the past that, absent the win, the
-  // 60:00 limit would already have been crossed.
+  // 30:00 limit would already have been crossed.
   const startTime = Date.now() - MAX_TIME_MS - 1000;
   useStatsStore.setState({ startTime, endTime: Date.now() });
 
@@ -84,14 +84,14 @@ test('freeze records a loss (breaking the streak) when the time limit is hit', (
   const s = useStatsStore.getState();
   assert.equal(s.isOver, true);
   assert.equal(s.overReason, 'time');
-  assert.equal(s.endTime, startTime + MAX_TIME_MS, 'endTime is pinned to exactly 60:00');
+  assert.equal(s.endTime, startTime + MAX_TIME_MS, 'endTime is pinned to exactly 30:00');
 
   // The guard in freeze() makes a second freeze a no-op: no double loss.
   useStatsStore.getState().freeze('moves');
   assert.equal(recordLossCalls, 1, 'freeze must not re-record a loss on an already-over game');
 });
 
-test('freeze records a loss when the 999-move limit is hit', () => {
+test('freeze records a loss when the 500-move limit is hit', () => {
   reset();
   useStatsStore.setState({ startTime: Date.now(), endTime: null, isOver: false, moves: MAX_MOVES - 1 });
 

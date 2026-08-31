@@ -141,7 +141,7 @@ activates the renderer in `deckRegistry`.
 
 Moves counter, score (currently always 0 — not yet implemented), undos, and a wall-clock-based
 play timer with **focus-loss pause** (hidden tab time is excluded via `pausedAt`/`pausedAccumMs`).
-Enforces hard game-over limits: `MAX_TIME_MS` (60:00) and `MAX_MOVES` (999); reaching either
+Enforces hard game-over limits: `MAX_TIME_MS` (30:00) and `MAX_MOVES` (500); reaching either
 calls `freeze(reason)` and locks all interaction. `freeze` also records the loss immediately
 (via `useStatisticsStore.recordLoss`, mirroring `recordWin` at win time and `recordGamePlayed`
 at timer-start time), so the winning streak is reset the moment a limit is hit — Game Over is
@@ -312,7 +312,7 @@ depend on score (`highestScore`) are currently 0-based.
 - Won-seed tracking (`playedSeeds`) so Winning-Deal seeds aren't repeated once won.
 - Hint affordance (`core/hints.js` + `useUiStore.hints`) and board **snapshot export**
   (`core/snapshot.js` via Settings).
-- Stats session (moves, undos, focus-paused timer, 60:00 / 999-move game-over limits) and dialogs.
+- Stats session (moves, undos, focus-paused timer, 30:00 / 500-move game-over limits) and dialogs.
 
 ### Stubbed / not yet started (marked with TODO in code)
 

@@ -1,7 +1,7 @@
 // utils/formatTime.js
 // Formats a millisecond duration as a compact "M:SS" clock string. Used by the
 // win modal to display the finished game's elapsed time. The game caps play at
-// 60:00, so minutes never overflow two digits in practice.
+// 30:00, so minutes never overflow two digits in practice.
 
 /**
  * @param {number} ms  duration in milliseconds

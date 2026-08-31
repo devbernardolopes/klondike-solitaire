@@ -11,8 +11,8 @@ import { useStatisticsStore } from './useStatisticsStore.js';
 
 // Hard limits that end the game. Reaching either freezes the session so only a
 // new game can continue (timer stops, moves stop, interactions lock).
-export const MAX_TIME_MS = 60 * 30 * 1000; // 60:00
-export const MAX_MOVES = 20;
+export const MAX_TIME_MS = 60 * 30 * 1000; // 30:00
+export const MAX_MOVES = 500;
 
 export const useStatsStore = create(subscribeWithSelector((set, get) => ({
   moves: 0,
@@ -82,10 +82,10 @@ export const useStatsStore = create(subscribeWithSelector((set, get) => ({
   },
 
   /**
-   * Freeze the session: lock interaction and stop the clock. The 999th move is
+   * Freeze the session: lock interaction and stop the clock. The 500th move is
    * still applied before this fires (caller increments first), so the counter
    * reads exactly MAX_MOVES. For the time limit we pin endTime so the display
-   * reads exactly 60:00 rather than a slightly-over 250ms-tick value.
+   * reads exactly 30:00 rather than a slightly-over 250ms-tick value.
    * @param {'time'|'moves'} reason
    */
   freeze: (reason) => {

@@ -225,7 +225,7 @@ export const useUiStore = create((set, get) => ({
   // Statistics modal showing cumulative games-played/won, best score/time/moves.
   statsDialogOpen: false,
 
-  // "Game Over" modal shown when a hard limit (60:00 or 999 moves) is hit.
+  // "Game Over" modal shown when a hard limit (30:00 or 500 moves) is hit.
   gameOverDialogOpen: false,
 
   // "Enter Seed" modal: user types a specific Winning-Deal seed number to

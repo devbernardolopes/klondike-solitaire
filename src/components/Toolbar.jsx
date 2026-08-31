@@ -467,8 +467,8 @@ function ElapsedClock() {
         title="Game Over"
         message={
           overReason === 'moves'
-            ? "You reached the 999-move limit. Start a new game to keep playing."
-            : "You reached the 60:00 time limit. Start a new game to keep playing."
+            ? "You reached the 500-move limit. Start a new game to keep playing."
+            : "You reached the 30:00 time limit. Start a new game to keep playing."
         }
         confirmText="New Game"
         hideCancel
