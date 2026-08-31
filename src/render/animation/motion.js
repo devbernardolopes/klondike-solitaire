@@ -20,13 +20,13 @@ export const MOTION = {
   // the source and destination differ on both axes. A run lifts and lands as a
   // RIGID BLOCK because every card in it tweens in parallel (stagger 0) with the
   // grabbed/clicked card leading the move.
-  move:     { duration: 0.25, ease: 'power2.out', stagger: 0.00 },
+  move:     { duration: 0.28, ease: 'power2.out', stagger: 0.00 },
 
   // Auto-complete relocation tween (greedy foundation peel + solver win
   // sequence). Independent of `move` so it can be tuned (e.g. made snappier)
   // without affecting normal player moves. Consumed by useCardMoveSlide via
   // CONFIG_BY_TYPE.auto.
-  auto:     { duration: 0.28, ease: 'power2.out', stagger: 0.00 },
+  auto:     { duration: 0.28, ease: 'power2.out', stagger: 0.02 },
 
   // Undo relocation tween. Runs through the SAME useCardMoveSlide path as `move`
   // (affected cards glide from their current position back to where undo puts
@@ -49,7 +49,7 @@ export const MOTION = {
   //                  MOTION.auto; only the inter-step cadence changes.
   // `stepDelay` is milliseconds; clamped to 0..1000 when read. 0 = no gap (next
   // step starts immediately; in 'overlap' this gives maximum concurrency).
-  autoComplete: { mode: 'overlap', stepDelay: 80 },
+  autoComplete: { mode: 'overlap', stepDelay: 75 },
 
   // 3D rotateY face flip (face-down <-> face-up) in useCardFaceFlip.
   flipCard: { duration: 0.05, ease: 'back.out(1.15)' },
@@ -102,7 +102,7 @@ export const MOTION = {
 
   // Card flip shimmer: specular sweep across the face right after the 3D flip
   // lands. Very short so it reads as a glint, not a linger.
-  shimmer: { duration: 0.42, ease: 'power2.inOut' },
+  shimmer: { duration: 0.52, ease: 'power2.inOut' },
 
   // Pile hover glow: soft animated aura shown on valid drop targets instead of
   // the old dashed border. Implemented as CSS animation; preset kept here for tuning.
@@ -114,12 +114,12 @@ export const MOTION = {
   // 'power2.in') up to `radius` px while fading to 0. Tuned here so the whole
   // effect is a single source of truth.
   particles: {
-    count: 14,            // particles per burst
-    radius: 90,           // max travel distance (px) from the origin
-    size: 30,             // rendered glyph size (px)
+    count: 10,            // particles per burst
+    radius: 120,           // max travel distance (px) from the origin
+    size: 44,             // rendered glyph size (px)
     duration: 0.55,       // per-particle lifetime (seconds)
     ease: 'power2.in',    // accelerating → faster as it moves outward
-    spin: 90,             // max random rotation (deg) for a subtle tumble
+    spin: 180,             // max random rotation (deg) for a subtle tumble
   },
 
   // Achievement-unlock toast. `slide` controls the off-screen entrance (top
@@ -143,7 +143,7 @@ export const MOTION = {
     toScale: 1,             // final size
     fromOpacity: 0,         // starting opacity (0 = invisible) — fades in as it grows
     toOpacity: 1,
-    duration: 0.45,         // grow speed in seconds
+    duration: 0.55,         // grow speed in seconds
     ease: 'back.out(1.7)',  // slight overshoot pop; fully tunable
   },
 };
