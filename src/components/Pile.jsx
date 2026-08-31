@@ -72,19 +72,18 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
   const FAN_DOWN_MIN = 3;     // px — face-down cards just need to read as "a stack"
   const FAN_UP_SOFT_MIN = 14; // px — preferred floor so rank/suit stay legible
 
-  const freezeHeight = fanned && isAnimating && cards.some((c) => animatingCards.has(c.id));
-  const effectiveLenForHeight = freezeHeight ? cards.filter((c) => !animatingCards.has(c.id)).length : cards.length;
+  const freezeVisual = fanned && isAnimating && cards.some((c) => animatingCards.has(c.id));
+  const effectiveCardsForVisual = freezeVisual ? cards.filter((c) => !animatingCards.has(c.id)) : null;
+  const effectiveLenForVisual = freezeVisual ? effectiveCardsForVisual.length : cards.length;
 
   let tops = null;
   let pileHeight = null;
   if (fanned && metrics && metrics.cardH) {
     const { cardH, fanUp: fanUpMax, fanDown: fanDownMax, avail } = metrics;
-    const effectiveCards = freezeHeight ? cards.filter((c) => !animatingCards.has(c.id)) : cards;
-    const effLen = effectiveLenForHeight;
-    const offsetCount = Math.max(0, effLen - 1);
+    const offsetCount = Math.max(0, cards.length - 1);
     let nDown = 0, nUp = 0;
     for (let i = 0; i < offsetCount; i++) {
-      if (effectiveCards[i].faceUp) nUp++; else nDown++;
+      if (cards[i].faceUp) nUp++; else nDown++;
     }
 
     let fanDown = fanDownMax;
@@ -119,13 +118,47 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
       tops.push(acc);
       if (i < cards.length - 1) acc += cards[i].faceUp ? fanUp : fanDown;
     }
-    if (freezeHeight) {
-      let effAcc = 0;
-      for (let i = 0; i < effLen - 1; i++) effAcc += effectiveCards[i].faceUp ? fanUp : fanDown;
-      pileHeight = effLen === 0 ? cardH : cardH + effAcc;
-    } else {
-      pileHeight = cardH + acc;
+    pileHeight = cardH + acc;
+  }
+
+  let visualPileHeight = null;
+  if (fanned && freezeVisual && metrics && metrics.cardH) {
+    const { cardH, fanUp: fanUpMax, fanDown: fanDownMax, avail } = metrics;
+    const effLen = effectiveLenForVisual;
+    const offsetCount = Math.max(0, effLen - 1);
+    let nDown = 0, nUp = 0;
+    for (let i = 0; i < offsetCount; i++) {
+      if (effectiveCardsForVisual[i].faceUp) nUp++; else nDown++;
     }
+    let fanDown = fanDownMax;
+    let fanUp = fanUpMax;
+    const naturalExtra = nDown * fanDownMax + nUp * fanUpMax;
+    if (avail > 0 && naturalExtra > avail) {
+      const savingsNeeded = naturalExtra - avail;
+      const maxDownSavings = nDown * (fanDownMax - FAN_DOWN_MIN);
+      if (nDown > 0 && maxDownSavings >= savingsNeeded) fanDown = fanDownMax - savingsNeeded / nDown;
+      else {
+        fanDown = FAN_DOWN_MIN;
+        const remaining = avail - nDown * FAN_DOWN_MIN;
+        const strictFanUp = nUp > 0 ? Math.max(remaining / nUp, 0) : fanUpMax;
+        const withSoftFloor = Math.max(strictFanUp, FAN_UP_SOFT_MIN);
+        const fitsWithSoftFloor = nDown * FAN_DOWN_MIN + nUp * withSoftFloor <= avail;
+        fanUp = fitsWithSoftFloor ? withSoftFloor : strictFanUp;
+      }
+    }
+    const finalExtra = nDown * fanDown + nUp * fanUp;
+    if (avail > 0 && finalExtra > avail) {
+      const guardScale = avail / finalExtra;
+      fanDown *= guardScale;
+      fanUp *= guardScale;
+    }
+    let effAcc = 0;
+    for (let i = 0; i < effLen - 1; i++) effAcc += effectiveCardsForVisual[i].faceUp ? fanUp : fanDown;
+    visualPileHeight = effLen === 0 ? cardH : cardH + effAcc;
+  } else if (fanned && freezeVisual) {
+    visualPileHeight = null;
+  } else {
+    visualPileHeight = pileHeight;
   }
 
   // Position a hint highlight so its TOP edge starts at the relevant card
@@ -213,17 +246,37 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
         height: fanned
           ? pileHeight != null
             ? `${pileHeight}px`
-            : `calc(var(--card-height) + ${Math.max(effectiveLenForHeight - 1, 0)} * var(--tableau-fan))`
+            : `calc(var(--card-height) + ${Math.max(cards.length - 1, 0)} * var(--tableau-fan))`
           : 'var(--card-height)',
         position: 'relative',
         borderRadius: 'var(--card-radius)',
-        border: '1px solid rgba(255,255,255,0.18)',
-        background: 'rgba(0,0,0,0.12)',
+        border: fanned ? '1px solid transparent' : '1px solid rgba(255,255,255,0.18)',
+        background: fanned ? 'transparent' : 'rgba(0,0,0,0.12)',
         cursor: onClick && !locked ? 'pointer' : 'default',
         outlineOffset: 2,
       }}
       data-loc={loc}
     >
+      {fanned && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            width: 'var(--card-width)',
+            height:
+              visualPileHeight != null
+                ? `${visualPileHeight}px`
+                : `calc(var(--card-height) + ${Math.max(effectiveLenForVisual - 1, 0)} * var(--tableau-fan))`,
+            borderRadius: 'var(--card-radius)',
+            border: '1px solid rgba(255,255,255,0.18)',
+            background: 'rgba(0,0,0,0.12)',
+            pointerEvents: 'none',
+            zIndex: 0,
+          }}
+        />
+      )}
       {kind === 'foundation' && (
         <span
           aria-hidden="true"
