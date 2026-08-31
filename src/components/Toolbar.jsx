@@ -259,23 +259,29 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const FAB_GAP = 12;
   const fabLeft = (slot) => 16 + slot * (FAB_WIDTH + FAB_GAP);
 
-  // Larger, centered font used by the Score / Time / Moves HUD row.
 const hudLabelStyle = {
+  color: '#fff',
+  fontSize: 16,
+  fontWeight: 700,
+  userSelect: 'none',
+};
+
+const hudValueStyle = {
   color: '#fff',
   fontSize: 22,
   fontWeight: 700,
   userSelect: 'none',
   fontVariantNumeric: 'tabular-nums',
-};
-
-// Fixed-width, right-aligned slot for a HUD numeric value so the label (e.g.
-// "Moves:") stays put as the number of digits grows (0 -> 10 -> 100). Without
-// this the whole HUD cell widens and the centered row re-centers, shifting the
-// label leftward. 3ch covers the 999 move limit.
-const hudNumStyle = {
   display: 'inline-block',
   minWidth: '3ch',
-  textAlign: 'right',
+  textAlign: 'center',
+};
+
+const hudColStyle = {
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: 2,
 };
 
 /**
@@ -287,9 +293,10 @@ const hudNumStyle = {
 function ElapsedClock() {
   const elapsed = useElapsed();
   return (
-    <span style={hudLabelStyle}>
-      Time: <span style={hudNumStyle}>{elapsed}</span>
-    </span>
+    <div style={hudColStyle}>
+      <span style={hudLabelStyle}>Time</span>
+      <span style={hudValueStyle}>{elapsed}</span>
+    </div>
   );
 }
 
@@ -351,17 +358,19 @@ function ElapsedClock() {
             display: 'flex',
             justifyContent: 'center',
             gap: 'clamp(24px, 6vw, 80px)',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             pointerEvents: 'none',
           }}
         >
-          <span style={hudLabelStyle}>
-            Score: <span style={hudNumStyle}>{score}</span>
-          </span>
+          <div style={hudColStyle}>
+            <span style={hudLabelStyle}>Score</span>
+            <span style={hudValueStyle}>{score}</span>
+          </div>
           <ElapsedClock />
-          <span style={hudLabelStyle}>
-            Moves: <span style={hudNumStyle}>{moves}</span>
-          </span>
+          <div style={hudColStyle}>
+            <span style={hudLabelStyle}>Moves</span>
+            <span style={hudValueStyle}>{moves}</span>
+          </div>
         </div>
       </div>
 
