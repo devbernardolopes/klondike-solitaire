@@ -48,6 +48,16 @@ export default function StatisticsModal({ open, onClose }) {
 
   if (!open) return null;
 
+  const isEmpty =
+    stats.totalGamesPlayed === 0 &&
+    stats.totalGamesWon === 0 &&
+    stats.bestStreak === 0 &&
+    stats.currentStreak === 0 &&
+    stats.lowestTimeMs == null &&
+    stats.lowestMoves == null &&
+    stats.totalTimeMsWon === 0 &&
+    stats.totalMovesWon === 0;
+
   const wonPct =
     stats.totalGamesPlayed > 0
       ? Math.round((stats.totalGamesWon / stats.totalGamesPlayed) * 100)
@@ -79,9 +89,10 @@ export default function StatisticsModal({ open, onClose }) {
     padding: '20px 22px',
     width: 'min(90vw, 420px)',
     maxWidth: '100%',
-    height: '85vh',
+    maxHeight: '85vh',
     display: 'flex',
     flexDirection: 'column',
+    overflow: 'hidden',
   };
 
   const row = {
@@ -201,23 +212,25 @@ export default function StatisticsModal({ open, onClose }) {
             </div>
           </div>
 
-          <button
-            type="button"
-            style={{
-              marginTop: 12,
-              padding: '10px 14px',
-              borderRadius: 6,
-              border: '1px solid var(--ui-modal-btn-border)',
-              background: 'var(--ui-modal-btn-bg-danger, #b23b3b)',
-              color: '#fff',
-              cursor: 'pointer',
-              fontSize: 14,
-              fontWeight: 600,
-            }}
-            onClick={() => setConfirmResetOpen(true)}
-          >
-            Reset Statistics
-          </button>
+          {!isEmpty && (
+            <button
+              type="button"
+              style={{
+                marginTop: 12,
+                padding: '10px 14px',
+                borderRadius: 6,
+                border: '1px solid var(--ui-modal-btn-border)',
+                background: 'var(--ui-modal-btn-bg-danger, #b23b3b)',
+                color: '#fff',
+                cursor: 'pointer',
+                fontSize: 14,
+                fontWeight: 600,
+              }}
+              onClick={() => setConfirmResetOpen(true)}
+            >
+              Reset Statistics
+            </button>
+          )}
         </div>
       </div>
 
