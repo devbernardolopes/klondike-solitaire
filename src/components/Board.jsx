@@ -203,6 +203,19 @@ export default function Board() {
           description: `You've won ${nextStreak} game${nextStreak === 1 ? '' : 's'} in a row — new personal record.`,
         });
       }
+      if (newTime) {
+        const secs = (durationMs / 1000).toFixed(1);
+        useToastStore.getState().push({
+          name: 'New Best Time!',
+          description: `You beat your record — ${secs}s`,
+        });
+      }
+      if (newMoves) {
+        useToastStore.getState().push({
+          name: 'New Best Moves!',
+          description: `You won in just ${moves} moves — new fewest!`,
+        });
+      }
       // Persist the just-won game's stats cumulatively. The timer is frozen
       // above, so endTime is final for this game. Runs after the snapshot so the
       // new-record flags reflect the values the player actually beat.
