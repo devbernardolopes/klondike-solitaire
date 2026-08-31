@@ -79,6 +79,12 @@ export default function ThemeModal({ open, onClose }) {
 
   useModalEscape({ open, onClose, id: 'theme', z: Z.CHILD });
 
+  const dismissNew = (id) => {
+    if (!id || !newIds.includes(id)) return;
+    setNewIds((prev) => prev.filter((x) => x !== id));
+    markThemeItemsSeen([id]);
+  };
+
   useEffect(() => {
     if (!open) return;
     dialogRef.current?.focus();
@@ -86,7 +92,7 @@ export default function ThemeModal({ open, onClose }) {
     fetchStoreCatalog()
       .then((data) => {
         setCatalogItems(data);
-        const themeIds = data.filter((it) => it.kind === 'card_back' || it.kind === 'table_felt').map((it) => it.id);
+        const themeIds = data.filter((it) => it.kind === 'card_back' || it.kind === 'table_felt' || it.kind === 'deck').map((it) => it.id);
         const fresh = ownedItemIds.filter((id) => themeIds.includes(id) && !seenThemeItemIds.includes(id));
         setNewIds(fresh);
         if (fresh.length) markThemeItemsSeen(fresh);
@@ -163,6 +169,7 @@ export default function ThemeModal({ open, onClose }) {
               aria-pressed={selected}
               aria-label={`Background: ${t.label}${selected ? ' (selected)' : ''}${isNew ? ' (new)' : ''}`}
               onClick={() => {
+                if (t.id) dismissNew(t.id);
                 setTheme(t.asset_ref);
                 announce(`${t.label} background selected`);
               }}
@@ -273,6 +280,7 @@ export default function ThemeModal({ open, onClose }) {
               aria-pressed={selected}
               aria-label={`Cards Back: ${t.label}${selected ? ' (selected)' : ''}${isNew ? ' (new)' : ''}`}
               onClick={() => {
+                if (t.id) dismissNew(t.id);
                 setCardBack(t.key);
                 announce(`${t.label} card back selected`);
               }}
@@ -292,29 +300,39 @@ export default function ThemeModal({ open, onClose }) {
 
   // One tile per (non-sprite) deck: the Ace of Spades face from that deck.
   const renderCardsFaceTab = () => {
-    const faces = listDecks().filter((d) => d !== 'sprite');
+    const ownedDecks = catalogItems.filter((it) => it.kind === 'deck' && ownedItemIds.includes(it.id));
+    const tiles = listDecks()
+      .filter((d) => d !== 'sprite')
+      .map((d) => {
+        const item = ownedDecks.find((it) => it.asset_ref === d);
+        return { key: d, id: item?.id ?? null, label: d, img: getDeck(d).renderCard(PREVIEW_SUIT, PREVIEW_RANK) };
+      });
     return (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, var(--card-width))', gap: 14, justifyContent: 'center' }}>
-        {faces.map((d) => {
-          const selected = d === deck;
-          const faceImg = getDeck(d).renderCard(PREVIEW_SUIT, PREVIEW_RANK);
+        {tiles.map((t) => {
+          const selected = t.key === deck;
+          const faceImg = t.img;
+          const isNew = t.id ? newIds.includes(t.id) : false;
           return (
             <button
-              key={d}
+              key={t.key}
               type="button"
               role="button"
               aria-pressed={selected}
-              aria-label={`Cards Face: ${d}${selected ? ' (selected)' : ''}`}
+              aria-label={`Cards Face: ${t.label}${selected ? ' (selected)' : ''}${isNew ? ' (new)' : ''}`}
               onClick={() => {
-                setDeck(d);
-                announce(`${d} cards selected`);
+                if (t.id) dismissNew(t.id);
+                setDeck(t.key);
+                announce(`${t.label} cards selected`);
               }}
               style={{
                 ...tileBase,
                 ...(selected ? selectedBorder : null),
                 backgroundImage: `url(${faceImg})`,
               }}
-            />
+            >
+              {isNew && <span style={NEW_BADGE}>New</span>}
+            </button>
           );
         })}
       </div>

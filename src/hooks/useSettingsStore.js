@@ -58,6 +58,7 @@ export const useSettingsStore = create((set, get) => ({
   highlightCard: DEFAULTS.highlightCard,
   particles: DEFAULTS.particles,
   seenThemeItemIds: [],
+  seenAchievementIds: [],
   themeModalTab: 'interface',
   loaded: false,
 
@@ -66,7 +67,7 @@ export const useSettingsStore = create((set, get) => ({
    * keys fall back to DEFAULTS. Activates the loaded (or default) deck.
    */
   init: async () => {
-    const [theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, seenThemeItemIds, themeModalTab] = await Promise.all([
+    const [theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, seenThemeItemIds, seenAchievementIds, themeModalTab] = await Promise.all([
       getSetting('theme', DEFAULTS.theme),
       getSetting('interfaceTheme', DEFAULTS.interfaceTheme),
       getSetting('deck', DEFAULTS.deck),
@@ -75,10 +76,11 @@ export const useSettingsStore = create((set, get) => ({
       getSetting('highlightCard', DEFAULTS.highlightCard),
       getSetting('particles', DEFAULTS.particles),
       getSetting('seenThemeItemIds', []),
+      getSetting('seenAchievementIds', []),
       getSetting('themeModalTab', 'background'),
     ]);
     setActiveDeck(deck);
-    set({ theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, seenThemeItemIds, themeModalTab, loaded: true });
+    set({ theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, seenThemeItemIds, seenAchievementIds, themeModalTab, loaded: true });
   },
 
   /**
@@ -162,6 +164,15 @@ export const useSettingsStore = create((set, get) => ({
       const next = Array.from(new Set([...s.seenThemeItemIds, ...ids]));
       setSetting('seenThemeItemIds', next);
       return { seenThemeItemIds: next };
+    });
+  },
+
+  markAchievementsSeen: (ids) => {
+    if (!ids || ids.length === 0) return;
+    set((s) => {
+      const next = Array.from(new Set([...s.seenAchievementIds, ...ids]));
+      setSetting('seenAchievementIds', next);
+      return { seenAchievementIds: next };
     });
   },
 }));

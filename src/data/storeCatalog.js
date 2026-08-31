@@ -10,12 +10,13 @@
 
 import { supabase } from '../lib/supabaseClient.js';
 
-const THEME_KINDS = new Set(['card_back', 'table_felt']);
+const THEME_KINDS = new Set(['card_back', 'table_felt', 'deck']);
 
 /** @type {Record<string, string>} kind → Theme-modal tab label. */
 const TAB_LABEL_BY_KIND = {
   card_back: 'Cards Back',
   table_felt: 'Background',
+  deck: 'Cards Face',
 };
 
 let cache = null;

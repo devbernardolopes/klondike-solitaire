@@ -17,6 +17,7 @@ import { achievementImageUrl, onAchievementImageError } from '../utils/achieveme
 import AchievementDetailModal from './AchievementDetailModal.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
 import { useAuthStore } from '../hooks/useAuthStore.js';
+import { useSettingsStore } from '../hooks/useSettingsStore.js';
 
 /**
  * A single achievement entry in the compact list. Unlocked entries are
@@ -25,7 +26,19 @@ import { useAuthStore } from '../hooks/useAuthStore.js';
  * not activatable. Hover/focus backgrounds are tracked with local state (no
  * theme-CSS changes needed).
  */
-function AchievementRow({ achievement, onOpen }) {
+const NEW_BADGE = {
+  fontSize: 11,
+  fontWeight: 700,
+  lineHeight: 1,
+  color: '#fff',
+  background: 'var(--card-text-red, #d12b3b)',
+  borderRadius: 4,
+  padding: '2px 5px',
+  pointerEvents: 'none',
+  whiteSpace: 'nowrap',
+};
+
+function AchievementRow({ achievement, isNew, onOpen }) {
   const [hover, setHover] = useState(false);
   const [focus, setFocus] = useState(false);
   const unlocked = Boolean(achievement.earnedAt);
@@ -70,8 +83,11 @@ function AchievementRow({ achievement, onOpen }) {
         onError={onAchievementImageError}
         style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover', flex: '0 0 auto' }}
       />
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 700 }}>{achievement.name}</div>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 14, fontWeight: 700 }}>{achievement.name}</span>
+          {isNew && <span style={NEW_BADGE}>New</span>}
+        </div>
         <div style={{ fontSize: 13, margin: '2px 0 0' }}>{achievement.description}</div>
       </div>
     </div>
@@ -95,6 +111,9 @@ export default function AchievementsModal({ open, onClose }) {
   const [selected, setSelected] = useState(/** @type {any|null} */ (null));
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [newIds, setNewIds] = useState(/** @type {string[]} */ ([]));
+  const seenAchievementIds = useSettingsStore((s) => s.seenAchievementIds);
+  const markAchievementsSeen = useSettingsStore((s) => s.markAchievementsSeen);
 
   // Keep the latest close handler in a ref so the open-effect depends only on
   // `open` and runs exactly once per open (not on an unstable callback identity).
@@ -110,6 +129,15 @@ export default function AchievementsModal({ open, onClose }) {
   // "nothing unlocked / empty catalog" — never an error state, since this is
   // display-only. Exposed as `load` so it can be re-run after a reset to
   // refresh the unlocked set without closing the modal.
+  const dismissNew = useCallback(
+    (id) => {
+      if (!id || !newIds.includes(id)) return;
+      setNewIds((prev) => prev.filter((x) => x !== id));
+      markAchievementsSeen([id]);
+    },
+    [newIds, markAchievementsSeen],
+  );
+
   const load = useCallback(async (cancelledRef) => {
     if (!open) return;
     setLoading(true);
@@ -140,14 +168,23 @@ export default function AchievementsModal({ open, onClose }) {
     if (defsOk) {
       setDefs(defsRes.data);
     }
+    let nextUnlocked = {};
     if (unlockedOk) {
       const map = {};
       for (const row of unlockedRes.data) map[row.achievement_id] = row.unlocked_at;
       setUnlocked(map);
+      nextUnlocked = map;
+    }
+    if (defsOk && unlockedOk) {
+      const fresh = Object.keys(nextUnlocked).filter((id) => !seenAchievementIds.includes(id));
+      setNewIds(fresh);
+      if (fresh.length) markAchievementsSeen(fresh);
+    } else {
+      setNewIds([]);
     }
     setLoaded(defsOk && unlockedOk);
     setLoading(false);
-  }, [open]);
+  }, [open, seenAchievementIds, markAchievementsSeen]);
 
   useEffect(() => {
     if (!open) return;
@@ -220,13 +257,20 @@ export default function AchievementsModal({ open, onClose }) {
               <div style={{ opacity: 0.8, fontSize: 14, marginBottom: 16 }}>Loading…</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 18 }}>
-                {defs.map((a) => (
-                  <AchievementRow
-                    key={a.id}
-                    achievement={{ ...a, earnedAt: unlocked[a.id] ?? null }}
-                    onOpen={(row) => setSelected(row)}
-                  />
-                ))}
+                {defs.map((a) => {
+                  const isNew = Boolean(unlocked[a.id]) && newIds.includes(a.id);
+                  return (
+                    <AchievementRow
+                      key={a.id}
+                      achievement={{ ...a, earnedAt: unlocked[a.id] ?? null }}
+                      isNew={isNew}
+                      onOpen={(row) => {
+                        if (newIds.includes(row.id)) dismissNew(row.id);
+                        setSelected(row);
+                      }}
+                    />
+                  );
+                })}
               </div>
             )}
           </div>
