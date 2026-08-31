@@ -326,6 +326,7 @@ const LARGE_VALUE = {
 registerDeck(
   'large-value',
   createProceduralDeckRenderer({
+    largeValue: true,
     faceOptions: {
       colorFor: (s) => LARGE_VALUE[s],
       background: '#fbfbf7',
@@ -345,6 +346,7 @@ const LARGE_VALUE_DARK = {
 registerDeck(
   'large-value-dark',
   createProceduralDeckRenderer({
+    largeValue: true,
     faceOptions: {
       colorFor: (s) => LARGE_VALUE_DARK[s],
       background: '#232936',
@@ -357,6 +359,7 @@ registerDeck(
  registerDeck(
    'large-value-dark',
    createProceduralDeckRenderer({
+    largeValue: true,
      faceOptions: {
        colorFor: (s) => LARGE_VALUE_DARK[s],
        background: '#232936',
@@ -378,6 +381,7 @@ const LARGE_VALUE_DARK_2 = {
 registerDeck(
   'large-value-dark-2',
   createProceduralDeckRenderer({
+    largeValue: true,
     faceOptions: {
       colorFor: (s) => LARGE_VALUE_DARK_2[s],
       background: '#181425',
@@ -399,6 +403,7 @@ const LARGE_VALUE_DARK_3 = {
 registerDeck(
   'large-value-dark-3',
   createProceduralDeckRenderer({
+    largeValue: true,
     faceOptions: {
       colorFor: (s) => LARGE_VALUE_DARK_3[s],
       background: '#0f1420',
