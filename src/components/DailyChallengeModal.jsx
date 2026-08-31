@@ -416,7 +416,7 @@ export default function DailyChallengeModal() {
           {/* Body: calendar grid + side panel */}
           <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'flex-start' }}>
             <div style={{ flex: '1 1 320px', minWidth: 280 }}>
-              <div style={gridStyle}>{cells}</div>
+              <div style={{ ...gridStyle, minHeight: '214px', alignContent: 'start' }}>{cells}</div>
             </div>
 
             <div style={{ flex: '1 1 220px', minWidth: 200, borderLeft: '1px solid var(--ui-modal-panel-border)', paddingLeft: 16 }}>
