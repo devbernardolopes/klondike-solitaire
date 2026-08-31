@@ -11,12 +11,12 @@
 // Drawing primitives are shared with SpriteDeckRenderer via drawCard.js.
 
 import { registerDeck } from './deckRegistry.js';
-import { drawCardFace, drawCardBack, colorOf } from './drawCard.js';
+import { drawCardFace, drawCardBack, drawLargeValueCardFace, colorOf } from './drawCard.js';
 
 /**
  * @implements {import('./deckRegistry.js').DeckRenderer}
  */
-export function createProceduralDeckRenderer({ size = 96, faceOptions } = {}) {
+export function createProceduralDeckRenderer({ size = 96, faceOptions, largeValue = false } = {}) {
   const w = size;
   const h = Math.round(size * 1.4);
   // Cache the encoded data-URL string (not the raw canvas), so repeated renders
@@ -48,6 +48,9 @@ export function createProceduralDeckRenderer({ size = 96, faceOptions } = {}) {
      */
     renderCard(suit, rank) {
       const key = `card:${suit}:${rank}`;
+      if (largeValue) {
+        return render(key, (ctx) => drawLargeValueCardFace(ctx, suit, rank, w, h, faceOptions));
+      }
       return render(key, (ctx) => drawCardFace(ctx, suit, rank, w, h, faceOptions));
     },
 
@@ -314,3 +317,43 @@ registerDeck(
     },
   })
 );
+
+const LARGE_VALUE = {
+  hearts: '#d12b3b',
+  diamonds: '#d12b3b',
+  clubs: '#1d2330',
+  spades: '#1d2330',
+};
+
+registerDeck(
+  'large-value',
+  createProceduralDeckRenderer({
+    faceOptions: {
+      colorFor: (s) => LARGE_VALUE[s],
+      background: '#fbfbf7',
+      border: 'rgba(0,0,0,0.18)',
+      weightFor: (s) => 800,
+    },
+  })
+);
+
+const LARGE_VALUE_DARK = {
+  hearts: '#ff6b7a',
+  diamonds: '#ff6b7a',
+  clubs: '#e8ecf4',
+  spades: '#e8ecf4',
+};
+
+registerDeck(
+  'large-value-dark',
+  createProceduralDeckRenderer({
+    faceOptions: {
+      colorFor: (s) => LARGE_VALUE_DARK[s],
+      background: '#232936',
+      border: 'rgba(255,255,255,0.22)',
+      weightFor: (s) => 800,
+    },
+  })
+);
+
+export { createProceduralDeckRenderer };

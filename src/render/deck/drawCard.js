@@ -183,6 +183,64 @@ export function drawCardFace(ctx, suit, rank, w, h, { colorFor = colorOf, backgr
   }
 }
 
+export function drawLargeValueCardFace(ctx, suit, rank, w, h, { colorFor = colorOf, background = '#fbfbf7', border = 'rgba(0,0,0,0.18)', weightFor, decorationFor } = {}) {
+  const radius = Math.max(4, Math.round(w * 0.07));
+  const color = colorFor(suit);
+  const weight = weightFor ? weightFor(suit) : 700;
+  const decoration = decorationFor ? decorationFor(suit) : null;
+  const glyph = SUIT_GLYPH[suit];
+  const label = rankLabel(rank);
+
+  ctx.clearRect(0, 0, w, h);
+  roundRect(ctx, 0, 0, w, h, radius);
+  ctx.fillStyle = background;
+  ctx.fill();
+  ctx.save();
+  roundRect(ctx, 0, 0, w, h, radius);
+  ctx.clip();
+  const grad = ctx.createLinearGradient(0, 0, 0, h * 0.22);
+  grad.addColorStop(0, 'rgba(255,255,255,0.22)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h * 0.22);
+  const innerGrad = ctx.createLinearGradient(0, h * 0.78, 0, h);
+  innerGrad.addColorStop(0, 'rgba(0,0,0,0)');
+  innerGrad.addColorStop(1, 'rgba(0,0,0,0.07)');
+  ctx.fillStyle = innerGrad;
+  ctx.fillRect(0, h * 0.78, w, h * 0.22);
+  ctx.restore();
+  ctx.lineWidth = Math.max(1, w * 0.012);
+  ctx.strokeStyle = border;
+  roundRect(ctx, 0, 0, w, h, radius);
+  ctx.stroke();
+  ctx.save();
+  roundRect(ctx, 1, 1, w - 2, h - 2, radius * 0.85);
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+  ctx.lineWidth = Math.max(1, w * 0.01);
+  ctx.stroke();
+  ctx.restore();
+
+  const cornerFont = Math.round(w * 0.18);
+  const cornerX = w * 0.2;
+  const cornerTopY = w * 0.26;
+  const cornerBotY = h - w * 0.26;
+  const glyphTopY = cornerTopY + cornerFont * 0.9;
+  const glyphBotY = cornerBotY - cornerFont * 0.9;
+  drawGlyph(ctx, label, color, cornerX, cornerTopY, cornerFont, false, weight);
+  drawGlyph(ctx, glyph, color, cornerX, glyphTopY, cornerFont, false, weight);
+  if (decoration === 'underline') {
+    drawUnderline(ctx, color, cornerX, glyphTopY, w, false);
+    drawUnderline(ctx, color, w - cornerX, glyphBotY, w, true);
+  }
+  drawGlyph(ctx, label, color, w - cornerX, cornerBotY, cornerFont, true, weight);
+  drawGlyph(ctx, glyph, color, w - cornerX, glyphBotY, cornerFont, true, weight);
+
+  const cx = w / 2;
+  const cy = h / 2;
+  const bigValueFont = Math.round(w * 0.52);
+  drawGlyph(ctx, label, color, cx, cy, bigValueFont, false, weight);
+}
+
 /**
  * Draw a card back (repeating diagonal motif) into the given context, filling
  * the rectangle [0,0,w,h].

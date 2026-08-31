@@ -305,7 +305,8 @@ export default function ThemeModal({ open, onClose }) {
       .filter((d) => d !== 'sprite')
       .map((d) => {
         const item = ownedDecks.find((it) => it.asset_ref === d);
-        return { key: d, id: item?.id ?? null, label: d, img: getDeck(d).renderCard(PREVIEW_SUIT, PREVIEW_RANK) };
+        const img = getDeck(d).renderCard(PREVIEW_SUIT, PREVIEW_RANK);
+        return { key: d, id: item?.id ?? null, label: d, img };
       });
     return (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, var(--card-width))', gap: 14, justifyContent: 'center' }}>

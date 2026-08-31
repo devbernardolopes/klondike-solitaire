@@ -11,7 +11,7 @@
 // `document` canvas API is used.
 
 import { registerDeck } from './deckRegistry.js';
-import { drawCardFace, drawCardBack, colorOf } from './drawCard.js';
+import { drawCardFace, drawCardBack, colorOf, drawLargeValueCardFace } from './drawCard.js';
 
 // Row order in the atlas, indexed by rank 1..13 in columns.
 const ATLAS_SUITS = ['hearts', 'diamonds', 'clubs', 'spades'];
@@ -19,7 +19,7 @@ const ATLAS_SUITS = ['hearts', 'diamonds', 'clubs', 'spades'];
 /**
  * @implements {import('./deckRegistry.js').DeckRenderer}
  */
-export function createSpriteDeckRenderer({ size = 120, atlasPath } = {}) {
+export function createSpriteDeckRenderer({ size = 120, atlasPath, largeValue = false } = {}) {
   const w = size;
   const h = Math.round(size * 1.4);
   const cols = 13; // ranks 1..13
@@ -40,7 +40,11 @@ export function createSpriteDeckRenderer({ size = 120, atlasPath } = {}) {
       for (let rank = 1; rank <= 13; rank++) {
         ctx.save();
         ctx.translate((rank - 1) * w, r * h);
-        drawCardFace(ctx, suit, rank, w, h);
+        if (largeValue) {
+          drawLargeValueCardFace(ctx, suit, rank, w, h);
+        } else {
+          drawCardFace(ctx, suit, rank, w, h);
+        }
         ctx.restore();
       }
     });
@@ -68,7 +72,7 @@ export function createSpriteDeckRenderer({ size = 120, atlasPath } = {}) {
   }
 
   return {
-    name: 'sprite',
+    name: largeValue ? 'sprite-large-value' : 'sprite',
 
     /**
      * @param {string} suit
@@ -108,3 +112,4 @@ export function createSpriteDeckRenderer({ size = 120, atlasPath } = {}) {
 }
 
 registerDeck('sprite', createSpriteDeckRenderer());
+registerDeck('sprite-large-value', createSpriteDeckRenderer({ largeValue: true }));
