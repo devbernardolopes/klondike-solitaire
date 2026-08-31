@@ -68,9 +68,9 @@ export default function ToastHost() {
     pointerEvents: 'auto',
     cursor: 'pointer',
     display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'stretch',
-    gap: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     transform: 'translateX(-50%)',
     background: 'var(--ui-modal-panel-bg, #fbfbf7)',
     color: 'var(--ui-modal-panel-fg, #1a1a1a)',
@@ -80,7 +80,7 @@ export default function ToastHost() {
     padding: '14px 16px',
     opacity: 0,
     maxWidth: 'min(90vw, 380px)',
-    minWidth: 260,
+    minWidth: 280,
   };
 
   return (
@@ -90,12 +90,14 @@ export default function ToastHost() {
           src={active.image || ACHIEVEMENT_PLACEHOLDER}
           alt=""
           onError={onAchievementImageError}
-          style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', flex: '0 0 auto', alignSelf: 'center' }}
+          style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', flex: '0 0 auto' }}
         />
-        <div style={{ fontSize: 15, fontWeight: 700, textAlign: 'center', lineHeight: 1.25 }}>{active.name}</div>
-        {active.description ? (
-          <div style={{ fontSize: 13, fontWeight: 400, textAlign: 'left', opacity: 0.9, lineHeight: 1.35 }}>{active.description}</div>
-        ) : null}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, textAlign: 'center', lineHeight: 1.25 }}>{active.name}</div>
+          {active.description ? (
+            <div style={{ fontSize: 13, fontWeight: 400, textAlign: 'left', opacity: 0.9, lineHeight: 1.35 }}>{active.description}</div>
+          ) : null}
+        </div>
       </div>
     </div>
   );
