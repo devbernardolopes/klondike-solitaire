@@ -41,6 +41,7 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
   // Block this pile only when it is the busy destination of an in-flight move.
   // Source piles and all other piles stay fully interactive.
   const isAnimating = useUiStore((s) => s.animatingLocs.has(loc));
+  const animatingCards = useUiStore((s) => s.animatingCards);
   const locked = won || sessionOver || isAnimating || autoCompleting;
 
   const kind = loc.split(':')[0];
@@ -71,14 +72,19 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
   const FAN_DOWN_MIN = 3;     // px — face-down cards just need to read as "a stack"
   const FAN_UP_SOFT_MIN = 14; // px — preferred floor so rank/suit stay legible
 
+  const freezeHeight = fanned && isAnimating && cards.some((c) => animatingCards.has(c.id));
+  const effectiveLenForHeight = freezeHeight ? cards.filter((c) => !animatingCards.has(c.id)).length : cards.length;
+
   let tops = null;
   let pileHeight = null;
   if (fanned && metrics && metrics.cardH) {
     const { cardH, fanUp: fanUpMax, fanDown: fanDownMax, avail } = metrics;
-    const offsetCount = Math.max(0, cards.length - 1);
+    const effectiveCards = freezeHeight ? cards.filter((c) => !animatingCards.has(c.id)) : cards;
+    const effLen = effectiveLenForHeight;
+    const offsetCount = Math.max(0, effLen - 1);
     let nDown = 0, nUp = 0;
     for (let i = 0; i < offsetCount; i++) {
-      if (cards[i].faceUp) nUp++; else nDown++;
+      if (effectiveCards[i].faceUp) nUp++; else nDown++;
     }
 
     let fanDown = fanDownMax;
@@ -86,26 +92,20 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
     const naturalExtra = nDown * fanDownMax + nUp * fanUpMax;
 
     if (avail > 0 && naturalExtra > avail) {
-      // Phase 1: compress face-down peeks toward their minimum first.
       const savingsNeeded = naturalExtra - avail;
       const maxDownSavings = nDown * (fanDownMax - FAN_DOWN_MIN);
       if (nDown > 0 && maxDownSavings >= savingsNeeded) {
         fanDown = fanDownMax - savingsNeeded / nDown;
       } else {
         fanDown = FAN_DOWN_MIN;
-        // Phase 2: face-down is maxed out — compress the face-up fan too.
         const remaining = avail - nDown * FAN_DOWN_MIN;
         const strictFanUp = nUp > 0 ? Math.max(remaining / nUp, 0) : fanUpMax;
-        // Prefer the legibility floor, but never let it cause overflow.
         const withSoftFloor = Math.max(strictFanUp, FAN_UP_SOFT_MIN);
         const fitsWithSoftFloor = nDown * FAN_DOWN_MIN + nUp * withSoftFloor <= avail;
         fanUp = fitsWithSoftFloor ? withSoftFloor : strictFanUp;
       }
     }
 
-    // Absolute last-resort guard: if even the floors together somehow still
-    // don't fit (pathologically deep pile), scale both down proportionally.
-    // This is what actually guarantees "never overflow," full stop.
     const finalExtra = nDown * fanDown + nUp * fanUp;
     if (avail > 0 && finalExtra > avail) {
       const guardScale = avail / finalExtra;
@@ -119,7 +119,13 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
       tops.push(acc);
       if (i < cards.length - 1) acc += cards[i].faceUp ? fanUp : fanDown;
     }
-    pileHeight = cardH + acc;
+    if (freezeHeight) {
+      let effAcc = 0;
+      for (let i = 0; i < effLen - 1; i++) effAcc += effectiveCards[i].faceUp ? fanUp : fanDown;
+      pileHeight = effLen === 0 ? cardH : cardH + effAcc;
+    } else {
+      pileHeight = cardH + acc;
+    }
   }
 
   // Position a hint highlight so its TOP edge starts at the relevant card
@@ -207,7 +213,7 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
         height: fanned
           ? pileHeight != null
             ? `${pileHeight}px`
-            : `calc(var(--card-height) + ${Math.max(cards.length - 1, 0)} * var(--tableau-fan))`
+            : `calc(var(--card-height) + ${Math.max(effectiveLenForHeight - 1, 0)} * var(--tableau-fan))`
           : 'var(--card-height)',
         position: 'relative',
         borderRadius: 'var(--card-radius)',
