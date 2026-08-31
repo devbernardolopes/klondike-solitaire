@@ -168,6 +168,8 @@ grant execute on function public.purchase_item(text) to authenticated;
 -- ------------------------------------------------------------
 -- 4. Patch record_game_started() for instant played_X unlocks
 -- ------------------------------------------------------------
+drop function if exists public.record_game_started();
+
 create or replace function public.record_game_started()
 returns jsonb
 language plpgsql
