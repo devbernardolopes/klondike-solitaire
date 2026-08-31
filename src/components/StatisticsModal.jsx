@@ -187,15 +187,15 @@ export default function StatisticsModal({ open, onClose }) {
 
             <div style={{ ...row, borderTop: '1px solid var(--ui-control-border)' }}>
               <span style={labelStyle}>Coins Earned</span>
-              <span style={valueStyle}>
-                <CoinsIcon size={13} aria-hidden="true" style={{ marginRight: 4, verticalAlign: -2 }} />
+              <span style={{ ...valueStyle, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <CoinsIcon size={13} aria-hidden="true" />
                 {coinsEarnedTotal}
               </span>
             </div>
             <div style={{ ...row, borderBottom: 'none' }}>
               <span style={labelStyle}>Coins Spent</span>
-              <span style={valueStyle}>
-                <CoinsIcon size={13} aria-hidden="true" style={{ marginRight: 4, verticalAlign: -2 }} />
+              <span style={{ ...valueStyle, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <CoinsIcon size={13} aria-hidden="true" />
                 {coinsSpentTotal}
               </span>
             </div>
@@ -216,7 +216,7 @@ export default function StatisticsModal({ open, onClose }) {
             }}
             onClick={() => setConfirmResetOpen(true)}
           >
-            Reset
+            Reset Statistics
           </button>
         </div>
       </div>

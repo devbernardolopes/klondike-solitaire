@@ -349,6 +349,7 @@ export default function ThemeModal({ open, onClose }) {
           style={{
             display: 'flex',
             gap: 8,
+            flexWrap: 'wrap',
             marginBottom: 18,
             borderBottom: '1px solid var(--ui-modal-panel-border)',
             paddingBottom: 10,

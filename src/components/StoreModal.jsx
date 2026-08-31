@@ -167,15 +167,16 @@ export default function StoreModal({ open, onClose }) {
         <h2 style={{ margin: '0 0 10px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>Store</h2>
         <ModalCloseButton onClick={onClose} />
 
-        <div className="modal-body-scroll" style={{ flex: 1, minHeight: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 16, fontWeight: 700, marginBottom: 16 }}>
-            <CoinsIcon size={16} aria-hidden="true" />
-            <span>{coins}</span>
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 16, fontWeight: 700, marginBottom: 12, flex: '0 0 auto' }}>
+          <CoinsIcon size={16} aria-hidden="true" />
+          <span>{coins}</span>
+        </div>
 
-          {error && (
-            <div style={{ color: '#d12b3b', fontSize: 13, marginBottom: 12 }}>{error}</div>
-          )}
+        {error && (
+          <div style={{ color: '#d12b3b', fontSize: 13, marginBottom: 12, flex: '0 0 auto' }}>{error}</div>
+        )}
+
+        <div className="modal-body-scroll" style={{ flex: 1, minHeight: 0 }}>
 
           {items.map((item) => {
             const owned = ownedItemIds.includes(item.id);
@@ -209,6 +210,9 @@ export default function StoreModal({ open, onClose }) {
                     aria-disabled={!canAfford}
                     style={{
                       ...btn,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
                       opacity: !canAfford ? 0.5 : 1,
                       cursor: !canAfford ? 'not-allowed' : 'pointer',
                     }}
