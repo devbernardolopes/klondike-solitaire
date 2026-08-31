@@ -11,8 +11,8 @@ import { useStatisticsStore } from './useStatisticsStore.js';
 
 // Hard limits that end the game. Reaching either freezes the session so only a
 // new game can continue (timer stops, moves stop, interactions lock).
-export const MAX_TIME_MS = 60 * 60 * 1000; // 60:00
-export const MAX_MOVES = 999;
+export const MAX_TIME_MS = 60 * 30 * 1000; // 60:00
+export const MAX_MOVES = 20;
 
 export const useStatsStore = create(subscribeWithSelector((set, get) => ({
   moves: 0,
