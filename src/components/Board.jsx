@@ -18,6 +18,7 @@ import { enqueue } from '../sync/syncEngine.js';
 import { useCardMoveSlide } from '../render/animation/useCardMoveSlide.js';
 import { useStockDrawSlide } from '../render/animation/useStockDrawSlide.js';
 import { useFoundationParticles } from '../render/animation/useFoundationParticles.js';
+import { useUncoverSparkle } from '../render/animation/useUncoverSparkle.js';
 import { useToastStore } from '../hooks/useToastStore.js';
 import { playWinCascade } from '../render/animation/winCascade.js';
 import { isWon } from '../core/winDetection.js';
@@ -156,6 +157,7 @@ export default function Board() {
   useCardMoveSlide();
   useStockDrawSlide();
   useFoundationParticles();
+  useUncoverSparkle();
 
   // Win-state cascade: fire once on the false → true transition of isWon.
   const wasWon = useRef(false);

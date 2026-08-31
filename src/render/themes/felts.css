@@ -1,26 +1,36 @@
 .theme-midnight {
   --felt-color: #0d1b2a;
   --felt-color-dark: #0a1520;
+  --felt-bg: radial-gradient(115% 85% at 50% 30%, #143352 0%, #0d1b2a 58%, #0a1520 100%);
+  --felt-vignette: radial-gradient(ellipse at center, transparent 62%, rgba(0, 0, 0, 0.42) 100%);
 }
 
 .theme-forest {
   --felt-color: #1a3c2a;
   --felt-color-dark: #122b1e;
+  --felt-bg: radial-gradient(118% 88% at 50% 32%, #2a5a3a 0%, #1a3c2a 55%, #122b1e 100%);
+  --felt-vignette: radial-gradient(ellipse at center, transparent 64%, rgba(0, 0, 0, 0.38) 100%);
 }
 
 .theme-desert {
   --felt-color: #c2a878;
   --felt-color-dark: #a68c5e;
+  --felt-bg: radial-gradient(120% 90% at 50% 28%, #d9c49a 0%, #c2a878 50%, #a68c5e 100%);
+  --felt-vignette: radial-gradient(ellipse at center, transparent 65%, rgba(70, 50, 20, 0.22) 100%);
 }
 
 .theme-noir {
   --felt-color: #1a1a1a;
   --felt-color-dark: #0f0f0f;
+  --felt-bg: radial-gradient(120% 90% at 50% 35%, #2a2a2a 0%, #1a1a1a 55%, #0f0f0f 100%);
+  --felt-vignette: radial-gradient(ellipse at center, transparent 62%, rgba(0, 0, 0, 0.52) 100%);
 }
 
 .theme-retro-crt {
   --felt-color: #111811;
   --felt-color-dark: #0b110b;
+  --felt-bg: radial-gradient(120% 90% at 50% 30%, #1c2a1c 0%, #111811 55%, #0b110b 100%);
+  --felt-vignette: radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.5) 100%);
 }
 
 .theme-emerald-depth {

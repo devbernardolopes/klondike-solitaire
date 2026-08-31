@@ -68,6 +68,11 @@
   --ui-leaderboard-me-border: #5aa9ff;
 }
 
+@keyframes pileGlow {
+  0% { box-shadow: 0 0 0 3px rgba(52,214,255,0.16), 0 0 16px rgba(52,214,255,0.4), inset 0 0 10px rgba(52,214,255,0.16); border-color: rgba(255,255,255,0.88); }
+  100% { box-shadow: 0 0 0 5px rgba(52,214,255,0.26), 0 0 30px rgba(52,214,255,0.68), inset 0 0 14px rgba(52,214,255,0.3); border-color: #fff; }
+}
+
 /* Native dropdown option list: keep text/background readable in the popup. */
 .theme-dark select option {
   color: var(--ui-control-fg);

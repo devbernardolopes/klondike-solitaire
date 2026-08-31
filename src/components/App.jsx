@@ -5,6 +5,7 @@
 import '../render/themes/classic.css';
 import '../render/themes/dark.css';
 import '../render/themes/felts.css';
+import { applyFeltTexture } from '../render/themes/feltTextures.js';
 // Side-effect imports register the deck renderers with the registry.
 import '../render/deck/SpriteDeckRenderer.js';
 import '../render/deck/ProceduralDeckRenderer.js';
@@ -93,6 +94,17 @@ export default function App() {
     };
   }, [init, initStats, initSeeds]);
 
+  const tableTexture = useSettingsStore((s) => s.tableTexture);
+  useEffect(() => {
+    try {
+      if (!tableTexture) {
+        document.documentElement.style.removeProperty('--felt-texture');
+        return;
+      }
+      applyFeltTexture(theme);
+    } catch {}
+  }, [theme, tableTexture]);
+
   // Pull the linked account's latest progress from Supabase whenever the tab
   // regains focus — cross-device sync without a manual refresh.
   useEffect(() => {
@@ -148,7 +160,11 @@ export default function App() {
       className={`theme-${theme} ui-${interfaceTheme}`}
       style={{
         minHeight: '100%',
-        background: 'var(--felt-bg, var(--felt-color))',
+        background: 'var(--felt-color)',
+        backgroundImage: 'var(--felt-texture, none), var(--felt-bg, none)',
+        backgroundRepeat: 'repeat, no-repeat',
+        backgroundSize: '256px 256px, cover',
+        backgroundBlendMode: 'overlay, normal',
         display: 'flex',
         flexDirection: 'column',
         position: 'relative',

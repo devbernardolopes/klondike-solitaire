@@ -18,6 +18,8 @@ const DEFAULTS = {
   handedness: 'right',
   highlightCard: true,
   particles: true,
+  cardEffects: true,
+  tableTexture: true,
 };
 
 // Synchronous mirrors of the settings that affect first paint (theme + board
@@ -57,6 +59,8 @@ export const useSettingsStore = create((set, get) => ({
   handedness: readLS(LS_KEYS.handedness, DEFAULTS.handedness),
   highlightCard: DEFAULTS.highlightCard,
   particles: DEFAULTS.particles,
+  cardEffects: DEFAULTS.cardEffects,
+  tableTexture: DEFAULTS.tableTexture,
   seenThemeItemIds: [],
   seenAchievementIds: [],
   themeModalTab: 'interface',
@@ -67,7 +71,7 @@ export const useSettingsStore = create((set, get) => ({
    * keys fall back to DEFAULTS. Activates the loaded (or default) deck.
    */
   init: async () => {
-    const [theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, seenThemeItemIds, seenAchievementIds, themeModalTab] = await Promise.all([
+    const [theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, seenThemeItemIds, seenAchievementIds, themeModalTab] = await Promise.all([
       getSetting('theme', DEFAULTS.theme),
       getSetting('interfaceTheme', DEFAULTS.interfaceTheme),
       getSetting('deck', DEFAULTS.deck),
@@ -75,12 +79,14 @@ export const useSettingsStore = create((set, get) => ({
       getSetting('handedness', DEFAULTS.handedness),
       getSetting('highlightCard', DEFAULTS.highlightCard),
       getSetting('particles', DEFAULTS.particles),
+      getSetting('cardEffects', DEFAULTS.cardEffects),
+      getSetting('tableTexture', DEFAULTS.tableTexture),
       getSetting('seenThemeItemIds', []),
       getSetting('seenAchievementIds', []),
       getSetting('themeModalTab', 'background'),
     ]);
     setActiveDeck(deck);
-    set({ theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, seenThemeItemIds, seenAchievementIds, themeModalTab, loaded: true });
+    set({ theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, seenThemeItemIds, seenAchievementIds, themeModalTab, loaded: true });
   },
 
   /**
@@ -142,6 +148,16 @@ export const useSettingsStore = create((set, get) => ({
   setParticles: (particles) => {
     set({ particles });
     setSetting('particles', particles);
+  },
+
+  setCardEffects: (cardEffects) => {
+    set({ cardEffects });
+    setSetting('cardEffects', cardEffects);
+  },
+
+  setTableTexture: (tableTexture) => {
+    set({ tableTexture });
+    setSetting('tableTexture', tableTexture);
   },
 
   /**

@@ -87,6 +87,18 @@ function drawUnderline(ctx, color, x, y, w, flip) {
  * @param {(suit: string) => number} [opts.weightFor]  font weight resolver; defaults to 700.
  * @param {(suit: string) => string} [opts.decorationFor]  returns 'underline' to add a non-color cue beneath corner suit glyphs.
  */
+const PIP_LAYOUTS = {
+  2: [{ x: 0.5, y: 0.30 }, { x: 0.5, y: 0.70, flip: true }],
+  3: [{ x: 0.5, y: 0.26 }, { x: 0.5, y: 0.50 }, { x: 0.5, y: 0.74, flip: true }],
+  4: [{ x: 0.32, y: 0.28 }, { x: 0.68, y: 0.28 }, { x: 0.32, y: 0.72, flip: true }, { x: 0.68, y: 0.72, flip: true }],
+  5: [{ x: 0.32, y: 0.28 }, { x: 0.68, y: 0.28 }, { x: 0.5, y: 0.50 }, { x: 0.32, y: 0.72, flip: true }, { x: 0.68, y: 0.72, flip: true }],
+  6: [{ x: 0.32, y: 0.28 }, { x: 0.68, y: 0.28 }, { x: 0.32, y: 0.50 }, { x: 0.68, y: 0.50 }, { x: 0.32, y: 0.72, flip: true }, { x: 0.68, y: 0.72, flip: true }],
+  7: [{ x: 0.32, y: 0.28 }, { x: 0.68, y: 0.28 }, { x: 0.5, y: 0.38 }, { x: 0.32, y: 0.50 }, { x: 0.68, y: 0.50 }, { x: 0.32, y: 0.72, flip: true }, { x: 0.68, y: 0.72, flip: true }],
+  8: [{ x: 0.32, y: 0.28 }, { x: 0.68, y: 0.28 }, { x: 0.5, y: 0.38 }, { x: 0.32, y: 0.50 }, { x: 0.68, y: 0.50 }, { x: 0.5, y: 0.62, flip: true }, { x: 0.32, y: 0.72, flip: true }, { x: 0.68, y: 0.72, flip: true }],
+  9: [{ x: 0.32, y: 0.28 }, { x: 0.68, y: 0.28 }, { x: 0.32, y: 0.42 }, { x: 0.68, y: 0.42 }, { x: 0.5, y: 0.50 }, { x: 0.32, y: 0.58, flip: true }, { x: 0.68, y: 0.58, flip: true }, { x: 0.32, y: 0.72, flip: true }, { x: 0.68, y: 0.72, flip: true }],
+  10: [{ x: 0.32, y: 0.26 }, { x: 0.68, y: 0.26 }, { x: 0.5, y: 0.34 }, { x: 0.32, y: 0.42 }, { x: 0.68, y: 0.42 }, { x: 0.32, y: 0.58, flip: true }, { x: 0.68, y: 0.58, flip: true }, { x: 0.5, y: 0.66, flip: true }, { x: 0.32, y: 0.74, flip: true }, { x: 0.68, y: 0.74, flip: true }],
+};
+
 export function drawCardFace(ctx, suit, rank, w, h, { colorFor = colorOf, background = '#fbfbf7', border = 'rgba(0,0,0,0.18)', weightFor, decorationFor } = {}) {
   const radius = Math.max(4, Math.round(w * 0.07));
   const color = colorFor(suit);
@@ -99,9 +111,30 @@ export function drawCardFace(ctx, suit, rank, w, h, { colorFor = colorOf, backgr
   roundRect(ctx, 0, 0, w, h, radius);
   ctx.fillStyle = background;
   ctx.fill();
+  ctx.save();
+  roundRect(ctx, 0, 0, w, h, radius);
+  ctx.clip();
+  const grad = ctx.createLinearGradient(0, 0, 0, h * 0.22);
+  grad.addColorStop(0, 'rgba(255,255,255,0.22)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h * 0.22);
+  const innerGrad = ctx.createLinearGradient(0, h * 0.78, 0, h);
+  innerGrad.addColorStop(0, 'rgba(0,0,0,0)');
+  innerGrad.addColorStop(1, 'rgba(0,0,0,0.07)');
+  ctx.fillStyle = innerGrad;
+  ctx.fillRect(0, h * 0.78, w, h * 0.22);
+  ctx.restore();
   ctx.lineWidth = Math.max(1, w * 0.012);
   ctx.strokeStyle = border;
+  roundRect(ctx, 0, 0, w, h, radius);
   ctx.stroke();
+  ctx.save();
+  roundRect(ctx, 1, 1, w - 2, h - 2, radius * 0.85);
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+  ctx.lineWidth = Math.max(1, w * 0.01);
+  ctx.stroke();
+  ctx.restore();
 
   const cornerFont = Math.round(w * 0.2);
   const cornerX = w * 0.2;
@@ -118,13 +151,35 @@ export function drawCardFace(ctx, suit, rank, w, h, { colorFor = colorOf, backgr
   drawGlyph(ctx, label, color, w - cornerX, cornerBotY, cornerFont, true, weight);
   drawGlyph(ctx, glyph, color, w - cornerX, glyphBotY, cornerFont, true, weight);
 
-  const centerFont = Math.round(w * 0.5);
   const cx = w / 2;
   const cy = h / 2;
-  drawGlyph(ctx, label, color, cx, cy - centerFont * 0.45, centerFont, false, weight);
-  drawGlyph(ctx, glyph, color, cx, cy + centerFont * 0.55, centerFont, false, weight);
-  if (decoration === 'underline') {
-    drawUnderline(ctx, color, cx, cy + centerFont * 0.55, centerFont * 1.6, false);
+  if (rank === 1) {
+    const aceFont = Math.round(w * 0.58);
+    drawGlyph(ctx, glyph, color, cx, cy + aceFont * 0.08, aceFont, false, weight);
+  } else if (rank >= 2 && rank <= 10 && PIP_LAYOUTS[rank]) {
+    const layout = PIP_LAYOUTS[rank];
+    const pipSize = rank <= 6 ? Math.round(w * 0.22) : Math.round(w * 0.18);
+    const insetTop = h * 0.18;
+    const insetH = h * 0.64;
+    for (const p of layout) {
+      const px = w * p.x;
+      const py = insetTop + insetH * ((p.y - 0.26) / 0.48);
+      drawGlyph(ctx, glyph, color, px, py, pipSize, !!p.flip, weight);
+    }
+  } else {
+    const faceFont = Math.round(w * 0.42);
+    const glyphFont = Math.round(w * 0.52);
+    drawGlyph(ctx, label, color, cx, cy - faceFont * 0.42, faceFont, false, weight);
+    drawGlyph(ctx, glyph, color, cx, cy + glyphFont * 0.22, glyphFont, false, weight);
+    if (decoration === 'underline') {
+      drawUnderline(ctx, color, cx, cy + glyphFont * 0.22, glyphFont * 1.6, false);
+    }
+    if (rank >= 11) {
+      ctx.save();
+      ctx.globalAlpha = 0.08;
+      drawGlyph(ctx, glyph, color, cx, cy + glyphFont * 0.22, Math.round(w * 0.85), false, weight);
+      ctx.restore();
+    }
   }
 }
 
@@ -135,30 +190,130 @@ export function drawCardFace(ctx, suit, rank, w, h, { colorFor = colorOf, backgr
  * @param {number} w
  * @param {number} h
  */
-export function drawCardBack(ctx, w, h, { baseColor = '#2b3a67' } = {}) {
+function drawBackPattern(ctx, w, h, pattern, baseColor) {
+  ctx.save();
+  roundRect(ctx, 0, 0, w, h, Math.max(4, Math.round(w * 0.07)));
+  ctx.clip();
+  if (pattern === 'diagonal') {
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = Math.max(1, w * 0.04);
+    const step = w * 0.28;
+    for (let i = -h; i < w; i += step) {
+      ctx.beginPath();
+      ctx.moveTo(i, 0);
+      ctx.lineTo(i + h, h);
+      ctx.stroke();
+    }
+  } else if (pattern === 'houndstooth') {
+    ctx.fillStyle = 'rgba(255,255,255,0.07)';
+    const s = w * 0.18;
+    for (let y = -s; y < h + s; y += s) {
+      for (let x = -s; x < w + s; x += s) {
+        const odd = (Math.floor(x / s) + Math.floor(y / s)) % 2 === 0;
+        if (odd) ctx.fillRect(x, y, s * 0.5, s * 0.5);
+      }
+    }
+    ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+    ctx.lineWidth = 0.7;
+    for (let y = 0; y < h; y += s) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
+  } else if (pattern === 'damask') {
+    ctx.fillStyle = 'rgba(255,255,255,0.09)';
+    const r = w * 0.09;
+    for (let y = r; y < h - r; y += r * 2.2) {
+      for (let x = r; x < w - r; x += r * 2.2) {
+        ctx.beginPath();
+        ctx.arc(x, y, r * 0.45, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(x - r * 0.32, y);
+        ctx.lineTo(x + r * 0.32, y);
+        ctx.moveTo(x, y - r * 0.32);
+        ctx.lineTo(x, y + r * 0.32);
+        ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+      }
+    }
+  } else if (pattern === 'linen') {
+    ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+    ctx.lineWidth = 0.6;
+    for (let y = 0; y < h; y += 3) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
+    for (let x = 0; x < w; x += 3) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, h);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+    ctx.lineWidth = 0.9;
+    ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
+  } else if (pattern === 'waves') {
+    ctx.strokeStyle = 'rgba(255,255,255,0.13)';
+    ctx.lineWidth = 1.1;
+    for (let y = 8; y < h - 6; y += 14) {
+      ctx.beginPath();
+      for (let x = 0; x < w; x += 6) {
+        const yy = y + Math.sin((x / w) * Math.PI * 4) * 3;
+        if (x === 0) ctx.moveTo(x, yy);
+        else ctx.lineTo(x, yy);
+      }
+      ctx.stroke();
+    }
+  } else if (pattern === 'hex') {
+    ctx.strokeStyle = 'rgba(255,255,255,0.11)';
+    ctx.lineWidth = 0.7;
+    const hexR = w * 0.11;
+    const hexH = hexR * Math.sqrt(3);
+    for (let y = -hexH; y < h + hexH; y += hexH * 0.75) {
+      for (let x = -hexR; x < w + hexR; x += hexR * 1.5) {
+        const off = (Math.round(y / hexH) % 2) * hexR * 0.75;
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+          const a = (Math.PI / 3) * i - Math.PI / 6;
+          const px = x + off + Math.cos(a) * hexR * 0.55;
+          const py = y + Math.sin(a) * hexR * 0.55;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.stroke();
+      }
+    }
+  }
+  ctx.restore();
+}
+
+export function drawCardBack(ctx, w, h, { baseColor = '#2b3a67', pattern = 'diagonal' } = {}) {
   const radius = Math.max(4, Math.round(w * 0.07));
 
   roundRect(ctx, 0, 0, w, h, radius);
   ctx.fillStyle = baseColor;
   ctx.fill();
-
-  // Simple repeating diagonal motif.
-  ctx.save();
+  const grad = ctx.createRadialGradient(w * 0.35, h * 0.25, w * 0.1, w * 0.5, h * 0.5, w * 0.9);
+  grad.addColorStop(0, 'rgba(255,255,255,0.13)');
+  grad.addColorStop(1, 'rgba(0,0,0,0.22)');
+  ctx.fillStyle = grad;
   roundRect(ctx, 0, 0, w, h, radius);
-  ctx.clip();
-  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-  ctx.lineWidth = Math.max(1, w * 0.04);
-  const step = w * 0.28;
-  for (let i = -h; i < w; i += step) {
-    ctx.beginPath();
-    ctx.moveTo(i, 0);
-    ctx.lineTo(i + h, h);
-    ctx.stroke();
-  }
-  ctx.restore();
+  ctx.fill();
+
+  drawBackPattern(ctx, w, h, pattern, baseColor);
 
   roundRect(ctx, w * 0.08, w * 0.08, w - w * 0.16, h - w * 0.16, radius * 0.7);
-  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-  ctx.lineWidth = Math.max(1, w * 0.02);
+  ctx.strokeStyle = 'rgba(255,255,255,0.32)';
+  ctx.lineWidth = Math.max(1, w * 0.018);
+  ctx.stroke();
+  roundRect(ctx, w * 0.11, w * 0.11, w - w * 0.22, h - w * 0.22, radius * 0.55);
+  ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+  ctx.lineWidth = Math.max(1, w * 0.012);
   ctx.stroke();
 }

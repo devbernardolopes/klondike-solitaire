@@ -89,6 +89,25 @@ export const MOTION = {
   // `duration`, and `distance` is the horizontal shift on each side.
   shake:    { duration: 0.25, distance: 8 },
 
+  // Tableau uncover sparkle: brief star burst when a face-down card flips
+  // face-up via tableau reveal (not stock draw). Distinct from foundation burst.
+  uncover: {
+    count: 10,
+    radius: 55,
+    size: 18,
+    duration: 0.45,
+    ease: 'power2.out',
+    spin: 70,
+  },
+
+  // Card flip shimmer: specular sweep across the face right after the 3D flip
+  // lands. Very short so it reads as a glint, not a linger.
+  shimmer: { duration: 0.42, ease: 'power2.inOut' },
+
+  // Pile hover glow: soft animated aura shown on valid drop targets instead of
+  // the old dashed border. Implemented as CSS animation; preset kept here for tuning.
+  hoverGlow: { duration: 1.4, blur: 14 },
+
   // Foundation particle burst: a suit-glyph explosion fired from the center of
   // the destination foundation pile whenever a card lands there. Each particle
   // starts at the origin and travels OUTWARD with INCREASING speed (ease

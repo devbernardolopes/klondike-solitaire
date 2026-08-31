@@ -12,6 +12,7 @@ import ModalCloseButton from './ModalCloseButton.jsx';
 import ToggleSwitch from './ToggleSwitch.jsx';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { supabase } from '../lib/supabaseClient.js';
+import { useSettingsStore } from '../hooks/useSettingsStore.js';
 
 /**
  * @param {object} props
@@ -139,6 +140,24 @@ export default function SettingsOptionsModal({
             checked={!!particles}
             onChange={onParticlesChange}
             label="Foundation Particles"
+          />
+        </div>
+
+        <div style={{ ...field, marginBottom: 20 }}>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>Card Effects</label>
+          <ToggleSwitch
+            checked={!!useSettingsStore((s) => s.cardEffects)}
+            onChange={(v) => useSettingsStore.getState().setCardEffects(v)}
+            label="Card Effects"
+          />
+        </div>
+
+        <div style={{ ...field, marginBottom: 20 }}>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>Table Texture</label>
+          <ToggleSwitch
+            checked={!!useSettingsStore((s) => s.tableTexture)}
+            onChange={(v) => useSettingsStore.getState().setTableTexture(v)}
+            label="Table Texture"
           />
         </div>
 
