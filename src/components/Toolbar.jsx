@@ -338,10 +338,12 @@ function ElapsedClock() {
             }}
           >
             {currentGameKind === 'daily'
-              ? `Daily Challenge: ${currentDailyDate} (seed ${gameState.seed})`
+              ? `Daily Challenge: ${currentDailyDate} (${gameState.seed})`
               : currentGameKind === 'random'
-                ? `Random (seed ${gameState.seed})`
-                : `Seed: ${gameState.seed}`}
+                ? `Random (${gameState.seed})`
+                : currentGameKind === 'event'
+                  ? `Special Event (${gameState.seed})`
+                  : `Winning Deal (${gameState.seed})`}
           </span>
           <span
             style={{
