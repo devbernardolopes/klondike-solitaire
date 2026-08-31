@@ -8,7 +8,6 @@ import { useEffect, useRef } from 'react';
 import { gsap } from '../render/animation/gsapSetup.js';
 import { MOTION } from '../render/animation/motion.js';
 import { useToastStore } from '../hooks/useToastStore.js';
-import { t } from '../i18n/strings.js';
 import { ACHIEVEMENT_PLACEHOLDER, onAchievementImageError } from '../utils/achievementImage.js';
 
 export default function ToastHost() {
@@ -69,19 +68,19 @@ export default function ToastHost() {
     pointerEvents: 'auto',
     cursor: 'pointer',
     display: 'flex',
-    alignItems: 'center',
-    gap: 10,
-    transform: 'translateX(-50%)', // base centering; GSAP owns the live transform
-    background: 'var(--card-face-bg, #fff)',
-    color: 'var(--card-text-black, #111)',
-    border: '1px solid var(--card-border, #ccc)',
-    borderRadius: 10,
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 8,
+    transform: 'translateX(-50%)',
+    background: 'var(--ui-modal-panel-bg, #fbfbf7)',
+    color: 'var(--ui-modal-panel-fg, #1a1a1a)',
+    border: 'var(--ui-modal-panel-border, 1px solid rgba(0,0,0,0.25))',
+    borderRadius: 'var(--ui-modal-panel-radius, 10px)',
     boxShadow: '0 8px 28px rgba(0,0,0,0.45)',
-    padding: '10px 14px',
-    opacity: 0, // GSAP autoAlpha takes over once the slide-in tween starts
-    maxWidth: 'min(90vw, 360px)',
-    fontSize: 14,
-    fontWeight: 600,
+    padding: '14px 16px',
+    opacity: 0,
+    maxWidth: 'min(90vw, 380px)',
+    minWidth: 260,
   };
 
   return (
@@ -91,9 +90,12 @@ export default function ToastHost() {
           src={active.image || ACHIEVEMENT_PLACEHOLDER}
           alt=""
           onError={onAchievementImageError}
-          style={{ width: 36, height: 36, borderRadius: 6, objectFit: 'cover', flex: '0 0 auto' }}
+          style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', flex: '0 0 auto', alignSelf: 'center' }}
         />
-        <span>{t(active.messageKey, active.params)}</span>
+        <div style={{ fontSize: 15, fontWeight: 700, textAlign: 'center', lineHeight: 1.25 }}>{active.name}</div>
+        {active.description ? (
+          <div style={{ fontSize: 13, fontWeight: 400, textAlign: 'left', opacity: 0.9, lineHeight: 1.35 }}>{active.description}</div>
+        ) : null}
       </div>
     </div>
   );

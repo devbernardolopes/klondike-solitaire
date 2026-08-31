@@ -18,25 +18,25 @@ import { achievementImageUrl } from '../utils/achievementImage.js';
 const cache = new Map();
 
 /**
- * Resolve an achievement id to its display name + resolved image URL.
+ * Resolve an achievement id to its display name + description + image URL.
  * @param {string} id
- * @returns {Promise<{ name: string, image: string|null }>}
+ * @returns {Promise<{ name: string, description: string, image: string|null }>}
  */
 async function resolve(id) {
   const cached = cache.get(id);
   if (cached) return cached;
 
-  let result = { name: id, image: null };
+  let result = { name: id, description: '', image: null };
   if (supabase) {
     try {
       const { data } = await supabase
         .from('achievements_definitions')
-        .select('name, image_path')
+        .select('name, description, image_path')
         .eq('id', id)
         .single();
       if (data) {
         const image = achievementImageUrl(data.image_path);
-        result = { name: data.name || id, image };
+        result = { name: data.name || id, description: data.description || '', image };
       }
     } catch {
       // Leave the id-based fallback name if the lookup fails.
@@ -52,12 +52,8 @@ function process() {
   if (!batches.length) return;
   for (const batch of batches) {
     for (const id of batch.ids) {
-      resolve(id).then(({ name, image }) => {
-        useToastStore.getState().push({
-          messageKey: 'achievementUnlocked',
-          params: { name },
-          image,
-        });
+      resolve(id).then(({ name, description, image }) => {
+        useToastStore.getState().push({ name, description, image });
       });
     }
   }

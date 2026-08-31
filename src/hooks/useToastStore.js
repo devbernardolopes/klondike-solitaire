@@ -19,8 +19,8 @@ let toastSeq = 0;
 /**
  * @typedef {Object} Toast
  * @property {number} id
- * @property {string} messageKey
- * @property {Record<string, string|number>} [params]
+ * @property {string} name
+ * @property {string} [description]
  * @property {string} [image]  resolved public URL
  */
 
