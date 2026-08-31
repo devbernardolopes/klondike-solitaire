@@ -14,10 +14,11 @@ import { findHints } from '../core/hints.js';
 import { buildStandardDeck, shuffle } from '../core/Deck.js';
 import { createEmptyGameState } from '../core/GameState.js';
 import { randomSolvableSeed, pickSolvableSeed } from '../core/solvablePool.js';
-import { randomUnusedSeed, knownSeedCount } from '../core/randomSeed.js';
+import { randomUnusedSeed, knownSeedCount, buildKnownSet } from '../core/randomSeed.js';
 import { seedForDate } from '../core/dailyChallenge.js';
 import { getEvent } from '../core/specialEvents.js';
 import { getUsedRandomSeedsSet, addUsedRandomSeed, clearUsedRandomSeeds } from '../db/usedRandomSeeds.js';
+import { getWinningPool, getDailyMap, getEvents } from '../repo/seedRepository.js';
 import { enqueueFlip } from '../render/animation/flipBridge.js';
 import { enqueueParticle } from '../render/animation/particleBridge.js';
 import { cancelDrawSlide } from '../render/animation/useStockDrawSlide.js';
@@ -472,39 +473,32 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
    *
    * @param {'winning'|'random'} [mode]
    */
-  dealNewGame: (mode = 'random') => {
+  dealNewGame: async (mode = 'random') => {
     useUiStore.getState().dismissNoHintsBanner();
     cancelAutoComplete(set);
     useUiStore.getState().setNoMovesDialogOpen(false);
     useUiStore.getState().closeWinDialog();
     useUiStore.getState().clearHints();
-    // Finalize the game we're replacing: a non-win ends the streak (best kept).
     useStatisticsStore.getState().finalizeGame();
-    // Abort any in-flight win cascade immediately and release its global lock,
-    // so a new-game request mid-fall is honored instead of being dropped. Only
-    // block on real in-flight per-card transitions (a stray move being clobbered
-    // by the deal reset).
     cancelWinCascade();
     if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) return;
     useUiStore.getState().setLastNewGameMode(mode);
     useStatsStore.getState().resetStats();
-    const seed =
-      mode === 'winning'
-        ? (() => {
-            const { seed: s, exhausted } = pickSolvableSeed(useSeedStore.getState().playedSeeds);
-            if (exhausted) useSeedStore.getState().resetPlayed();
-            return s;
-          })()
-        : (() => {
-            // Random Shuffle: pick a 32-bit seed that is not a known data-file
-            // seed and has never been dealt before. If the entire addressable
-            // space is exhausted, recycle the used-Random history and continue.
-            const used = getUsedRandomSeedsSet();
-            if (used.size >= 0x100000000 - knownSeedCount()) clearUsedRandomSeeds();
-            const s = randomUnusedSeed(getUsedRandomSeedsSet());
-            addUsedRandomSeed(s);
-            return s;
-          })();
+    let seed;
+    if (mode === 'winning') {
+      const pool = await getWinningPool();
+      const { seed: s, exhausted } = pickSolvableSeed(useSeedStore.getState().playedSeeds, pool);
+      if (exhausted) useSeedStore.getState().resetPlayed();
+      seed = s;
+    } else {
+      const [pool, dailyMap, events] = await Promise.all([getWinningPool(), getDailyMap(), getEvents()]);
+      const known = buildKnownSet({ winningPool: pool, dailyMap, events });
+      const used = getUsedRandomSeedsSet();
+      if (used.size >= 0x100000000 - knownSeedCount(known)) clearUsedRandomSeeds();
+      const s = randomUnusedSeed(getUsedRandomSeedsSet(), known);
+      addUsedRandomSeed(s);
+      seed = s;
+    }
     useUiStore.getState().setCurrentGame(mode);
     runAnimatedDeal(get, set, { seed, kind: mode });
   },
@@ -534,19 +528,17 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
 
   /**
    * Deal the Daily Challenge for a specific calendar date (YYYY-MM-DD). The seed
-   * must be pre-generated and bundled (see core/dailyChallenge.js); dates
-   * outside the bundled window are not supported yet (on-demand generation is a
-   * future enhancement) and return false.
+   * is fetched from Supabase (cached 24h, fallback to bundled JSON).
    *
    * @param {string} date
-   * @returns {boolean} whether the game was dealt
+   * @returns {Promise<boolean>} whether the game was dealt
    */
-  dealDaily: (date) => {
+  dealDaily: async (date) => {
     useUiStore.getState().dismissNoHintsBanner();
-    const seed = seedForDate(date);
+    const dailyMap = await getDailyMap();
+    const seed = seedForDate(date, dailyMap);
     if (seed == null) return false;
     cancelAutoComplete(set);
-    // Finalize the game we're replacing: a non-win in progress ends the streak.
     useStatisticsStore.getState().finalizeGame();
     useUiStore.getState().setNoMovesDialogOpen(false);
     useUiStore.getState().clearHints();
@@ -565,15 +557,15 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
    *
    * @param {string} eventId
    * @param {number} [index]
-   * @returns {boolean} whether the game was dealt
+   * @returns {Promise<boolean>} whether the game was dealt
    */
-  dealEvent: (eventId, index = 0) => {
-    const ev = getEvent(eventId);
+  dealEvent: async (eventId, index = 0) => {
+    const events = await getEvents();
+    const ev = getEvent(eventId, events);
     if (!ev || !ev.seeds || ev.seeds.length === 0) return false;
     const i = Math.max(0, Math.min(Number.isFinite(index) ? Math.floor(index) : 0, ev.seeds.length - 1));
     const seed = ev.seeds[i];
     cancelAutoComplete(set);
-    // Finalize the game we're replacing: a non-win in progress ends the streak.
     useStatisticsStore.getState().finalizeGame();
     useUiStore.getState().setNoMovesDialogOpen(false);
     useUiStore.getState().clearHints();

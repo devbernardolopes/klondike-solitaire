@@ -11,6 +11,7 @@ import { useModalBackdrop } from './modalBackdrop.js';
 import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
 import { isSolvableSeed } from '../core/solvablePool.js';
+import { getWinningPool } from '../repo/seedRepository.js';
 
 /**
  * @param {object} props
@@ -43,15 +44,15 @@ export default function SeedInputModal({ open, onConfirm, onCancel }) {
     if (error) setError('');
   };
 
-  const tryConfirm = () => {
+  const tryConfirm = async () => {
     const trimmed = value.trim();
     if (trimmed === '') {
       setError('Enter a seed number first.');
       return;
     }
     const seed = Number(trimmed);
-    if (!isSolvableSeed(seed)) {
-      // A non-existent seed: report it and do nothing else.
+    const pool = await getWinningPool();
+    if (!isSolvableSeed(seed, pool)) {
       setError(`Seed ${seed} not found. Try another number.`);
       return;
     }

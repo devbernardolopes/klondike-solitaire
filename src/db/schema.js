@@ -86,6 +86,19 @@ db.version(7).stores({
   activeSession: 'key',
   usedRandomSeeds: 'seed',
 });
+// v8 adds the `seedCache` table: cached remote seed pools with 24h TTL
+// so the app works offline (Supabase -> Dexie -> bundled fallback).
+db.version(8).stores({
+  games: '++id, startedAt, finishedAt, won, durationMs',
+  settings: 'key',
+  stats: 'key',
+  playedSeeds: 'key',
+  dailyResults: 'date',
+  syncQueue: '++id, type, createdAt, dedupeKey',
+  activeSession: 'key',
+  usedRandomSeeds: 'seed',
+  seedCache: 'key',
+});
 
 /**
  * Insert a finished/abandoned game record.

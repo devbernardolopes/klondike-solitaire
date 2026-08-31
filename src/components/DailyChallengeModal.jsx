@@ -245,12 +245,9 @@ export default function DailyChallengeModal() {
   const onPlay = () => {
     if (!selected) return;
     if (isAfter(selected, today) || !withinSupported(selected)) return;
-    const run = () => {
-      const ok = dealDaily(selected);
+    const run = async () => {
+      const ok = await dealDaily(selected);
       if (ok) {
-        // Remember the picked day so the calendar re-opens there next time
-        // (persisted in the DB). This includes today, which is treated like any
-        // other available day.
         saveLastDailySelection(selected);
         setOpen(false);
       }

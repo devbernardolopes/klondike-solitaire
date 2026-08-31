@@ -6,35 +6,56 @@
 
 import data from '../data/dailyChallenge.json' with { type: 'json' };
 
-const SEEDS = (data && data.seeds) || {};
+const FALLBACK_SEEDS = (data && data.seeds) || {};
+const FALLBACK_ANCHOR = (data && data.anchor) || null;
+const FALLBACK_WINDOW_YEARS = data && typeof data.windowYears === 'number' ? data.windowYears : 0;
 
 /** The bundled window anchor (YYYY-MM-DD). @returns {string|null} */
-export function getDailyAnchor() {
-  return (data && data.anchor) || null;
+export function getDailyAnchor(seedsMap = null) {
+  if (seedsMap) {
+    const keys = Object.keys(seedsMap).sort();
+    return keys[0] || FALLBACK_ANCHOR;
+  }
+  return FALLBACK_ANCHOR;
 }
 
 /** Number of years covered by the bundled window. @returns {number} */
-export function getDailyWindowYears() {
-  return data && typeof data.windowYears === 'number' ? data.windowYears : 0;
+export function getDailyWindowYears(seedsMap = null) {
+  if (seedsMap) {
+    const keys = Object.keys(seedsMap).sort();
+    if (keys.length === 0) return 0;
+    const start = keys[0];
+    const end = keys[keys.length - 1];
+    const s = start.split('-').map(Number);
+    const e = end.split('-').map(Number);
+    const startMs = Date.UTC(s[0], s[1] - 1, s[2]);
+    const endMs = Date.UTC(e[0], e[1] - 1, e[2]);
+    const days = Math.round((endMs - startMs) / 86400000) + 1;
+    return Math.ceil(days / 365);
+  }
+  return FALLBACK_WINDOW_YEARS;
 }
 
 /** All bundled date strings, sorted ascending. @returns {string[]} */
-export function listBundledDates() {
-  return Object.keys(SEEDS).sort();
+export function listBundledDates(seedsMap = null) {
+  const src = seedsMap || FALLBACK_SEEDS;
+  return Object.keys(src).sort();
 }
 
 /**
  * Resolve the pre-generated solvable seed for a calendar date.
  * @param {string} dateStr  YYYY-MM-DD
+ * @param {Record<string,number>} [seedsMap]  optional injected map; defaults to bundled fallback
  * @returns {number|null} the seed, or null when the date is not bundled.
  */
-export function seedForDate(dateStr) {
-  return Object.prototype.hasOwnProperty.call(SEEDS, dateStr) ? SEEDS[dateStr] : null;
+export function seedForDate(dateStr, seedsMap = null) {
+  const src = seedsMap || FALLBACK_SEEDS;
+  return Object.prototype.hasOwnProperty.call(src, dateStr) ? src[dateStr] : null;
 }
 
 /** Whether a date has a pre-generated seed bundled. @param {string} dateStr */
-export function isDateBundled(dateStr) {
-  return seedForDate(dateStr) !== null;
+export function isDateBundled(dateStr, seedsMap = null) {
+  return seedForDate(dateStr, seedsMap) !== null;
 }
 
 // ---- Calendar / range helpers (framework-agnostic, UTC arithmetic) ----

@@ -33,6 +33,7 @@ import {
   restoreSession,
   initSessionPersistence,
 } from '../sync/sessionPersistence.js';
+import { prefetch as prefetchSeeds } from '../repo/seedRepository.js';
 
 export default function App() {
   const theme = useSettingsStore((s) => s.theme);
@@ -68,6 +69,7 @@ export default function App() {
       initStats();
       initSeeds();
       await initUsedRandomSeeds();
+      prefetchSeeds().catch(() => {});
       // Resolve the per-device id, then restore any in-progress session from
       // local Dexie (or Supabase for a linked account). Skip the initial deal
       // when a session was restored — this is a resume, not a fresh game.
