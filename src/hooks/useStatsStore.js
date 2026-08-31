@@ -53,7 +53,6 @@ export const useStatsStore = create(subscribeWithSelector((set, get) => ({
    */
   setFocused: (focused) => {
     const { startTime, endTime, isOver, pausedAt, pausedAccumMs } = get();
-    console.debug('[timer] setFocused', focused, { startTime, pausedAt, pausedAccumMs });
     if (startTime === null || endTime !== null || isOver) {
       // Nothing live to pause. Clear any stale marker defensively.
       if (pausedAt !== null) set({ pausedAt: null });
@@ -131,11 +130,7 @@ export const useStatsStore = create(subscribeWithSelector((set, get) => ({
    * @param {import('../core/GameState.js').GameState} state
    */
   startTimerIfValid: (state) => {
-    // if (get().startTime !== null) return;
-    if (get().startTime !== null) {
-      console.debug('[timer] already running:', get().startTime);
-      return;
-    }
+    if (get().startTime !== null) return;
     // startTimerIfValid is only ever called after a successful, validated
     // draw/recycle/move (the action has already mutated the board), so a real
     // action has occurred by the time we reach here. Start counting immediately
@@ -143,9 +138,7 @@ export const useStatsStore = create(subscribeWithSelector((set, get) => ({
     // non-progress shuffles and would otherwise leave the clock at 00:00 on the
     // ~9% of deals (and any restored/draw-only position) whose only first move is
     // a stock draw.
-    set({ startTime: Date.now() });
-
-    console.debug('[timer] started:', get().startTime);
+    set({ startTime: Date.now(), pausedAccumMs: 0, pausedAt: null });
 
     // A new game's clock has just begun — count it as a game played. This fires
     // exactly once per game because we early-returned above when already running.

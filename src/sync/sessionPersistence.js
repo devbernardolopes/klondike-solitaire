@@ -177,7 +177,8 @@ function applyRestore(row, savedAtMs) {
   const undos = row.undos ?? 0;
   const startTime = row.startTime ?? row.start_time ?? null;
   const basePaused = row.pausedAccumMs ?? row.paused_accum_ms ?? 0;
-  const pausedAccumMs = basePaused + Math.max(0, Date.now() - savedAtMs);
+  const pausedAccumMs =
+    startTime === null ? basePaused : basePaused + Math.max(0, Date.now() - savedAtMs);
 
   useGameStore.setState({ state: boardState, replaySpec });
   useStatsStore.setState({

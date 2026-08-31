@@ -32,8 +32,6 @@ function useElapsed() {
   const pausedAccumMs = useStatsStore((s) => s.pausedAccumMs);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    console.debug('[timer] effect fired, startTime =', startTime);
-
     if (startTime === null) return undefined;
     const id = setInterval(() => {
       setNow(Date.now());
