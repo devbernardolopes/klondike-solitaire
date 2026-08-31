@@ -355,5 +355,3 @@ registerDeck(
     },
   })
 );
-
-export { createProceduralDeckRenderer };
