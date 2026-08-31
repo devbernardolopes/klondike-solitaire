@@ -116,7 +116,6 @@ export default function AchievementsModal({ open, onClose }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [newIds, setNewIds] = useState(/** @type {string[]} */ ([]));
-  const seenAchievementIds = useSettingsStore((s) => s.seenAchievementIds);
   const markAchievementsSeen = useSettingsStore((s) => s.markAchievementsSeen);
 
   // Keep the latest close handler in a ref so the open-effect depends only on
@@ -135,11 +134,14 @@ export default function AchievementsModal({ open, onClose }) {
   // refresh the unlocked set without closing the modal.
   const dismissNew = useCallback(
     (id) => {
-      if (!id || !newIds.includes(id)) return;
-      setNewIds((prev) => prev.filter((x) => x !== id));
+      if (!id) return;
+      setNewIds((prev) => {
+        if (!prev.includes(id)) return prev;
+        return prev.filter((x) => x !== id);
+      });
       markAchievementsSeen([id]);
     },
-    [newIds, markAchievementsSeen],
+    [markAchievementsSeen],
   );
 
   const load = useCallback(async (cancelledRef) => {
@@ -180,7 +182,8 @@ export default function AchievementsModal({ open, onClose }) {
       nextUnlocked = map;
     }
     if (defsOk && unlockedOk) {
-      const fresh = Object.keys(nextUnlocked).filter((id) => !seenAchievementIds.includes(id));
+      const seen = useSettingsStore.getState().seenAchievementIds;
+      const fresh = Object.keys(nextUnlocked).filter((id) => !seen.includes(id));
       setNewIds(fresh);
       if (fresh.length) markAchievementsSeen(fresh);
     } else {
@@ -188,7 +191,7 @@ export default function AchievementsModal({ open, onClose }) {
     }
     setLoaded(defsOk && unlockedOk);
     setLoading(false);
-  }, [open, seenAchievementIds, markAchievementsSeen]);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -197,7 +200,7 @@ export default function AchievementsModal({ open, onClose }) {
     return () => {
       cancelledRef.current = true;
     };
-  }, [open, load]);
+  }, [open]);
 
   // Delete all of the user's unlocked achievements via the privileged
   // reset_achievements() RPC, then re-fetch so every row flips to locked.
