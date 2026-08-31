@@ -175,4 +175,9 @@ export const useSettingsStore = create((set, get) => ({
       return { seenAchievementIds: next };
     });
   },
+
+  clearAchievementsSeen: () => {
+    set({ seenAchievementIds: [] });
+    setSetting('seenAchievementIds', []);
+  },
 }));

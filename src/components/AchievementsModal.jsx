@@ -27,6 +27,9 @@ import { useSettingsStore } from '../hooks/useSettingsStore.js';
  * theme-CSS changes needed).
  */
 const NEW_BADGE = {
+  position: 'absolute',
+  top: 4,
+  left: 4,
   fontSize: 11,
   fontWeight: 700,
   lineHeight: 1,
@@ -46,6 +49,7 @@ function AchievementRow({ achievement, isNew, onOpen }) {
   return (
     <div
       style={{
+        position: 'relative',
         border: '1px solid var(--ui-modal-panel-border)',
         borderRadius: 'var(--ui-modal-panel-radius)',
         padding: '10px 12px',
@@ -83,10 +87,10 @@ function AchievementRow({ achievement, isNew, onOpen }) {
         onError={onAchievementImageError}
         style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover', flex: '0 0 auto' }}
       />
+      {isNew && <span style={NEW_BADGE}>New</span>}
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 14, fontWeight: 700 }}>{achievement.name}</span>
-          {isNew && <span style={NEW_BADGE}>New</span>}
         </div>
         <div style={{ fontSize: 13, margin: '2px 0 0' }}>{achievement.description}</div>
       </div>
@@ -207,6 +211,8 @@ export default function AchievementsModal({ open, onClose }) {
     } catch {
       // Offline / RPC missing — fall through to a refresh anyway.
     }
+    useSettingsStore.getState().clearAchievementsSeen();
+    setNewIds([]);
     await load({ current: false });
     setResetting(false);
   };
