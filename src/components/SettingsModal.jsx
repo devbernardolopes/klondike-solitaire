@@ -21,6 +21,9 @@ import HelpModal from './HelpModal.jsx';
 import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
 import ConfirmModal from './ConfirmModal.jsx';
+import { supabase } from '../lib/supabaseClient.js';
+import { fetchStoreCatalog } from '../data/storeCatalog.js';
+import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import ThemeModal from './ThemeModal.jsx';
 import AchievementsModal from './AchievementsModal.jsx';
 import LeaderboardModal from './LeaderboardModal.jsx';
@@ -69,6 +72,11 @@ export default function SettingsModal({
   const [nameChecking, setNameChecking] = useState(false);
   const [nameAvailable, setNameAvailable] = useState(null);
   const nameCheckTimer = useRef(null);
+  const seenThemeItemIds = useSettingsStore((s) => s.seenThemeItemIds);
+  const seenAchievementIds = useSettingsStore((s) => s.seenAchievementIds);
+  const ownedItemIds = useAuthStore((s) => s.ownedItemIds);
+  const [hasNewTheme, setHasNewTheme] = useState(false);
+  const [hasNewAchievements, setHasNewAchievements] = useState(false);
 
   // useAuthStore can't refresh these itself (circular import) — do it here,
   // after it has reset local caches and re-established an anonymous session.
@@ -106,6 +114,52 @@ export default function SettingsModal({
     }
   }, [open]);
 
+  useEffect(() => {
+    if (!open) {
+      setHasNewTheme(false);
+      return;
+    }
+    let cancelled = false;
+    fetchStoreCatalog()
+      .then((data) => {
+        if (cancelled) return;
+        const themeIds = data.filter((it) => it.kind === 'card_back' || it.kind === 'table_felt' || it.kind === 'deck').map((it) => it.id);
+        setHasNewTheme(ownedItemIds.some((id) => themeIds.includes(id) && !seenThemeItemIds.includes(id)));
+      })
+      .catch(() => {
+        if (!cancelled) setHasNewTheme(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, ownedItemIds, seenThemeItemIds]);
+
+  useEffect(() => {
+    if (!open) {
+      setHasNewAchievements(false);
+      return;
+    }
+    if (!supabase) {
+      setHasNewAchievements(false);
+      return;
+    }
+    let cancelled = false;
+    supabase
+      .from('achievements_unlocked')
+      .select('achievement_id')
+      .then(({ data, error }) => {
+        if (cancelled || error) return;
+        const fresh = (data ?? []).some((r) => !seenAchievementIds.includes(r.achievement_id));
+        setHasNewAchievements(fresh);
+      })
+      .catch(() => {
+        if (!cancelled) setHasNewAchievements(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, seenAchievementIds]);
+
   // Cancel any in-flight debounced availability check if the modal unmounts.
   useEffect(() => () => {
     if (nameCheckTimer.current) clearTimeout(nameCheckTimer.current);
@@ -134,6 +188,20 @@ export default function SettingsModal({
     padding: '20px 22px',
     width: 'min(90vw, 420px)',
     maxWidth: '100%',
+  };
+
+  const NEW_BADGE_R = {
+    position: 'absolute',
+    top: -6,
+    right: 8,
+    fontSize: 11,
+    fontWeight: 700,
+    lineHeight: 1,
+    color: '#fff',
+    background: 'var(--card-text-red, #d12b3b)',
+    borderRadius: 4,
+    padding: '2px 5px',
+    pointerEvents: 'none',
   };
 
   const selectStyle = {
@@ -261,10 +329,11 @@ export default function SettingsModal({
             </button>
             <button
               type="button"
-              style={{ ...btn, width: '100%' }}
+              style={{ ...btn, width: '100%', position: 'relative' }}
               onClick={() => setThemeOpen(true)}
             >
               Theme
+              {hasNewTheme && <span style={NEW_BADGE_R}>New</span>}
             </button>
             <button
               type="button"
@@ -275,10 +344,11 @@ export default function SettingsModal({
             </button>
             <button
               type="button"
-              style={{ ...btn, width: '100%' }}
+              style={{ ...btn, width: '100%', position: 'relative' }}
               onClick={() => setAchievementsOpen(true)}
             >
               Achievements
+              {hasNewAchievements && <span style={NEW_BADGE_R}>New</span>}
             </button>
             <button
               type="button"
