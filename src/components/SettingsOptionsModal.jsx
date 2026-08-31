@@ -39,6 +39,8 @@ export default function SettingsOptionsModal({
   const backdrop = useModalBackdrop(onClose);
   const leaderboardVisible = useAuthStore((s) => s.leaderboardVisible);
   const setLeaderboardVisible = useAuthStore((s) => s.setLeaderboardVisible);
+  const cardEffects = useSettingsStore((s) => s.cardEffects);
+  const tableTexture = useSettingsStore((s) => s.tableTexture);
 
   useModalEscape({ open, onClose, id: 'settings-options', z: Z.CHILD });
 
@@ -146,7 +148,7 @@ export default function SettingsOptionsModal({
         <div style={{ ...field, marginBottom: 20 }}>
           <label style={{ fontSize: 14, fontWeight: 600 }}>Card Effects</label>
           <ToggleSwitch
-            checked={!!useSettingsStore((s) => s.cardEffects)}
+            checked={!!cardEffects}
             onChange={(v) => useSettingsStore.getState().setCardEffects(v)}
             label="Card Effects"
           />
@@ -155,7 +157,7 @@ export default function SettingsOptionsModal({
         <div style={{ ...field, marginBottom: 20 }}>
           <label style={{ fontSize: 14, fontWeight: 600 }}>Table Texture</label>
           <ToggleSwitch
-            checked={!!useSettingsStore((s) => s.tableTexture)}
+            checked={!!tableTexture}
             onChange={(v) => useSettingsStore.getState().setTableTexture(v)}
             label="Table Texture"
           />
