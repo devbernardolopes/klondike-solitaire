@@ -12,6 +12,7 @@ import { clearQueuedOps } from '../db/syncQueue.js';
 import { resetStats } from '../db/stats.js';
 import { savePlayedSeeds } from '../db/playedSeeds.js';
 import { db } from '../db/schema.js';
+import { useAchievementEventsStore } from './useAchievementEventsStore.js';
 
 // Guard so concurrent callers (App boot + the sync engine's ensureSignedIn)
 // share a single in-flight init rather than racing two signInAnonymously calls.
@@ -240,6 +241,10 @@ export const useAuthStore = create((set, get) => ({
         ? s.ownedItemIds
         : [...s.ownedItemIds, itemId],
     }));
+    const ids = data?.newly_unlocked_achievement_ids;
+    if (Array.isArray(ids) && ids.length > 0) {
+      useAchievementEventsStore.getState().announce(ids);
+    }
     return data;
   },
 
