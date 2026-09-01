@@ -58,6 +58,7 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
   //   - empty foundation: only when the dragged (lead) card is an Ace
   //   - everything else (tableau, non-empty foundation): whenever hovered
   const cardEffects = useSettingsStore((s) => s.cardEffects);
+  const hoverGlow = useSettingsStore((s) => s.hoverGlow);
   let showHover = isOver;
   if (kind === 'stock') {
     showHover = false;
@@ -376,14 +377,14 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
           aria-hidden="true"
           style={{
             position: 'absolute',
-            inset: cardEffects ? -4 : 0,
+            inset: cardEffects && hoverGlow ? -4 : 0,
             boxSizing: 'border-box',
-            borderRadius: cardEffects ? 'calc(var(--card-radius) + 4px)' : 'var(--card-radius)',
-            border: cardEffects ? '2px solid rgba(255,255,255,0.92)' : '2px dashed rgba(255,255,255,0.9)',
+            borderRadius: cardEffects && hoverGlow ? 'calc(var(--card-radius) + 4px)' : 'var(--card-radius)',
+            border: cardEffects && hoverGlow ? '2px solid rgba(255,255,255,0.92)' : '2px dashed rgba(255,255,255,0.9)',
             boxShadow: cardEffects ? '0 0 0 4px rgba(52,214,255,0.22), 0 0 22px rgba(52,214,255,0.55), inset 0 0 12px rgba(52,214,255,0.25)' : 'none',
             pointerEvents: 'none',
             zIndex: 900,
-            animation: cardEffects ? `pileGlow ${MOTION.hoverGlow.duration}s ease-in-out infinite alternate` : 'none',
+            animation: cardEffects && hoverGlow ? `pileGlow ${MOTION.hoverGlow.duration}s ease-in-out infinite alternate` : 'none',
           }}
         />
       )}

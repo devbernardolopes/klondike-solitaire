@@ -71,7 +71,7 @@ export function useUncoverSparkle() {
       const tracked = el.getAttribute('data-card');
       const faceUp = el.querySelector('.card-flip-inner')?.style.transform !== 'rotateY(180deg)';
       const was = prevFaceUp.current.get(tracked);
-      if (cardEffects && was === false && faceUp === true) {
+      if (cardEffects && useSettingsStore.getState().uncover && was === false && faceUp === true) {
         const locEl = el.closest('[data-loc^="tableau"]');
         if (locEl) {
           const r = el.getBoundingClientRect();
@@ -87,7 +87,8 @@ export function useUncoverSparkle() {
 
 export function triggerUncoverSparkle(cardId) {
   try {
-    if (!useSettingsStore.getState().cardEffects) return;
+    const settings = useSettingsStore.getState();
+    if (!settings.cardEffects || !settings.uncover) return;
     const el = document.querySelector(`[data-card="${cardId}"]`);
     if (!el) return;
     const r = el.getBoundingClientRect();

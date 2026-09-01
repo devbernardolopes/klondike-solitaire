@@ -6,7 +6,8 @@ import { useSettingsStore } from '../../hooks/useSettingsStore.js';
 function spawnShimmer(cardEl) {
   if (!cardEl) return;
   try {
-    if (!useSettingsStore.getState().cardEffects) return;
+    const settings = useSettingsStore.getState();
+    if (!settings.cardEffects || !settings.shimmer) return;
   } catch {}
   try {
     const shimmer = document.createElement('div');

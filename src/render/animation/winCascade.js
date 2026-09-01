@@ -104,7 +104,8 @@ export function playWinCascade() {
   const useEnhanced = (() => {
     try {
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
-      if (!useSettingsStore.getState().cardEffects) return false;
+      const settings = useSettingsStore.getState();
+      if (!settings.cardEffects || !settings.winEnhanced) return false;
     } catch {}
     return true;
   })();

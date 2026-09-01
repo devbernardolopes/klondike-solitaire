@@ -23,6 +23,10 @@ const DEFAULTS = {
   boardFrame: true,
   bounce: true,
   ghostTrail: true,
+  shimmer: true,
+  uncover: true,
+  winEnhanced: true,
+  hoverGlow: true,
 };
 
 // Synchronous mirrors of the settings that affect first paint (theme + board
@@ -44,6 +48,10 @@ const LS_KEYS = {
   boardFrame: 'klondike:boardFrame',
   bounce: 'klondike:bounce',
   ghostTrail: 'klondike:ghostTrail',
+  shimmer: 'klondike:shimmer',
+  uncover: 'klondike:uncover',
+  winEnhanced: 'klondike:winEnhanced',
+  hoverGlow: 'klondike:hoverGlow',
 };
 
 function readLS(key, fallback) {
@@ -87,6 +95,10 @@ export const useSettingsStore = create((set, get) => ({
   boardFrame: readLS(LS_KEYS.boardFrame, DEFAULTS.boardFrame),
   bounce: readLS(LS_KEYS.bounce, DEFAULTS.bounce),
   ghostTrail: readLS(LS_KEYS.ghostTrail, DEFAULTS.ghostTrail),
+  shimmer: readLS(LS_KEYS.shimmer, DEFAULTS.shimmer),
+  uncover: readLS(LS_KEYS.uncover, DEFAULTS.uncover),
+  winEnhanced: readLS(LS_KEYS.winEnhanced, DEFAULTS.winEnhanced),
+  hoverGlow: readLS(LS_KEYS.hoverGlow, DEFAULTS.hoverGlow),
   seenThemeItemIds: [],
   seenAchievementIds: [],
   themeModalTab: 'interface',
@@ -97,7 +109,7 @@ export const useSettingsStore = create((set, get) => ({
    * keys fall back to DEFAULTS. Activates the loaded (or default) deck.
    */
   init: async () => {
-    const [theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostTrail, seenThemeItemIds, seenAchievementIds, themeModalTab] = await Promise.all([
+    const [theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostTrail, shimmer, uncover, winEnhanced, hoverGlow, seenThemeItemIds, seenAchievementIds, themeModalTab] = await Promise.all([
       getSetting('theme', DEFAULTS.theme),
       getSetting('interfaceTheme', DEFAULTS.interfaceTheme),
       getSetting('deck', DEFAULTS.deck),
@@ -110,6 +122,10 @@ export const useSettingsStore = create((set, get) => ({
       getSetting('boardFrame', DEFAULTS.boardFrame),
       getSetting('bounce', DEFAULTS.bounce),
       getSetting('ghostTrail', DEFAULTS.ghostTrail),
+      getSetting('shimmer', DEFAULTS.shimmer),
+      getSetting('uncover', DEFAULTS.uncover),
+      getSetting('winEnhanced', DEFAULTS.winEnhanced),
+      getSetting('hoverGlow', DEFAULTS.hoverGlow),
       getSetting('seenThemeItemIds', []),
       getSetting('seenAchievementIds', []),
       getSetting('themeModalTab', 'background'),
@@ -129,6 +145,10 @@ export const useSettingsStore = create((set, get) => ({
         ['boardFrame', boardFrame],
         ['bounce', bounce],
         ['ghostTrail', ghostTrail],
+        ['shimmer', shimmer],
+        ['uncover', uncover],
+        ['winEnhanced', winEnhanced],
+        ['hoverGlow', hoverGlow],
       ];
       for (const [k, v] of toBackfill) {
         const lsKey = LS_KEYS[k];
@@ -138,7 +158,7 @@ export const useSettingsStore = create((set, get) => ({
         } catch {}
       }
     } catch {}
-    set({ theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostTrail, seenThemeItemIds, seenAchievementIds, themeModalTab, loaded: true });
+    set({ theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostTrail, shimmer, uncover, winEnhanced, hoverGlow, seenThemeItemIds, seenAchievementIds, themeModalTab, loaded: true });
   },
 
   /**
@@ -235,6 +255,10 @@ export const useSettingsStore = create((set, get) => ({
     setSetting('ghostTrail', ghostTrail);
     writeLS(LS_KEYS.ghostTrail, ghostTrail);
   },
+  setShimmer: (shimmer) => { set({ shimmer }); setSetting('shimmer', shimmer); writeLS(LS_KEYS.shimmer, shimmer); },
+  setUncover: (uncover) => { set({ uncover }); setSetting('uncover', uncover); writeLS(LS_KEYS.uncover, uncover); },
+  setWinEnhanced: (winEnhanced) => { set({ winEnhanced }); setSetting('winEnhanced', winEnhanced); writeLS(LS_KEYS.winEnhanced, winEnhanced); },
+  setHoverGlow: (hoverGlow) => { set({ hoverGlow }); setSetting('hoverGlow', hoverGlow); writeLS(LS_KEYS.hoverGlow, hoverGlow); },
 
   /**
    * Persist the last-selected Theme modal tab so re-opening restores it.
