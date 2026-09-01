@@ -222,9 +222,11 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
         minWidth: 'var(--card-width)',
         minHeight: 'var(--card-height)',
         height: fanned
-          ? pileHeight != null
-            ? `${pileHeight}px`
-            : `calc(var(--card-height) + ${Math.max(cards.length - 1, 0)} * var(--tableau-fan))`
+          ? metrics && metrics.cardH && metrics.avail != null
+            ? `${metrics.cardH + metrics.avail}px`
+            : pileHeight != null
+              ? `${pileHeight}px`
+              : `calc(var(--card-height) + ${Math.max(cards.length - 1, 0)} * var(--tableau-fan))`
           : 'var(--card-height)',
         position: 'relative',
         borderRadius: 'var(--card-radius)',
