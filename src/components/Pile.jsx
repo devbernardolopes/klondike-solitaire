@@ -10,6 +10,7 @@ import { useGameStore } from '../hooks/useGameStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useUiStore, findCardLocator } from '../hooks/useUiStore.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
+import { MOTION } from '../render/animation/motion.js';
 import { isWon } from '../core/winDetection.js';
 
 /**
@@ -261,7 +262,7 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
       {fanned && cardEffects && cards.length > 1 && (() => {
         const nDown = cards.filter((c) => !c.faceUp).length;
         if (nDown <= 1) return null;
-        const thickness = Math.min(nDown * 1.6, 9);
+        const thickness = Math.min(nDown * (MOTION.stackEdge?.stepPx ?? 1.6), MOTION.stackEdge?.maxThickness ?? 9);
         return (
           <div
             aria-hidden="true"
@@ -403,7 +404,7 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
             boxShadow: cardEffects ? '0 0 0 4px rgba(52,214,255,0.22), 0 0 22px rgba(52,214,255,0.55), inset 0 0 12px rgba(52,214,255,0.25)' : 'none',
             pointerEvents: 'none',
             zIndex: 900,
-            animation: cardEffects ? 'pileGlow 1.1s ease-in-out infinite alternate' : 'none',
+            animation: cardEffects ? `pileGlow ${MOTION.hoverGlow.duration}s ease-in-out infinite alternate` : 'none',
           }}
         />
       )}

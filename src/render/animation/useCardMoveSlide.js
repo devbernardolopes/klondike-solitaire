@@ -177,7 +177,8 @@ export function useCardMoveSlide() {
     });
     const isLifted = type === 'move' || type === 'auto';
     if (isLifted) {
-      moved.forEach((el) => gsap.set(el, { scale: 1.04, rotationZ: gsap.utils.random(-1.2, 1.2), boxShadow: '0 14px 32px rgba(0,0,0,0.45), 0 5px 12px rgba(0,0,0,0.35)' }));
+      const lift = MOTION.hoverLift ?? { scale: 1.02 };
+      moved.forEach((el) => gsap.set(el, { scale: lift.scale ?? 1.02, rotationZ: gsap.utils.random(-0.6, 0.6), boxShadow: '0 14px 32px rgba(0,0,0,0.45), 0 5px 12px rgba(0,0,0,0.35)' }));
       createGhosts();
     }
     tl.to(moved, {

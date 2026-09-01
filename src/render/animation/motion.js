@@ -1,96 +1,81 @@
 /**
- * Centralized GSAP motion presets. Each entry maps to a distinct animation in
- * the game and is consumed by the animation layer (see useCardMoveSlide,
- * useCardFaceFlip, winCascade, playCardShake). Units are seconds for time-like
- * properties and CSS pixels for distance-like ones.
+ * Centralized GSAP motion presets. Single source of truth for every tween in
+ * the game. Import MOTION and read cfg.duration / ease / stagger etc. directly —
+ * never hard-code timing inside useCardMoveSlide, winCascade, etc.
  *
- * Shared property meanings:
- *   duration  - Length of the tween in seconds.
- *   ease      - GSAP easing function name controlling the acceleration curve
- *               (e.g. 'power1.in' starts slow, 'power2.out' decelerates).
- *   stagger   - Delay in seconds inserted between elements so a group animates
- *               in sequence rather than all at once.
+ * Units:
+ *   duration / stagger — seconds
+ *   autoComplete.stepDelay — milliseconds (0..1000)
+ *   radius / size / distance / overshoot / flyDistance / bottomMargin / blur / y — CSS pixels
+ *   spin — degrees
+ *   count / scale / alpha / maxConcurrent — unitless
+ *   mode — enum ('sequential' | 'overlap')
+ *
+ * Ease glossary:
+ *   power*.in  — accelerate (slow start, fast end)
+ *   power*.out — decelerate (fast start, slow landing)
+ *   power*.inOut — both
+ *   back.out(n) — overshoot by n then spring back (n ≈ tension; 0.6 subtle, 1.15 moderate, 1.7 strong pop)
+ *
+ * Shared keys:
+ *   duration — length of tween (s)
+ *   ease — GSAP ease name
+ *   stagger — delay between members of a group (s)
  */
 export const MOTION = {
-  // Card relocation tween for EVERY move except the stock→waste draw (that one is
-  // handled separately by useStockDrawSlide). Driven by the explicit GSAP translate
-  // in useCardMoveSlide. Covers single cards and multi-card runs between any piles:
-  // waste↔foundation, tableau↔foundation, tableau↔tableau, foundation→tableau.
-  // The tween follows the real old→new path, so it is naturally DIAGONAL whenever
-  // the source and destination differ on both axes. A run lifts and lands as a
-  // RIGID BLOCK because every card in it tweens in parallel (stagger 0) with the
-  // grabbed/clicked card leading the move.
-  move:     { duration: 0.28, ease: 'power2.out', stagger: 0.00 },
+  // Card relocation for EVERY move except stock→waste draw (handled by useStockDrawSlide).
+  // Explicit GSAP translate in useCardMoveSlide (oldRect → newRect). Naturally
+  // diagonal; a multi-card run lands as RIGID BLOCK (stagger 0). Do not use
+  // back/bounce/elastic here — stagger+overlap would make multiple cards bounce
+  // on top of each other. Keep ease decelerating (power*.out / sine.out).
+  move:     { duration: 0.38, ease: 'power3.out', stagger: 0.00 },
 
-  // Auto-complete relocation tween (greedy foundation peel + solver win
-  // sequence). Independent of `move` so it can be tuned (e.g. made snappier)
-  // without affecting normal player moves. Consumed by useCardMoveSlide via
-  // CONFIG_BY_TYPE.auto.
-  auto:     { duration: 0.28, ease: 'power2.out', stagger: 0.02 },
+  // Auto-complete relocation (greedy foundation peel + solver win sequence).
+  // Independent of `move` so it can be tuned snappier without touching manual
+  // tap. Consumed via CONFIG_BY_TYPE.auto in useCardMoveSlide.
+  auto:     { duration: 0.34, ease: 'power3.out', stagger: 0.02 },
 
-  // Undo relocation tween. Runs through the SAME useCardMoveSlide path as `move`
-  // (affected cards glide from their current position back to where undo puts
-  // them), but kept separate so it can be tuned independently of normal player
-  // moves without affecting how `move` animates. Consumed via CONFIG_BY_TYPE.undo.
+  // Undo relocation. Same path as `move` (cards glide back), separate preset
+  // so undo can feel quicker without changing tap feel. Consumed via CONFIG_BY_TYPE.undo.
   undo:     { duration: 0.14, ease: 'power2.out', stagger: 0.00 },
-  // Alternative easing for the same tween; swap to change the acceleration curve.
-  // move:     { duration: 0.40, ease: 'power3.out', stagger: 0 },
 
-  // Auto-complete step pacing (how the SEQUENCE of foundation-peel / solver-win
-  // moves is timed relative to one another — distinct from the per-card
-  // relocation tween above, which is MOTION.auto). `mode`:
-  //   'sequential' — each card only STARTS moving after the previous one has
-  //                  fully LANDED at its destination, then `stepDelay` ms elapse.
-  //                  This is the original behaviour and avoids any two cards
-  //                  being in flight at once.
-  //   'overlap'    — the next card STARTS moving `stepDelay` ms after the
-  //                  previous step BEGAN, so multiple cards can be airborne
-  //                  simultaneously. The relocation tweens themselves still use
-  //                  MOTION.auto; only the inter-step cadence changes.
-  // `stepDelay` is milliseconds; clamped to 0..1000 when read. 0 = no gap (next
-  // step starts immediately; in 'overlap' this gives maximum concurrency).
+  // Auto-complete step pacing (SEQUENCE cadence, not per-card tween which is MOTION.auto).
+  //   'sequential' — next card starts after previous LANDED + stepDelay ms (no concurrency)
+  //   'overlap'    — next card starts stepDelay ms after previous BEGAN (airborne overlap)
+  // stepDelay: milliseconds, clamped 0..1000. 0 = immediate.
   autoComplete: { mode: 'overlap', stepDelay: 75 },
 
-  // 3D rotateY face flip (face-down <-> face-up) in useCardFaceFlip.
-  flipCard: { duration: 0.05, ease: 'back.out(1.15)' },
+  // 3D rotateY face flip (face-down ↔ face-up) in useCardFaceFlip. Subtle
+  // back.out(0.6) gives a tiny overshoot pop; duration must be readable
+  // (not 0.05 twitch). Keep under 0.22 so tableau reveals stay snappy.
+  flipCard: { duration: 0.20, ease: 'back.out(0.6)' },
 
-  // Stock → waste draw slide. The revealed card flips face-up in place at the
-  // stock pile and THEN glides horizontally to the waste pile. The horizontal
-  // direction is automatic: it follows the board layout, which already mirrors
-  // with the Hand orientation (right-handed = waste left of stock → slide left;
-  // left-handed = waste right of stock → slide right). So no explicit direction
-  // field is needed — tweak the values below to change the glide.
+  // Stock → waste draw slide. Card flips in place at stock then glides
+  // horizontally to waste. Direction mirrors Hand (right→slide left, left→slide right)
+  // automatically via layout; no direction field needed.
   draw:     {
-    duration: 0.05,         // length of the horizontal slide tween (seconds).
+    duration: 0.10,         // horizontal slide (s)
     ease: 'power2.out',
-    // Extra horizontal travel (px) added beyond the natural pile-to-pile
-    // distance to make the glide more pronounced. 0 keeps it a pure stock→waste
-    // move; positive values start the card a bit further out from the stock.
-    overshoot: 8,
+    overshoot: 8,           // extra px beyond natural pile-to-pile distance
   },
 
-  // Initial deal animation; cards deal out one after another via the stagger.
+  // Initial deal: cards fan out one after another via stagger.
   deal:     { duration: 0.15, stagger: 0.02, ease: 'power2.out' },
 
-  // Victory cascade: every card flies off toward the bottom of the screen.
+  // Victory cascade fallback (used when !cardEffects or prefers-reduced-motion).
+  // Enhanced path when cardEffects true uses winEnhanced below.
   win:      {
-    duration: 0.5,         // per-card fly-off tween length.
-    stagger: 0.06,         // per-card delay; winCascade applies from: 'end' so the
-                           // top card of each pile leads the cascade.
-    ease: 'power1.in',     // accelerates as the card falls away.
-    flyDistance: 900,      // maximum pixels a card may travel downward before
-                           // being clamped to stay on screen (winCascade:74).
-    bottomMargin: 64,      // reserved bottom gap so cards don't leave the
-                           // viewport; subtracted when computing fall distance
-                           // (winCascade:35,73).
+    duration: 0.5,         // per-card fly-off (s)
+    stagger: 0.06,         // from:'end' so King peels first
+    ease: 'power1.in',     // accelerates downward
+    flyDistance: 900,      // max px clamped to viewport
+    bottomMargin: 64,      // reserved bottom gap
   },
 
-  // Invalid-move shake (playCardShake). The sub-steps are fractions of
-  // `duration`, and `distance` is the horizontal shift on each side.
+  // Invalid-move shake. Sub-steps are fractions of duration; distance is px.
   shake:    { duration: 0.25, distance: 8 },
 
-  // Tableau uncover sparkle: brief star burst when a face-down card flips
-  // face-up via tableau reveal (not stock draw). Distinct from foundation burst.
+  // Tableau uncover sparkle: star burst when face-down flips face-up via reveal.
   uncover: {
     count: 10,
     radius: 55,
@@ -100,60 +85,61 @@ export const MOTION = {
     spin: 70,
   },
 
-  // Card flip shimmer: specular sweep across the face right after the 3D flip
-  // lands. Very short so it reads as a glint, not a linger.
-  shimmer: { duration: 0.75, ease: 'power2.inOut' },
+  // Card flip shimmer: specular sweep after flip lands. Keep glint brief
+  // so it reads as highlight, not linger.
+  shimmer: { duration: 0.30, ease: 'power2.inOut' },
 
-  // Pile hover glow: soft animated aura shown on valid drop targets instead of
-  // the old dashed border. Implemented as CSS animation; preset kept here for tuning.
-  hoverGlow: { duration: 1.4, blur: 14 },
+  // Pile hover glow: aura on valid drop targets (CSS keyframes pileGlow).
+  // Consumed as inline animation duration in Pile.jsx; blur is shadow spread (px).
+  hoverGlow: { duration: 1.1, blur: 14 },
 
+  // Hover lift for premium cards (y px, scale, duration s). Currently CSS :hover
+  // in classic.css; kept here so MotionDebugPanel can tune. Wire to JS if needed.
   hoverLift: { y: -4, scale: 1.02, duration: 0.15, ease: 'power2.out' },
-  ghostTrail: { duration: 0.35, ease: 'power2.out', alpha: 0.18, scale: 0.96, maxConcurrent: 8 },
+
+  // Ghost trail left behind on every move/auto/undo. Cloned node at oldRect
+  // fades/scale. Capped to maxConcurrent to avoid DOM flood during overlap auto.
+  ghostTrail: { duration: 0.45, ease: 'power1.out', alpha: 0.18, scale: 0.96, maxConcurrent: 8 },
+
+  // Stack thickness edge on tableau fanned piles (box-shadow left edge).
   stackEdge: { stepPx: 1.6, maxThickness: 9 },
+
+  // Wood frame entry (future GSAP reveal; currently CSS texture).
   boardFrame: { duration: 0.4, ease: 'power2.out' },
+
+  // Enhanced win (cardEffects true): two-phase lift then fall + confetti.
+  // phase1: brief lift/scale, phase2: fall with scatter. confettiCount respects mobile cap.
   winEnhanced: {
     phase1: { duration: 0.22, ease: 'power2.out', stagger: 0.015 },
     phase2: { duration: 0.62, ease: 'power1.in', stagger: 0.05 },
     confettiCount: 18,
   },
 
-  // Foundation particle burst: a suit-glyph explosion fired from the center of
-  // the destination foundation pile whenever a card lands there. Each particle
-  // starts at the origin and travels OUTWARD with INCREASING speed (ease
-  // 'power2.in') up to `radius` px while fading to 0. Tuned here so the whole
-  // effect is a single source of truth.
+  // Foundation particle burst: suit-glyph explosion from foundation center.
+  // Outward accelerating (power2.in) up to radius px while fading.
   particles: {
-    count: 10,            // particles per burst
-    radius: 120,           // max travel distance (px) from the origin
-    size: 44,             // rendered glyph size (px)
-    duration: 0.55,       // per-particle lifetime (seconds)
-    ease: 'power2.in',    // accelerating → faster as it moves outward
-    spin: 180,             // max random rotation (deg) for a subtle tumble
+    count: 10,            // per burst
+    radius: 120,           // max travel px
+    size: 44,             // glyph px
+    duration: 0.55,       // per-particle lifetime (s)
+    ease: 'power2.in',    // faster outward
+    spin: 180,             // max rotation deg
   },
 
-  // Achievement-unlock toast. `slide` controls the off-screen entrance (top
-  // slides down from -distance, bottom slides up from +distance) before the 5s
-  // dwell begins; `fade` is the opacity tween on dismiss/timeout (no slide).
-  // `distance` is the off-screen travel in px and is applied as the slide start.
+  // Achievement toast. slide: off-screen entrance; fade: dismiss/timeout.
   toast: {
     slide: { duration: 0.3, ease: 'power2.out', distance: 80 },
     fade: { duration: 0.2, ease: 'power1.out' },
   },
 
-  // Modal entrance animation. Used by WinModal via useModalEnter (reusable for
-  // any modal). The panel starts at `fromScale` (a fraction of its final size,
-  // centered) and grows to `toScale` (1 = actual size) with a slight overshoot
-  // pop. `duration` is the grow speed in seconds; `ease` is the GSAP easing
-  // curve — swap to e.g. 'power3.out' for a calmer, no-overshoot feel. The
-  // opacity tween fades the panel in as it grows. Add new effect types here
-  // (e.g. modalSlideUp) and consume them from a future variant of the hook.
+  // Modal entrance: panel grows from fromScale/fromOpacity to toScale/toOpacity.
+  // back.out(1.7) gives slight overshoot pop; swap to power3.out for calm.
   modalEnter: {
-    fromScale: 0.1,         // starting size as a fraction of final (0.1 = very small)
-    toScale: 1,             // final size
-    fromOpacity: 0,         // starting opacity (0 = invisible) — fades in as it grows
+    fromScale: 0.1,
+    toScale: 1,
+    fromOpacity: 0,
     toOpacity: 1,
-    duration: 0.55,         // grow speed in seconds
-    ease: 'back.out(1.7)',  // slight overshoot pop; fully tunable
+    duration: 0.55,
+    ease: 'back.out(1.7)',
   },
 };
