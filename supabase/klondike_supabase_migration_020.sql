@@ -1,8 +1,9 @@
--- Canonical submit_game_result definition. The schema changes and reset RPC
--- are applied by klondike_supabase_migration_018.sql.
+-- ============================================================
+-- Klondike Solitaire - Supabase migration 020 (Comeback eligibility)
+-- ============================================================
 
-drop function if exists public.submit_game_result(boolean, integer, integer, integer, integer, bigint, text, date);
-
+-- Require an established pre-loss winning streak before Comeback can qualify.
+-- This replaces the migration 018 result RPC for already-deployed databases.
 create or replace function public.submit_game_result(
   p_won boolean,
   p_moves integer,
