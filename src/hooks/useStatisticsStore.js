@@ -43,7 +43,7 @@ export const useStatisticsStore = create((set, get) => ({
    * @param {{score:number, timeMs:number, moves:number, undos:number,
    *   seed?:number, gameKind?:'winning'|'random'|'daily', dailyDate?:string|null}} win
    */
-  recordWin: async ({ score, timeMs, moves, undos, seed, gameKind, dailyDate }) => {
+  recordWin: async ({ score, timeMs, moves, undos, seed, gameKind, dailyDate, achievementTelemetry }) => {
     const stats = await addWin({ score, timeMs, moves, undos });
     set({ stats, gameWon: true });
     // Parallel remote-sync path: one RPC folds the win into game_results, coins,
@@ -58,6 +58,16 @@ export const useStatisticsStore = create((set, get) => ({
       p_seed: seed ?? null,
       p_game_kind: gameKind ?? null,
       p_daily_date: dailyDate ?? null,
+      p_game_id: achievementTelemetry?.gameId ?? null,
+      p_hint_used: achievementTelemetry?.hintUsed ?? false,
+      p_undo_used: achievementTelemetry?.undoUsed ?? undos > 0,
+      p_tableau_to_tableau_moves: achievementTelemetry?.tableauToTableauMoves ?? 0,
+      p_foundation_moves: achievementTelemetry?.foundationMoves ?? 0,
+      p_foundation_to_tableau_moves: achievementTelemetry?.foundationToTableauMoves ?? 0,
+      p_recycle_count: achievementTelemetry?.recycleCount ?? 0,
+      p_foundation_first_eligible: achievementTelemetry?.foundationFirstEligible ?? true,
+      p_ace_collector_eligible: achievementTelemetry?.aceCollectorEligible ?? true,
+      p_aces_to_foundation: achievementTelemetry?.aceIdsToFoundation?.length ?? 0,
     });
     // Optimistic local coin bump for instant UI feedback; the authoritative
     // balance is re-synced from Supabase on the next boot via hydrateProfile().
@@ -81,7 +91,25 @@ export const useStatisticsStore = create((set, get) => ({
   recordLoss: async () => {
     const stats = await dbRecordLoss();
     set({ stats, gameWon: false });
-    enqueue('record_game_abandoned', {});
+    const session = useStatsStore.getState();
+    const telemetry = session.achievementTelemetry;
+    enqueue('submit_game_result', {
+      p_won: false,
+      p_moves: session.moves,
+      p_duration_ms: session.getElapsedMs(),
+      p_score: session.score,
+      p_undos: session.undos,
+      p_game_id: telemetry.gameId,
+      p_hint_used: telemetry.hintUsed,
+      p_undo_used: telemetry.undoUsed || session.undos > 0,
+      p_tableau_to_tableau_moves: telemetry.tableauToTableauMoves,
+      p_foundation_moves: telemetry.foundationMoves,
+      p_foundation_to_tableau_moves: telemetry.foundationToTableauMoves,
+      p_recycle_count: telemetry.recycleCount,
+      p_foundation_first_eligible: telemetry.foundationFirstEligible,
+      p_ace_collector_eligible: telemetry.aceCollectorEligible,
+      p_aces_to_foundation: telemetry.aceIdsToFoundation.length,
+    });
   },
 
   /**

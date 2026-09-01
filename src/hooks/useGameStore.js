@@ -253,6 +253,11 @@ function applyAutoStep(get, set, move) {
   if (move.type === 'moveCards') {
     animIds = move.cardIds;
     destLocs = [move.to];
+    useStatsStore.getState().recordMove({
+      from: move.from,
+      to: move.to,
+      card: findCardInState(cur, move.cardIds[0]),
+    });
   } else if (move.type === 'draw') {
     const drawn = cur.stock[cur.stock.length - 1];
     animIds = drawn ? [drawn.id] : [];
@@ -260,6 +265,7 @@ function applyAutoStep(get, set, move) {
   } else if (move.type === 'recycle') {
     animIds = cur.waste.map((c) => c.id);
     destLocs = ['stock'];
+    useStatsStore.getState().recordRecycle();
   }
   // Enqueue as 'auto' (the type useCardMoveSlide actually consumes) so the tween
   // starts and endTransition releases the lock. The animIds/destLocs above are
@@ -675,6 +681,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     const { animatingLocs } = useUiStore.getState();
     if (animatingLocs.has('stock') || animatingLocs.has('waste')) return;
     const movingIds = state.waste.map((c) => c.id);
+    useStatsStore.getState().recordRecycle();
     const tid = captureFlip('recycle', movingIds);
     useUiStore.getState().beginTransition(tid, movingIds, ['stock', 'waste']);
     set({ state: applyMove(state, { type: 'recycle' }), lastActionMeta: { type: 'recycle' } });
@@ -757,6 +764,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     });
 
     const next = applyMove(state, { type: 'moveCards', from, to, cardIds: moveIds });
+    useStatsStore.getState().recordMove({ from, to, card: movingCard });
     // Burst particles from the foundation the card just reached (manual drag and
     // tap auto-move both land here). The animation layer reads this after commit.
     if (to.startsWith('foundation')) {
@@ -799,6 +807,14 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     // the independent MOTION.undo preset) instead of snapping. Derive the moved
     // cards from the inverse of the last recorded move.
     const last = state.moveHistory[state.moveHistory.length - 1];
+    useStatsStore.getState().recordUndo();
+    if (last.type === 'moveCards') {
+      useStatsStore.getState().recordMove({
+        from: last.to,
+        to: last.from,
+        card: findCardInState(state, last.cardIds[0]),
+      });
+    }
     let undoIds = [];
     let undoDest = [];
     if (last.type === 'moveCards') {
@@ -938,6 +954,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
    */
   showHints: () => {
     if (get().autoCompleting) return;
+    useStatsStore.getState().markHintUsed();
     const ui = useUiStore.getState();
     if (ui.hints.length > 0) {
       ui.clearHints();

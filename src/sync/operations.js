@@ -57,17 +57,29 @@ export const operations = {
   save_game_session: async (payload) => {
     const userId = useAuthStore.getState().userId;
     if (!userId) return; // flush only proceeds once a userId exists
+    const telemetry = payload.achievement_telemetry ?? {};
     const { error } = await supabase
       .from('game_sessions')
       .upsert(
         {
           user_id: userId,
           device_id: payload.device_id,
+          game_id: telemetry.gameId ?? globalThis.crypto?.randomUUID?.(),
           board_state: payload.board_state,
           replay_spec: payload.replay_spec,
           moves: payload.moves,
           score: payload.score,
           undos: payload.undos,
+          hint_used: telemetry.hintUsed,
+          undo_used: telemetry.undoUsed,
+          tableau_to_tableau_moves: telemetry.tableauToTableauMoves,
+          foundation_moves: telemetry.foundationMoves,
+          foundation_to_tableau_moves: telemetry.foundationToTableauMoves,
+          recycle_count: telemetry.recycleCount,
+          foundation_first_eligible: telemetry.foundationFirstEligible,
+          ace_collector_eligible: telemetry.aceCollectorEligible,
+          aces_to_foundation: telemetry.acesToFoundation ?? telemetry.aceIdsToFoundation?.length ?? 0,
+          ace_ids_to_foundation: telemetry.aceIdsToFoundation ?? [],
           start_time: payload.start_time,
           paused_accum_ms: payload.paused_accum_ms,
           updated_at: new Date().toISOString(),

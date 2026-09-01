@@ -8,11 +8,23 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { useStatisticsStore } from './useStatisticsStore.js';
+import {
+  createAchievementTelemetry as createTelemetry,
+  markHintUsed,
+  markUndoUsed,
+  recordAchievementMove,
+  recordRecycle,
+} from '../core/achievementTelemetry.js';
 
 // Hard limits that end the game. Reaching either freezes the session so only a
 // new game can continue (timer stops, moves stop, interactions lock).
 export const MAX_TIME_MS = 60 * 30 * 1000; // 30:00
 export const MAX_MOVES = 500;
+
+const createGameId = () =>
+  globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+export const createAchievementTelemetry = () => createTelemetry(createGameId());
 
 export const useStatsStore = create(subscribeWithSelector((set, get) => ({
   moves: 0,
@@ -28,6 +40,7 @@ export const useStatsStore = create(subscribeWithSelector((set, get) => ({
   // always `now - startTime` minus this excluded span.
   pausedAt: null,
   pausedAccumMs: 0,
+  achievementTelemetry: createAchievementTelemetry(),
 
   /** Reset all stats for a fresh game. */
   resetStats: () =>
@@ -41,7 +54,24 @@ export const useStatsStore = create(subscribeWithSelector((set, get) => ({
       overReason: null,
       pausedAt: null,
       pausedAccumMs: 0,
+      achievementTelemetry: createAchievementTelemetry(),
     }),
+
+  markHintUsed: () => set((s) => ({
+    achievementTelemetry: markHintUsed(s.achievementTelemetry),
+  })),
+
+  recordRecycle: () => set((s) => ({
+    achievementTelemetry: recordRecycle(s.achievementTelemetry),
+  })),
+
+  recordMove: ({ from, to, card }) => set((s) => ({
+    achievementTelemetry: recordAchievementMove(s.achievementTelemetry, { from, to, card }),
+  })),
+
+  recordUndo: () => set((s) => ({
+    achievementTelemetry: markUndoUsed(s.achievementTelemetry),
+  })),
 
   /**
    * Pause/resume the clock in step with tab focus. Called on `visibilitychange`

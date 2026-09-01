@@ -1,6 +1,103 @@
--- Canonical submit_game_result definition. The schema changes and reset RPC
--- are applied by klondike_supabase_migration_018.sql.
+-- ============================================================
+-- Klondike Solitaire - Supabase migration 018 (achievement telemetry)
+-- ============================================================
 
+-- ------------------------------------------------------------
+-- 1. Per-game telemetry and idempotency keys.
+-- ------------------------------------------------------------
+alter table public.game_sessions
+  add column if not exists game_id uuid default gen_random_uuid(),
+  add column if not exists hint_used boolean not null default false,
+  add column if not exists undo_used boolean not null default false,
+  add column if not exists tableau_to_tableau_moves integer not null default 0,
+  add column if not exists foundation_moves integer not null default 0,
+  add column if not exists foundation_to_tableau_moves integer not null default 0,
+  add column if not exists recycle_count integer not null default 0,
+  add column if not exists foundation_first_eligible boolean not null default true,
+  add column if not exists ace_collector_eligible boolean not null default true,
+  add column if not exists aces_to_foundation integer not null default 0,
+  add column if not exists ace_ids_to_foundation jsonb not null default '[]'::jsonb;
+
+update public.game_sessions
+set game_id = gen_random_uuid()
+where game_id is null;
+
+alter table public.game_sessions
+  alter column game_id set not null;
+
+alter table public.game_results
+  add column if not exists game_id uuid default gen_random_uuid(),
+  add column if not exists hint_used boolean not null default false,
+  add column if not exists undo_used boolean not null default false,
+  add column if not exists tableau_to_tableau_moves integer not null default 0,
+  add column if not exists foundation_moves integer not null default 0,
+  add column if not exists foundation_to_tableau_moves integer not null default 0,
+  add column if not exists recycle_count integer not null default 0,
+  add column if not exists foundation_first_eligible boolean not null default true,
+  add column if not exists ace_collector_eligible boolean not null default true,
+  add column if not exists aces_to_foundation integer not null default 0,
+  add column if not exists ace_ids_to_foundation jsonb not null default '[]'::jsonb;
+
+update public.game_results
+set game_id = gen_random_uuid()
+where game_id is null;
+
+alter table public.game_results
+  alter column game_id set not null;
+
+create unique index if not exists game_results_user_game_id_idx
+  on public.game_results (user_id, game_id);
+
+-- ------------------------------------------------------------
+-- 2. Cross-game sequence state. Existing streak columns remain the
+--    general-purpose streak aggregates.
+-- ------------------------------------------------------------
+alter table public.profiles
+  add column if not exists last_result_won boolean,
+  add column if not exists loss_recovery_streak integer not null default 0,
+  add column if not exists loss_recovery_baseline_best_streak integer not null default 0;
+
+-- ------------------------------------------------------------
+-- 3. Reset sequence state along with the Statistics-modal streak fields.
+-- ------------------------------------------------------------
+create or replace function public.reset_statistics()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id uuid := auth.uid();
+begin
+  if v_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  update public.profiles
+  set games_played = 0,
+      games_won = 0,
+      current_streak = 0,
+      best_streak = 0,
+      highest_score = 0,
+      lowest_time_ms = null,
+      lowest_moves = null,
+      lowest_undos = null,
+      total_time_ms_won = 0,
+      total_moves_won = 0,
+      last_result_won = null,
+      loss_recovery_streak = 0,
+      loss_recovery_baseline_best_streak = 0,
+      updated_at = now()
+  where id = v_user_id;
+end;
+$$;
+
+grant execute on function public.reset_statistics() to authenticated;
+
+-- ------------------------------------------------------------
+-- 4. Finalize both wins and losses atomically. Losses are now recorded in
+--    game_results so result-order achievements work across devices.
+-- ------------------------------------------------------------
 drop function if exists public.submit_game_result(boolean, integer, integer, integer, integer, bigint, text, date);
 
 create or replace function public.submit_game_result(

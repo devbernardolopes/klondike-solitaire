@@ -18,6 +18,7 @@ const KEY = 'current';
  * @param {number} row.moves
  * @param {number} row.score
  * @param {number} row.undos
+ * @param {Object} row.achievementTelemetry
  * @param {number|null} row.startTime
  * @param {number} row.pausedAccumMs
  * @returns {Promise<void>}

@@ -8,7 +8,7 @@
 import { supabase } from '../lib/supabaseClient.js';
 import { shallow } from 'zustand/shallow';
 import { useGameStore } from '../hooks/useGameStore.js';
-import { useStatsStore } from '../hooks/useStatsStore.js';
+import { createAchievementTelemetry, useStatsStore } from '../hooks/useStatsStore.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { enqueue } from './syncEngine.js';
 import {
@@ -63,6 +63,7 @@ function buildPayload() {
     moves: stats.moves,
     score: stats.score,
     undos: stats.undos,
+    achievement_telemetry: stats.achievementTelemetry,
     start_time: stats.startTime,
     paused_accum_ms: stats.pausedAccumMs,
   };
@@ -73,8 +74,8 @@ function buildPayload() {
 function saveSession() {
   try {
     const p = buildPayload();
-    const { board_state, replay_spec, moves, score, undos, start_time, paused_accum_ms } = p;
-    saveActiveSession({ boardState: board_state, replaySpec: replay_spec, moves, score, undos, startTime: start_time, pausedAccumMs: paused_accum_ms });
+    const { board_state, replay_spec, moves, score, undos, achievement_telemetry, start_time, paused_accum_ms } = p;
+    saveActiveSession({ boardState: board_state, replaySpec: replay_spec, moves, score, undos, achievementTelemetry: achievement_telemetry, startTime: start_time, pausedAccumMs: paused_accum_ms });
     // Coalesce bursts into a single remote upsert.
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
@@ -120,7 +121,7 @@ export function initSessionPersistence() {
   };
   const unsubGame = useGameStore.subscribe((s) => s.state, handler);
   const unsubStats = useStatsStore.subscribe(
-    (s) => [s.moves, s.score, s.undos, s.startTime, s.endTime, s.isOver, s.pausedAccumMs],
+    (s) => [s.moves, s.score, s.undos, s.achievementTelemetry, s.startTime, s.endTime, s.isOver, s.pausedAccumMs],
     handler,
     { equalityFn: shallow },
   );
@@ -148,7 +149,7 @@ export async function restoreSession() {
     try {
       const { data, error } = await supabase
         .from('game_sessions')
-        .select('board_state, replay_spec, moves, score, undos, start_time, paused_accum_ms, updated_at')
+        .select('game_id, board_state, replay_spec, moves, score, undos, hint_used, undo_used, tableau_to_tableau_moves, foundation_moves, foundation_to_tableau_moves, recycle_count, foundation_first_eligible, ace_collector_eligible, aces_to_foundation, ace_ids_to_foundation, start_time, paused_accum_ms, updated_at')
         .eq('device_id', getDeviceId())
         .maybeSingle();
       if (!error && data) {
@@ -175,6 +176,21 @@ function applyRestore(row, savedAtMs) {
   const moves = row.moves ?? 0;
   const score = row.score ?? 0;
   const undos = row.undos ?? 0;
+  const achievementTelemetry = row.achievementTelemetry ?? (row.game_id
+    ? {
+        gameId: row.game_id,
+        hintUsed: row.hint_used ?? false,
+        undoUsed: row.undo_used ?? undos > 0,
+        tableauToTableauMoves: row.tableau_to_tableau_moves ?? 0,
+        foundationMoves: row.foundation_moves ?? 0,
+        foundationToTableauMoves: row.foundation_to_tableau_moves ?? 0,
+        recycleCount: row.recycle_count ?? 0,
+        foundationFirstEligible: row.foundation_first_eligible ?? true,
+        aceCollectorEligible: row.ace_collector_eligible ?? true,
+        acesToFoundation: row.aces_to_foundation ?? row.ace_ids_to_foundation?.length ?? 0,
+        aceIdsToFoundation: row.ace_ids_to_foundation ?? [],
+      }
+    : createAchievementTelemetry());
   const startTime = row.startTime ?? row.start_time ?? null;
   const basePaused = row.pausedAccumMs ?? row.paused_accum_ms ?? 0;
   const pausedAccumMs =
@@ -185,6 +201,7 @@ function applyRestore(row, savedAtMs) {
     moves,
     score,
     undos,
+    achievementTelemetry,
     startTime,
     pausedAccumMs,
     endTime: null,
@@ -195,7 +212,7 @@ function applyRestore(row, savedAtMs) {
   // Mirror the restored row back into local Dexie so subsequent closes restore
   // from the fast path (and the elapsed-gap baseline resets to now).
   try {
-    saveActiveSession({ boardState, replaySpec, moves, score, undos, startTime, pausedAccumMs });
+    saveActiveSession({ boardState, replaySpec, moves, score, undos, achievementTelemetry, startTime, pausedAccumMs });
   } catch {
     /* non-fatal */
   }

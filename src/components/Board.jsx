@@ -168,7 +168,7 @@ export default function Board() {
       useStatsStore.getState().stopTimer();
       // Snapshot the finished game and the PREVIOUS bests (before recordWin
       // mutates them) so we can flag which stats are new records.
-      const { startTime, moves, score, undos } = useStatsStore.getState();
+      const { startTime, moves, score, undos, achievementTelemetry } = useStatsStore.getState();
       const durationMs = startTime == null ? 0 : useStatsStore.getState().getElapsedMs();
       const prev = useStatisticsStore.getState().stats;
       const newScore = score > prev.highestScore;
@@ -229,6 +229,7 @@ export default function Board() {
         seed: gameState.seed,
         gameKind,
         dailyDate: gameKind === 'daily' ? dailyDate : null,
+        achievementTelemetry,
       });
       // If this was a Winning Deal (it carries a pool seed), remember the seed
       // so it isn't re-dealt until the whole pool has been won. Daily/Event
