@@ -4,6 +4,7 @@ import { MOTION } from './motion.js';
 import { dequeueFlip } from './flipBridge.js';
 import { useGameStore } from '../../hooks/useGameStore.js';
 import { useUiStore } from '../../hooks/useUiStore.js';
+import { useSettingsStore } from '../../hooks/useSettingsStore.js';
 
 // Module-level registry of the in-flight draw tween, keyed by the drawn card's
 // id. Kept out of the effect's per-run cleanup so a concurrent, unrelated move
@@ -104,6 +105,17 @@ export function useStockDrawSlide() {
 
     const flip = MOTION.flipCard;
     const slide = MOTION.draw;
+    const shouldBounceFlip = (() => {
+      try {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
+      } catch {}
+      try {
+        const s = useSettingsStore.getState();
+        if (!s.cardEffects) return false;
+        if (!s.bounce) return false;
+      } catch {}
+      return true;
+    })();
 
     // Park the card at the stock pile position (face-down) before animating.
     gsap.set(cardNode, { x: startX, y: dy, zIndex: 1000 });
@@ -125,7 +137,7 @@ export function useStockDrawSlide() {
     tl.to(inner, {
       rotateY: 0,
       duration: flip.duration,
-      ease: flip.ease,
+      ease: shouldBounceFlip ? flip.ease : 'power2.out',
     });
     // Phase 2: slide horizontally to the waste pile position. When this slide
     // begins, promote the card from the fully-locked flip phase to the slide

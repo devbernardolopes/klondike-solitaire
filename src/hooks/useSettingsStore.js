@@ -22,6 +22,7 @@ const DEFAULTS = {
   tableTexture: true,
   boardFrame: true,
   bounce: true,
+  ghostTrail: true,
 };
 
 // Synchronous mirrors of the settings that affect first paint (theme + board
@@ -65,6 +66,7 @@ export const useSettingsStore = create((set, get) => ({
   tableTexture: DEFAULTS.tableTexture,
   boardFrame: DEFAULTS.boardFrame,
   bounce: DEFAULTS.bounce,
+  ghostTrail: DEFAULTS.ghostTrail,
   seenThemeItemIds: [],
   seenAchievementIds: [],
   themeModalTab: 'interface',
@@ -75,7 +77,7 @@ export const useSettingsStore = create((set, get) => ({
    * keys fall back to DEFAULTS. Activates the loaded (or default) deck.
    */
   init: async () => {
-    const [theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, seenThemeItemIds, seenAchievementIds, themeModalTab] = await Promise.all([
+    const [theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostTrail, seenThemeItemIds, seenAchievementIds, themeModalTab] = await Promise.all([
       getSetting('theme', DEFAULTS.theme),
       getSetting('interfaceTheme', DEFAULTS.interfaceTheme),
       getSetting('deck', DEFAULTS.deck),
@@ -87,12 +89,13 @@ export const useSettingsStore = create((set, get) => ({
       getSetting('tableTexture', DEFAULTS.tableTexture),
       getSetting('boardFrame', DEFAULTS.boardFrame),
       getSetting('bounce', DEFAULTS.bounce),
+      getSetting('ghostTrail', DEFAULTS.ghostTrail),
       getSetting('seenThemeItemIds', []),
       getSetting('seenAchievementIds', []),
       getSetting('themeModalTab', 'background'),
     ]);
     setActiveDeck(deck);
-    set({ theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, seenThemeItemIds, seenAchievementIds, themeModalTab, loaded: true });
+    set({ theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostTrail, seenThemeItemIds, seenAchievementIds, themeModalTab, loaded: true });
   },
 
   /**
@@ -174,6 +177,11 @@ export const useSettingsStore = create((set, get) => ({
   setBounce: (bounce) => {
     set({ bounce });
     setSetting('bounce', bounce);
+  },
+
+  setGhostTrail: (ghostTrail) => {
+    set({ ghostTrail });
+    setSetting('ghostTrail', ghostTrail);
   },
 
   /**

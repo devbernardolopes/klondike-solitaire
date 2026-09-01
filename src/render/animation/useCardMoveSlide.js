@@ -123,7 +123,9 @@ export function useCardMoveSlide() {
       } catch {}
       if (type === 'deal') return false;
       try {
-        if (!useSettingsStore.getState().cardEffects) return false;
+        const s = useSettingsStore.getState();
+        if (!s.cardEffects) return false;
+        if (!s.ghostTrail) return false;
       } catch {}
       return type === 'move' || type === 'auto' || type === 'undo';
     })();
