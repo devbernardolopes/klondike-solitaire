@@ -72,7 +72,7 @@ export const MOTION = {
   // diagonal; a multi-card run lands as RIGID BLOCK (stagger 0). Do not use
   // back/bounce/elastic here — stagger+overlap would make multiple cards bounce
   // on top of each other. Keep ease decelerating (power*.out / sine.out).
-  move:     { duration: 0.38, ease: 'sine.in, power2.out', stagger: 0.00 },
+  move:     { duration: 0.38, ease: 'power4.in', stagger: 0.00 },
 
   // Auto-complete relocation (greedy foundation peel + solver win sequence).
   // Independent of `move` so it can be tuned snappier without touching manual
