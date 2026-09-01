@@ -136,6 +136,7 @@ export default function Board() {
   const announce = useUiStore((s) => s.announce);
   const handedness = useSettingsStore((s) => s.handedness);
   const isOver = useStatsStore((s) => s.isOver);
+  const overReason = useStatsStore((s) => s.overReason);
   const autoCompleting = useGameStore((s) => s.autoCompleting);
   const autoCompletingToWin = useGameStore((s) => s.autoCompletingToWin);
   const won = isWon(state);
@@ -321,12 +322,12 @@ export default function Board() {
        // Never fire game shortcuts while any modal/dialog is open — e.g. typing
        // letters into the Seed Input field must not trigger new-game/draw/etc.
        if (isAnyModalOpen(useUiStore.getState())) return;
-        // New game / undo / auto-complete are blocked while anything is
-       // still animating (or the game is over). Draw/recycle are handled below
-       // with their own narrower stock/waste lock so they stay usable during an
-       // unrelated move.
-        if (anyAnimating || isOver || autoCompleting) return;
-        if (e.key === 'n' || e.key === 'N') {
+        // New game is the one recovery action allowed after a hard game-over;
+        // all other gameplay shortcuts remain locked until a fresh deal.
+        if (anyAnimating || autoCompleting) return;
+        const isNewGameShortcut = e.key === 'n' || e.key === 'N';
+        if (isOver && !isNewGameShortcut) return;
+        if (isNewGameShortcut) {
            clearSelection();
            // If a game is in progress (timer started, not yet finished), stash the
            // deal behind the "discard current game?" confirmation. A game that
@@ -431,8 +432,45 @@ export default function Board() {
     <div
       ref={boardRef}
       onPointerUp={handleBoardPointerUp}
-      style={{ flex: 1, minHeight: '100%', width: '100%', touchAction: 'manipulation', overflow: 'hidden' }}
+      style={{ position: 'relative', flex: 1, minHeight: '100%', width: '100%', touchAction: 'manipulation', overflow: 'hidden' }}
     >
+      {isOver && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 20,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            pointerEvents: 'none',
+            padding: 20,
+          }}
+        >
+          <div
+            style={{
+              maxWidth: 320,
+              padding: '14px 18px',
+              borderRadius: 10,
+              border: '1px solid var(--ui-modal-panel-border)',
+              background: 'color-mix(in srgb, var(--ui-modal-panel-bg) 88%, transparent)',
+              color: 'var(--ui-modal-panel-fg)',
+              boxShadow: '0 8px 28px rgba(0,0,0,0.35)',
+              textAlign: 'center',
+            }}
+          >
+            <strong style={{ display: 'block', fontSize: 18, marginBottom: 5 }}>Game Over</strong>
+            <span style={{ display: 'block', fontSize: 13, lineHeight: 1.4 }}>
+              {overReason === 'moves'
+                ? 'The 500-move limit was reached.'
+                : 'The 30:00 time limit was reached.'}
+              {' Press N or use New Game to start again.'}
+            </span>
+          </div>
+        </div>
+      )}
       {/* Centered "Autocomplete" banner shown while the game is auto-moving
           everything to the foundations. It is only rendered while auto-complete
           is running AND the game is not yet won, so it vanishes the instant the

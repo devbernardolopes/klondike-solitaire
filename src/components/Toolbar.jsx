@@ -221,10 +221,6 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
     useUiStore.getState().setDailyChallengeDialogOpen(true);
   }, [setNoMovesDialogOpen]);
   const closeGameOver = useCallback(() => setGameOverDialogOpen(false), [setGameOverDialogOpen]);
-  const onGameOverConfirm = useCallback(() => {
-    setGameOverDialogOpen(false);
-    dealNewGame(lastNewGameMode);
-  }, [setGameOverDialogOpen, dealNewGame, lastNewGameMode]);
   const onConfirmNewGame = useCallback(() => {
     setConfirmNewGameDialogOpen(false);
     const action = useUiStore.getState().pendingStartDeal;
@@ -467,13 +463,15 @@ function ElapsedClock() {
         title="Game Over"
         message={
           overReason === 'moves'
-            ? "You reached the 500-move limit. Start a new game to keep playing."
-            : "You reached the 30:00 time limit. Start a new game to keep playing."
+            ? "You reached the 500-move limit. Close this message, then start a new game to keep playing."
+            : "You reached the 30:00 time limit. Close this message, then start a new game to keep playing."
         }
-        confirmText="New Game"
+        confirmText="OK"
         hideCancel
-        onConfirm={onGameOverConfirm}
+        dismissable={false}
+        onConfirm={closeGameOver}
         onCancel={closeGameOver}
+        onCloseIcon={closeGameOver}
       />
 
       <ConfirmModal
