@@ -19,6 +19,7 @@ import { getDeck, listDecks } from '../render/deck/deckRegistry.js';
 import { getCardBack } from '../render/deck/cardBackRegistry.js';
 import { fetchStoreCatalog } from '../data/storeCatalog.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
+import { previewBackgroundOf } from '../render/themes/backgroundRegistry.js';
 
 const TABS = [
   { id: 'interface', label: 'Interface' },
@@ -251,7 +252,7 @@ export default function ThemeModal({ open, onClose }) {
                   width: '100%',
                   height: '100%',
                   borderRadius: 'var(--card-radius)',
-                  background: 'var(--felt-bg, var(--felt-color))',
+                  background: previewBackgroundOf(t.asset_ref) ?? '#1f7a4d',
                 }}
               >
                 <span
@@ -260,8 +261,8 @@ export default function ThemeModal({ open, onClose }) {
                     width: '42%',
                     height: '52%',
                     borderRadius: 'var(--card-radius)',
-                    background: 'var(--card-face-bg, #fbfbf7)',
-                    border: '1px solid var(--card-border, rgba(0,0,0,0.18))',
+                    background: '#fbfbf7',
+                    border: '1px solid rgba(0,0,0,0.18)',
                     boxShadow: '0 1px 3px rgba(0,0,0,0.35)',
                     display: 'block',
                   }}
@@ -294,9 +295,11 @@ export default function ThemeModal({ open, onClose }) {
             style={{
               ...tileBase,
               ...(selected ? selectedBorder : null),
-              background: 'var(--ui-modal-btn-bg)',
-              border: '1px solid var(--ui-modal-btn-border)',
-              color: 'var(--ui-modal-fg)',
+              background: t === 'classic' ? '#ffffff' : '#2a2f3a',
+              border: selected
+                ? selectedBorder.border
+                : `1px solid ${t === 'classic' ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.3)'}`,
+              color: t === 'classic' ? '#1a1a1a' : '#ffffff',
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
