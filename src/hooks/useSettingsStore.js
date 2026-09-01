@@ -115,6 +115,29 @@ export const useSettingsStore = create((set, get) => ({
       getSetting('themeModalTab', 'background'),
     ]);
     setActiveDeck(deck);
+    try {
+      const toBackfill = [
+        ['theme', theme],
+        ['interfaceTheme', interfaceTheme],
+        ['deck', deck],
+        ['cardBack', cardBack],
+        ['handedness', handedness],
+        ['highlightCard', highlightCard],
+        ['particles', particles],
+        ['cardEffects', cardEffects],
+        ['tableTexture', tableTexture],
+        ['boardFrame', boardFrame],
+        ['bounce', bounce],
+        ['ghostTrail', ghostTrail],
+      ];
+      for (const [k, v] of toBackfill) {
+        const lsKey = LS_KEYS[k];
+        if (!lsKey) continue;
+        try {
+          if (localStorage.getItem(lsKey) == null) writeLS(lsKey, v);
+        } catch {}
+      }
+    } catch {}
     set({ theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostTrail, seenThemeItemIds, seenAchievementIds, themeModalTab, loaded: true });
   },
 
