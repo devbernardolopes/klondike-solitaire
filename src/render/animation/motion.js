@@ -48,7 +48,7 @@ export const MOTION = {
   // 3D rotateY face flip (face-down ↔ face-up) in useCardFaceFlip. Subtle
   // back.out(0.6) gives a tiny overshoot pop; duration must be readable
   // (not 0.05 twitch). Keep under 0.22 so tableau reveals stay snappy.
-  flipCard: { duration: 0.05, ease: 'back.out(0.4)' },
+  flipCard: { duration: 0.10, ease: 'back.out(0.4)' },
 
   // Stock → waste draw slide. Card flips in place at stock then glides
   // horizontally to waste. Direction mirrors Hand (right→slide left, left→slide right)
@@ -56,7 +56,7 @@ export const MOTION = {
   draw:     {
     duration: 0.05,         // horizontal slide (s)
     ease: 'power2.out',
-    overshoot: 6,           // extra px beyond natural pile-to-pile distance
+    overshoot: 12,           // extra px beyond natural pile-to-pile distance
   },
 
   // Initial deal: cards fan out one after another via stagger.
