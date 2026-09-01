@@ -238,7 +238,7 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
       }}
       data-loc={loc}
     >
-      {fanned && (
+      {fanned && cards.length === 0 && (
         <div
           aria-hidden="true"
           style={{

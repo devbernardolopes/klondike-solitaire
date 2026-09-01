@@ -463,7 +463,7 @@ export default function Board() {
       ref={boardRef}
       onPointerUp={handleBoardPointerUp}
       className="game-board"
-      style={{ position: 'relative', flex: 1, minHeight: '100%', width: '100%', touchAction: 'manipulation', overflowX: 'hidden', overflowY: 'auto' }}
+      style={{ position: 'relative', flex: 1, minHeight: '100%', width: '100%', touchAction: 'manipulation', overflowX: 'hidden', overflowY: 'hidden' }}
     >
       {isOver && (
         <div
