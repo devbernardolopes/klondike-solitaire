@@ -56,7 +56,7 @@ function useElapsed() {
  * @param {boolean} props.particles  enable the foundation suit-burst effect
  * @param {(v: boolean) => void} props.onParticlesChange
  */
-export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, handedness, onHandednessChange, highlightCard, onHighlightCardChange, particles, onParticlesChange }) {
+export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, handedness, onHandednessChange, highlightCard, onHighlightCardChange, particles, onParticlesChange, bootstrapReady }) {
   const dealNewGame = useGameStore((s) => s.dealNewGame);
   const dealWithSeed = useGameStore((s) => s.dealWithSeed);
   const replayGame = useGameStore((s) => s.replayGame);
@@ -85,6 +85,7 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const setSeedInputDialogOpen = useUiStore((s) => s.setSeedInputDialogOpen);
   const setAnnounce = useUiStore((s) => s.setAnnounce);
   const coins = useAuthStore((s) => s.coins);
+  const profileReady = useAuthStore((s) => s.profileReady);
   const gameOverDialogOpen = useUiStore((s) => s.gameOverDialogOpen);
   const setGameOverDialogOpen = useUiStore((s) => s.setGameOverDialogOpen);
   const confirmNewGameDialogOpen = useUiStore((s) => s.confirmNewGameDialogOpen);
@@ -333,13 +334,15 @@ function ElapsedClock() {
               outline: 'none',
             }}
           >
+            <span style={{ visibility: bootstrapReady && currentGameKind && gameState.seed !== undefined ? 'visible' : 'hidden' }}>
             {currentGameKind === 'daily'
               ? `Daily Challenge: ${currentDailyDate} (${gameState.seed})`
               : currentGameKind === 'random'
                 ? `Random (${gameState.seed})`
                 : currentGameKind === 'event'
                   ? `Special Event (${gameState.seed})`
-                  : `Winning Deal (${gameState.seed})`}
+                : `Winning Deal (${gameState.seed})`}
+            </span>
           </span>
           <span
             style={{
@@ -351,7 +354,7 @@ function ElapsedClock() {
               userSelect: 'none',
             }}
           >
-            <CoinsIcon size={14} /> {coins}
+            <CoinsIcon size={14} /> <span style={{ visibility: profileReady ? 'visible' : 'hidden' }}>{coins}</span>
           </span>
         </div>
 

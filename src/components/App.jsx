@@ -8,7 +8,7 @@ import '../render/themes/felts.css';
 import { applyFeltTexture } from '../render/themes/feltTextures.js';
 // Side-effect imports register the deck renderers with the registry.
 import '../render/deck/ProceduralDeckRenderer.js';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Toolbar from './Toolbar.jsx';
 import Board from './Board.jsx';
 import WinModal from './WinModal.jsx';
@@ -38,6 +38,7 @@ import {
 import { prefetch as prefetchSeeds } from '../repo/seedRepository.js';
 
 export default function App() {
+  const [bootstrapReady, setBootstrapReady] = useState(false);
   const theme = useSettingsStore((s) => s.theme);
   const interfaceTheme = useSettingsStore((s) => s.interfaceTheme);
   const deck = useSettingsStore((s) => s.deck);
@@ -77,9 +78,8 @@ export default function App() {
       // when a session was restored — this is a resume, not a fresh game.
       await ensureDeviceId();
       const restored = await restoreSession();
-      if (!restored) {
-        useGameStore.getState().initialDeal();
-      }
+      if (!restored) useGameStore.getState().initialDeal();
+      setBootstrapReady(true);
       // Begin capturing session changes once the board is in its final state.
       cleanupSession = initSessionPersistence();
       useToastStore.getState().initConfig();
@@ -205,6 +205,7 @@ export default function App() {
           onHighlightCardChange={setHighlightCard}
           particles={particles}
           onParticlesChange={setParticles}
+          bootstrapReady={bootstrapReady}
         />
         <Board />
       </div>

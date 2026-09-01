@@ -45,7 +45,7 @@ const userShape = (user) => ({
 // profile query is best-effort: a network failure (offline) must not make
 // init() reject, so it is swallowed and displayName/coins simply stay null.
 const hydrateProfile = async (user, set) => {
-  set({ ...userShape(user), ready: true });
+  set({ ...userShape(user), ready: true, profileReady: false });
   try {
     const { data } = await supabase
       .from('profiles')
@@ -64,6 +64,8 @@ const hydrateProfile = async (user, set) => {
     }
   } catch {
     // Offline / profile missing — leave displayName/coins at prior values.
+  } finally {
+    set({ profileReady: true });
   }
 };
 
@@ -71,6 +73,7 @@ export const useAuthStore = create((set, get) => ({
   userId: null,
   isAnonymous: true,
   ready: false,
+  profileReady: false,
   displayName: null,
   displayNameUpdatedAt: null,
   coins: 0,
@@ -111,7 +114,7 @@ export const useAuthStore = create((set, get) => ({
       } catch (e) {
         // Most likely no network on a brand-new install. Mark ready and record
         // the error without blocking the rest of the app's init sequence.
-        set({ ready: true, authError: e?.message ?? 'Anonymous sign-in failed' });
+        set({ ready: true, profileReady: true, authError: e?.message ?? 'Anonymous sign-in failed' });
         return;
       } finally {
         // Subscribe regardless of outcome so later auth changes stay in sync.
