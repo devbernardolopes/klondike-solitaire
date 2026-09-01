@@ -48,15 +48,15 @@ export const MOTION = {
   // 3D rotateY face flip (face-down ↔ face-up) in useCardFaceFlip. Subtle
   // back.out(0.6) gives a tiny overshoot pop; duration must be readable
   // (not 0.05 twitch). Keep under 0.22 so tableau reveals stay snappy.
-  flipCard: { duration: 0.20, ease: 'back.out(0.6)' },
+  flipCard: { duration: 0.05, ease: 'back.out(0.4)' },
 
   // Stock → waste draw slide. Card flips in place at stock then glides
   // horizontally to waste. Direction mirrors Hand (right→slide left, left→slide right)
   // automatically via layout; no direction field needed.
   draw:     {
-    duration: 0.10,         // horizontal slide (s)
+    duration: 0.05,         // horizontal slide (s)
     ease: 'power2.out',
-    overshoot: 8,           // extra px beyond natural pile-to-pile distance
+    overshoot: 6,           // extra px beyond natural pile-to-pile distance
   },
 
   // Initial deal: cards fan out one after another via stagger.
@@ -87,7 +87,7 @@ export const MOTION = {
 
   // Card flip shimmer: specular sweep after flip lands. Keep glint brief
   // so it reads as highlight, not linger.
-  shimmer: { duration: 0.30, ease: 'power2.inOut' },
+  shimmer: { duration: 0.50, ease: 'power2.inOut' },
 
   // Pile hover glow: aura on valid drop targets (CSS keyframes pileGlow).
   // Consumed as inline animation duration in Pile.jsx; blur is shadow spread (px).
