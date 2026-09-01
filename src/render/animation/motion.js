@@ -72,16 +72,16 @@ export const MOTION = {
   // diagonal; a multi-card run lands as RIGID BLOCK (stagger 0). Do not use
   // back/bounce/elastic here — stagger+overlap would make multiple cards bounce
   // on top of each other. Keep ease decelerating (power*.out / sine.out).
-  move:     { duration: 0.38, ease: 'power4.in', stagger: 0.00 },
+  move:     { duration: 0.30, ease: 'power4.out', stagger: 0.00 },
 
   // Auto-complete relocation (greedy foundation peel + solver win sequence).
   // Independent of `move` so it can be tuned snappier without touching manual
   // tap. Consumed via CONFIG_BY_TYPE.auto in useCardMoveSlide.
-  auto:     { duration: 0.34, ease: 'power3.out', stagger: 0.02 },
+  auto:     { duration: 0.30, ease: 'power3.out', stagger: 0.02 },
 
   // Undo relocation. Same path as `move` (cards glide back), separate preset
   // so undo can feel quicker without changing tap feel. Consumed via CONFIG_BY_TYPE.undo.
-  undo:     { duration: 0.14, ease: 'power2.out', stagger: 0.00 },
+  undo:     { duration: 0.10, ease: 'power2.out', stagger: 0.00 },
 
   // Auto-complete step pacing (SEQUENCE cadence, not per-card tween which is MOTION.auto).
   //   'sequential' — next card starts after previous LANDED + stepDelay ms (no concurrency)
@@ -104,7 +104,7 @@ export const MOTION = {
   },
 
   // Initial deal: cards fan out one after another via stagger.
-  deal:     { duration: 0.15, stagger: 0.02, ease: 'power2.out' },
+  deal:     { duration: 0.30, stagger: 0.02, ease: 'power2.out' },
 
   // Victory cascade fallback (used when !cardEffects or prefers-reduced-motion).
   // Enhanced path when cardEffects true uses winEnhanced below.
