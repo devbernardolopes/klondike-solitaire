@@ -64,7 +64,7 @@ export default function App() {
       // One-time cross-device pull for already-linked accounts (skipped for
       // anonymous — there's nothing on another device to fetch).
       if (!useAuthStore.getState().isAnonymous) {
-        pullRemoteProfile().catch((e) => console.error('Startup profile pull failed', e));
+        await pullRemoteProfile().catch((e) => console.error('Startup profile pull failed', e));
       }
       startSyncEngine();
       init();

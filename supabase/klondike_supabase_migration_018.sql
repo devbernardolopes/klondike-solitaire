@@ -53,6 +53,8 @@ create unique index if not exists game_results_user_game_id_idx
 --    general-purpose streak aggregates.
 -- ------------------------------------------------------------
 alter table public.profiles
+  add column if not exists lowest_time_ms integer,
+  add column if not exists lowest_moves integer,
   add column if not exists last_result_won boolean,
   add column if not exists loss_recovery_streak integer not null default 0,
   add column if not exists loss_recovery_baseline_best_streak integer not null default 0;
