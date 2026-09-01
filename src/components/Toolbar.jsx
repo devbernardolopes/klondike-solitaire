@@ -4,7 +4,7 @@
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { Plus, Undo2, Menu, Lightbulb, Coins as CoinsIcon } from 'lucide-react';
 import { useGameStore } from '../hooks/useGameStore.js';
-import { useUiStore } from '../hooks/useUiStore.js';
+import { useUiStore, isAnyModalOpen } from '../hooks/useUiStore.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useSound } from '../hooks/useSound.js';
@@ -89,6 +89,8 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const setGameOverDialogOpen = useUiStore((s) => s.setGameOverDialogOpen);
   const confirmNewGameDialogOpen = useUiStore((s) => s.confirmNewGameDialogOpen);
   const setConfirmNewGameDialogOpen = useUiStore((s) => s.setConfirmNewGameDialogOpen);
+  const anyModalOpen = useUiStore(isAnyModalOpen);
+  const newGameNeedsAttention = !anyModalOpen && !autoCompleting && (won || isOver);
 
   // Game session stats (moves / score) + live elapsed time for the HUD.
   const gameState = useGameStore((s) => s.state);
@@ -383,8 +385,10 @@ function ElapsedClock() {
       </button>
 
       <button
+        className={newGameNeedsAttention ? 'new-game-attention' : undefined}
         style={{ ...fab, left: fabLeft(1) }}
-        aria-label="New Game"
+        aria-label={newGameNeedsAttention ? 'New Game — start a new deal' : 'New Game'}
+        title={newGameNeedsAttention ? 'Start a new game' : 'New Game'}
         onClick={() => setNewGameDialogOpen(true)}
       >
         <Plus size={20} />

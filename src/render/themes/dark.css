@@ -78,6 +78,13 @@
   --ui-leaderboard-me-border: #5aa9ff;
 }
 
+.ui-dark .new-game-attention {
+  background: #ffd166 !important;
+  color: #17120a !important;
+  outline-color: #fff8d6;
+  box-shadow: 0 0 0 2px #9a6500, 0 0 18px 5px rgba(255, 209, 102, 0.9), 0 8px 20px rgba(0,0,0,0.65) !important;
+}
+
 @keyframes pileGlow {
   0% { box-shadow: 0 0 0 3px rgba(52,214,255,0.16), 0 0 16px rgba(52,214,255,0.4), inset 0 0 10px rgba(52,214,255,0.16); border-color: rgba(255,255,255,0.88); }
   100% { box-shadow: 0 0 0 5px rgba(52,214,255,0.26), 0 0 30px rgba(52,214,255,0.68), inset 0 0 14px rgba(52,214,255,0.3); border-color: #fff; }

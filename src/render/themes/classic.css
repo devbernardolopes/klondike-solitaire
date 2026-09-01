@@ -113,6 +113,27 @@
   pointer-events: none;
 }
 
+.new-game-attention {
+  background: #f0b429 !important;
+  color: #161616 !important;
+  outline: 3px solid #fff3b0;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 2px #8a5a00, 0 0 18px 5px rgba(255, 196, 45, 0.85), 0 8px 20px rgba(0,0,0,0.45) !important;
+  transform: scale(1.1);
+  z-index: 60 !important;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .new-game-attention {
+    animation: newGameAttentionPulse 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes newGameAttentionPulse {
+  0%, 100% { box-shadow: 0 0 0 2px #8a5a00, 0 0 14px 3px rgba(255, 196, 45, 0.7), 0 8px 20px rgba(0,0,0,0.45); }
+  50% { box-shadow: 0 0 0 3px #8a5a00, 0 0 26px 9px rgba(255, 224, 110, 0.98), 0 8px 20px rgba(0,0,0,0.45); }
+}
+
 [data-card] {
   transition: none;
 }
