@@ -97,6 +97,11 @@ export const MOTION = {
   // in classic.css; kept here so MotionDebugPanel can tune. Wire to JS if needed.
   hoverLift: { y: -4, scale: 1.02, duration: 0.15, ease: 'power2.out' },
 
+  // Landing bounce on move/auto (single-card only). Independent of `move` slide
+  // so translation stays power3.out while bounce alone may use back.out subtle
+  // pop. Gated by cardEffects && bounce && !prefers-reduced-motion.
+  bounce: { duration: 0.20, ease: 'back.out(0.6)', scale: 1.06, rotation: 0.8, y: -6, boxShadow: '0 14px 32px rgba(0,0,0,0.45), 0 5px 12px rgba(0,0,0,0.35)' },
+
   // Ghost trail left behind on every move/auto/undo. Cloned node at oldRect
   // fades/scale. Capped to maxConcurrent to avoid DOM flood during overlap auto.
   ghostTrail: { duration: 0.45, ease: 'power1.out', alpha: 0.18, scale: 0.96, maxConcurrent: 8 },

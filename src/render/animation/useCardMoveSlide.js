@@ -127,6 +127,15 @@ export function useCardMoveSlide() {
       } catch {}
       return type === 'move' || type === 'auto' || type === 'undo';
     })();
+    const shouldBounce = (() => {
+      try {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
+      } catch {}
+      if (!useSettingsStore.getState().cardEffects) return false;
+      if (!useSettingsStore.getState().bounce) return false;
+      if (moved.length !== 1) return false;
+      return type === 'move' || type === 'auto';
+    })();
     const createGhosts = () => {
       if (!shouldGhost || moved.length === 0) return;
       const cap = MOTION.ghostTrail?.maxConcurrent ?? 8;
@@ -161,6 +170,7 @@ export function useCardMoveSlide() {
         } catch {}
       }
     };
+    const bounceCfg = MOTION.bounce;
     const tl = gsap.timeline({
       onComplete: () => {
         completed = true;
@@ -175,23 +185,29 @@ export function useCardMoveSlide() {
         useUiStore.getState().endTransition(tid);
       },
     });
-    const isLifted = type === 'move' || type === 'auto';
-    if (isLifted) {
-      const lift = MOTION.hoverLift ?? { scale: 1.02 };
-      moved.forEach((el) => gsap.set(el, { scale: lift.scale ?? 1.02, rotationZ: gsap.utils.random(-0.6, 0.6), boxShadow: '0 14px 32px rgba(0,0,0,0.45), 0 5px 12px rgba(0,0,0,0.35)' }));
+    if (shouldBounce && bounceCfg) {
+      moved.forEach((el) => gsap.set(el, { scale: bounceCfg.scale ?? 1.06, rotationZ: gsap.utils.random(-(bounceCfg.rotation ?? 0.8), bounceCfg.rotation ?? 0.8), boxShadow: bounceCfg.boxShadow ?? '0 14px 32px rgba(0,0,0,0.45), 0 5px 12px rgba(0,0,0,0.35)' }));
+      createGhosts();
+    } else if (shouldGhost) {
       createGhosts();
     }
     tl.to(moved, {
       x: 0,
       y: 0,
-      scale: 1,
-      rotationZ: 0,
-      boxShadow: '0 4px 10px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.28)',
       duration: cfg.duration,
       ease: cfg.ease,
       stagger: cfg.stagger ?? 0,
-      clearProps: isLifted ? '' : 'scale,boxShadow,rotationZ',
     });
+    if (shouldBounce && bounceCfg) {
+      tl.to(moved, {
+        scale: 1,
+        rotationZ: 0,
+        boxShadow: '0 4px 10px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.28)',
+        duration: bounceCfg.duration ?? 0.20,
+        ease: bounceCfg.ease ?? 'back.out(0.6)',
+        stagger: 0,
+      }, 0);
+    }
     activeTweens.push(tl);
 
     // IMPORTANT: no cleanup that kills `tl` on effect re-run. A new transition

@@ -40,6 +40,7 @@ export default function SettingsOptionsModal({
   const leaderboardVisible = useAuthStore((s) => s.leaderboardVisible);
   const setLeaderboardVisible = useAuthStore((s) => s.setLeaderboardVisible);
   const cardEffects = useSettingsStore((s) => s.cardEffects);
+  const bounce = useSettingsStore((s) => s.bounce);
   const tableTexture = useSettingsStore((s) => s.tableTexture);
   const boardFrame = useSettingsStore((s) => s.boardFrame);
 
@@ -152,6 +153,16 @@ export default function SettingsOptionsModal({
             checked={!!cardEffects}
             onChange={(v) => useSettingsStore.getState().setCardEffects(v)}
             label="Card Effects"
+          />
+        </div>
+
+        <div style={{ ...field, marginLeft: 16, opacity: cardEffects ? 1 : 0.5, marginBottom: 20 }}>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>Card Bounce</label>
+          <ToggleSwitch
+            checked={!!bounce}
+            onChange={(v) => useSettingsStore.getState().setBounce(v)}
+            label="Card Bounce"
+            disabled={!cardEffects}
           />
         </div>
 

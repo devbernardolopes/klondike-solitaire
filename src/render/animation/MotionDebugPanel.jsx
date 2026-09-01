@@ -55,6 +55,11 @@ export function MotionDebugPanel() {
     y: { value: MOTION.hoverLift.y, min: -10, max: 10, step: 0.5, onChange: (v) => (MOTION.hoverLift.y = v) },
     scale: { value: MOTION.hoverLift.scale, min: 0.95, max: 1.1, step: 0.01, onChange: (v) => (MOTION.hoverLift.scale = v) },
   });
+  useControls('bounce', {
+    duration: { value: MOTION.bounce.duration, min: 0.05, max: 0.6, step: 0.01, onChange: (v) => (MOTION.bounce.duration = v) },
+    scale: { value: MOTION.bounce.scale, min: 1, max: 1.15, step: 0.01, onChange: (v) => (MOTION.bounce.scale = v) },
+    rotation: { value: MOTION.bounce.rotation, min: 0, max: 2, step: 0.1, onChange: (v) => (MOTION.bounce.rotation = v) },
+  });
   useControls('ghostTrail', {
     duration: { value: MOTION.ghostTrail.duration, min: 0.05, max: 1, step: 0.01, onChange: (v) => (MOTION.ghostTrail.duration = v) },
     alpha: { value: MOTION.ghostTrail.alpha, min: 0, max: 1, step: 0.01, onChange: (v) => (MOTION.ghostTrail.alpha = v) },
