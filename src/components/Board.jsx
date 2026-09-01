@@ -124,8 +124,7 @@ export default function Board() {
       const gap = measureVar('clamp(6px, 1.2vw, 14px)');
       const pad = measureVar('clamp(8px, 2vw, 20px)');
       const frame = boardFrame ? measureVar('var(--wood-frame-width, 0px)') : 0;
-      const innerPad = boardFrame ? measureVar('clamp(8px, 1.4vw, 14px)') : 0;
-      const avail = Math.max(0, board.clientHeight - 2 * cardH - gap - 2 * pad - 2 * frame - 2 * innerPad - 8);
+      const avail = Math.max(0, board.clientHeight - 2 * cardH - gap - 2 * pad - 2 * frame - 8);
       setMetrics({ cardH, fanUp, fanDown, fanDownMin, fanUpEmergencyMin, avail });
     };
     measure();
@@ -447,7 +446,7 @@ export default function Board() {
       ref={boardRef}
       onPointerUp={handleBoardPointerUp}
       className="game-board"
-      style={{ position: 'relative', flex: 1, minHeight: 0, width: '100%', touchAction: 'manipulation', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}
+      style={{ position: 'relative', flex: 1, minHeight: '100%', width: '100%', touchAction: 'manipulation', overflowX: 'hidden', overflowY: 'auto' }}
     >
       {isOver && (
         <div
