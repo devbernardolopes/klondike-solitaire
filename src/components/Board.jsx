@@ -123,8 +123,9 @@ export default function Board() {
       const fanUpEmergencyMin = measureVar('var(--tableau-fan-up-emergency-min)');
       const gap = measureVar('clamp(6px, 1.2vw, 14px)');
       const pad = measureVar('clamp(8px, 2vw, 20px)');
+      const frameMargin = boardFrame ? 16 : 0;
       const frame = boardFrame ? measureVar('var(--wood-frame-width, 0px)') : 0;
-      const avail = Math.max(0, board.clientHeight - 2 * cardH - gap - 2 * pad - 2 * frame - 8);
+      const avail = Math.max(0, board.clientHeight - 2 * cardH - gap - 2 * pad - 2 * frame - frameMargin - 8);
       setMetrics({ cardH, fanUp, fanDown, fanDownMin, fanUpEmergencyMin, avail });
     };
     measure();
@@ -552,7 +553,6 @@ export default function Board() {
     >
       {boardFrame ? (
         <div className="board-frame">
-          <div className="board-frame-inner">
             <div
               style={{
                 display: 'grid',
@@ -584,7 +584,6 @@ export default function Board() {
                 <Pile key={`t${i}`} loc={`tableau:${i}`} cards={pile} fanned metrics={metrics} hiddenIds={hiddenIds} onAutoMove={autoMove} />
               ))}
             </div>
-          </div>
         </div>
       ) : (
         <div

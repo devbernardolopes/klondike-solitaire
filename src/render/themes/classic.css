@@ -4,7 +4,7 @@
  */
 
 :root {
-  --wood-frame-width: clamp(10px, 1.6vw, 18px);
+  --wood-frame-width: clamp(18px, 3vw, 32px);
 }
 
 :root,
@@ -84,8 +84,8 @@
 }
 
 .board-frame {
-  margin: clamp(8px, 2vw, 18px) auto;
-  padding: clamp(10px, 1.6vw, 18px);
+  margin: 8px auto;
+  padding: var(--wood-frame-width);
   border-radius: 18px;
   background:
     linear-gradient(180deg, rgba(255,255,255,0.14), rgba(0,0,0,0.18)),
@@ -95,25 +95,19 @@
     inset 0 1px 0 rgba(255,255,255,0.26),
     inset 0 -1px 0 rgba(0,0,0,0.5),
     inset 0 0 18px rgba(0,0,0,0.35),
+    inset 0 0 22px rgba(0,0,0,0.35),
     0 12px 32px rgba(0,0,0,0.5),
     0 2px 8px rgba(0,0,0,0.4);
   border: 1px solid rgba(0,0,0,0.45);
   max-width: calc(7 * var(--card-width) + 6 * clamp(6px, 1.2vw, 14px) + clamp(20px, 3.2vw, 36px));
   width: min(98vw, calc(7 * var(--card-width) + 6 * clamp(6px, 1.2vw, 14px) + 36px));
-}
-
-.board-frame-inner {
-  border-radius: 12px;
-  padding: clamp(8px, 1.4vw, 14px);
-  background: transparent;
-  box-shadow: inset 0 0 22px rgba(0,0,0,0.35);
   position: relative;
 }
 
-.board-frame-inner::before {
+.board-frame::before {
   content: '';
   position: absolute;
-  inset: 0;
+  inset: var(--wood-frame-width);
   border-radius: 12px;
   background: radial-gradient(120% 65% at 50% 0%, rgba(255,255,255,0.09), transparent 55%);
   pointer-events: none;
