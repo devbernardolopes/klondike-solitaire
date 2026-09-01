@@ -35,12 +35,27 @@ const LS_KEYS = {
   theme: 'klondike:theme',
   interfaceTheme: 'klondike:interfaceTheme',
   handedness: 'klondike:handedness',
+  deck: 'klondike:deck',
+  cardBack: 'klondike:cardBack',
+  highlightCard: 'klondike:highlightCard',
+  particles: 'klondike:particles',
+  cardEffects: 'klondike:cardEffects',
+  tableTexture: 'klondike:tableTexture',
+  boardFrame: 'klondike:boardFrame',
+  bounce: 'klondike:bounce',
+  ghostTrail: 'klondike:ghostTrail',
 };
 
 function readLS(key, fallback) {
   try {
     const v = localStorage.getItem(key);
-    return v == null ? fallback : v;
+    if (v == null) return fallback;
+    if (typeof fallback === 'boolean') {
+      if (v === 'true') return true;
+      if (v === 'false') return false;
+      return fallback;
+    }
+    return v;
   } catch {
     return fallback;
   }
@@ -48,25 +63,30 @@ function readLS(key, fallback) {
 
 function writeLS(key, value) {
   try {
-    localStorage.setItem(key, value);
+    localStorage.setItem(key, String(value));
   } catch {
     /* storage may be unavailable (private mode); Dexie remains the source of truth */
   }
 }
 
+try {
+  const lsDeck = readLS(LS_KEYS.deck, DEFAULTS.deck);
+  if (lsDeck !== DEFAULTS.deck) setActiveDeck(lsDeck);
+} catch {}
+
 export const useSettingsStore = create((set, get) => ({
   theme: readLS(LS_KEYS.theme, DEFAULTS.theme),
   interfaceTheme: readLS(LS_KEYS.interfaceTheme, DEFAULTS.interfaceTheme),
-  deck: DEFAULTS.deck,
-  cardBack: DEFAULTS.cardBack,
+  deck: readLS(LS_KEYS.deck, DEFAULTS.deck),
+  cardBack: readLS(LS_KEYS.cardBack, DEFAULTS.cardBack),
   handedness: readLS(LS_KEYS.handedness, DEFAULTS.handedness),
-  highlightCard: DEFAULTS.highlightCard,
-  particles: DEFAULTS.particles,
-  cardEffects: DEFAULTS.cardEffects,
-  tableTexture: DEFAULTS.tableTexture,
-  boardFrame: DEFAULTS.boardFrame,
-  bounce: DEFAULTS.bounce,
-  ghostTrail: DEFAULTS.ghostTrail,
+  highlightCard: readLS(LS_KEYS.highlightCard, DEFAULTS.highlightCard),
+  particles: readLS(LS_KEYS.particles, DEFAULTS.particles),
+  cardEffects: readLS(LS_KEYS.cardEffects, DEFAULTS.cardEffects),
+  tableTexture: readLS(LS_KEYS.tableTexture, DEFAULTS.tableTexture),
+  boardFrame: readLS(LS_KEYS.boardFrame, DEFAULTS.boardFrame),
+  bounce: readLS(LS_KEYS.bounce, DEFAULTS.bounce),
+  ghostTrail: readLS(LS_KEYS.ghostTrail, DEFAULTS.ghostTrail),
   seenThemeItemIds: [],
   seenAchievementIds: [],
   themeModalTab: 'interface',
@@ -124,6 +144,7 @@ export const useSettingsStore = create((set, get) => ({
     setActiveDeck(deck);
     set({ deck });
     setSetting('deck', deck);
+    writeLS(LS_KEYS.deck, deck);
   },
 
   /**
@@ -132,6 +153,7 @@ export const useSettingsStore = create((set, get) => ({
   setCardBack: (cardBack) => {
     set({ cardBack });
     setSetting('cardBack', cardBack);
+    writeLS(LS_KEYS.cardBack, cardBack);
   },
 
   /**
@@ -149,6 +171,7 @@ export const useSettingsStore = create((set, get) => ({
   setHighlightCard: (highlightCard) => {
     set({ highlightCard });
     setSetting('highlightCard', highlightCard);
+    writeLS(LS_KEYS.highlightCard, highlightCard);
   },
 
   /**
@@ -157,31 +180,37 @@ export const useSettingsStore = create((set, get) => ({
   setParticles: (particles) => {
     set({ particles });
     setSetting('particles', particles);
+    writeLS(LS_KEYS.particles, particles);
   },
 
   setCardEffects: (cardEffects) => {
     set({ cardEffects });
     setSetting('cardEffects', cardEffects);
+    writeLS(LS_KEYS.cardEffects, cardEffects);
   },
 
   setTableTexture: (tableTexture) => {
     set({ tableTexture });
     setSetting('tableTexture', tableTexture);
+    writeLS(LS_KEYS.tableTexture, tableTexture);
   },
 
   setBoardFrame: (boardFrame) => {
     set({ boardFrame });
     setSetting('boardFrame', boardFrame);
+    writeLS(LS_KEYS.boardFrame, boardFrame);
   },
 
   setBounce: (bounce) => {
     set({ bounce });
     setSetting('bounce', bounce);
+    writeLS(LS_KEYS.bounce, bounce);
   },
 
   setGhostTrail: (ghostTrail) => {
     set({ ghostTrail });
     setSetting('ghostTrail', ghostTrail);
+    writeLS(LS_KEYS.ghostTrail, ghostTrail);
   },
 
   /**
