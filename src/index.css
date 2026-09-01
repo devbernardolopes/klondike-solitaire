@@ -12,6 +12,13 @@ body,
   overscroll-behavior: none;
 }
 
+.game-board {
+  scrollbar-width: none;
+}
+.game-board::-webkit-scrollbar {
+  display: none;
+}
+
 /* Modal body scroll container: scrolls vertically when content overflows but
  * renders no scrollbar (wheel / trackpad / keyboard / touch still work). */
 .modal-body-scroll {

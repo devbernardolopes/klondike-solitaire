@@ -50,7 +50,7 @@ function clearFanMetrics() {
  * Presentational stacked run shown floating under the cursor while dragging
  * a multi-card tableau run (bottom→top order).
  * @param {{ cards: Array<{id:string, suit:string, rank:number, color:string, faceUp:boolean}> }} props
- * @param {{ cardH:number, fanUp:number, fanDown:number, fanDownMin:number, avail:number }} [props.metrics]
+ * @param {{ cardH:number, fanUp:number, fanDown:number, fanDownMin:number, fanUpEmergencyMin:number, avail:number }} [props.metrics]
  */
 function RunPreview({ cards, metrics }) {
   const { cardH, fanUp, avail } = metrics || {};
@@ -110,10 +110,11 @@ export default function Board() {
       const fanUp = measureVar('var(--tableau-fan)');
       const fanDown = measureVar('var(--tableau-fan-down)');
       const fanDownMin = measureVar('var(--tableau-fan-down-min)');
+      const fanUpEmergencyMin = measureVar('var(--tableau-fan-up-emergency-min)');
       const gap = measureVar('clamp(6px, 1.2vw, 14px)');
       const pad = measureVar('clamp(8px, 2vw, 20px)');
       const avail = Math.max(0, board.clientHeight - 2 * cardH - gap - 2 * pad - 8);
-      setMetrics({ cardH, fanUp, fanDown, fanDownMin, avail });
+      setMetrics({ cardH, fanUp, fanDown, fanDownMin, fanUpEmergencyMin, avail });
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -433,7 +434,8 @@ export default function Board() {
     <div
       ref={boardRef}
       onPointerUp={handleBoardPointerUp}
-      style={{ position: 'relative', flex: 1, minHeight: '100%', width: '100%', touchAction: 'manipulation', overflow: 'hidden' }}
+      className="game-board"
+      style={{ position: 'relative', flex: 1, minHeight: '100%', width: '100%', touchAction: 'manipulation', overflowX: 'hidden', overflowY: 'auto' }}
     >
       {isOver && (
         <div

@@ -37,6 +37,7 @@
   /* Tighter peek for face-down cards (bottom of tableau piles) */
   --tableau-fan-down: clamp(10px, 2vw, 28px);
   --tableau-fan-down-min: 3px;
+  --tableau-fan-up-emergency-min: 8px;
 
   /* On dark faces, "black" suits become light; red is brightened for contrast */
   --card-text-red: #ff6b6b;
@@ -49,7 +50,7 @@
 
 @media (min-width: 1040px) and (max-height: 1000px) {
   .theme-dark {
-    --tableau-fan-down-min: 8px;
+    --tableau-fan-down-min: 18px;
   }
 }
 
