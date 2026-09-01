@@ -65,10 +65,6 @@ export function MotionDebugPanel() {
     alpha: { value: MOTION.ghostTrail.alpha, min: 0, max: 1, step: 0.01, onChange: (v) => (MOTION.ghostTrail.alpha = v) },
     scale: { value: MOTION.ghostTrail.scale, min: 0.8, max: 1.1, step: 0.01, onChange: (v) => (MOTION.ghostTrail.scale = v) },
   });
-  useControls('stackEdge', {
-    stepPx: { value: MOTION.stackEdge.stepPx, min: 0.5, max: 5, step: 0.1, onChange: (v) => (MOTION.stackEdge.stepPx = v) },
-    maxThickness: { value: MOTION.stackEdge.maxThickness, min: 2, max: 20, step: 0.5, onChange: (v) => (MOTION.stackEdge.maxThickness = v) },
-  });
   useControls('boardFrame', {
     duration: { value: MOTION.boardFrame.duration, min: 0.05, max: 1.5, step: 0.01, onChange: (v) => (MOTION.boardFrame.duration = v) },
   });

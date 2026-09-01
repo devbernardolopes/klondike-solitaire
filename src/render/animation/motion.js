@@ -153,9 +153,6 @@ export const MOTION = {
   // fades/scale. Capped to maxConcurrent to avoid DOM flood during overlap auto.
   ghostTrail: { duration: 0.45, ease: 'power1.out', alpha: 0.18, scale: 0.96, maxConcurrent: 8 },
 
-  // Stack thickness edge on tableau fanned piles (box-shadow left edge).
-  stackEdge: { stepPx: 1.6, maxThickness: 9 },
-
   // Wood frame entry (future GSAP reveal; currently CSS texture).
   boardFrame: { duration: 0.4, ease: 'power2.out' },
 
