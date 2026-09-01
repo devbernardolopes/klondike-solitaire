@@ -1,7 +1,36 @@
--- Canonical submit_game_result definition. The schema changes and reset RPC
--- are applied by klondike_supabase_migration_018.sql.
+-- ============================================================
+-- Klondike Solitaire - Supabase migration 021 (Profile personal-best repair)
+-- ============================================================
 
-drop function if exists public.submit_game_result(boolean, integer, integer, integer, integer, bigint, text, date);
+alter table public.profiles
+  add column if not exists lowest_time_ms integer,
+  add column if not exists lowest_moves integer;
+
+-- Restore missing personal-best values from durable winning results without
+-- replacing a value that is already better.
+with historical as (
+  select
+    user_id,
+    min(duration_ms) filter (where won and duration_ms is not null) as lowest_time_ms,
+    min(moves) filter (where won and moves is not null) as lowest_moves
+  from public.game_results
+  group by user_id
+)
+update public.profiles as p
+set lowest_time_ms = case
+      when p.lowest_time_ms is null then historical.lowest_time_ms
+      when historical.lowest_time_ms is null then p.lowest_time_ms
+      else least(p.lowest_time_ms, historical.lowest_time_ms)
+    end,
+    lowest_moves = case
+      when p.lowest_moves is null then historical.lowest_moves
+      when historical.lowest_moves is null then p.lowest_moves
+      else least(p.lowest_moves, historical.lowest_moves)
+    end,
+    updated_at = now()
+from historical
+where p.id = historical.user_id
+  and (historical.lowest_time_ms is not null or historical.lowest_moves is not null);
 
 create or replace function public.submit_game_result(
   p_won boolean,
@@ -183,3 +212,5 @@ grant execute on function public.submit_game_result(
   boolean, boolean, integer, integer, integer, integer, boolean, boolean,
   integer, jsonb
 ) to authenticated;
+
+
