@@ -94,6 +94,15 @@ export default function App() {
   }, [init, initStats, initSeeds]);
 
   const tableTexture = useSettingsStore((s) => s.tableTexture);
+  const cardEffects = useSettingsStore((s) => s.cardEffects);
+  const bounce = useSettingsStore((s) => s.bounce);
+  useEffect(() => {
+    try {
+      const on = !!(cardEffects && bounce);
+      if (!on) { document.documentElement.removeAttribute('data-bounce'); }
+      else { document.documentElement.setAttribute('data-bounce', 'on'); }
+    } catch {}
+  }, [cardEffects, bounce]);
   useEffect(() => {
     try {
       if (!tableTexture) {

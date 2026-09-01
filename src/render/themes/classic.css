@@ -120,18 +120,22 @@
 }
 
 [data-card] {
-  transition: transform 0.12s ease, filter 0.12s ease;
+  transition: none;
 }
 
-@media (hover: hover) and (pointer: fine) {
-  [data-card]:hover {
-    transform: translateY(-2px);
-    filter: brightness(1.05);
+@media (prefers-reduced-motion: no-preference) {
+  html[data-bounce="on"] [data-card] {
+    transition: transform 0.12s ease, filter 0.12s ease;
   }
-}
-
-[data-card]:active {
-  transform: translateY(0) scale(0.99);
+  @media (hover: hover) and (pointer: fine) {
+    html[data-bounce="on"] [data-card]:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.05);
+    }
+  }
+  html[data-bounce="on"] [data-card]:active {
+    transform: translateY(0) scale(0.99);
+  }
 }
 
 @keyframes pileGlow {
