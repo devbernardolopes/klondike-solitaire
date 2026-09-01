@@ -8,6 +8,7 @@
 // SettingsModal.jsx / ConfirmModal.jsx. Reached only from Settings.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
@@ -106,6 +107,7 @@ function AchievementRow({ achievement, isNew, onOpen }) {
  */
 export default function AchievementsModal({ open, onClose }) {
   const dialogRef = useRef(null);
+  const scrollRef = useRef(null);
   const backdrop = useModalBackdrop(onClose);
   const userId = useAuthStore((s) => s.userId);
   const [loading, setLoading] = useState(true);
@@ -116,6 +118,7 @@ export default function AchievementsModal({ open, onClose }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [newIds, setNewIds] = useState(/** @type {string[]} */ ([]));
+  const [scrollMetrics, setScrollMetrics] = useState({ scrollTop: 0, scrollHeight: 0, clientHeight: 0 });
   const markAchievementsSeen = useSettingsStore((s) => s.markAchievementsSeen);
 
   // Keep the latest close handler in a ref so the open-effect depends only on
@@ -126,6 +129,39 @@ export default function AchievementsModal({ open, onClose }) {
     if (!open) return;
     dialogRef.current?.focus();
   }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      setScrollMetrics({ scrollTop: 0, scrollHeight: 0, clientHeight: 0 });
+      return undefined;
+    }
+
+    const scrollElement = scrollRef.current;
+    if (!scrollElement) return undefined;
+
+    const updateScrollMetrics = () => {
+      setScrollMetrics({
+        scrollTop: scrollElement.scrollTop,
+        scrollHeight: scrollElement.scrollHeight,
+        clientHeight: scrollElement.clientHeight,
+      });
+    };
+
+    scrollElement.addEventListener('scroll', updateScrollMetrics, { passive: true });
+    window.addEventListener('resize', updateScrollMetrics);
+    updateScrollMetrics();
+
+    const resizeObserver = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(updateScrollMetrics)
+      : null;
+    resizeObserver?.observe(scrollElement);
+
+    return () => {
+      scrollElement.removeEventListener('scroll', updateScrollMetrics);
+      window.removeEventListener('resize', updateScrollMetrics);
+      resizeObserver?.disconnect();
+    };
+  }, [open, loading, defs, unlocked]);
 
   // Fetch the catalog (achievements_definitions) and the user's unlocked set.
   // A null client (missing env / offline) or any error is treated as
@@ -236,6 +272,27 @@ export default function AchievementsModal({ open, onClose }) {
     display: 'flex',
     flexDirection: 'column',
   };
+  const showScrollUp = scrollMetrics.scrollTop > 0;
+  const showScrollDown =
+    scrollMetrics.scrollTop + scrollMetrics.clientHeight < scrollMetrics.scrollHeight - 1;
+  const scrollButton = {
+    position: 'absolute',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    width: 34,
+    height: 28,
+    display: 'grid',
+    placeItems: 'center',
+    padding: 0,
+    border: '1px solid var(--ui-modal-panel-border)',
+    borderRadius: 999,
+    background: 'color-mix(in srgb, var(--ui-modal-panel-bg) 82%, transparent)',
+    color: 'var(--ui-modal-panel-fg)',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.22)',
+    backdropFilter: 'blur(4px)',
+    cursor: 'pointer',
+    zIndex: 1,
+  };
 
   return (
     <>
@@ -261,7 +318,8 @@ export default function AchievementsModal({ open, onClose }) {
           <h2 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>Achievements</h2>
           <ModalCloseButton onClick={onClose} />
 
-          <div className="modal-body-scroll" style={{ flex: 1, minHeight: 0 }}>
+          <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
+            <div ref={scrollRef} className="modal-body-scroll" style={{ height: '100%' }}>
             {loading ? (
               <div style={{ opacity: 0.8, fontSize: 14, marginBottom: 16 }}>Loading…</div>
             ) : (
@@ -281,6 +339,31 @@ export default function AchievementsModal({ open, onClose }) {
                   );
                 })}
               </div>
+            )}
+            </div>
+
+            {showScrollUp && (
+              <button
+                type="button"
+                aria-label="Scroll achievements to top"
+                onClick={() => scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
+                style={{ ...scrollButton, top: 8 }}
+              >
+                <ChevronUp size={18} strokeWidth={2.5} aria-hidden="true" />
+              </button>
+            )}
+            {showScrollDown && (
+              <button
+                type="button"
+                aria-label="Scroll achievements to bottom"
+                onClick={() => {
+                  const element = scrollRef.current;
+                  element?.scrollTo({ top: element.scrollHeight, behavior: 'smooth' });
+                }}
+                style={{ ...scrollButton, bottom: 8 }}
+              >
+                <ChevronDown size={18} strokeWidth={2.5} aria-hidden="true" />
+              </button>
             )}
           </div>
 
