@@ -52,7 +52,7 @@ export const MOTION = {
   autoComplete: { mode: 'overlap', stepDelay: 75 },
 
   // 3D rotateY face flip (face-down <-> face-up) in useCardFaceFlip.
-  flipCard: { duration: 0.18, ease: 'back.out(1.15)' },
+  flipCard: { duration: 0.05, ease: 'back.out(1.15)' },
 
   // Stock → waste draw slide. The revealed card flips face-up in place at the
   // stock pile and THEN glides horizontally to the waste pile. The horizontal
@@ -102,7 +102,7 @@ export const MOTION = {
 
   // Card flip shimmer: specular sweep across the face right after the 3D flip
   // lands. Very short so it reads as a glint, not a linger.
-  shimmer: { duration: 0.52, ease: 'power2.inOut' },
+  shimmer: { duration: 0.75, ease: 'power2.inOut' },
 
   // Pile hover glow: soft animated aura shown on valid drop targets instead of
   // the old dashed border. Implemented as CSS animation; preset kept here for tuning.
