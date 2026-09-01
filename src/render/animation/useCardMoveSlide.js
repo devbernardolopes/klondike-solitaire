@@ -4,6 +4,7 @@ import { MOTION } from './motion.js';
 import { dequeueFlip } from './flipBridge.js';
 import { useGameStore } from '../../hooks/useGameStore.js';
 import { useUiStore } from '../../hooks/useUiStore.js';
+import { useSettingsStore } from '../../hooks/useSettingsStore.js';
 
 const CONFIG_BY_TYPE = {
   // All generic card relocations (single cards and multi-card runs) share the
@@ -115,16 +116,59 @@ export function useCardMoveSlide() {
     }
 
     let completed = false;
+    const ghosts = [];
+    const shouldGhost = (() => {
+      try {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
+      } catch {}
+      if (type === 'deal') return false;
+      try {
+        if (!useSettingsStore.getState().cardEffects) return false;
+      } catch {}
+      return type === 'move' || type === 'auto' || type === 'undo';
+    })();
+    const createGhosts = () => {
+      if (!shouldGhost || moved.length === 0) return;
+      const cap = MOTION.ghostTrail?.maxConcurrent ?? 8;
+      const toSpawn = Math.min(moved.length, cap);
+      for (let i = 0; i < toSpawn; i++) {
+        const el = moved[i];
+        try {
+          const oldRect = snapshot.get(el.getAttribute('data-flip-id') || el.getAttribute('data-card'));
+          if (!oldRect) continue;
+          const g = el.cloneNode(true);
+          g.style.position = 'fixed';
+          g.style.left = `${oldRect.left}px`;
+          g.style.top = `${oldRect.top}px`;
+          g.style.width = `${oldRect.width}px`;
+          g.style.height = `${oldRect.height}px`;
+          g.style.margin = '0';
+          g.style.pointerEvents = 'none';
+          g.style.zIndex = '1400';
+          g.style.opacity = String(MOTION.ghostTrail?.alpha ?? 0.18);
+          g.removeAttribute('data-card');
+          g.removeAttribute('data-flip-id');
+          document.body.appendChild(g);
+          ghosts.push(g);
+          gsap.to(g, {
+            opacity: 0,
+            scale: MOTION.ghostTrail?.scale ?? 0.96,
+            duration: (MOTION.ghostTrail?.duration ?? 0.35) * 0.9,
+            ease: MOTION.ghostTrail?.ease ?? 'power2.out',
+            delay: cfg.duration * 0.12,
+            onComplete: () => { try { g.remove(); } catch {} },
+          });
+        } catch {}
+      }
+    };
     const tl = gsap.timeline({
       onComplete: () => {
         completed = true;
-        moved.forEach((el) => gsap.set(el, { clearProps: 'scale,boxShadow' }));
-        // Restore each moved wrapper's original z-index so the next render's
-        // React-controlled value is what stays in effect.
+        moved.forEach((el) => gsap.set(el, { clearProps: 'scale,boxShadow,rotationZ' }));
+        ghosts.forEach((g) => { try { g.remove(); } catch {} });
         movers.forEach(({ wrap, prevZ }) => {
           if (wrap) wrap.style.zIndex = prevZ;
         });
-        // Drop the temporary stock-pile stacking context created for the deal.
         if (stockWrap) stockWrap.style.zIndex = prevStockZ;
         const i = activeTweens.indexOf(tl);
         if (i >= 0) activeTweens.splice(i, 1);
@@ -133,17 +177,19 @@ export function useCardMoveSlide() {
     });
     const isLifted = type === 'move' || type === 'auto';
     if (isLifted) {
-      moved.forEach((el) => gsap.set(el, { scale: 1.04, boxShadow: '0 14px 32px rgba(0,0,0,0.45), 0 5px 12px rgba(0,0,0,0.35)' }));
+      moved.forEach((el) => gsap.set(el, { scale: 1.04, rotationZ: gsap.utils.random(-1.2, 1.2), boxShadow: '0 14px 32px rgba(0,0,0,0.45), 0 5px 12px rgba(0,0,0,0.35)' }));
+      createGhosts();
     }
     tl.to(moved, {
       x: 0,
       y: 0,
       scale: 1,
+      rotationZ: 0,
       boxShadow: '0 4px 10px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.28)',
       duration: cfg.duration,
       ease: cfg.ease,
       stagger: cfg.stagger ?? 0,
-      clearProps: isLifted ? '' : 'scale,boxShadow',
+      clearProps: isLifted ? '' : 'scale,boxShadow,rotationZ',
     });
     activeTweens.push(tl);
 

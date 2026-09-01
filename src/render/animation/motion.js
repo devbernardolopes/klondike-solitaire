@@ -52,7 +52,7 @@ export const MOTION = {
   autoComplete: { mode: 'overlap', stepDelay: 75 },
 
   // 3D rotateY face flip (face-down <-> face-up) in useCardFaceFlip.
-  flipCard: { duration: 0.05, ease: 'back.out(1.15)' },
+  flipCard: { duration: 0.18, ease: 'back.out(1.15)' },
 
   // Stock → waste draw slide. The revealed card flips face-up in place at the
   // stock pile and THEN glides horizontally to the waste pile. The horizontal
@@ -107,6 +107,16 @@ export const MOTION = {
   // Pile hover glow: soft animated aura shown on valid drop targets instead of
   // the old dashed border. Implemented as CSS animation; preset kept here for tuning.
   hoverGlow: { duration: 1.4, blur: 14 },
+
+  hoverLift: { y: -4, scale: 1.02, duration: 0.15, ease: 'power2.out' },
+  ghostTrail: { duration: 0.35, ease: 'power2.out', alpha: 0.18, scale: 0.96, maxConcurrent: 8 },
+  stackEdge: { stepPx: 1.6, maxThickness: 9 },
+  boardFrame: { duration: 0.4, ease: 'power2.out' },
+  winEnhanced: {
+    phase1: { duration: 0.22, ease: 'power2.out', stagger: 0.015 },
+    phase2: { duration: 0.62, ease: 'power1.in', stagger: 0.05 },
+    confettiCount: 18,
+  },
 
   // Foundation particle burst: a suit-glyph explosion fired from the center of
   // the destination foundation pile whenever a card lands there. Each particle

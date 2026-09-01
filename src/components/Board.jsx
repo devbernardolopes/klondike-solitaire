@@ -19,6 +19,7 @@ import { useCardMoveSlide } from '../render/animation/useCardMoveSlide.js';
 import { useStockDrawSlide } from '../render/animation/useStockDrawSlide.js';
 import { useFoundationParticles } from '../render/animation/useFoundationParticles.js';
 import { useUncoverSparkle } from '../render/animation/useUncoverSparkle.js';
+import { applyWoodFrame, removeWoodFrame } from '../render/themes/woodFrame.js';
 import { useToastStore } from '../hooks/useToastStore.js';
 import { playWinCascade } from '../render/animation/winCascade.js';
 import { isWon } from '../core/winDetection.js';
@@ -98,6 +99,15 @@ export default function Board() {
   const boardRef = useRef(null);
   const [metrics, setMetrics] = useState(null);
 
+  const theme = useSettingsStore((s) => s.theme);
+  const boardFrame = useSettingsStore((s) => s.boardFrame);
+  useEffect(() => {
+    try {
+      if (!boardFrame) { removeWoodFrame(); return; }
+      applyWoodFrame();
+    } catch {}
+  }, [boardFrame]);
+
   // Measure the card/fan geometry and the available vertical space for a
   // tableau column so piles can compress their fan to fit the screen. Re-runs
   // on board resize (and viewport resize) so spacing re-fits and restores.
@@ -113,7 +123,8 @@ export default function Board() {
       const fanUpEmergencyMin = measureVar('var(--tableau-fan-up-emergency-min)');
       const gap = measureVar('clamp(6px, 1.2vw, 14px)');
       const pad = measureVar('clamp(8px, 2vw, 20px)');
-      const avail = Math.max(0, board.clientHeight - 2 * cardH - gap - 2 * pad - 8);
+      const frame = boardFrame ? measureVar('var(--wood-frame-width, 0px)') : 0;
+      const avail = Math.max(0, board.clientHeight - 2 * cardH - gap - 2 * pad - 2 * frame - 8);
       setMetrics({ cardH, fanUp, fanDown, fanDownMin, fanUpEmergencyMin, avail });
     };
     measure();
@@ -124,7 +135,7 @@ export default function Board() {
       ro.disconnect();
       window.removeEventListener('resize', measure);
     };
-  }, []);
+  }, [boardFrame, theme]);
   const recycleStock = useGameStore((s) => s.recycleStock);
   const autoMove = useGameStore((s) => s.autoMove);
   const autoComplete = useGameStore((s) => s.autoComplete);
@@ -523,76 +534,75 @@ export default function Board() {
       onDragEnd={onDragEnd}
       onDragCancel={onDragCancel}
     >
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(7, var(--card-width))',
-          gap: 'clamp(6px, 1.2vw, 14px)',
-          justifyContent: 'center',
-          padding: 'clamp(8px, 2vw, 20px)',
-          maxWidth: '100%',
-        }}
-      >
-        {/* Top row: order depends on handedness. Left-handed = current layout
-            (stock/waste on the left, foundations on the right). Right-handed
-            mirrors it (foundations on the left, stock/waste on the right). */}
-        {handedness === 'right'
-          ? [
-              ...state.foundations.map((pile, i) => (
-                <Pile
-                  key={`f${i}`}
-                  loc={`foundation:${i}`}
-                  cards={pile}
-                  hiddenIds={hiddenIds}
-                  onAutoMove={autoMove}
-                />
-              )),
-              <div key="spacer" />,
-              <Pile key="waste" loc="waste" cards={state.waste} hiddenIds={hiddenIds} onAutoMove={autoMove} />,
-              <Pile
-                key="stock"
-                loc="stock"
-                cards={state.stock}
-                onClick={onStockClick}
-                label={state.stock.length === 0 ? '↻' : ''}
-                hiddenIds={hiddenIds}
-              />,
-            ]
-          : [
-              <Pile
-                key="stock"
-                loc="stock"
-                cards={state.stock}
-                onClick={onStockClick}
-                label={state.stock.length === 0 ? '↻' : ''}
-                hiddenIds={hiddenIds}
-              />,
-              <Pile key="waste" loc="waste" cards={state.waste} hiddenIds={hiddenIds} onAutoMove={autoMove} />,
-              <div key="spacer" />,
-              ...state.foundations.map((pile, i) => (
-                <Pile
-                  key={`f${i}`}
-                  loc={`foundation:${i}`}
-                  cards={pile}
-                  hiddenIds={hiddenIds}
-                  onAutoMove={autoMove}
-                />
-              )),
-            ]}
-
-        {/* Tableau: 7 columns */}
-        {state.tableau.map((pile, i) => (
-          <Pile
-            key={`t${i}`}
-            loc={`tableau:${i}`}
-            cards={pile}
-            fanned
-            metrics={metrics}
-            hiddenIds={hiddenIds}
-            onAutoMove={autoMove}
-          />
-        ))}
-      </div>
+      {boardFrame ? (
+        <div className="board-frame">
+          <div className="board-frame-inner">
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(7, var(--card-width))',
+                gap: 'clamp(6px, 1.2vw, 14px)',
+                justifyContent: 'center',
+                padding: 'clamp(8px, 2vw, 20px)',
+                maxWidth: '100%',
+              }}
+            >
+              {handedness === 'right'
+                ? [
+                    ...state.foundations.map((pile, i) => (
+                      <Pile key={`f${i}`} loc={`foundation:${i}`} cards={pile} hiddenIds={hiddenIds} onAutoMove={autoMove} />
+                    )),
+                    <div key="spacer" />,
+                    <Pile key="waste" loc="waste" cards={state.waste} hiddenIds={hiddenIds} onAutoMove={autoMove} />,
+                    <Pile key="stock" loc="stock" cards={state.stock} onClick={onStockClick} label={state.stock.length === 0 ? '↻' : ''} hiddenIds={hiddenIds} />,
+                  ]
+                : [
+                    <Pile key="stock" loc="stock" cards={state.stock} onClick={onStockClick} label={state.stock.length === 0 ? '↻' : ''} hiddenIds={hiddenIds} />,
+                    <Pile key="waste" loc="waste" cards={state.waste} hiddenIds={hiddenIds} onAutoMove={autoMove} />,
+                    <div key="spacer" />,
+                    ...state.foundations.map((pile, i) => (
+                      <Pile key={`f${i}`} loc={`foundation:${i}`} cards={pile} hiddenIds={hiddenIds} onAutoMove={autoMove} />
+                    )),
+                  ]}
+              {state.tableau.map((pile, i) => (
+                <Pile key={`t${i}`} loc={`tableau:${i}`} cards={pile} fanned metrics={metrics} hiddenIds={hiddenIds} onAutoMove={autoMove} />
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(7, var(--card-width))',
+            gap: 'clamp(6px, 1.2vw, 14px)',
+            justifyContent: 'center',
+            padding: 'clamp(8px, 2vw, 20px)',
+            maxWidth: '100%',
+          }}
+        >
+          {handedness === 'right'
+            ? [
+                ...state.foundations.map((pile, i) => (
+                  <Pile key={`f${i}`} loc={`foundation:${i}`} cards={pile} hiddenIds={hiddenIds} onAutoMove={autoMove} />
+                )),
+                <div key="spacer" />,
+                <Pile key="waste" loc="waste" cards={state.waste} hiddenIds={hiddenIds} onAutoMove={autoMove} />,
+                <Pile key="stock" loc="stock" cards={state.stock} onClick={onStockClick} label={state.stock.length === 0 ? '↻' : ''} hiddenIds={hiddenIds} />,
+              ]
+            : [
+                <Pile key="stock" loc="stock" cards={state.stock} onClick={onStockClick} label={state.stock.length === 0 ? '↻' : ''} hiddenIds={hiddenIds} />,
+                <Pile key="waste" loc="waste" cards={state.waste} hiddenIds={hiddenIds} onAutoMove={autoMove} />,
+                <div key="spacer" />,
+                ...state.foundations.map((pile, i) => (
+                  <Pile key={`f${i}`} loc={`foundation:${i}`} cards={pile} hiddenIds={hiddenIds} onAutoMove={autoMove} />
+                )),
+              ]}
+          {state.tableau.map((pile, i) => (
+            <Pile key={`t${i}`} loc={`tableau:${i}`} cards={pile} fanned metrics={metrics} hiddenIds={hiddenIds} onAutoMove={autoMove} />
+          ))}
+        </div>
+      )}
 
       <DragOverlay dropAnimation={null} zIndex={1500}>
         {activeRun ? <RunPreview cards={activeRun} metrics={metrics} /> : null}

@@ -3,6 +3,10 @@
  * TODO(next pass): additional themes (midnight, aqua, etc.) and dark/light variants.
  */
 
+:root {
+  --wood-frame-width: clamp(10px, 1.6vw, 18px);
+}
+
 :root,
 .theme-classic {
   /* Table / felt */
@@ -77,6 +81,57 @@
 
   /* Distinct border marking the signed-in user's own row on the leaderboard */
   --ui-leaderboard-me-border: #1d6fe0;
+}
+
+.board-frame {
+  margin: clamp(8px, 2vw, 18px) auto;
+  padding: clamp(10px, 1.6vw, 18px);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.14), rgba(0,0,0,0.18)),
+    var(--wood-texture, linear-gradient(180deg, #4a3216, #2e1e0c));
+  background-size: auto, 512px 512px;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.26),
+    inset 0 -1px 0 rgba(0,0,0,0.5),
+    inset 0 0 18px rgba(0,0,0,0.35),
+    0 12px 32px rgba(0,0,0,0.5),
+    0 2px 8px rgba(0,0,0,0.4);
+  border: 1px solid rgba(0,0,0,0.45);
+  max-width: calc(7 * var(--card-width) + 6 * clamp(6px, 1.2vw, 14px) + clamp(20px, 3.2vw, 36px));
+  width: min(98vw, calc(7 * var(--card-width) + 6 * clamp(6px, 1.2vw, 14px) + 36px));
+}
+
+.board-frame-inner {
+  border-radius: 12px;
+  padding: clamp(8px, 1.4vw, 14px);
+  background: transparent;
+  box-shadow: inset 0 0 22px rgba(0,0,0,0.35);
+  position: relative;
+}
+
+.board-frame-inner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  background: radial-gradient(120% 65% at 50% 0%, rgba(255,255,255,0.09), transparent 55%);
+  pointer-events: none;
+}
+
+[data-card] {
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-card]:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.05);
+  }
+}
+
+[data-card]:active {
+  transform: translateY(0) scale(0.99);
 }
 
 @keyframes pileGlow {

@@ -250,12 +250,37 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
             borderRadius: 'var(--card-radius)',
             border: 'var(--pile-empty-border, 1px solid rgba(255,255,255,0.18))',
             background: 'var(--pile-empty-bg, rgba(0,0,0,0.12))',
-            boxShadow: 'var(--pile-empty-shadow, none)',
+            boxShadow: cardEffects
+              ? 'var(--pile-empty-shadow, none), inset 0 0 0 1px rgba(255,255,255,0.04), 0 2px 10px rgba(0,0,0,0.28)'
+              : 'var(--pile-empty-shadow, none)',
             pointerEvents: 'none',
             zIndex: 0,
           }}
         />
       )}
+      {fanned && cardEffects && cards.length > 1 && (() => {
+        const nDown = cards.filter((c) => !c.faceUp).length;
+        if (nDown <= 1) return null;
+        const thickness = Math.min(nDown * 1.6, 9);
+        return (
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              left: -1,
+              top: 2,
+              width: thickness,
+              height: 'calc(100% - 4px)',
+              borderRadius: 'var(--card-radius) 0 0 var(--card-radius)',
+              background: 'linear-gradient(90deg, rgba(0,0,0,0.38) 0%, rgba(0,0,0,0.16) 45%, rgba(255,255,255,0.06) 100%)',
+              boxShadow: 'inset -1px 0 0 rgba(255,255,255,0.08)',
+              pointerEvents: 'none',
+              zIndex: 0,
+              opacity: 0.85,
+            }}
+          />
+        );
+      })()}
       {kind === 'foundation' && (
         <span
           aria-hidden="true"

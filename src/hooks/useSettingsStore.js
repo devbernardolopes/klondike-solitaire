@@ -20,6 +20,7 @@ const DEFAULTS = {
   particles: true,
   cardEffects: true,
   tableTexture: true,
+  boardFrame: true,
 };
 
 // Synchronous mirrors of the settings that affect first paint (theme + board
@@ -61,6 +62,7 @@ export const useSettingsStore = create((set, get) => ({
   particles: DEFAULTS.particles,
   cardEffects: DEFAULTS.cardEffects,
   tableTexture: DEFAULTS.tableTexture,
+  boardFrame: DEFAULTS.boardFrame,
   seenThemeItemIds: [],
   seenAchievementIds: [],
   themeModalTab: 'interface',
@@ -71,7 +73,7 @@ export const useSettingsStore = create((set, get) => ({
    * keys fall back to DEFAULTS. Activates the loaded (or default) deck.
    */
   init: async () => {
-    const [theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, seenThemeItemIds, seenAchievementIds, themeModalTab] = await Promise.all([
+    const [theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, seenThemeItemIds, seenAchievementIds, themeModalTab] = await Promise.all([
       getSetting('theme', DEFAULTS.theme),
       getSetting('interfaceTheme', DEFAULTS.interfaceTheme),
       getSetting('deck', DEFAULTS.deck),
@@ -81,12 +83,13 @@ export const useSettingsStore = create((set, get) => ({
       getSetting('particles', DEFAULTS.particles),
       getSetting('cardEffects', DEFAULTS.cardEffects),
       getSetting('tableTexture', DEFAULTS.tableTexture),
+      getSetting('boardFrame', DEFAULTS.boardFrame),
       getSetting('seenThemeItemIds', []),
       getSetting('seenAchievementIds', []),
       getSetting('themeModalTab', 'background'),
     ]);
     setActiveDeck(deck);
-    set({ theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, seenThemeItemIds, seenAchievementIds, themeModalTab, loaded: true });
+    set({ theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, seenThemeItemIds, seenAchievementIds, themeModalTab, loaded: true });
   },
 
   /**
@@ -158,6 +161,11 @@ export const useSettingsStore = create((set, get) => ({
   setTableTexture: (tableTexture) => {
     set({ tableTexture });
     setSetting('tableTexture', tableTexture);
+  },
+
+  setBoardFrame: (boardFrame) => {
+    set({ boardFrame });
+    setSetting('boardFrame', boardFrame);
   },
 
   /**
