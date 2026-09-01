@@ -24,6 +24,7 @@ import ConfirmModal from './ConfirmModal.jsx';
 import { supabase } from '../lib/supabaseClient.js';
 import { fetchStoreCatalog } from '../data/storeCatalog.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
+import { useAchievementEventsStore } from '../hooks/useAchievementEventsStore.js';
 import ThemeModal from './ThemeModal.jsx';
 import AchievementsModal from './AchievementsModal.jsx';
 import LeaderboardModal from './LeaderboardModal.jsx';
@@ -74,6 +75,7 @@ export default function SettingsModal({
   const nameCheckTimer = useRef(null);
   const seenThemeItemIds = useSettingsStore((s) => s.seenThemeItemIds);
   const seenAchievementIds = useSettingsStore((s) => s.seenAchievementIds);
+  const achievementRevision = useAchievementEventsStore((s) => s.revision);
   const ownedItemIds = useAuthStore((s) => s.ownedItemIds);
   const [hasNewTheme, setHasNewTheme] = useState(false);
   const [hasNewAchievements, setHasNewAchievements] = useState(false);
@@ -158,7 +160,7 @@ export default function SettingsModal({
     return () => {
       cancelled = true;
     };
-  }, [open, seenAchievementIds]);
+  }, [open, seenAchievementIds, achievementRevision]);
 
   // Cancel any in-flight debounced availability check if the modal unmounts.
   useEffect(() => () => {

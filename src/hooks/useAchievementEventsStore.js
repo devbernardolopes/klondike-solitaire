@@ -18,11 +18,17 @@ export const useAchievementEventsStore = create((set, get) => ({
   // Array of { seq, ids } where `ids` is the array of newly-unlocked
   // achievement ids reported by an RPC. Consumers drain it via consume().
   queue: [],
+  // Durable-in-memory signal for consumers that need to react even after the
+  // toast bridge drains the queue.
+  revision: 0,
 
   /** Record a batch of newly-unlocked achievement ids. */
   announce: (ids) => {
     if (!Array.isArray(ids) || ids.length === 0) return;
-    set((s) => ({ queue: [...s.queue, { seq: ++seq, ids }] }));
+    set((s) => ({
+      queue: [...s.queue, { seq: ++seq, ids }],
+      revision: s.revision + 1,
+    }));
   },
 
   /** Remove and return the entire pending queue (for the toast phase). */
