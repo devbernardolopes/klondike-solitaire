@@ -8,6 +8,7 @@
 // immediately. Mirrors the modal chrome of SettingsModal.jsx / StoreModal.jsx.
 
 import { useEffect, useRef, useState } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
 import { useModalEscape } from '../hooks/useModalEscape.js';
@@ -56,6 +57,7 @@ const NEW_BADGE = {
  */
 export default function ThemeModal({ open, onClose }) {
   const dialogRef = useRef(null);
+  const scrollRef = useRef(null);
   const backdrop = useModalBackdrop(onClose);
   const theme = useSettingsStore((s) => s.theme);
   const interfaceTheme = useSettingsStore((s) => s.interfaceTheme);
@@ -75,6 +77,7 @@ export default function ThemeModal({ open, onClose }) {
   );
   const [catalogItems, setCatalogItems] = useState([]);
   const [newIds, setNewIds] = useState([]);
+  const [scrollMetrics, setScrollMetrics] = useState({ scrollTop: 0, scrollHeight: 0, clientHeight: 0 });
 
   useModalEscape({ open, onClose, id: 'theme', z: Z.CHILD });
 
@@ -98,6 +101,39 @@ export default function ThemeModal({ open, onClose }) {
       })
       .catch(() => setCatalogItems([]));
   }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      setScrollMetrics({ scrollTop: 0, scrollHeight: 0, clientHeight: 0 });
+      return undefined;
+    }
+
+    const scrollElement = scrollRef.current;
+    if (!scrollElement) return undefined;
+
+    const updateScrollMetrics = () => {
+      setScrollMetrics({
+        scrollTop: scrollElement.scrollTop,
+        scrollHeight: scrollElement.scrollHeight,
+        clientHeight: scrollElement.clientHeight,
+      });
+    };
+
+    scrollElement.addEventListener('scroll', updateScrollMetrics, { passive: true });
+    window.addEventListener('resize', updateScrollMetrics);
+    updateScrollMetrics();
+
+    const resizeObserver = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(updateScrollMetrics)
+      : null;
+    resizeObserver?.observe(scrollElement);
+
+    return () => {
+      scrollElement.removeEventListener('scroll', updateScrollMetrics);
+      window.removeEventListener('resize', updateScrollMetrics);
+      resizeObserver?.disconnect();
+    };
+  }, [open, activeTab, catalogItems, ownedItemIds, deck]);
 
   if (!open) return null;
 
@@ -125,6 +161,27 @@ export default function ThemeModal({ open, onClose }) {
     height: '85vh',
     display: 'flex',
     flexDirection: 'column',
+  };
+  const showScrollUp = scrollMetrics.scrollTop > 0;
+  const showScrollDown =
+    scrollMetrics.scrollTop + scrollMetrics.clientHeight < scrollMetrics.scrollHeight - 1;
+  const scrollButton = {
+    position: 'absolute',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    width: 34,
+    height: 28,
+    display: 'grid',
+    placeItems: 'center',
+    padding: 0,
+    border: '1px solid var(--ui-modal-panel-border)',
+    borderRadius: 999,
+    background: 'color-mix(in srgb, var(--ui-modal-panel-bg) 82%, transparent)',
+    color: 'var(--ui-modal-panel-fg)',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.22)',
+    backdropFilter: 'blur(4px)',
+    cursor: 'pointer',
+    zIndex: 1,
   };
 
   // Tile sizing mirrors the live card geometry via CSS vars so the previews
@@ -398,11 +455,37 @@ export default function ThemeModal({ open, onClose }) {
           })}
         </div>
 
-        <div className="modal-body-scroll" style={{ flex: 1, minHeight: 0 }}>
-          {activeTab === 'interface' && renderInterfaceTab()}
-          {activeTab === 'background' && renderBackgroundTab()}
-          {activeTab === 'cardsBack' && renderCardsBackTab()}
-          {activeTab === 'cardsFace' && renderCardsFaceTab()}
+        <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
+          <div ref={scrollRef} className="modal-body-scroll" style={{ height: '100%' }}>
+            {activeTab === 'interface' && renderInterfaceTab()}
+            {activeTab === 'background' && renderBackgroundTab()}
+            {activeTab === 'cardsBack' && renderCardsBackTab()}
+            {activeTab === 'cardsFace' && renderCardsFaceTab()}
+          </div>
+
+          {showScrollUp && (
+            <button
+              type="button"
+              aria-label="Scroll theme options to top"
+              onClick={() => scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
+              style={{ ...scrollButton, top: 8 }}
+            >
+              <ChevronUp size={18} strokeWidth={2.5} aria-hidden="true" />
+            </button>
+          )}
+          {showScrollDown && (
+            <button
+              type="button"
+              aria-label="Scroll theme options to bottom"
+              onClick={() => {
+                const element = scrollRef.current;
+                element?.scrollTo({ top: element.scrollHeight, behavior: 'smooth' });
+              }}
+              style={{ ...scrollButton, bottom: 8 }}
+            >
+              <ChevronDown size={18} strokeWidth={2.5} aria-hidden="true" />
+            </button>
+          )}
         </div>
       </div>
     </div>
