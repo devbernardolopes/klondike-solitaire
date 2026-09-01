@@ -15,7 +15,7 @@ const CONFIG_BY_TYPE = {
   move: MOTION.move,
   auto: MOTION.auto,
   deal: MOTION.deal,
-  recycle: MOTION.move,
+  recycle: MOTION.recycle,
   undo: MOTION.undo,
 };
 
@@ -46,13 +46,13 @@ export function useCardMoveSlide() {
     // (draw) are drained by useStockDrawSlide; a stale/unknown entry is left
     // untouched. Because each transition enqueues exactly one snapshot and the
     // effect runs once per state change, this drains one entry per commit.
-    const entry =
+    let entry;
+    while ((entry =
       dequeueFlip('move') ||
       dequeueFlip('auto') ||
       dequeueFlip('recycle') ||
       dequeueFlip('deal') ||
-      dequeueFlip('undo');
-    if (!entry) return;
+      dequeueFlip('undo'))) {
     const { tid, snapshot, type } = entry;
     const cfg = CONFIG_BY_TYPE[type];
     if (!cfg) {
@@ -216,6 +216,7 @@ export function useCardMoveSlide() {
     // re-running this effect must start its OWN tween, not tear down the prior
     // in-flight ones. The only teardown happens on unmount (below).
     // eslint-disable-next-line react-hooks/exhaustive-deps
+    }
   }, [state, lastActionMeta]);
 
   // Tear down every in-flight tween only when the board unmounts, and release

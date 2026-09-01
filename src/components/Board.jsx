@@ -161,6 +161,7 @@ export default function Board() {
   const stockWasteBusy = useUiStore(
     (s) => s.animatingLocs.has('stock') || s.animatingLocs.has('waste'),
   );
+  const pendingDrawRef = useRef(false);
   const locked = won || isOver || anyAnimating || autoCompleting;
   const { sensors, onDragStart, onDragEnd, onDragCancel, activeRun } =
     useDragEngine();
@@ -364,7 +365,10 @@ export default function Board() {
        switch (e.key.toLowerCase()) {
         case 'd':
           clearSelection();
-          if (stockWasteBusy) return;
+          if (stockWasteBusy) {
+            pendingDrawRef.current = true;
+            return;
+          }
           if (useGameStore.getState().state.stock.length > 0) drawFromStock();
           else if (useGameStore.getState().state.waste.length > 0) recycleStock();
           setAnnounce('Drew from stock');
@@ -391,9 +395,21 @@ export default function Board() {
     return () => window.removeEventListener('keydown', onKey);
   }, [won, isOver, anyAnimating, autoCompleting, stockWasteBusy, drawFromStock, recycleStock, undo, autoComplete, dealNewGame, showHints, clearSelection, setAnnounce]);
 
+  useEffect(() => {
+    if (stockWasteBusy || !pendingDrawRef.current) return;
+    pendingDrawRef.current = false;
+    if (won || isOver) return;
+    const current = useGameStore.getState().state;
+    if (current.stock.length > 0) drawFromStock();
+    else if (current.waste.length > 0) recycleStock();
+  }, [stockWasteBusy, won, isOver, drawFromStock, recycleStock]);
+
   const onStockClick = () => {
     if (won || isOver) return;
-    if (stockWasteBusy) return;
+    if (stockWasteBusy) {
+      pendingDrawRef.current = true;
+      return;
+    }
     if (state.stock.length > 0) drawFromStock();
     else if (state.waste.length > 0) recycleStock();
   };

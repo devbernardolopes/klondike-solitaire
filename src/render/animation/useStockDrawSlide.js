@@ -52,8 +52,8 @@ export function useStockDrawSlide() {
     // Drain THIS draw's snapshot. If none is queued, a different transition is
     // re-running the effect (e.g. a concurrent tableau move) — leave the
     // in-flight draw alone.
-    const entry = dequeueFlip('draw');
-    if (!entry) return;
+    let entry;
+    while ((entry = dequeueFlip('draw'))) {
     const { tid } = entry;
 
     const wastePile = document.querySelector('[data-loc="waste"]');
@@ -158,6 +158,7 @@ export function useStockDrawSlide() {
     );
     drawTweens.set(drawnId, { tl, tid, cardNode, inner, wrap, prevWrapZ });
     // No per-rerun cleanup that kills `tl`: see the module-level registry note.
+    }
   }, [state, lastActionMeta]);
 
   // Kill the draw tween only when the board unmounts.
