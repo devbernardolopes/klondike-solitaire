@@ -11,15 +11,59 @@
  *   count / scale / alpha / maxConcurrent — unitless
  *   mode — enum ('sequential' | 'overlap')
  *
- * Ease glossary:
- *   power*.in  — accelerate (slow start, fast end)
- *   power*.out — decelerate (fast start, slow landing)
- *   power*.inOut — both
- *   back.out(n) — overshoot by n then spring back (n ≈ tension; 0.6 subtle, 1.15 moderate, 1.7 strong pop)
+ * Ease reference:
+ *   Power family (power1-power4):
+ *     power1.* - Linear-like with subtle acceleration/deceleration, smooth UI transitions
+ *     power2.* - Standard easing used for most UI animations, natural feel
+ *     power3.* - Strong acceleration/deceleration, more dramatic motion
+ *     power4.* - Extreme curves, very dramatic effects
+ *
+ *     power*.in    - Accelerate (slow start, fast end), enters scene with energy
+ *     power*.out   - Decelerate (fast start, slow end), exits naturally
+ *     power*.inOut - Both (slow start, fast middle, slow end), symmetrical motion
+ *
+ *   Back family:
+ *     back.in(n)   - Overshoots backward then snaps forward (n=tension, 0.6-1.7)
+ *     back.out(n)  - Overshoots forward then springs back (n=tension, commonly 0.4-1.7)
+ *     back.inOut(n) - Overshoots both ways, symmetrical spring-back motion
+ *     n (tension): 0.6 = subtle pop, 1.0 = moderate, 1.2+ = strong bounce
+ *
+ *   Sine family:
+ *     sine.in   - Smooth sine wave acceleration, organic feel
+ *     sine.out  - Smooth sine wave deceleration
+ *     sine.inOut - Symmetrical sine curve, gentle motion
+ *
+ *   Circ family (circular motion):
+ *     circ.in   - Circular entry, starts with small radius expanding
+ *     circ.out  - Circular exit, ends with circular path completion
+ *     circ.inOut - Circular entry and exit, symmetrical motion
+ *
+ *   Elastic family (spring-like bounce):
+ *     elastic.in   - Bounces backward before snapping forward
+ *     elastic.out  - Bounces forward then returns
+ *     elastic.inOut - Bounces both ways
+ *     Note: Can take additional parameters for bounce intensity and frequency
+ *
+ *   Bounce family:
+ *     bounce.in   - Bounces on entry, multiple decreasing bounces
+ *     bounce.out  - Bounces on exit, culminates in settling
+ *     bounce.inOut - Bounces on both entry and exit
+ *
+ *   Special values:
+ *     linear   - Constant velocity, no acceleration
+ *     CubicBezier(customPoints...) - Custom ease curve defined by control points
+ *     Stepper(steps) - Step animation for discrete transitions
+ *     RoughEase(config) - Organic, uneven motion
+ *
+ *   Common GSAP ease formats:
+ *     easeString               - 'power2.out', 'back.out(0.6)'
+ *     Ease object             - new Power2.easeOut
+ *     Function                - (t) => return eased value
+ *
  *
  * Shared keys:
  *   duration — length of tween (s)
- *   ease — GSAP ease name
+ *   ease — GSAP ease name or function
  *   stagger — delay between members of a group (s)
  */
 export const MOTION = {
