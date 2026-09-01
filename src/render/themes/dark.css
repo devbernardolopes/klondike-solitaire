@@ -24,6 +24,8 @@
     #2a1d45 12px
   );
   --card-border: 1px solid rgba(255, 255, 255, 0.14);
+  --card-back-border: 1px solid rgba(255, 255, 255, 0.34);
+  --card-back-shadow: 0 2px 7px rgba(0, 0, 0, 0.62), 0 0 0 1px rgba(255, 255, 255, 0.1);
   --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.6), 0 1px 4px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.06);
   --card-shadow-lift: 0 14px 32px rgba(0, 0, 0, 0.7), 0 5px 12px rgba(0, 0, 0, 0.55);
   --pile-empty-bg: rgba(255, 255, 255, 0.06);
@@ -34,6 +36,7 @@
   --tableau-fan: clamp(36px, 6vw, 80px);
   /* Tighter peek for face-down cards (bottom of tableau piles) */
   --tableau-fan-down: clamp(10px, 2vw, 28px);
+  --tableau-fan-down-min: 3px;
 
   /* On dark faces, "black" suits become light; red is brightened for contrast */
   --card-text-red: #ff6b6b;
@@ -42,6 +45,12 @@
      affordances so they read differently at a glance (shape/animation also differ). */
   --hint-source: #ffd54a; /* warm gold — pick-up / origin */
   --hint-target: #34d6ff; /* cyan — drop / destination */
+}
+
+@media (min-width: 1040px) and (max-height: 1000px) {
+  .theme-dark {
+    --tableau-fan-down-min: 8px;
+  }
 }
 
 /* Interface (UI chrome) theme — see classic.css for notes. Independent of the

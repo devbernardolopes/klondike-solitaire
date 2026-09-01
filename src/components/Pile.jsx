@@ -21,7 +21,7 @@ import { isWon } from '../core/winDetection.js';
  * @param {string} [props.label]         placeholder label when empty
  * @param {Set<string>} [props.hiddenIds] card ids to hide (e.g. while shown in a DragOverlay)
  * @param {(cardId: string, from: string) => void} [props.onAutoMove]  tap-to-move handler for face-up cards
- * @param {{ cardH:number, fanUp:number, fanDown:number, avail:number }|null} [props.metrics] measured geometry for adaptive tableau spacing
+ * @param {{ cardH:number, fanUp:number, fanDown:number, fanDownMin:number, avail:number }|null} [props.metrics] measured geometry for adaptive tableau spacing
  */
 export default function Pile({ loc, cards, fanned = false, onClick, label, hiddenIds, onAutoMove, metrics }) {
   const { setNodeRef, isOver } = useDroppable({ id: loc, data: { loc } });
@@ -71,7 +71,7 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
   // the available column height: face-down peeks shrink first (they only need to
   // read as a stack), then the face-up fan, with a final proportional guard that
   // guarantees no overflow regardless of pile depth.
-  const FAN_DOWN_MIN = 3;     // px — face-down cards just need to read as "a stack"
+  const FAN_DOWN_MIN = metrics?.fanDownMin ?? 3; // px — keep face-down backs visibly separated
   const FAN_UP_SOFT_MIN = 14; // px — preferred floor so rank/suit stay legible
 
   const freezeVisual = fanned && isAnimating && cards.some((c) => animatingCards.has(c.id));
@@ -81,7 +81,8 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
   let tops = null;
   let pileHeight = null;
   if (fanned && metrics && metrics.cardH) {
-    const { cardH, fanUp: fanUpMax, fanDown: fanDownMax, avail } = metrics;
+    const { cardH, fanUp: fanUpMax, fanDown: fanDownMax, fanDownMin, avail } = metrics;
+    const downMin = fanDownMin ?? FAN_DOWN_MIN;
     const offsetCount = Math.max(0, cards.length - 1);
     let nDown = 0, nUp = 0;
     for (let i = 0; i < offsetCount; i++) {
@@ -94,15 +95,15 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
 
     if (avail > 0 && naturalExtra > avail) {
       const savingsNeeded = naturalExtra - avail;
-      const maxDownSavings = nDown * (fanDownMax - FAN_DOWN_MIN);
+      const maxDownSavings = nDown * (fanDownMax - downMin);
       if (nDown > 0 && maxDownSavings >= savingsNeeded) {
         fanDown = fanDownMax - savingsNeeded / nDown;
       } else {
-        fanDown = FAN_DOWN_MIN;
-        const remaining = avail - nDown * FAN_DOWN_MIN;
+        fanDown = downMin;
+        const remaining = avail - nDown * downMin;
         const strictFanUp = nUp > 0 ? Math.max(remaining / nUp, 0) : fanUpMax;
         const withSoftFloor = Math.max(strictFanUp, FAN_UP_SOFT_MIN);
-        const fitsWithSoftFloor = nDown * FAN_DOWN_MIN + nUp * withSoftFloor <= avail;
+        const fitsWithSoftFloor = nDown * downMin + nUp * withSoftFloor <= avail;
         fanUp = fitsWithSoftFloor ? withSoftFloor : strictFanUp;
       }
     }
@@ -125,7 +126,8 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
 
   let visualPileHeight = null;
   if (fanned && freezeVisual && metrics && metrics.cardH) {
-    const { cardH, fanUp: fanUpMax, fanDown: fanDownMax, avail } = metrics;
+    const { cardH, fanUp: fanUpMax, fanDown: fanDownMax, fanDownMin, avail } = metrics;
+    const downMin = fanDownMin ?? FAN_DOWN_MIN;
     const effLen = effectiveLenForVisual;
     const offsetCount = Math.max(0, effLen - 1);
     let nDown = 0, nUp = 0;
@@ -137,14 +139,14 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
     const naturalExtra = nDown * fanDownMax + nUp * fanUpMax;
     if (avail > 0 && naturalExtra > avail) {
       const savingsNeeded = naturalExtra - avail;
-      const maxDownSavings = nDown * (fanDownMax - FAN_DOWN_MIN);
+      const maxDownSavings = nDown * (fanDownMax - downMin);
       if (nDown > 0 && maxDownSavings >= savingsNeeded) fanDown = fanDownMax - savingsNeeded / nDown;
       else {
-        fanDown = FAN_DOWN_MIN;
-        const remaining = avail - nDown * FAN_DOWN_MIN;
+        fanDown = downMin;
+        const remaining = avail - nDown * downMin;
         const strictFanUp = nUp > 0 ? Math.max(remaining / nUp, 0) : fanUpMax;
         const withSoftFloor = Math.max(strictFanUp, FAN_UP_SOFT_MIN);
-        const fitsWithSoftFloor = nDown * FAN_DOWN_MIN + nUp * withSoftFloor <= avail;
+        const fitsWithSoftFloor = nDown * downMin + nUp * withSoftFloor <= avail;
         fanUp = fitsWithSoftFloor ? withSoftFloor : strictFanUp;
       }
     }

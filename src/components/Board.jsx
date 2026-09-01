@@ -50,7 +50,7 @@ function clearFanMetrics() {
  * Presentational stacked run shown floating under the cursor while dragging
  * a multi-card tableau run (bottom→top order).
  * @param {{ cards: Array<{id:string, suit:string, rank:number, color:string, faceUp:boolean}> }} props
- * @param {{ cardH:number, fanUp:number, fanDown:number, avail:number }} [props.metrics]
+ * @param {{ cardH:number, fanUp:number, fanDown:number, fanDownMin:number, avail:number }} [props.metrics]
  */
 function RunPreview({ cards, metrics }) {
   const { cardH, fanUp, avail } = metrics || {};
@@ -109,10 +109,11 @@ export default function Board() {
       const cardH = measureVar('var(--card-height)');
       const fanUp = measureVar('var(--tableau-fan)');
       const fanDown = measureVar('var(--tableau-fan-down)');
+      const fanDownMin = measureVar('var(--tableau-fan-down-min)');
       const gap = measureVar('clamp(6px, 1.2vw, 14px)');
       const pad = measureVar('clamp(8px, 2vw, 20px)');
       const avail = Math.max(0, board.clientHeight - 2 * cardH - gap - 2 * pad - 8);
-      setMetrics({ cardH, fanUp, fanDown, avail });
+      setMetrics({ cardH, fanUp, fanDown, fanDownMin, avail });
     };
     measure();
     const ro = new ResizeObserver(measure);

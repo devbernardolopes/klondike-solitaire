@@ -79,6 +79,8 @@ export function CardFace({ card, zIndex = 0, innerRef }) {
         backgroundImage: `url(${backImg})`,
         backgroundSize: '100% 100%',
         backgroundRepeat: 'no-repeat',
+        border: card.faceUp ? base.border : 'var(--card-back-border, var(--card-border))',
+        boxShadow: card.faceUp ? base.boxShadow : 'var(--card-back-shadow, var(--card-shadow))',
         transform: 'rotateY(180deg)',
       }}
       aria-label="face-down card"
