@@ -98,10 +98,13 @@ export function useStockDrawSlide() {
 
     const sRect = stockPile.getBoundingClientRect();
     const wRect = wastePile.getBoundingClientRect();
-    const dx = sRect.left - wRect.left;
+    const rawDx = sRect.left - wRect.left;
+    const handedness = (() => { try { return useSettingsStore.getState().handedness; } catch { return 'right'; } })();
+    const dir = Math.sign(rawDx) || (handedness === 'right' ? 1 : -1);
+    const overshoot = Math.max(0, MOTION.draw.overshoot ?? 0);
+    const startX = rawDx + dir * overshoot;
+    const dx = rawDx;
     const dy = sRect.top - wRect.top;
-    const dir = Math.sign(dx) || 1;
-    const startX = dx + dir * MOTION.draw.overshoot;
 
     const flip = MOTION.flipCard;
     const slide = MOTION.draw;
