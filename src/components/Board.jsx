@@ -458,6 +458,15 @@ export default function Board() {
 
   const hiddenIds = activeRun ? new Set(activeRun.map((c) => c.id)) : null;
 
+  const pilesGrid = (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, var(--card-width))', gap: 'clamp(6px, 1.2vw, 14px)', justifyContent: 'center', padding: 'clamp(8px, 2vw, 20px)', maxWidth: '100%' }}>
+      {handedness === 'right'
+        ? [...state.foundations.map((pile, i) => <Pile key={`f${i}`} loc={`foundation:${i}`} cards={pile} hiddenIds={hiddenIds} onAutoMove={autoMove} />), <div key="spacer" />, <Pile key="waste" loc="waste" cards={state.waste} hiddenIds={hiddenIds} onAutoMove={autoMove} />, <Pile key="stock" loc="stock" cards={state.stock} onClick={onStockClick} label={state.stock.length === 0 ? '↻' : ''} hiddenIds={hiddenIds} />]
+        : [<Pile key="stock" loc="stock" cards={state.stock} onClick={onStockClick} label={state.stock.length === 0 ? '↻' : ''} hiddenIds={hiddenIds} />, <Pile key="waste" loc="waste" cards={state.waste} hiddenIds={hiddenIds} onAutoMove={autoMove} />, <div key="spacer" />, ...state.foundations.map((pile, i) => <Pile key={`f${i}`} loc={`foundation:${i}`} cards={pile} hiddenIds={hiddenIds} onAutoMove={autoMove} />)]}
+      {state.tableau.map((pile, i) => <Pile key={`t${i}`} loc={`tableau:${i}`} cards={pile} fanned metrics={metrics} hiddenIds={hiddenIds} onAutoMove={autoMove} />)}
+    </div>
+  );
+
   return (
     <div
       ref={boardRef}
@@ -551,7 +560,8 @@ export default function Board() {
       onDragEnd={onDragEnd}
       onDragCancel={onDragCancel}
     >
-      {boardFrame ? (
+      {boardFrame ? <div className="board-frame">{pilesGrid}</div> : pilesGrid}
+      {/*
         <div className="board-frame">
             <div
               style={{
@@ -617,7 +627,7 @@ export default function Board() {
             <Pile key={`t${i}`} loc={`tableau:${i}`} cards={pile} fanned metrics={metrics} hiddenIds={hiddenIds} onAutoMove={autoMove} />
           ))}
         </div>
-      )}
+      )} */}
 
       <DragOverlay dropAnimation={null} zIndex={1500}>
         {activeRun ? <RunPreview cards={activeRun} metrics={metrics} /> : null}
