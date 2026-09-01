@@ -158,7 +158,8 @@ export default function App() {
     <div
       className={`theme-${theme} ui-${interfaceTheme}`}
       style={{
-        minHeight: '100%',
+        minHeight: '100vh',
+        height: '100vh',
         background: 'var(--felt-color)',
         backgroundImage: 'var(--felt-texture, none), var(--felt-bg, none)',
         backgroundRepeat: 'repeat, no-repeat',
@@ -168,6 +169,7 @@ export default function App() {
         flexDirection: 'column',
         position: 'relative',
         isolation: 'isolate',
+        overflow: 'hidden',
         userSelect: 'none',
         WebkitUserSelect: 'none',
         WebkitTouchCallout: 'none',
@@ -184,7 +186,7 @@ export default function App() {
           zIndex: 0,
         }}
       />
-      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', minHeight: '100%', flex: 1 }}>
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1, overflow: 'hidden' }}>
         <Toolbar
           theme={theme}
           onThemeChange={setTheme}
