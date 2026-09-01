@@ -135,6 +135,11 @@ export default function ThemeModal({ open, onClose }) {
     };
   }, [open, activeTab, catalogItems, ownedItemIds, deck]);
 
+  useEffect(() => {
+    if (!open) return;
+    scrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+  }, [open, activeTab]);
+
   if (!open) return null;
 
   const btn = {
