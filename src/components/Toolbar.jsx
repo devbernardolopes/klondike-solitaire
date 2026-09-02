@@ -334,7 +334,7 @@ function ElapsedClock() {
               outline: 'none',
             }}
           >
-            <span style={{ visibility: bootstrapReady && currentGameKind && gameState.seed !== undefined ? 'visible' : 'hidden' }}>
+            <span style={{ visibility: bootstrapReady && currentGameKind ? 'visible' : 'hidden' }}>
             {currentGameKind === 'daily'
               ? `Daily Challenge: ${currentDailyDate} (${gameState.seed})`
               : currentGameKind === 'random'
