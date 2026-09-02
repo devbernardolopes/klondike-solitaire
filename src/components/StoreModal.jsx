@@ -9,7 +9,7 @@
 // theme item shows an info dialog pointing the user to the right Theme tab.
 
 import { useEffect, useRef, useState } from 'react';
-import { Coins as CoinsIcon } from 'lucide-react';
+import { ChevronDown, ChevronUp, Coins as CoinsIcon } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
@@ -28,6 +28,8 @@ import { getCardBack } from '../render/deck/cardBackRegistry.js';
  */
 export default function StoreModal({ open, onClose }) {
   const dialogRef = useRef(null);
+  const scrollRef = useRef(null);
+  const [scrollMetrics, setScrollMetrics] = useState({ scrollTop: 0, scrollHeight: 0, clientHeight: 0 });
   const backdrop = useModalBackdrop(onClose);
   const coins = useAuthStore((s) => s.coins);
   const ownedItemIds = useAuthStore((s) => s.ownedItemIds);
@@ -48,6 +50,26 @@ export default function StoreModal({ open, onClose }) {
       .then((data) => setItems(data))
       .catch(() => setItems([]));
   }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      setScrollMetrics({ scrollTop: 0, scrollHeight: 0, clientHeight: 0 });
+      return undefined;
+    }
+    const element = scrollRef.current;
+    if (!element) return undefined;
+    const update = () => setScrollMetrics({ scrollTop: element.scrollTop, scrollHeight: element.scrollHeight, clientHeight: element.clientHeight });
+    element.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    update();
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(update) : null;
+    observer?.observe(element);
+    return () => {
+      element.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+      observer?.disconnect();
+    };
+  }, [open, items, ownedItemIds, coins, error]);
 
   if (!open) return null;
 
@@ -88,6 +110,26 @@ export default function StoreModal({ open, onClose }) {
     height: '85vh',
     display: 'flex',
     flexDirection: 'column',
+  };
+  const showScrollUp = scrollMetrics.scrollTop > 0;
+  const showScrollDown = scrollMetrics.scrollTop + scrollMetrics.clientHeight < scrollMetrics.scrollHeight - 1;
+  const scrollButton = {
+    position: 'absolute',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    width: 34,
+    height: 28,
+    display: 'grid',
+    placeItems: 'center',
+    padding: 0,
+    border: '1px solid var(--ui-modal-panel-border)',
+    borderRadius: 999,
+    background: 'color-mix(in srgb, var(--ui-modal-panel-bg) 82%, transparent)',
+    color: 'var(--ui-modal-panel-fg)',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.22)',
+    backdropFilter: 'blur(4px)',
+    cursor: 'pointer',
+    zIndex: 1,
   };
 
   const renderPreview = (item) => {
@@ -176,7 +218,8 @@ export default function StoreModal({ open, onClose }) {
           <div style={{ color: '#d12b3b', fontSize: 13, marginBottom: 12, flex: '0 0 auto' }}>{error}</div>
         )}
 
-        <div className="modal-body-scroll" style={{ flex: 1, minHeight: 0 }}>
+        <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
+        <div ref={scrollRef} className="modal-body-scroll" style={{ height: '100%' }}>
 
           {items.map((item) => {
             const owned = ownedItemIds.includes(item.id);
@@ -223,6 +266,17 @@ export default function StoreModal({ open, onClose }) {
               </div>
             );
           })}
+        </div>
+        {showScrollUp && (
+          <button type="button" aria-label="Scroll store to top" onClick={() => scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })} style={{ ...scrollButton, top: 8 }}>
+            <ChevronUp size={18} strokeWidth={2.5} aria-hidden="true" />
+          </button>
+        )}
+        {showScrollDown && (
+          <button type="button" aria-label="Scroll store to bottom" onClick={() => { const element = scrollRef.current; element?.scrollTo({ top: element.scrollHeight, behavior: 'smooth' }); }} style={{ ...scrollButton, bottom: 8 }}>
+            <ChevronDown size={18} strokeWidth={2.5} aria-hidden="true" />
+          </button>
+        )}
         </div>
       </div>
 
