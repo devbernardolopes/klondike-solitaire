@@ -25,6 +25,7 @@ import { pullRemoteProfile } from '../sync/pullProfile.js';
 import { checkAuthRedirectResult } from '../lib/authRedirect.js';
 import ConfirmModal from './ConfirmModal.jsx';
 import { MotionDebugPanel } from '../render/animation/MotionDebugPanel.jsx';
+import { useTranslation } from 'react-i18next';
 import { useToastStore } from '../hooks/useToastStore.js';
 import { initAchievementToastBridge } from '../toast/achievementToastBridge.js';
 import ToastHost from './ToastHost.jsx';
@@ -55,6 +56,11 @@ export default function App() {
   const initSeeds = useSeedStore((s) => s.init);
   const state = useGameStore((s) => s.state);
   const linkConflict = useAuthStore((s) => s.linkConflict);
+  const { t } = useTranslation();
+  const language = useSettingsStore((s) => s.language);
+  useEffect(() => {
+    try { document.documentElement.lang = language; } catch {}
+  }, [language]);
 
   useEffect(() => {
     let cleanupToastBridge = null;
@@ -216,10 +222,10 @@ export default function App() {
       <ToastHost />
       <ConfirmModal
         open={!!linkConflict}
-        title="Google account already linked"
-        message="This Google account is already linked to a different player profile. Continuing will switch this device to that profile's data — this device's current progress (not yet linked to any account) will not be kept."
-        confirmText="Switch to that profile"
-        cancelText="Stay on this device"
+        title={t('mainMenu.account.switch.title')}
+        message={t('mainMenu.account.switch.message')}
+        confirmText={t('mainMenu.account.switch.confirm')}
+        cancelText={t('mainMenu.account.switch.cancel')}
         onConfirm={() => useAuthStore.getState().resolveLinkConflict(true)}
         onCancel={() => useAuthStore.getState().resolveLinkConflict(false)}
       />

@@ -14,6 +14,7 @@ import ToggleSwitch from './ToggleSwitch.jsx';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { supabase } from '../lib/supabaseClient.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
+import { useTranslation } from 'react-i18next';
 
 /**
  * @param {object} props
@@ -41,6 +42,8 @@ export default function SettingsOptionsModal({
   const contentRef = useRef(null);
   const [scrollMetrics, setScrollMetrics] = useState({ scrollTop: 0, scrollHeight: 0, clientHeight: 0 });
   const backdrop = useModalBackdrop(onClose);
+  const { t } = useTranslation();
+  const language = useSettingsStore((s) => s.language);
   const leaderboardVisible = useAuthStore((s) => s.leaderboardVisible);
   const setLeaderboardVisible = useAuthStore((s) => s.setLeaderboardVisible);
   const cardEffects = useSettingsStore((s) => s.cardEffects);
@@ -159,6 +162,23 @@ export default function SettingsOptionsModal({
         <div style={{ position: 'relative', flex: '0 1 auto', minHeight: 0, overflow: 'hidden' }}>
         <div ref={scrollRef} className="modal-body-scroll" style={{ height: 'auto', maxHeight: 'calc(85vh - 74px)', overflowY: 'auto', paddingBottom: 12, boxSizing: 'border-box' }}>
         <div ref={contentRef}>
+        <div style={{ ...field, marginBottom: 20 }}>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.language')}</label>
+          <select
+            value={language}
+            onChange={(e) => useSettingsStore.getState().setLanguage(e.target.value)}
+            style={selectStyle}
+            aria-label={t('settings.language.aria')}
+          >
+            <option value="en">{t('settings.language.english')}</option>
+            <option value="fr">{t('settings.language.french')}</option>
+            <option value="de">{t('settings.language.german')}</option>
+            <option value="it">{t('settings.language.italian')}</option>
+            <option value="es">{t('settings.language.spanish')}</option>
+            <option value="pt-BR">{t('settings.language.portugueseBR')}</option>
+          </select>
+        </div>
+
         <div style={{ ...field, marginBottom: 20 }}>
           <label style={{ fontSize: 14, fontWeight: 600 }}>Hand</label>
           <select

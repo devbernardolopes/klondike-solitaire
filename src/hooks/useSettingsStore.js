@@ -9,8 +9,10 @@
 import { create } from 'zustand';
 import { setActiveDeck } from '../render/deck/deckRegistry.js';
 import { getSetting, setSetting } from '../db/schema.js';
+import i18n, { detectSystemLocale, SUPPORTED, DEFAULT_LOCALE } from '../i18n/index.js';
 
 const DEFAULTS = {
+  language: DEFAULT_LOCALE,
   theme: 'classic',
   interfaceTheme: 'classic',
   deck: 'procedural',
@@ -37,6 +39,7 @@ const DEFAULTS = {
 // (or wrong handedness) on reload/refresh: the store already holds the saved
 // value at first render, before the async Dexie init() resolves.
 const LS_KEYS = {
+  language: 'klondike:language',
   theme: 'klondike:theme',
   interfaceTheme: 'klondike:interfaceTheme',
   handedness: 'klondike:handedness',
@@ -55,6 +58,17 @@ const LS_KEYS = {
   winCascade: 'klondike:winCascade',
   hoverGlow: 'klondike:hoverGlow',
 };
+
+function readLanguageLS() {
+  try {
+    const v = localStorage.getItem(LS_KEYS.language);
+    if (v && SUPPORTED.includes(v)) return v;
+    if (v != null) return DEFAULT_LOCALE;
+    return detectSystemLocale();
+  } catch {
+    return DEFAULT_LOCALE;
+  }
+}
 
 function readLS(key, fallback) {
   try {
@@ -85,6 +99,7 @@ try {
 } catch {}
 
 export const useSettingsStore = create((set, get) => ({
+  language: readLanguageLS(),
   theme: readLS(LS_KEYS.theme, DEFAULTS.theme),
   interfaceTheme: readLS(LS_KEYS.interfaceTheme, DEFAULTS.interfaceTheme),
   deck: readLS(LS_KEYS.deck, DEFAULTS.deck),
@@ -112,7 +127,8 @@ export const useSettingsStore = create((set, get) => ({
    * keys fall back to DEFAULTS. Activates the loaded (or default) deck.
    */
   init: async () => {
-    const [theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, seenThemeItemIds, seenAchievementIds, themeModalTab] = await Promise.all([
+    const [language, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, seenThemeItemIds, seenAchievementIds, themeModalTab] = await Promise.all([
+      getSetting('language', readLanguageLS()),
       getSetting('theme', DEFAULTS.theme),
       getSetting('interfaceTheme', DEFAULTS.interfaceTheme),
       getSetting('deck', DEFAULTS.deck),
@@ -134,9 +150,11 @@ export const useSettingsStore = create((set, get) => ({
       getSetting('seenAchievementIds', []),
       getSetting('themeModalTab', 'background'),
     ]);
+    const normalizedLang = SUPPORTED.includes(language) ? language : DEFAULT_LOCALE;
     setActiveDeck(deck);
     try {
       const toBackfill = [
+        ['language', normalizedLang],
         ['theme', theme],
         ['interfaceTheme', interfaceTheme],
         ['deck', deck],
@@ -163,7 +181,11 @@ export const useSettingsStore = create((set, get) => ({
         } catch {}
       }
     } catch {}
-    set({ theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, seenThemeItemIds, seenAchievementIds, themeModalTab, loaded: true });
+    try {
+      if (i18n.language !== normalizedLang) await i18n.changeLanguage(normalizedLang);
+      try { document.documentElement.lang = normalizedLang; } catch {}
+    } catch {}
+    set({ language: normalizedLang, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, seenThemeItemIds, seenAchievementIds, themeModalTab, loaded: true });
   },
 
   /**
@@ -259,6 +281,16 @@ export const useSettingsStore = create((set, get) => ({
     set({ ghostTrail });
     setSetting('ghostTrail', ghostTrail);
     writeLS(LS_KEYS.ghostTrail, ghostTrail);
+  },
+  setLanguage: (language) => {
+    const v = SUPPORTED.includes(language) ? language : DEFAULT_LOCALE;
+    set({ language: v });
+    setSetting('language', v);
+    writeLS(LS_KEYS.language, v);
+    try {
+      if (i18n.language !== v) i18n.changeLanguage(v);
+      document.documentElement.lang = v;
+    } catch {}
   },
   setShimmer: (shimmer) => { set({ shimmer }); setSetting('shimmer', shimmer); writeLS(LS_KEYS.shimmer, shimmer); },
   setUncover: (uncover) => { set({ uncover }); setSetting('uncover', uncover); writeLS(LS_KEYS.uncover, uncover); },

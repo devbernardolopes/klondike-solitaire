@@ -1,7 +1,7 @@
 {
   "name": "klondike-solitaire",
   "private": true,
-  "version": "0.0.393",
+  "version": "0.0.394",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -18,10 +18,12 @@
     "dexie": "^4.0.8",
     "gsap": "^3.12.5",
     "howler": "^2.2.4",
+    "i18next": "^23.16.8",
     "leva": "^0.10.1",
     "lucide-react": "^1.31.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-i18next": "^13.5.0",
     "zustand": "^4.5.5"
   },
   "devDependencies": {
