@@ -2,8 +2,9 @@
 // Upsert bundled JSON pools into Supabase (service_role only).
 // Idempotent — safe to re-run. Used by local generation workflow:
 //
-//   node scripts/pushSeeds.mjs                 # push all 3 pools from src/data/*.json/.fallback
+//   node scripts/pushSeeds.mjs                 # push all pools from src/data/*.json/.fallback
 //   node scripts/pushSeeds.mjs --winning-only  # only winning_seeds
+//   node scripts/pushSeeds.mjs --daily-only    # only daily seeds
 //   node scripts/pushSeeds.mjs --dry-run       # no writes, just report counts
 //
 // Env: SUPABASE_URL / VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
@@ -29,8 +30,6 @@ function resolvePaths() {
   const candidates = [
     { kind: 'winning', path: join(DATA_DIR, 'solvableSeeds.json'), fallback: join(DATA_DIR, 'solvableSeeds.fallback.json') },
     { kind: 'daily', path: join(DATA_DIR, 'dailyChallenge.json'), fallback: join(DATA_DIR, 'dailyChallenge.fallback.json') },
-    { kind: 'events', path: join(DATA_DIR, 'specialEvents.json'), fallback: null },
-    { kind: 'catalog', path: join(DATA_DIR, 'eventCatalog.json'), fallback: join(DATA_DIR, 'eventCatalog.fallback.json') },
   ];
   return candidates.map(({ kind, path, fallback }) => {
     const eff = existsSync(path) ? path : fallback && existsSync(fallback) ? fallback : null;
@@ -54,7 +53,6 @@ async function main() {
   const dryRun = args.includes('--dry-run');
   const winningOnly = args.includes('--winning-only');
   const dailyOnly = args.includes('--daily-only');
-  const eventsOnly = args.includes('--events-only');
 
   const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -67,7 +65,7 @@ async function main() {
   const paths = resolvePaths();
 
   // ---- Winning seeds ----
-  if (!dailyOnly && !eventsOnly) {
+  if (!dailyOnly && !winningOnly) {
     const wp = paths.find((p) => p.kind === 'winning');
     let seeds = [];
     if (wp.path) {
@@ -83,7 +81,7 @@ async function main() {
   }
 
   // ---- Daily seeds ----
-  if (!winningOnly && !eventsOnly) {
+  if (!winningOnly) {
     const dp = paths.find((p) => p.kind === 'daily');
     const daily = dp.path ? loadJson(dp.path, null) : null;
     const map = daily && daily.seeds ? daily.seeds : {};
@@ -103,35 +101,8 @@ async function main() {
   }
 
   // ---- Special events (catalog + seeds) ----
-  if (!winningOnly && !dailyOnly) {
-    const cp = paths.find((p) => p.kind === 'catalog');
-    const ep = paths.find((p) => p.kind === 'events');
-    const catalog = cp.path ? loadJson(cp.path, { events: [] }) : { events: [] };
-    const eventsDoc = ep.path ? loadJson(ep.path, { events: [] }) : { events: [] };
-    const seedsById = new Map((eventsDoc.events || []).map((e) => [e.id, e.seeds || []]));
-    const events = catalog.events || [];
-    console.log(`Special events: ${events.length} from ${cp.path ?? '(none)'} + seeds from ${ep.path ?? '(none)'}`);
-    if (!dryRun && events.length) {
-      const eventRows = events.map((e, i) => ({
-        id: e.id,
-        title: e.title || e.id,
-        description: e.description || null,
-        enabled: true,
-        sort_order: i,
-        image_paths: Array.isArray(e.images) ? e.images : [],
-      }));
-      const n = await upsertInBatches(supabase, 'special_events', eventRows, 500);
-      console.log(`  upserted ${n} into special_events`);
-      for (const e of events) {
-        const seeds = seedsById.get(e.id) || [];
-        if (seeds.length === 0) continue;
-        const rows = seeds.map((seed, idx) => ({ event_id: e.id, seed, sort_order: idx }));
-        const { error } = await supabase.from('special_event_seeds').upsert(rows, { onConflict: 'event_id,seed' });
-        if (error) throw new Error(`special_event_seeds upsert for ${e.id} failed: ${error.message}`);
-        console.log(`  upserted ${rows.length} seeds for event ${e.id}`);
-      }
-    }
-  }
+  // Removed — old tables (special_event_seeds, image_paths column) are
+  // dropped in migration 022. Replaced by generateEventSeeds.mjs SQL authoring.
 
   if (dryRun) console.log('(dry-run — no writes)');
   else console.log('Done.');

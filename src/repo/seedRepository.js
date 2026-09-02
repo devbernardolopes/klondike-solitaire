@@ -2,8 +2,6 @@ import { supabase } from '../lib/supabaseClient.js';
 import { getSeedCache, setSeedCache } from '../db/seedCache.js';
 import fallbackWinning from '../data/solvableSeeds.json' with { type: 'json' };
 import fallbackDaily from '../data/dailyChallenge.json' with { type: 'json' };
-import fallbackCatalog from '../data/eventCatalog.json' with { type: 'json' };
-import fallbackEvents from '../data/specialEvents.json' with { type: 'json' };
 
 const TTL_MS = 24 * 60 * 60 * 1000;
 

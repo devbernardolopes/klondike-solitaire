@@ -1,0 +1,15 @@
+[
+  {
+    "id": "christmas-2026",
+    "title": "Christmas 2026",
+    "description": "A festive three-page collection.",
+    "startsAt": "2026-12-18T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 10,
+    "pages": [
+      { "gridSize": 2, "imagePath": "christmas-2026/page1.png", "coinReward": 50 },
+      { "gridSize": 3, "imagePath": "christmas-2026/page2.png", "coinReward": 100 },
+      { "gridSize": 4, "imagePath": "christmas-2026/page3.png", "coinReward": 200 }
+    ]
+  }
+]

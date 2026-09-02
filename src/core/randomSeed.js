@@ -9,8 +9,12 @@
 
 import { SOLVABLE_SEEDS } from './solvablePool.js';
 import dailyData from '../data/dailyChallenge.json' with { type: 'json' };
-import { listEvents } from './specialEvents.js';
 
+// Reserved seeds that must never appear as a Random Shuffle deal: the bundled
+// solvable pool (Winning Deal seeds) and the pre-generated daily challenge
+// seeds. Special-event seeds are excluded at runtime via buildKnownSet() —
+// they are fetched live from Supabase (repo/specialEventsRepository.js) and
+// passed in explicitly, so they don't need a static fallback here.
 const FALLBACK_KNOWN_SEEDS = (() => {
   const s = new Set();
   for (const x of SOLVABLE_SEEDS) s.add(x);
@@ -18,9 +22,6 @@ const FALLBACK_KNOWN_SEEDS = (() => {
   for (const k of Object.keys(dailySeeds)) {
     const v = dailySeeds[k];
     if (typeof v === 'number') s.add(v);
-  }
-  for (const ev of listEvents()) {
-    for (const sd of ev.seeds || []) s.add(sd);
   }
   return s;
 })();
@@ -36,7 +37,7 @@ export function buildKnownSet({ winningPool, dailyMap, events } = {}) {
     const v = dm[k];
     if (typeof v === 'number') s.add(v);
   }
-  const evs = events || listEvents();
+  const evs = events || [];
   for (const ev of evs) {
     for (const sd of ev.seeds || []) s.add(sd);
   }

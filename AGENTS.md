@@ -35,7 +35,7 @@ Everything under `src/core/` is plain JS with **zero** imports from React, the D
 or any UI library. It must be runnable standalone (Node test script) and unit-testable
 in isolation. UI components read from and dispatch to this core **via the Zustand store**;
 they never implement game rules themselves. Recent additions `dailyChallenge.js`,
-`specialEvents.js`, `hints.js`, and `snapshot.js` all conform to this rule.
+`hints.js`, and `snapshot.js` all conform to this rule.
 
 Modules in `src/core/`:
 
@@ -272,11 +272,15 @@ depend on score (`highestScore`) are currently 0-based.
 - `data/solvableSeeds.json` — pre-verified solvable seeds.
 - `data/dailyChallenge.json` (+ `.meta.json`) — bundled daily seeds + anchor/window metadata,
   consumed by `core/dailyChallenge.js`.
-- `data/eventCatalog.json` — curated special-event titles/images.
-- `data/specialEvents.json` (+ `.meta.json`) — generated seeds per event, consumed by
-  `core/specialEvents.js`.
+- `data/eventCatalog.src.json` — sample catalog demonstrating the new page/grid-aware format;
+  consumed by `scripts/generateEventSeeds.mjs`.
+- `data/dailyChallenge.json` (+ `.meta.json`) — bundled daily seeds + anchor/window metadata,
+  consumed by `core/dailyChallenge.js`.
 - `scripts/generateSolvablePool.mjs` — regenerates the solvable pool.
-- `scripts/generateFeatures.mjs` — regenerates the daily-challenge + special-event seed bundles.
+- `scripts/generateDaily.mjs` — generates the daily-challenge seed bundle.
+- `scripts/generateEventSeeds.mjs` — generates page/grid-aware SQL for special events
+  (Phase-1 Supabase schema, migration 022).
+- `scripts/lib/seedHelpers.mjs` — shared solver plumbing (cyrb53, candidateGen, fillSeeds, solveBatch).
 - `scripts/bump-version.cjs` — version bump helper.
 
 ## What is IMPLEMENTED vs STUBBED
@@ -306,7 +310,9 @@ depend on score (`highestScore`) are currently 0-based.
   offline-tolerant, never blocks play.
 - **Daily Challenge**: bundled seeds, calendar UI, persistence of per-day bests + last selection,
   win flow with "Return to Daily".
-- **Special Events**: curated catalog + generated seed bundles, surfaced via the seed input.
+- **Special Events**: page/grid-aware SQL authoring via `scripts/generateEventSeeds.mjs`
+  (migration 022 template: `unnest(array[position...])::bigint[]`), consumes
+  `scripts/eventCatalog.src.json`. SQL INSERTs for `special_events`/`special_event_pages`/`special_event_deals`.
 - **Cumulative Statistics** (`stats` table) with win/loss aggregation, streaks, best
   score/time/moves; persisted and shown in `StatisticsModal`.
 - Won-seed tracking (`playedSeeds`) so Winning-Deal seeds aren't repeated once won.
@@ -328,13 +334,15 @@ depend on score (`highestScore`) are currently 0-based.
 ## Where the next pass picks up
 
 1. **Leaderboards** — replace `api/leaderboard.js` localStorage with a real Supabase backend,
-   wire `submitScore` on win (via `useAuthStore.userId`), and add a leaderboard UI.
+    wire `submitScore` on win (via `useAuthStore.userId`), and add a leaderboard UI.
 2. **Achievements** — design the achievement set + Supabase storage/query, then build the module
    and UI (currently not started).
 3. Implement scoring (replace the always-0 `useStatsStore.score`); flows into `stats.highestScore`.
 4. Real Howler playback + sound files; settings-driven mute wired through `useSettingsStore`.
 5. Persist finished games via `saveGame()` on game-over (Dexie `games` table).
 6. (Optional) more themes; expand animation polish.
+7. **Special-event seed authoring** — use `scripts/generateEventSeeds.mjs` with
+   `scripts/eventCatalog.src.json` to produce migration 022 SQL for insertion into Supabase.
 
 ## Run
 

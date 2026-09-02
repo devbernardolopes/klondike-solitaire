@@ -12,11 +12,9 @@ import {
   cyrb53,
   candidateGen,
   fillSeeds,
-  dailyDateList,
-  buildUsedSet,
-} from '../../scripts/generateFeatures.mjs';
+} from '../../scripts/lib/seedHelpers.mjs';
+import { dailyDateList, buildUsedSet } from '../../scripts/generateDaily.mjs';
 import { seedForDate, isDateBundled, listBundledDates, getDailyAnchor } from '../core/dailyChallenge.js';
-import { getEvent, seedsForEvent, listEvents, listEventIds } from '../core/specialEvents.js';
 
 test('cyrb53 is deterministic, 32-bit, and input-sensitive', () => {
   assert.equal(cyrb53('2024-01-01'), cyrb53('2024-01-01'));
@@ -54,9 +52,7 @@ test('dailyDateList spans a full year and is stable (UTC)', () => {
   assert.equal(list2.length, 365);
 });
 
-test('buildUsedSet aggregates pool + daily + events without throwing on missing files', () => {
-  // No src/data files are consulted here (defaults point at real files which
-  // exist as skeletons); just assert it returns a Set and runs cleanly.
+test('buildUsedSet aggregates pool + daily without throwing on missing files', () => {
   const used = buildUsedSet();
   assert.ok(used instanceof Set);
 });
@@ -72,11 +68,4 @@ test('daily loader reflects the bundled data file', () => {
     assert.equal(isDateBundled(dates[0]), true);
   }
   assert.equal(isDateBundled('2099-01-01'), false);
-});
-
-test('event loader is safe with empty skeleton data', () => {
-  assert.deepEqual(listEventIds(), []);
-  assert.equal(getEvent('nope'), null);
-  assert.deepEqual(seedsForEvent('nope'), []);
-  assert.deepEqual(listEvents(), []);
 });
