@@ -8,6 +8,7 @@
 // explicit outcomes.
 
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useModalBackdrop } from './modalBackdrop.js';
 import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
@@ -27,6 +28,7 @@ import { pullRemoteProfile } from '../sync/pullProfile.js';
  * @param {() => void} props.onDismiss   // Escape / backdrop click / explicit close — does nothing else
  */
 export default function NewGameModal({ open, onReplay, canReplay, onWinningDeal, onRandomShuffle, onDailyChallenge, onSpecialEvents, onDismiss }) {
+  const { t } = useTranslation();
   const firstBtnRef = useRef(null);
   const backdrop = useModalBackdrop(onDismiss);
 
@@ -75,7 +77,7 @@ export default function NewGameModal({ open, onReplay, canReplay, onWinningDeal,
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="New Game"
+      aria-label={t('newGameModal.title')}
       {...backdrop}
       style={{
         position: 'fixed',
@@ -89,10 +91,10 @@ export default function NewGameModal({ open, onReplay, canReplay, onWinningDeal,
       }}
     >
       <div style={panel}>
-        <h2 style={{ margin: '0 0 10px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>New Game</h2>
+        <h2 style={{ margin: '0 0 10px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>{t('newGameModal.title')}</h2>
         <ModalCloseButton onClick={onDismiss} />
         <p style={{ margin: '0 0 18px', fontSize: 14, lineHeight: 1.45 }}>
-          Current progress will be lost. Choose how to deal the new game:
+          {t('newGameModal.prompt')}
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <button
@@ -101,32 +103,32 @@ export default function NewGameModal({ open, onReplay, canReplay, onWinningDeal,
             style={{ ...btn, textAlign: 'left' }}
             onClick={onWinningDeal}
           >
-            Winning Deal{' '}
-            <span style={{ fontWeight: 400, opacity: 0.8 }}>— guaranteed solvable</span>
+            {t('newGameModal.winningDeal')}{' '}
+            <span style={{ fontWeight: 400, opacity: 0.8 }}>{t('newGameModal.winningDeal.desc')}</span>
           </button>
           <button
             type="button"
             style={{ ...btn, textAlign: 'left' }}
             onClick={onRandomShuffle}
           >
-            Random Shuffle{' '}
-            <span style={{ fontWeight: 400, opacity: 0.8 }}>— true random, may be unwinnable</span>
+            {t('newGameModal.randomShuffle')}{' '}
+            <span style={{ fontWeight: 400, opacity: 0.8 }}>{t('newGameModal.randomShuffle.desc')}</span>
           </button>
           <button
             type="button"
             style={{ ...btn, textAlign: 'left' }}
             onClick={onDailyChallenge}
           >
-            Daily Challenge{' '}
-            <span style={{ fontWeight: 400, opacity: 0.8 }}>— a new deal every day</span>
+            {t('newGameModal.dailyChallenge')}{' '}
+            <span style={{ fontWeight: 400, opacity: 0.8 }}>{t('newGameModal.dailyChallenge.desc')}</span>
           </button>
           <button
             type="button"
             style={{ ...btn, textAlign: 'left' }}
             onClick={onSpecialEvents}
           >
-            Special Events{' '}
-            <span style={{ fontWeight: 400, opacity: 0.8 }}>— themed collections</span>
+            {t('newGameModal.specialEvents')}{' '}
+            <span style={{ fontWeight: 400, opacity: 0.8 }}>{t('newGameModal.specialEvents.desc')}</span>
           </button>
           <button
             type="button"
@@ -140,8 +142,8 @@ export default function NewGameModal({ open, onReplay, canReplay, onWinningDeal,
             }}
             onClick={onReplay}
           >
-            Replay this Game{' '}
-            <span style={{ fontWeight: 400, opacity: 0.8 }}>— restart the same deal</span>
+            {t('newGameModal.replay')}{' '}
+            <span style={{ fontWeight: 400, opacity: 0.8 }}>{t('newGameModal.replay.desc')}</span>
           </button>
         </div>
       </div>

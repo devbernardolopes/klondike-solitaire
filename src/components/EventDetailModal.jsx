@@ -10,6 +10,7 @@
 // sliced-background-image reveal grid, this phase is carousel mechanics only.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight, Lock, CheckCircle2 } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
@@ -17,10 +18,12 @@ import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { fetchEventDetail } from '../repo/specialEventsRepository.js';
+import { translateSpecialEvent } from '../i18n/db.js';
 
 const SWIPE_THRESHOLD_RATIO = 0.2; // fraction of viewport width to trigger a page change
 
 export default function EventDetailModal() {
+  const { t } = useTranslation();
   const eventId = useUiStore((s) => s.eventDetailId);
   const setEventDetailOpen = useUiStore((s) => s.setEventDetailOpen);
   const setSpecialEventsOpen = useUiStore((s) => s.setSpecialEventsOpen);
@@ -57,13 +60,14 @@ export default function EventDetailModal() {
     setDetail(null);
     fetchEventDetail(eventId)
       .then((d) => {
-        setDetail(d);
-        if (d && d.pages.length > 0) {
+        const td = d ? translateSpecialEvent(d) : d;
+        setDetail(td);
+        if (td && td.pages.length > 0) {
           // Land on the first unlocked-but-not-yet-completed page, so a
           // returning player sees where to continue. Fall back to the last
           // page if everything's done, or page 0 if nothing's unlocked yet.
-          const target = d.pages.findIndex((p) => p.unlocked && !p.completed);
-          setIndex(target >= 0 ? target : d.pages.length - 1);
+          const target = td.pages.findIndex((p) => p.unlocked && !p.completed);
+          setIndex(target >= 0 ? target : td.pages.length - 1);
         } else {
           setIndex(0);
         }
@@ -157,26 +161,26 @@ export default function EventDetailModal() {
   });
 
   return (
-    <div role="dialog" aria-modal="true" aria-label={detail?.title || 'Event'} {...backdrop} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3100, padding: 16 }}>
+    <div role="dialog" aria-modal="true" aria-label={detail?.title || t('eventDetail.title')} {...backdrop} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3100, padding: 16 }}>
       <div ref={panelRef} tabIndex={-1} onKeyDown={onKeyDown} style={panel}>
-        <button type="button" onClick={backToList} style={{ position: 'absolute', top: 20, left: 22, background: 'none', border: 'none', color: 'var(--ui-modal-fg)', opacity: 0.7, cursor: 'pointer', fontSize: 13, padding: 0 }}>← Events</button>
+        <button type="button" onClick={backToList} style={{ position: 'absolute', top: 20, left: 22, background: 'none', border: 'none', color: 'var(--ui-modal-fg)', opacity: 0.7, cursor: 'pointer', fontSize: 13, padding: 0 }}>{t('eventDetail.back')}</button>
         <ModalCloseButton onClick={close} />
-        <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 800, textAlign: 'center', paddingTop: 2 }}>{detail?.title || (loaded ? 'Event' : '')}</h2>
+        <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 800, textAlign: 'center', paddingTop: 2 }}>{detail?.title || (loaded ? t('eventDetail.title') : '')}</h2>
         {detail?.description && (
           <p style={{ margin: '0 0 14px', textAlign: 'center', fontSize: 13, opacity: 0.75 }}>{detail.description}</p>
         )}
 
         {loaded && pages.length === 0 && (
-          <p style={{ textAlign: 'center', opacity: 0.7, padding: '24px 0' }}>This event doesn't have any pages yet.</p>
+          <p style={{ textAlign: 'center', opacity: 0.7, padding: '24px 0' }}>{t('eventDetail.noPages')}</p>
         )}
 
         {pages.length > 0 && (
           <>
             <div style={{ position: 'relative', marginTop: 8 }}>
-              <button type="button" aria-label="Previous page" onClick={goPrev} disabled={clampedIndex === 0} style={{ ...arrowBtn(clampedIndex === 0), left: -6 }}>
+              <button type="button" aria-label={t('eventDetail.prevPage')} onClick={goPrev} disabled={clampedIndex === 0} style={{ ...arrowBtn(clampedIndex === 0), left: -6 }}>
                 <ChevronLeft size={20} />
               </button>
-              <button type="button" aria-label="Next page" onClick={goNext} disabled={clampedIndex === pages.length - 1} style={{ ...arrowBtn(clampedIndex === pages.length - 1), right: -6 }}>
+              <button type="button" aria-label={t('eventDetail.nextPage')} onClick={goNext} disabled={clampedIndex === pages.length - 1} style={{ ...arrowBtn(clampedIndex === pages.length - 1), right: -6 }}>
                 <ChevronRight size={20} />
               </button>
 
@@ -191,7 +195,7 @@ export default function EventDetailModal() {
                 <div style={{ display: 'flex', transform: trackTransform, transition: dragging ? 'none' : 'transform 0.3s ease' }}>
                   {pages.map((p) => (
                     <div key={p.id} style={{ flex: '0 0 100%', padding: '0 8px', boxSizing: 'border-box' }}>
-                      <PagePlaceholder page={p} />
+                      <PagePlaceholder page={p} t={t} />
                     </div>
                   ))}
                 </div>
@@ -203,7 +207,7 @@ export default function EventDetailModal() {
                 <button
                   key={p.id}
                   type="button"
-                  aria-label={`Page ${p.pageNumber}`}
+                  aria-label={t('eventDetail.pageAria', { n: p.pageNumber })}
                   aria-current={i === clampedIndex}
                   onClick={() => goTo(i)}
                   style={{
@@ -226,15 +230,15 @@ export default function EventDetailModal() {
   );
 }
 
-function PagePlaceholder({ page }) {
+function PagePlaceholder({ page, t }) {
   const dealCount = page.gridSize * page.gridSize;
 
   if (!page.unlocked) {
     return (
       <div style={placeholderStyle(true)}>
         <Lock size={28} style={{ opacity: 0.5 }} />
-        <div style={{ fontWeight: 700, marginTop: 10 }}>Page {page.pageNumber} locked</div>
-        <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>Complete the previous page to unlock</div>
+        <div style={{ fontWeight: 700, marginTop: 10 }}>{t('eventDetail.pageLocked', { n: page.pageNumber })}</div>
+        <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>{t('eventDetail.unlockHint')}</div>
       </div>
     );
   }
@@ -242,15 +246,15 @@ function PagePlaceholder({ page }) {
   return (
     <div style={placeholderStyle(false)}>
       {page.completed && <CheckCircle2 size={28} color="#2e7d32" />}
-      <div style={{ fontWeight: 700, marginTop: page.completed ? 10 : 0 }}>Page {page.pageNumber}</div>
+      <div style={{ fontWeight: 700, marginTop: page.completed ? 10 : 0 }}>{t('eventDetail.pageTitle', { n: page.pageNumber })}</div>
       <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>
-        {page.gridSize}×{page.gridSize} grid — {dealCount} deal{dealCount === 1 ? '' : 's'}
+        {t('eventDetail.gridInfo', { grid: page.gridSize, count: dealCount })}
       </div>
       {page.coinReward > 0 && (
-        <div style={{ fontSize: 12, opacity: 0.75, marginTop: 2 }}>+{page.coinReward} coins on completion</div>
+        <div style={{ fontSize: 12, opacity: 0.75, marginTop: 2 }}>{t('eventDetail.coinReward', { coins: page.coinReward })}</div>
       )}
       <div style={{ fontSize: 12, fontWeight: 700, marginTop: 8, color: page.completed ? '#2e7d32' : undefined, opacity: page.completed ? 1 : 0.6 }}>
-        {page.completed ? 'Completed' : 'Deals coming soon'}
+        {page.completed ? t('common.completed') : t('eventDetail.dealsSoon')}
       </div>
     </div>
   );

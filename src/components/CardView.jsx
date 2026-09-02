@@ -5,6 +5,7 @@
 
 import { useMemo, useRef } from 'react';
 import { useDraggable } from '@dnd-kit/core';
+import { useTranslation } from 'react-i18next';
 import { useCardFaceFlip } from '../render/animation/useCardFaceFlip.js';
 import { playCardShake } from '../render/animation/playCardShake.js';
 import { useGameStore } from '../hooks/useGameStore.js';
@@ -15,15 +16,27 @@ import { isWon } from '../core/winDetection.js';
 import { getDeck } from '../render/deck/deckRegistry.js';
 import { getCardBack } from '../render/deck/cardBackRegistry.js';
 
-const RANK_LABEL = {
-  1: 'A',
-  11: 'J',
-  12: 'Q',
-  13: 'K',
+const RANK_I18N_KEY = {
+  1: 'ace',
+  11: 'jack',
+  12: 'queen',
+  13: 'king',
 };
 
+function rankKey(rank) {
+  return RANK_I18N_KEY[rank] ?? null;
+}
+
 function rankLabel(rank) {
-  return RANK_LABEL[rank] ?? String(rank);
+  const k = rankKey(rank);
+  return k ?? String(rank);
+}
+
+function cardAriaString(t, card) {
+  const k = rankKey(card.rank);
+  const rank = k ? t(`cards.${k}`) : String(card.rank);
+  const suit = t(`cards.suit.${card.suit}`);
+  return t('cards.aria', { rank, suit });
 }
 
 /**
@@ -33,6 +46,7 @@ function rankLabel(rank) {
  * @param {import('react').Ref<any>} [props.innerRef]  ref attached to the flip-inner node (for the 3D face flip)
  */
 export function CardFace({ card, zIndex = 0, innerRef }) {
+  const { t } = useTranslation();
   const base = {
     width: 'var(--card-width)',
     height: 'var(--card-height)',
@@ -68,7 +82,7 @@ export function CardFace({ card, zIndex = 0, innerRef }) {
         backgroundRepeat: 'no-repeat',
         userSelect: 'none',
       }}
-      aria-label={`${rankLabel(card.rank)} of ${card.suit}`}
+      aria-label={cardAriaString(t, card)}
     />
   );
 
@@ -83,7 +97,7 @@ export function CardFace({ card, zIndex = 0, innerRef }) {
         boxShadow: card.faceUp ? base.boxShadow : 'var(--card-back-shadow, var(--card-shadow))',
         transform: 'rotateY(180deg)',
       }}
-      aria-label="face-down card"
+      aria-label={t('cards.faceDown')}
     />
   );
 
@@ -132,6 +146,7 @@ export function CardFace({ card, zIndex = 0, innerRef }) {
 const CLICK_DISTANCE = 6;
 
 export default function CardView({ card, from, zIndex = 0, hidden = false, onAutoMove }) {
+  const { t } = useTranslation();
   const won = useGameStore((s) => isWon(s.state));
   const isOver = useStatsStore((s) => s.isOver);
   // While an auto-complete (toward the win) is animating, the whole board is
@@ -224,14 +239,14 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
       // Slide / shake: keyboard acts like a tap — may auto-move, never shakes.
       if (isSliding || isShaking) {
         const ok = onAutoMove(from, card.id);
-        if (ok) setAnnounce(`Auto-moved ${rankLabel(card.rank)} of ${card.suit}`);
+        if (ok) setAnnounce(t('cards.autoMoved', { card: cardAriaString(t, card) }));
         return;
       }
       const ok = onAutoMove(from, card.id);
       if (ok) {
-        setAnnounce(`Auto-moved ${rankLabel(card.rank)} of ${card.suit}`);
+        setAnnounce(t('cards.autoMoved', { card: cardAriaString(t, card) }));
       } else {
-        setAnnounce(`No valid move for ${rankLabel(card.rank)} of ${card.suit}`);
+        setAnnounce(t('cards.noValidMove', { card: cardAriaString(t, card) }));
         playCardShake(e.currentTarget);
       }
     }
@@ -261,7 +276,7 @@ export default function CardView({ card, from, zIndex = 0, hidden = false, onAut
         outline: selected ? '3px solid var(--card-text-red, #ffd54a)' : 'none',
         outlineOffset: 2,
       }}
-      aria-label={`${rankLabel(card.rank)} of ${card.suit}${card.faceUp ? '' : ' (face down)'}`}
+      aria-label={`${cardAriaString(t, card)}${card.faceUp ? '' : t('cards.faceDownSuffix')}`}
       aria-pressed={selected}
     >
       <CardFace card={card} zIndex={zIndex} innerRef={flipRef} />

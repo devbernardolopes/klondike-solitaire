@@ -9,6 +9,7 @@
 // theme item shows an info dialog pointing the user to the right Theme tab.
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronUp, Coins as CoinsIcon } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import { useModalEscape } from '../hooks/useModalEscape.js';
@@ -17,9 +18,10 @@ import ModalCloseButton from './ModalCloseButton.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { supabase } from '../lib/supabaseClient.js';
-import { fetchStoreCatalog, isThemeKind, tabLabelForKind } from '../data/storeCatalog.js';
+import { fetchStoreCatalog, isThemeKind } from '../data/storeCatalog.js';
 import { storeItemImageUrl, onStoreItemImageError } from '../utils/storeItemImage.js';
 import { getCardBack } from '../render/deck/cardBackRegistry.js';
+import { translateStoreItem } from '../i18n/db.js';
 
 /**
  * @param {object} props
@@ -27,6 +29,7 @@ import { getCardBack } from '../render/deck/cardBackRegistry.js';
  * @param {() => void} props.onClose
  */
 export default function StoreModal({ open, onClose }) {
+  const { t } = useTranslation();
   const dialogRef = useRef(null);
   const scrollRef = useRef(null);
   const [scrollMetrics, setScrollMetrics] = useState({ scrollTop: 0, scrollHeight: 0, clientHeight: 0 });
@@ -47,7 +50,7 @@ export default function StoreModal({ open, onClose }) {
     if (!open) return;
     dialogRef.current?.focus();
     fetchStoreCatalog()
-      .then((data) => setItems(data))
+      .then((data) => setItems(data.map(translateStoreItem)))
       .catch(() => setItems([]));
   }, [open]);
 
@@ -190,7 +193,7 @@ export default function StoreModal({ open, onClose }) {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Store"
+      aria-label={t('store.title')}
       tabIndex={-1}
       ref={dialogRef}
       {...backdrop}
@@ -206,7 +209,7 @@ export default function StoreModal({ open, onClose }) {
       }}
     >
       <div style={panel}>
-        <h2 style={{ margin: '0 0 10px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>Store</h2>
+        <h2 style={{ margin: '0 0 10px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>{t('store.title')}</h2>
         <ModalCloseButton onClick={onClose} />
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 16, fontWeight: 700, marginBottom: 12, flex: '0 0 auto' }}>
@@ -244,7 +247,7 @@ export default function StoreModal({ open, onClose }) {
                   <div style={{ fontSize: 12, opacity: 0.75 }}>{item.description}</div>
                 </div>
                 {owned ? (
-                  <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.7 }}>Owned</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.7 }}>{t('common.owned')}</span>
                 ) : (
                   <button
                     type="button"
@@ -268,12 +271,12 @@ export default function StoreModal({ open, onClose }) {
           })}
         </div>
         {showScrollUp && (
-          <button type="button" aria-label="Scroll store to top" onClick={() => scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })} style={{ ...scrollButton, top: 8 }}>
+          <button type="button" aria-label={t('store.scrollTop')} onClick={() => scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })} style={{ ...scrollButton, top: 8 }}>
             <ChevronUp size={18} strokeWidth={2.5} aria-hidden="true" />
           </button>
         )}
         {showScrollDown && (
-          <button type="button" aria-label="Scroll store to bottom" onClick={() => { const element = scrollRef.current; element?.scrollTo({ top: element.scrollHeight, behavior: 'smooth' }); }} style={{ ...scrollButton, bottom: 8 }}>
+          <button type="button" aria-label={t('store.scrollBottom')} onClick={() => { const element = scrollRef.current; element?.scrollTo({ top: element.scrollHeight, behavior: 'smooth' }); }} style={{ ...scrollButton, bottom: 8 }}>
             <ChevronDown size={18} strokeWidth={2.5} aria-hidden="true" />
           </button>
         )}
@@ -282,10 +285,10 @@ export default function StoreModal({ open, onClose }) {
 
       <ConfirmModal
         open={!!confirmItem}
-        title="Confirm purchase"
-        message={confirmItem ? `Buy ${confirmItem.name} for ${confirmItem.price} coins?` : ''}
-        confirmText="Buy"
-        cancelText="Cancel"
+        title={t('store.confirm.title')}
+        message={confirmItem ? t('store.confirm.message', { name: confirmItem.name, price: confirmItem.price }) : ''}
+        confirmText={t('common.buy')}
+        cancelText={t('common.cancel')}
         zIndex={Z.GRANDCHILD}
         z={Z.GRANDCHILD}
         onConfirm={() => {
@@ -298,9 +301,9 @@ export default function StoreModal({ open, onClose }) {
 
       <ConfirmModal
         open={!!infoItem}
-        title={infoItem ? infoItem.name : ''}
-        message={infoItem ? `${infoItem.name} is now available in the Theme modal under the ${tabLabelForKind(infoItem.kind)} tab.` : ''}
-        confirmText="OK"
+        title={infoItem ? t('store.success.title', { name: infoItem.name }) : ''}
+        message={infoItem ? t('store.success.message', { name: infoItem.name, tab: t({ card_back: 'store.tab.cardBack', table_felt: 'store.tab.background', deck: 'store.tab.cardsFace' }[infoItem.kind] || 'store.tab.interface') }) : ''}
+        confirmText={t('common.ok')}
         hideCancel
         zIndex={Z.GRANDCHILD}
         z={Z.GRANDCHILD}

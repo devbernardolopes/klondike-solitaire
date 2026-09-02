@@ -5,6 +5,7 @@
 // focus-on-open, Escape/backdrop-to-close) of SettingsModal / StatisticsModal.
 
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useModalBackdrop } from './modalBackdrop.js';
 import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
@@ -16,6 +17,7 @@ import ModalCloseButton from './ModalCloseButton.jsx';
  * @param {() => void} props.onClose
  */
 export default function HelpModal({ open, onClose }) {
+  const { t } = useTranslation();
   const dialogRef = useRef(null);
   const backdrop = useModalBackdrop(onClose);
 
@@ -63,12 +65,12 @@ export default function HelpModal({ open, onClose }) {
   };
 
   const shortcuts = [
-    { keys: 'N', action: 'New game' },
-    { keys: 'D', action: 'Draw from stock (recycles when stock is empty)' },
-    { keys: 'U', action: 'Undo' },
-    { keys: 'A', action: 'Auto-complete to foundations' },
-    { keys: 'H', action: 'Show hints' },
-    { keys: 'Enter / Space', action: 'Auto-move the focused card' },
+    { keys: 'N', action: t('help.keys.newGame') },
+    { keys: 'D', action: t('help.keys.draw') },
+    { keys: 'U', action: t('help.keys.undo') },
+    { keys: 'A', action: t('help.keys.autoComplete') },
+    { keys: 'H', action: t('help.keys.hints') },
+    { keys: 'Enter / Space', action: t('help.keys.autoMove') },
   ];
 
   return (
@@ -76,7 +78,7 @@ export default function HelpModal({ open, onClose }) {
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Keyboard shortcuts"
+        aria-label={t('help.title')}
         tabIndex={-1}
         {...backdrop}
         style={{
@@ -92,7 +94,7 @@ export default function HelpModal({ open, onClose }) {
       >
       <div style={panel}>
         <h2 style={{ margin: '0 0 14px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>
-          Keyboard Shortcuts
+          {t('help.title')}
         </h2>
         <ModalCloseButton onClick={onClose} />
 

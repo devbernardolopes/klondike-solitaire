@@ -4,18 +4,21 @@
 // corner regardless of modal size.
 
 import { X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 /**
  * @param {object} props
  * @param {() => void} props.onClick
  * @param {string} [props.label]
  */
-export default function ModalCloseButton({ onClick, label = 'Close' }) {
+export default function ModalCloseButton({ onClick, label }) {
+  const { t } = useTranslation();
+  const displayLabel = label ?? t('common.close');
   return (
     <button
       type="button"
-      aria-label={label}
-      title={label}
+      aria-label={displayLabel}
+      title={displayLabel}
       onClick={onClick}
       style={{
         position: 'absolute',

@@ -8,6 +8,7 @@
 // so it inherits variables from the .theme-* root container.
 
 import { useEffect, useRef, useId } from 'react';
+import i18n from '../i18n/index.js';
 import { useModalBackdrop } from './modalBackdrop.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
 import { useModalEscape } from '../hooks/useModalEscape.js';
@@ -41,8 +42,8 @@ export default function ConfirmModal({
   open,
   title,
   message,
-  confirmText = 'Confirm',
-  cancelText = 'Cancel',
+  confirmText = i18n.t('confirm.confirm'),
+  cancelText = i18n.t('confirm.cancel'),
   hideCancel = false,
   onConfirm,
   onCancel,

@@ -141,7 +141,7 @@ export default function SettingsOptionsModal({
       ref={dialogRef}
       role="dialog"
       aria-modal="true"
-      aria-label="Settings"
+      aria-label={t('settings.title')}
       tabIndex={-1}
       {...backdrop}
       style={{
@@ -156,7 +156,7 @@ export default function SettingsOptionsModal({
       }}
     >
       <div style={panel}>
-        <h2 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>Settings</h2>
+        <h2 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>{t('settings.title')}</h2>
         <ModalCloseButton onClick={onClose} />
 
         <div style={{ position: 'relative', flex: '0 1 auto', minHeight: 0, overflow: 'hidden' }}>
@@ -180,119 +180,119 @@ export default function SettingsOptionsModal({
         </div>
 
         <div style={{ ...field, marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>Hand</label>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.hand')}</label>
           <select
             value={handedness}
             onChange={(e) => onHandednessChange(e.target.value)}
             style={selectStyle}
           >
-            <option value="left">Left</option>
-            <option value="right">Right</option>
+            <option value="left">{t('settings.hand.left')}</option>
+            <option value="right">{t('settings.hand.right')}</option>
           </select>
         </div>
 
         <div style={{ ...field, marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>Highlight Card</label>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.highlightCard')}</label>
           <ToggleSwitch
             checked={!!highlightCard}
             onChange={onHighlightCardChange}
-            label="Highlight Card"
+            label={t('settings.highlightCard')}
           />
         </div>
 
         <div style={{ ...field, marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>Foundation Particles</label>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.foundationParticles')}</label>
           <ToggleSwitch
             checked={!!particles}
             onChange={onParticlesChange}
-            label="Foundation Particles"
+            label={t('settings.foundationParticles')}
           />
         </div>
 
         <div style={{ ...field, marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>Card Effects</label>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.cardEffects')}</label>
           <ToggleSwitch
             checked={!!cardEffects}
             onChange={(v) => useSettingsStore.getState().setCardEffects(v)}
-            label="Card Effects"
+            label={t('settings.cardEffects')}
           />
         </div>
 
         <div style={{ ...field, marginLeft: 16, opacity: cardEffects ? 1 : 0.5, marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>Card Bounce</label>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.cardBounce')}</label>
           <ToggleSwitch
             checked={!!bounce}
             onChange={(v) => useSettingsStore.getState().setBounce(v)}
-            label="Card Bounce"
+            label={t('settings.cardBounce')}
             disabled={!cardEffects}
           />
         </div>
 
-        {[['Card Flip Shimmer', shimmer, 'setShimmer'], ['Uncover Sparkle', uncover, 'setUncover'], ['Hover Glow / Drop Highlight', hoverGlow, 'setHoverGlow']].map(([label, value, setter]) => (
-          <div key={label} style={{ ...field, marginLeft: 16, opacity: cardEffects ? 1 : 0.5, marginBottom: 20 }}>
-            <label style={{ fontSize: 14, fontWeight: 600 }}>{label}</label>
-            <ToggleSwitch checked={!!value} onChange={(v) => useSettingsStore.getState()[setter](v)} label={label} disabled={!cardEffects} />
+        {[['settings.cardFlipShimmer', shimmer, 'setShimmer'], ['settings.uncoverSparkle', uncover, 'setUncover'], ['settings.hoverGlow', hoverGlow, 'setHoverGlow']].map(([key, value, setter]) => (
+          <div key={key} style={{ ...field, marginLeft: 16, opacity: cardEffects ? 1 : 0.5, marginBottom: 20 }}>
+            <label style={{ fontSize: 14, fontWeight: 600 }}>{t(key)}</label>
+            <ToggleSwitch checked={!!value} onChange={(v) => useSettingsStore.getState()[setter](v)} label={t(key)} disabled={!cardEffects} />
           </div>
         ))}
 
         <div style={{ ...field, marginLeft: 16, opacity: cardEffects ? 1 : 0.5, marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>Ghost Trail</label>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.ghostTrail')}</label>
           <ToggleSwitch
             checked={!!ghostTrail}
             onChange={(v) => useSettingsStore.getState().setGhostTrail(v)}
-            label="Ghost Trail"
+            label={t('settings.ghostTrail')}
             disabled={!cardEffects}
           />
         </div>
 
         <div style={{ ...field, marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>Win Celebration</label>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.winCelebration')}</label>
           <ToggleSwitch
             checked={!!winCascade}
             onChange={(v) => useSettingsStore.getState().setWinCascade(v)}
-            label="Falling Cards on Win"
+            label={t('settings.winCelebration.desc')}
           />
         </div>
         <div style={{ ...field, marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>Enhanced Win Celebration</label>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.enhancedWin')}</label>
           <ToggleSwitch
             checked={!!winEnhanced}
             onChange={(v) => useSettingsStore.getState().setWinEnhanced(v)}
-            label="Enhanced Win Celebration"
+            label={t('settings.enhancedWin')}
           />
         </div>
 
         <div style={{ ...field, marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>Table Texture</label>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.tableTexture')}</label>
           <ToggleSwitch
             checked={!!tableTexture}
             onChange={(v) => useSettingsStore.getState().setTableTexture(v)}
-            label="Table Texture"
+            label={t('settings.tableTexture')}
           />
         </div>
 
         <div style={{ ...field, marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>Board Frame</label>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.boardFrame')}</label>
           <ToggleSwitch
             checked={!!boardFrame}
             onChange={(v) => useSettingsStore.getState().setBoardFrame(v)}
-            label="Board Frame"
+            label={t('settings.boardFrame')}
           />
         </div>
 
         <div style={{ ...field, marginBottom: 0 }}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>Appear on Leaderboard</label>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.appearLeaderboard')}</label>
           <ToggleSwitch
             checked={!!leaderboardVisible}
             onChange={(v) => setLeaderboardVisible(v)}
-            label="Appear on Leaderboard"
+            label={t('settings.appearLeaderboard')}
             disabled={!supabase}
           />
         </div>
         </div>
         </div>
-        {showScrollUp && <button type="button" aria-label="Scroll settings to top" onClick={() => scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })} style={{ ...scrollButton, top: 8 }}><ChevronUp size={18} strokeWidth={2.5} aria-hidden="true" /></button>}
-        {showScrollDown && <button type="button" aria-label="Scroll settings to bottom" onClick={() => { const element = scrollRef.current; element?.scrollTo({ top: element.scrollHeight, behavior: 'smooth' }); }} style={{ ...scrollButton, bottom: 8 }}><ChevronDown size={18} strokeWidth={2.5} aria-hidden="true" /></button>}
+        {showScrollUp && <button type="button" aria-label={t('settings.scrollTop')} onClick={() => scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })} style={{ ...scrollButton, top: 8 }}><ChevronUp size={18} strokeWidth={2.5} aria-hidden="true" /></button>}
+        {showScrollDown && <button type="button" aria-label={t('settings.scrollBottom')} onClick={() => { const element = scrollRef.current; element?.scrollTo({ top: element.scrollHeight, behavior: 'smooth' }); }} style={{ ...scrollButton, bottom: 8 }}><ChevronDown size={18} strokeWidth={2.5} aria-hidden="true" /></button>}
         </div>
       </div>
     </div>

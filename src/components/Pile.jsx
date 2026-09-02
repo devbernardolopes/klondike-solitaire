@@ -5,6 +5,7 @@
 // selected card here (or draws from stock for the stock pile).
 
 import { useDroppable } from '@dnd-kit/core';
+import { useTranslation } from 'react-i18next';
 import CardView from './CardView.jsx';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
@@ -25,6 +26,7 @@ import { isWon } from '../core/winDetection.js';
  * @param {{ cardH:number, fanUp:number, fanDown:number, fanDownMin:number, fanUpEmergencyMin:number, avail:number }|null} [props.metrics] measured geometry for adaptive tableau spacing
  */
 export default function Pile({ loc, cards, fanned = false, onClick, label, hiddenIds, onAutoMove, metrics }) {
+  const { t } = useTranslation();
   const { setNodeRef, isOver } = useDroppable({ id: loc, data: { loc } });
   const moveCard = useGameStore((s) => s.moveCard);
   const drawFromStock = useGameStore((s) => s.drawFromStock);
@@ -171,12 +173,12 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
 
   const pileName =
     kind === 'stock'
-      ? 'Stock'
+      ? t('piles.stock')
       : kind === 'waste'
-        ? 'Waste'
+        ? t('piles.waste')
         : kind === 'foundation'
-          ? `Foundation ${Number(loc.split(':')[1]) + 1}`
-          : `Tableau ${Number(loc.split(':')[1]) + 1}`;
+          ? t('piles.foundation', { n: Number(loc.split(':')[1]) + 1 })
+          : t('piles.tableau', { n: Number(loc.split(':')[1]) + 1 });
 
   const handleKeyDown = (e) => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
@@ -187,21 +189,21 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
       return;
     }
     if (!selectedCardId) {
-      setAnnounce(`Select a card first to move it to ${pileName}`);
+      setAnnounce(t('piles.selectFirst', { pile: pileName }));
       return;
     }
     const from = findCardLocator(useGameStore.getState().state, selectedCardId);
     if (!from) {
       clearSelection();
-      setAnnounce('Selected card is no longer available');
+      setAnnounce(t('piles.noLongerAvailable'));
       return;
     }
     const ok = moveCard(from, loc, selectedCardId);
     if (ok) {
       clearSelection();
-      setAnnounce(`Moved card to ${pileName}`);
+      setAnnounce(t('piles.movedTo', { pile: pileName }));
     } else {
-      setAnnounce(`Cannot move that card to ${pileName}`);
+      setAnnounce(t('piles.cannotMove', { pile: pileName }));
     }
   };
 
@@ -218,7 +220,7 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
       onKeyDown={handleKeyDown}
       tabIndex={0}
       role="button"
-      aria-label={`${pileName}${cards.length ? `, ${cards.length} cards` : ', empty'}`}
+      aria-label={`${pileName}${cards.length ? t('piles.cards', { count: cards.length }) : t('piles.empty')}`}
       style={{
         minWidth: 'var(--card-width)',
         minHeight: 'var(--card-height)',

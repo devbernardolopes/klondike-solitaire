@@ -8,6 +8,7 @@
 // other modals.
 
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useModalBackdrop } from './modalBackdrop.js';
 import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
@@ -21,6 +22,7 @@ import { achievementImageUrl, onAchievementImageError } from '../utils/achieveme
  * @param {() => void} props.onClose
  */
 export default function AchievementDetailModal({ achievement, open, onClose }) {
+  const { t } = useTranslation();
   const dialogRef = useRef(null);
   const backdrop = useModalBackdrop(onClose);
 
@@ -93,7 +95,7 @@ export default function AchievementDetailModal({ achievement, open, onClose }) {
         <h2 style={{ margin: '0 0 10px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>{achievement.name}</h2>
         <div style={{ fontSize: 14, lineHeight: 1.4, marginBottom: 14 }}>{achievement.description}</div>
         <div style={{ fontSize: 13, fontStyle: isUnlocked ? 'normal' : 'italic' }}>
-          {isUnlocked ? `Unlocked ${formatDate(achievement.earnedAt)}` : 'Locked'}
+          {isUnlocked ? t('achievements.detail.unlocked', { date: formatDate(achievement.earnedAt) }) : t('achievements.detail.locked')}
         </div>
       </div>
     </div>

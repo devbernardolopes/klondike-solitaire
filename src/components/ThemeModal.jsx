@@ -8,6 +8,7 @@
 // immediately. Mirrors the modal chrome of SettingsModal.jsx / StoreModal.jsx.
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
@@ -22,10 +23,10 @@ import { useAuthStore } from '../hooks/useAuthStore.js';
 import { previewBackgroundOf } from '../render/themes/backgroundRegistry.js';
 
 const TABS = [
-  { id: 'interface', label: 'Interface' },
-  { id: 'background', label: 'Background' },
-  { id: 'cardsBack', label: 'Cards Back' },
-  { id: 'cardsFace', label: 'Cards Face' },
+  { id: 'interface', labelKey: 'theme.tabs.interface' },
+  { id: 'background', labelKey: 'theme.tabs.background' },
+  { id: 'cardsBack', labelKey: 'theme.tabs.cardBack' },
+  { id: 'cardsFace', labelKey: 'theme.tabs.cardsFace' },
 ];
 
 const FREE_BACKGROUNDS = ['classic', 'dark', 'midnight', 'forest', 'desert', 'emerald-depth', 'midnight-velvet', 'crimson-baize', 'desert-mirage'];
@@ -57,6 +58,7 @@ const NEW_BADGE = {
  * @param {() => void} props.onClose
  */
 export default function ThemeModal({ open, onClose }) {
+  const { t } = useTranslation();
   const dialogRef = useRef(null);
   const scrollRef = useRef(null);
   const backdrop = useModalBackdrop(onClose);
@@ -72,7 +74,7 @@ export default function ThemeModal({ open, onClose }) {
   const setInterfaceTheme = useSettingsStore((s) => s.setInterfaceTheme);
   const setDeck = useSettingsStore((s) => s.setDeck);
   const setThemeModalTab = useSettingsStore((s) => s.setThemeModalTab);
-  const validTab = (t) => (TABS.some((x) => x.id === t) ? t : 'interface');
+  const validTab = (v) => (TABS.some((x) => x.id === v) ? v : 'interface');
   const [activeTab, setActiveTab] = useState(() =>
     validTab(useSettingsStore.getState().themeModalTab),
   );
@@ -220,20 +222,20 @@ export default function ThemeModal({ open, onClose }) {
     ];
     return (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, var(--card-width))', gap: 14, justifyContent: 'center' }}>
-        {tiles.map((t) => {
-          const selected = t.asset_ref === theme;
-          const isNew = t.id ? newIds.includes(t.id) : false;
+        {tiles.map((tile) => {
+          const selected = tile.asset_ref === theme;
+          const isNew = tile.id ? newIds.includes(tile.id) : false;
           return (
             <button
-              key={t.asset_ref}
+              key={tile.asset_ref}
               type="button"
               role="button"
               aria-pressed={selected}
-              aria-label={`Background: ${t.label}${selected ? ' (selected)' : ''}${isNew ? ' (new)' : ''}`}
+              aria-label={`${t('theme.aria.background', { label: tile.label })}${selected ? ` (${t('common.selected')})` : ''}${isNew ? ` (${t('common.new')})` : ''}`}
               onClick={() => {
-                if (t.id) dismissNew(t.id);
-                setTheme(t.asset_ref);
-                announce(`${t.label} background selected`);
+                if (tile.id) dismissNew(tile.id);
+                setTheme(tile.asset_ref);
+                announce(t('theme.announce.background', { label: tile.label }));
               }}
               style={{
                 ...tileBase,
@@ -244,7 +246,7 @@ export default function ThemeModal({ open, onClose }) {
               }}
             >
               <span
-                className={`theme-${t.asset_ref}`}
+                className={`theme-${tile.asset_ref}`}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -252,7 +254,7 @@ export default function ThemeModal({ open, onClose }) {
                   width: '100%',
                   height: '100%',
                   borderRadius: 'var(--card-radius)',
-                  background: previewBackgroundOf(t.asset_ref) ?? '#1f7a4d',
+                  background: previewBackgroundOf(tile.asset_ref) ?? '#1f7a4d',
                 }}
               >
                 <span
@@ -268,7 +270,7 @@ export default function ThemeModal({ open, onClose }) {
                   }}
                 />
               </span>
-              {isNew && <span style={NEW_BADGE}>New</span>}
+              {isNew && <span style={NEW_BADGE}>{t('common.new')}</span>}
             </button>
           );
         })}
@@ -278,34 +280,34 @@ export default function ThemeModal({ open, onClose }) {
 
   const renderInterfaceTab = () => (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, var(--card-width))', gap: 14, justifyContent: 'center' }}>
-      {FREE_BACKGROUNDS.slice(0, 2).map((t) => {
-        const selected = t === interfaceTheme;
+      {FREE_BACKGROUNDS.slice(0, 2).map((name) => {
+        const selected = name === interfaceTheme;
         return (
           <button
-            key={t}
+            key={name}
             type="button"
             role="button"
             aria-pressed={selected}
-            aria-label={`Interface: ${t}${selected ? ' (selected)' : ''}`}
+            aria-label={`${t('theme.aria.interface', { label: name })}${selected ? ` (${t('common.selected')})` : ''}`}
             onClick={() => {
-              setInterfaceTheme(t);
-              announce(`${t} interface selected`);
+              setInterfaceTheme(name);
+              announce(t('theme.announce.interface', { label: name }));
             }}
-            className={`ui-${t}`}
+            className={`ui-${name}`}
             style={{
               ...tileBase,
               ...(selected ? selectedBorder : null),
-              background: t === 'classic' ? '#ffffff' : '#2a2f3a',
+              background: name === 'classic' ? '#ffffff' : '#2a2f3a',
               border: selected
                 ? selectedBorder.border
-                : `1px solid ${t === 'classic' ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.3)'}`,
-              color: t === 'classic' ? '#1a1a1a' : '#ffffff',
+                : `1px solid ${name === 'classic' ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.3)'}`,
+              color: name === 'classic' ? '#1a1a1a' : '#ffffff',
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <span style={{ fontSize: 13, fontWeight: 700 }}>{t}</span>
+            <span style={{ fontSize: 13, fontWeight: 700 }}>{name}</span>
           </button>
         );
       })}
@@ -333,28 +335,28 @@ export default function ThemeModal({ open, onClose }) {
     ];
     return (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, var(--card-width))', gap: 14, justifyContent: 'center' }}>
-        {tiles.map((t) => {
-          const selected = t.key === cardBack;
-          const isNew = t.id ? newIds.includes(t.id) : false;
+        {tiles.map((tile) => {
+          const selected = tile.key === cardBack;
+          const isNew = tile.id ? newIds.includes(tile.id) : false;
           return (
             <button
-              key={t.key}
+              key={tile.key}
               type="button"
               role="button"
               aria-pressed={selected}
-              aria-label={`Cards Back: ${t.label}${selected ? ' (selected)' : ''}${isNew ? ' (new)' : ''}`}
+              aria-label={`${t('theme.aria.cardBack', { label: tile.label })}${selected ? ` (${t('common.selected')})` : ''}${isNew ? ` (${t('common.new')})` : ''}`}
               onClick={() => {
-                if (t.id) dismissNew(t.id);
-                setCardBack(t.key);
-                announce(`${t.label} card back selected`);
+                if (tile.id) dismissNew(tile.id);
+                setCardBack(tile.key);
+                announce(t('theme.announce.cardBack', { label: tile.label }));
               }}
               style={{
                 ...tileBase,
                 ...(selected ? selectedBorder : null),
-                backgroundImage: `url(${t.img})`,
+                backgroundImage: `url(${tile.img})`,
               }}
             >
-              {isNew && <span style={NEW_BADGE}>New</span>}
+              {isNew && <span style={NEW_BADGE}>{t('common.new')}</span>}
             </button>
           );
         })}
@@ -373,21 +375,21 @@ export default function ThemeModal({ open, onClose }) {
       });
     return (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, var(--card-width))', gap: 14, justifyContent: 'center' }}>
-        {tiles.map((t) => {
-          const selected = t.key === deck;
-          const faceImg = t.img;
-          const isNew = t.id ? newIds.includes(t.id) : false;
+        {tiles.map((tile) => {
+          const selected = tile.key === deck;
+          const faceImg = tile.img;
+          const isNew = tile.id ? newIds.includes(tile.id) : false;
           return (
             <button
-              key={t.key}
+              key={tile.key}
               type="button"
               role="button"
               aria-pressed={selected}
-              aria-label={`Cards Face: ${t.label}${selected ? ' (selected)' : ''}${isNew ? ' (new)' : ''}`}
+              aria-label={`${t('theme.aria.cardsFace', { label: tile.label })}${selected ? ` (${t('common.selected')})` : ''}${isNew ? ` (${t('common.new')})` : ''}`}
               onClick={() => {
-                if (t.id) dismissNew(t.id);
-                setDeck(t.key);
-                announce(`${t.label} cards selected`);
+                if (tile.id) dismissNew(tile.id);
+                setDeck(tile.key);
+                announce(t('theme.announce.cardsFace', { label: tile.label }));
               }}
               style={{
                 ...tileBase,
@@ -395,7 +397,7 @@ export default function ThemeModal({ open, onClose }) {
                 backgroundImage: `url(${faceImg})`,
               }}
             >
-              {isNew && <span style={NEW_BADGE}>New</span>}
+              {isNew && <span style={NEW_BADGE}>{t('common.new')}</span>}
             </button>
           );
         })}
@@ -407,7 +409,7 @@ export default function ThemeModal({ open, onClose }) {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Theme"
+      aria-label={t('theme.title')}
       tabIndex={-1}
       ref={dialogRef}
       {...backdrop}
@@ -423,7 +425,7 @@ export default function ThemeModal({ open, onClose }) {
       }}
     >
       <div style={panel}>
-        <h2 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>Theme</h2>
+        <h2 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>{t('theme.title')}</h2>
         <ModalCloseButton onClick={onClose} />
 
         <div
@@ -457,7 +459,7 @@ export default function ThemeModal({ open, onClose }) {
                     : '1px solid transparent',
                 }}
               >
-                {tab.label}
+                {t(tab.labelKey)}
               </button>
             );
           })}
@@ -474,7 +476,7 @@ export default function ThemeModal({ open, onClose }) {
           {showScrollUp && (
             <button
               type="button"
-              aria-label="Scroll theme options to top"
+              aria-label={t('theme.scrollTop')}
               onClick={() => scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
               style={{ ...scrollButton, top: 8 }}
             >
@@ -484,7 +486,7 @@ export default function ThemeModal({ open, onClose }) {
           {showScrollDown && (
             <button
               type="button"
-              aria-label="Scroll theme options to bottom"
+              aria-label={t('theme.scrollBottom')}
               onClick={() => {
                 const element = scrollRef.current;
                 element?.scrollTo({ top: element.scrollHeight, behavior: 'smooth' });

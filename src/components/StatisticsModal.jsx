@@ -8,6 +8,7 @@
 // a confirmation dialog so an accidental tap can't wipe history.
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronUp, Coins as CoinsIcon } from 'lucide-react';
 import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
@@ -26,6 +27,7 @@ import { formatTime } from '../utils/formatTime.js';
  * @param {() => void} props.onClose
  */
 export default function StatisticsModal({ open, onClose }) {
+  const { t } = useTranslation();
   const stats = useStatisticsStore((s) => s.stats);
   const reset = useStatisticsStore((s) => s.reset);
   const isGameInProgress = () => {
@@ -137,7 +139,7 @@ export default function StatisticsModal({ open, onClose }) {
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Statistics"
+        aria-label={t('statistics.title')}
         tabIndex={-1}
       {...backdrop}
         style={{
@@ -152,47 +154,42 @@ export default function StatisticsModal({ open, onClose }) {
         }}
       >
         <div style={panel}>
-          <h2 style={{ margin: '0 0 14px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>Statistics</h2>
+          <h2 style={{ margin: '0 0 14px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>{t('statistics.title')}</h2>
           <ModalCloseButton onClick={onClose} />
 
           <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
           <div ref={scrollRef} className="modal-body-scroll" style={{ height: '100%' }}>
             <div style={row}>
-              <span style={labelStyle}>Total games played</span>
+              <span style={labelStyle}>{t('statistics.totalPlayed')}</span>
               <span style={valueStyle}>{stats.totalGamesPlayed}</span>
             </div>
             <div style={row}>
-              <span style={labelStyle}>Total games won</span>
-              <span style={valueStyle}>
-                {stats.totalGamesWon}{' '}
-                <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.8 }}>
-                  ({wonPct}%)
-                </span>
-              </span>
+              <span style={labelStyle}>{t('statistics.totalWon', { pct: wonPct })}</span>
+              <span style={valueStyle}>{stats.totalGamesWon}</span>
             </div>
             <div style={row}>
-              <span style={labelStyle}>Highest score (won)</span>
+              <span style={labelStyle}>{t('statistics.highestScore')}</span>
               <span style={valueStyle}>{stats.highestScore}</span>
             </div>
             <div style={row}>
-              <span style={labelStyle}>Lowest time (won)</span>
-              <span style={valueStyle}>{stats.lowestTimeMs == null ? '—' : formatTime(stats.lowestTimeMs)}</span>
+              <span style={labelStyle}>{t('statistics.lowestTime')}</span>
+              <span style={valueStyle}>{stats.lowestTimeMs == null ? t('statistics.na') : formatTime(stats.lowestTimeMs)}</span>
             </div>
             <div style={row}>
-              <span style={labelStyle}>Lowest moves (won)</span>
-              <span style={valueStyle}>{stats.lowestMoves == null ? '—' : stats.lowestMoves}</span>
+              <span style={labelStyle}>{t('statistics.lowestMoves')}</span>
+              <span style={valueStyle}>{stats.lowestMoves == null ? t('statistics.na') : stats.lowestMoves}</span>
             </div>
             <div style={row}>
-              <span style={labelStyle}>Average time (won)</span>
-              <span style={valueStyle}>{avgTimeMs == null ? '—' : formatTime(avgTimeMs)}</span>
+              <span style={labelStyle}>{t('statistics.avgTime')}</span>
+              <span style={valueStyle}>{avgTimeMs == null ? t('statistics.na') : formatTime(avgTimeMs)}</span>
             </div>
             <div style={{ ...row, borderBottom: 'none' }}>
-              <span style={labelStyle}>Average moves (won)</span>
-              <span style={valueStyle}>{avgMoves == null ? '—' : Math.round(avgMoves)}</span>
+              <span style={labelStyle}>{t('statistics.avgMoves')}</span>
+              <span style={valueStyle}>{avgMoves == null ? t('statistics.na') : Math.round(avgMoves)}</span>
             </div>
 
             <div style={{ ...row, borderTop: '1px solid var(--ui-control-border)' }}>
-              <span style={labelStyle}>Current Winning Streak</span>
+              <span style={labelStyle}>{t('statistics.currentStreak')}</span>
               <span
                 style={{
                   ...valueStyle,
@@ -212,33 +209,33 @@ export default function StatisticsModal({ open, onClose }) {
                       color: '#e53935',
                     }}
                   >
-                    new
+                    {t('common.new')}
                   </span>
                 )}
               </span>
             </div>
             <div style={{ ...row, borderBottom: 'none' }}>
-              <span style={labelStyle}>Best Winning Streak</span>
+              <span style={labelStyle}>{t('statistics.bestStreak')}</span>
               <span style={valueStyle}>{stats.bestStreak}</span>
             </div>
 
             <div style={{ ...row, borderTop: '1px solid var(--ui-control-border)' }}>
-              <span style={labelStyle}>Coins Earned</span>
+              <span style={labelStyle}>{t('statistics.coinsEarned')}</span>
               <span style={{ ...valueStyle, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                 <CoinsIcon size={13} aria-hidden="true" />
                 {coinsEarnedTotal}
               </span>
             </div>
             <div style={{ ...row, borderBottom: 'none' }}>
-              <span style={labelStyle}>Coins Spent</span>
+              <span style={labelStyle}>{t('statistics.coinsSpent')}</span>
               <span style={{ ...valueStyle, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                 <CoinsIcon size={13} aria-hidden="true" />
                 {coinsSpentTotal}
               </span>
             </div>
           </div>
-          {showScrollUp && <button type="button" aria-label="Scroll statistics to top" onClick={() => scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })} style={{ ...scrollButton, top: 8 }}><ChevronUp size={18} strokeWidth={2.5} aria-hidden="true" /></button>}
-          {showScrollDown && <button type="button" aria-label="Scroll statistics to bottom" onClick={() => { const element = scrollRef.current; element?.scrollTo({ top: element.scrollHeight, behavior: 'smooth' }); }} style={{ ...scrollButton, bottom: 8 }}><ChevronDown size={18} strokeWidth={2.5} aria-hidden="true" /></button>}
+          {showScrollUp && <button type="button" aria-label={t('statistics.scrollTop')} onClick={() => scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })} style={{ ...scrollButton, top: 8 }}><ChevronUp size={18} strokeWidth={2.5} aria-hidden="true" /></button>}
+          {showScrollDown && <button type="button" aria-label={t('statistics.scrollBottom')} onClick={() => { const element = scrollRef.current; element?.scrollTo({ top: element.scrollHeight, behavior: 'smooth' }); }} style={{ ...scrollButton, bottom: 8 }}><ChevronDown size={18} strokeWidth={2.5} aria-hidden="true" /></button>}
           </div>
 
           {!isEmpty && (
@@ -257,7 +254,7 @@ export default function StatisticsModal({ open, onClose }) {
               }}
               onClick={() => setConfirmResetOpen(true)}
             >
-              Reset Statistics
+              {t('statistics.reset')}
             </button>
           )}
         </div>
@@ -265,17 +262,13 @@ export default function StatisticsModal({ open, onClose }) {
 
       <ConfirmModal
         open={confirmResetOpen}
-        title="Reset statistics?"
+        title={t('statistics.confirm.title')}
         message={
-          "This clears your games played, wins, personal bests, and winning streaks. " +
-          "Your coins, achievements, and Daily Challenge history are not affected. " +
-          "This cannot be undone." +
-          (isGameInProgress()
-            ? " Your current game is in progress and will be discarded and replayed (the same as choosing Replay this Game)."
-            : "")
+          t('statistics.confirm.message') +
+          (isGameInProgress() ? t('statistics.confirm.inProgress') : "")
         }
-        confirmText="Reset"
-        cancelText="Cancel"
+        confirmText={t('confirm.reset')}
+        cancelText={t('common.cancel')}
         onConfirm={() => {
           setConfirmResetOpen(false);
           // If a game is currently in progress (timer running and not won), the

@@ -7,6 +7,7 @@
 // rather than ConfirmModal's single-cancel-shared-with-confirm semantics.
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useModalBackdrop } from './modalBackdrop.js';
 import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
@@ -20,6 +21,7 @@ import { getWinningPool } from '../repo/seedRepository.js';
  * @param {() => void} props.onCancel              Escape / backdrop / Cancel — does nothing else
  */
 export default function SeedInputModal({ open, onConfirm, onCancel }) {
+  const { t } = useTranslation();
   const inputRef = useRef(null);
   const backdrop = useModalBackdrop(onCancel);
 
@@ -47,13 +49,13 @@ export default function SeedInputModal({ open, onConfirm, onCancel }) {
   const tryConfirm = async () => {
     const trimmed = value.trim();
     if (trimmed === '') {
-      setError('Enter a seed number first.');
+      setError(t('seedInput.error.empty'));
       return;
     }
     const seed = Number(trimmed);
     const pool = await getWinningPool();
     if (!isSolvableSeed(seed, pool)) {
-      setError(`Seed ${seed} not found. Try another number.`);
+      setError(t('seedInput.error.notFound', { seed }));
       return;
     }
     onConfirm(seed);
@@ -103,7 +105,7 @@ export default function SeedInputModal({ open, onConfirm, onCancel }) {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Enter Seed"
+      aria-label={t('seedInput.title')}
       {...backdrop}
       style={{
         position: 'fixed',
@@ -117,9 +119,9 @@ export default function SeedInputModal({ open, onConfirm, onCancel }) {
       }}
     >
       <div style={panel}>
-        <h2 style={{ margin: '0 0 10px', fontSize: 18, fontWeight: 700 }}>Enter Seed</h2>
+        <h2 style={{ margin: '0 0 10px', fontSize: 18, fontWeight: 700 }}>{t('seedInput.title')}</h2>
         <p style={{ margin: '0 0 14px', fontSize: 14, lineHeight: 1.45 }}>
-          Type a valid Winning-Deal seed number to start that exact game.
+          {t('seedInput.prompt')}
         </p>
         <input
           ref={inputRef}
@@ -129,9 +131,9 @@ export default function SeedInputModal({ open, onConfirm, onCancel }) {
           value={value}
           onChange={onChange}
           onKeyDown={onKeyDown}
-          aria-label="Seed number"
+          aria-label={t('seedInput.aria')}
           aria-invalid={error ? 'true' : 'false'}
-          placeholder="e.g. 123456"
+          placeholder={t('seedInput.placeholder')}
           style={input}
         />
         {error && (
@@ -139,14 +141,14 @@ export default function SeedInputModal({ open, onConfirm, onCancel }) {
         )}
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: error ? 14 : 18 }}>
           <button type="button" style={btn} onClick={onCancel}>
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             type="button"
             style={{ ...btn, background: 'var(--ui-modal-btn-bg-strong)' }}
             onClick={tryConfirm}
           >
-            Start
+            {t('common.confirm')}
           </button>
         </div>
       </div>

@@ -2,6 +2,7 @@
 // New game, undo, theme/deck switchers. Stubs OK for switchers this pass.
 
 import { useEffect, useCallback, useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, Undo2, Menu, Lightbulb, Coins as CoinsIcon } from 'lucide-react';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useUiStore, isAnyModalOpen } from '../hooks/useUiStore.js';
@@ -72,6 +73,7 @@ function useElapsed() {
  * @param {(v: boolean) => void} props.onParticlesChange
  */
 export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, handedness, onHandednessChange, highlightCard, onHighlightCardChange, particles, onParticlesChange, bootstrapReady }) {
+  const { t } = useTranslation();
   const dealNewGame = useGameStore((s) => s.dealNewGame);
   const dealWithSeed = useGameStore((s) => s.dealWithSeed);
   const replayGame = useGameStore((s) => s.replayGame);
@@ -253,9 +255,9 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
       setSeedInputDialogOpen(false);
       dealWithSeed(seed);
       play('deal');
-      setAnnounce(`New game: seed ${seed}`);
+      setAnnounce(t('toolbar.announce.newGame', { seed }));
     });
-  }, [startDealOrConfirm, setSeedInputDialogOpen, dealWithSeed, play, setAnnounce]);
+  }, [startDealOrConfirm, setSeedInputDialogOpen, dealWithSeed, play, setAnnounce, t]);
   const onSeedCancel = useCallback(() => {
     setSeedInputDialogOpen(false);
   }, [setSeedInputDialogOpen]);
@@ -382,7 +384,7 @@ function ElapsedClock() {
   const elapsed = useElapsed();
   return (
     <div style={hudColStyle}>
-      <span style={hudLabelStyle}>Time</span>
+      <span style={hudLabelStyle}>{t('toolbar.time')}</span>
       <span style={hudValueStyle}>{elapsed}</span>
     </div>
   );
@@ -409,7 +411,7 @@ function ElapsedClock() {
           <span
             role="button"
             tabIndex={0}
-            title="Double-click to enter a specific seed"
+            title={t('toolbar.seedHint')}
             onDoubleClick={onLabelActivate}
             onPointerUp={onLabelActivate}
             onKeyDown={onLabelActivate}
@@ -423,12 +425,12 @@ function ElapsedClock() {
           >
             <span style={{ visibility: bootstrapReady && currentGameKind ? 'visible' : 'hidden' }}>
             {currentGameKind === 'daily'
-              ? `Daily Challenge: ${currentDailyDate} (${gameState.seed})`
+              ? t('toolbar.dailyChallenge', { date: currentDailyDate, seed: gameState.seed })
               : currentGameKind === 'random'
-                ? `Random (${gameState.seed})`
+                ? t('toolbar.random', { seed: gameState.seed })
                 : currentGameKind === 'event'
-                  ? `Special Event (${gameState.seed})`
-                : `Winning Deal (${gameState.seed})`}
+                  ? t('toolbar.specialEvent', { seed: gameState.seed })
+                : t('toolbar.winningDeal', { seed: gameState.seed })}
             </span>
           </span>
           <span
@@ -455,12 +457,12 @@ function ElapsedClock() {
           }}
         >
           <div style={hudColStyle}>
-            <span style={hudLabelStyle}>Score</span>
+            <span style={hudLabelStyle}>{t('toolbar.score')}</span>
             <span style={hudValueStyle}>{score}</span>
           </div>
           <ElapsedClock />
           <div style={hudColStyle}>
-            <span style={hudLabelStyle}>Moves</span>
+            <span style={hudLabelStyle}>{t('toolbar.moves')}</span>
             <span style={hudValueStyle}>{moves}</span>
           </div>
         </div>
@@ -468,7 +470,8 @@ function ElapsedClock() {
 
       <button
         style={{ ...fab, left: fabLeft(0) }}
-        aria-label="Main Menu"
+        aria-label={t('mainMenu.title')}
+        title={t('mainMenu.title')}
         onClick={() => setSettingsDialogOpen(true)}
       >
         <Menu size={20} />
@@ -477,8 +480,8 @@ function ElapsedClock() {
       <button
         className={newGameNeedsAttention ? 'new-game-attention' : undefined}
         style={{ ...fab, left: fabLeft(1) }}
-        aria-label={newGameNeedsAttention ? 'New Game — start a new deal' : 'New Game'}
-        title={newGameNeedsAttention ? 'Start a new game' : 'New Game'}
+        aria-label={t('toolbar.newGame')}
+        title={t('toolbar.newGame.title')}
         onClick={() => setNewGameDialogOpen(true)}
       >
         <Plus size={20} />
@@ -486,7 +489,8 @@ function ElapsedClock() {
 
        <button
         style={{ ...fab, right: 16 + FAB_WIDTH + FAB_GAP, opacity: locked ? 0.4 : 1 }}
-        aria-label="Hint: show available moves (H)"
+        aria-label={t('toolbar.hint')}
+        title={t('toolbar.hint')}
         data-hint-button
         disabled={locked}
         onClick={showHints}
@@ -496,7 +500,8 @@ function ElapsedClock() {
 
        <button
         style={{ ...fab, right: 16, opacity: locked || !canUndo ? 0.4 : 1, touchAction: 'manipulation' }}
-        aria-label="Undo"
+        aria-label={t('toolbar.undo')}
+        title={t('toolbar.undo')}
         disabled={locked || !canUndo}
         onPointerDown={onUndoPointerDown}
         onPointerUp={onUndoPointerEnd}
@@ -546,13 +551,13 @@ function ElapsedClock() {
        <ConfirmModal
         open={noMovesDialogOpen}
         dismissable={false}
-        title="No moves remaining"
-        message="There don't seem to be any more valid moves. You can keep going to recycle the stock, undo your last move, replay this exact deal, or start a new game."
-        confirmText={currentGameKind === 'daily' ? 'Return to Daily Challenge' : 'New Game'}
-        cancelText="Undo Last Move"
-        tertiaryText="Replay this Game"
+        title={t('toolbar.noMoves.title')}
+        message={t('toolbar.noMoves.message')}
+        confirmText={currentGameKind === 'daily' ? t('toolbar.noMoves.dailyConfirm') : t('toolbar.noMoves.confirm')}
+        cancelText={t('toolbar.noMoves.cancel')}
+        tertiaryText={t('toolbar.noMoves.tertiary')}
         onTertiary={onNoMovesReplay}
-        quaternaryText="Keep Going"
+        quaternaryText={t('toolbar.noMoves.quaternary')}
         onQuaternary={onNoMovesKeepGoing}
         onConfirm={currentGameKind === 'daily' ? onNoMovesReturnDaily : onNoMovesConfirm}
         onCancel={onNoMovesCancel}
@@ -561,13 +566,13 @@ function ElapsedClock() {
 
        <ConfirmModal
         open={gameOverDialogOpen}
-        title="Game Over"
+        title={t('toolbar.gameOver.title')}
         message={
           overReason === 'moves'
-            ? "You reached the 500-move limit. Close this message, then start a new game to keep playing."
-            : "You reached the 30:00 time limit. Close this message, then start a new game to keep playing."
+            ? t('toolbar.gameOver.moves')
+            : t('toolbar.gameOver.time')
         }
-        confirmText="OK"
+        confirmText={t('common.ok')}
         hideCancel
         dismissable={false}
         onConfirm={closeGameOver}
@@ -577,12 +582,12 @@ function ElapsedClock() {
 
       <ConfirmModal
         open={confirmNewGameDialogOpen}
-        title="Start a new game?"
+        title={t('toolbar.confirmNewGame.title')}
         zIndex={Z.GRANDCHILD}
         z={Z.GRANDCHILD}
-        message="The current game is in progress. Starting a new game will discard your current progress. This game will count as a loss and be recorded in your statistics."
-        confirmText="New Game"
-        cancelText="Cancel"
+        message={t('toolbar.confirmNewGame.message')}
+        confirmText={t('confirm.confirm')}
+        cancelText={t('confirm.cancel')}
         onConfirm={onConfirmNewGame}
         onCancel={() => {
           useUiStore.getState().setPendingStartDeal(null);

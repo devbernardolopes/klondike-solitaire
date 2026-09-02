@@ -8,6 +8,7 @@
 // focus-on-open, Escape/backdrop-to-close) of SettingsModal.jsx.
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useModalBackdrop } from './modalBackdrop.js';
 import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
@@ -25,14 +26,23 @@ import { formatTime } from '../utils/formatTime.js';
  * @property {(v: any) => string} format
  */
 
+const TAB_KEY_TO_I18N = {
+  coins: 'leaderboard.tabs.coins',
+  games_won: 'leaderboard.tabs.gamesWon',
+  best_streak: 'leaderboard.tabs.bestStreak',
+  highest_score: 'leaderboard.tabs.highestScore',
+  lowest_time_ms: 'leaderboard.tabs.fastestWin',
+  lowest_moves: 'leaderboard.tabs.fewestMoves',
+};
+
 /** @type {LeaderboardTab[]} */
 const TABS = [
-  { key: 'coins', label: 'Coins', column: 'coins_earned_total', ascending: false, format: (v) => String(v ?? 0) },
-  { key: 'games_won', label: 'Games Won', column: 'games_won', ascending: false, format: (v) => String(v ?? 0) },
-  { key: 'best_streak', label: 'Best Streak', column: 'best_streak', ascending: false, format: (v) => String(v ?? 0) },
-  { key: 'highest_score', label: 'Highest Score', column: 'highest_score', ascending: false, format: (v) => String(v ?? 0) },
-  { key: 'lowest_time_ms', label: 'Fastest Win', column: 'lowest_time_ms', ascending: true, format: (v) => (v == null ? '—' : formatTime(v)) },
-  { key: 'lowest_moves', label: 'Fewest Moves', column: 'lowest_moves', ascending: true, format: (v) => (v == null ? '—' : String(v)) },
+  { key: 'coins', column: 'coins_earned_total', ascending: false, format: (v) => String(v ?? 0) },
+  { key: 'games_won', column: 'games_won', ascending: false, format: (v) => String(v ?? 0) },
+  { key: 'best_streak', column: 'best_streak', ascending: false, format: (v) => String(v ?? 0) },
+  { key: 'highest_score', column: 'highest_score', ascending: false, format: (v) => String(v ?? 0) },
+  { key: 'lowest_time_ms', column: 'lowest_time_ms', ascending: true, format: (v) => (v == null ? '—' : formatTime(v)) },
+  { key: 'lowest_moves', column: 'lowest_moves', ascending: true, format: (v) => (v == null ? '—' : String(v)) },
 ];
 
 const LEADERBOARD_COLUMNS =
@@ -45,6 +55,7 @@ const LEADERBOARD_COLUMNS =
  * @param {() => void} props.onClose
  */
 export default function LeaderboardModal({ open, onClose }) {
+  const { t } = useTranslation();
   const dialogRef = useRef(null);
   const backdrop = useModalBackdrop(onClose);
   const userId = useAuthStore((s) => s.userId);
@@ -138,7 +149,7 @@ export default function LeaderboardModal({ open, onClose }) {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Leaderboard"
+      aria-label={t('leaderboard.title')}
       tabIndex={-1}
       ref={dialogRef}
       {...backdrop}
@@ -154,7 +165,7 @@ export default function LeaderboardModal({ open, onClose }) {
       }}
     >
       <div style={panel}>
-        <h2 style={{ margin: '0 0 14px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>Leaderboard</h2>
+        <h2 style={{ margin: '0 0 14px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>{t('leaderboard.title')}</h2>
         <ModalCloseButton onClick={onClose} />
 
         <div
@@ -165,23 +176,23 @@ export default function LeaderboardModal({ open, onClose }) {
             marginBottom: 14,
           }}
         >
-          {TABS.map((t) => (
+          {TABS.map((tab) => (
             <button
-              key={t.key}
+              key={tab.key}
               type="button"
-              style={tabBtn(t.key === activeTab)}
-              onClick={() => setActiveTab(t.key)}
+              style={tabBtn(tab.key === activeTab)}
+              onClick={() => setActiveTab(tab.key)}
             >
-              {t.label}
+              {t(TAB_KEY_TO_I18N[tab.key])}
             </button>
           ))}
         </div>
 
         <div className="modal-body-scroll" style={{ flex: 1, minHeight: 0 }}>
           {loading ? (
-            <div style={{ opacity: 0.7, fontSize: 14 }}>Loading…</div>
+            <div style={{ opacity: 0.7, fontSize: 14 }}>{t('leaderboard.loading')}</div>
           ) : rows.length === 0 ? (
-            <div style={{ opacity: 0.7, fontSize: 14 }}>No results yet.</div>
+            <div style={{ opacity: 0.7, fontSize: 14 }}>{t('leaderboard.empty')}</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {rows.map((row, i) => {

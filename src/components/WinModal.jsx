@@ -7,6 +7,7 @@
 // pressing Escape, or either button.
 
 import { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
@@ -23,6 +24,7 @@ const NEW_VALUE_COLOR = '#1a7f37';
 const NEW_BADGE_COLOR = '#e53935';
 
 export default function WinModal() {
+  const { t } = useTranslation();
   const winDialogOpen = useUiStore((s) => s.winDialogOpen);
   const summary = useUiStore((s) => s.winSummary);
   const closeWinDialog = useUiStore((s) => s.closeWinDialog);
@@ -125,10 +127,10 @@ export default function WinModal() {
     >
       <span />
       <span style={{ textAlign: 'right', fontSize: 12, fontWeight: 700, opacity: 0.7 }}>
-        Current
+        {t('winModal.current')}
       </span>
       <span style={{ textAlign: 'right', fontSize: 12, fontWeight: 700, opacity: 0.7 }}>
-        Best
+        {t('winModal.best')}
       </span>
     </div>
   );
@@ -159,7 +161,7 @@ export default function WinModal() {
         </span>
         {isNew && (
           <span style={{ fontSize: 12, fontWeight: 700, color: NEW_BADGE_COLOR }}>
-            new
+            {t('common.new')}
           </span>
         )}
       </span>
@@ -181,7 +183,7 @@ export default function WinModal() {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="You Won"
+      aria-label={t('winModal.title')}
       {...backdrop}
       style={{
         position: 'fixed',
@@ -195,16 +197,16 @@ export default function WinModal() {
       }}
     >
        <div ref={panelRef} tabIndex={-1} aria-hidden={entering} style={panel}>
-         <h2
-           style={{
-             margin: '0 0 14px',
-             fontSize: 22,
-             fontWeight: 800,
-             textAlign: 'center',
-           }}
-         >
-           You Won
-         </h2>
+          <h2
+            style={{
+              margin: '0 0 14px',
+              fontSize: 22,
+              fontWeight: 800,
+              textAlign: 'center',
+            }}
+          >
+            {t('winModal.title')}
+          </h2>
 
          {dailyDate && (
            <div
@@ -217,53 +219,53 @@ export default function WinModal() {
                opacity: 0.85,
              }}
            >
-             Daily Challenge: {dailyDate} (seed {seed})
+              {t('winModal.dailyBanner', { date: dailyDate, seed })}
            </div>
          )}
 
-         <div style={{ marginBottom: 18 }}>
-          <HeaderRow />
-          <StatRow label="Score" value={String(score)} best={String(bestScore)} isNew={newScore} />
-          <StatRow
-            label="Time"
-            value={formatTime(timeMs)}
-            best={bestTimeMs == null ? '—' : formatTime(bestTimeMs)}
-            isNew={newTime}
-          />
-          <StatRow
-            label="Moves"
-            value={String(moves)}
-            best={bestMoves == null ? '—' : String(bestMoves)}
-            isNew={newMoves}
-          />
-        </div>
+          <div style={{ marginBottom: 18 }}>
+           <HeaderRow />
+           <StatRow label={t('winModal.score')} value={String(score)} best={String(bestScore)} isNew={newScore} />
+           <StatRow
+             label={t('winModal.time')}
+             value={formatTime(timeMs)}
+             best={bestTimeMs == null ? '—' : formatTime(bestTimeMs)}
+             isNew={newTime}
+           />
+           <StatRow
+             label={t('winModal.moves')}
+             value={String(moves)}
+             best={bestMoves == null ? '—' : String(bestMoves)}
+             isNew={newMoves}
+           />
+         </div>
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'stretch' }}>
-          <button
-            type="button"
-            style={{ ...btn, flex: 1 }}
-            onClick={onReplay}
-          >
-            Replay this Game
-          </button>
-          {dailyDate ? (
-            <button
-              type="button"
-              style={{ ...btn, flex: 1, background: 'var(--ui-modal-btn-bg-strong)' }}
-              onClick={onReturnDaily}
-            >
-              Return to Daily Challenge
-            </button>
-          ) : (
-            <button
-              type="button"
-              style={{ ...btn, flex: 1, background: 'var(--ui-modal-btn-bg-strong)' }}
-              onClick={onNewGame}
-            >
-              New Game
-            </button>
-          )}
-        </div>
+           <button
+             type="button"
+             style={{ ...btn, flex: 1 }}
+             onClick={onReplay}
+           >
+             {t('winModal.replay')}
+           </button>
+           {dailyDate ? (
+             <button
+               type="button"
+               style={{ ...btn, flex: 1, background: 'var(--ui-modal-btn-bg-strong)' }}
+               onClick={onReturnDaily}
+             >
+               {t('winModal.returnDaily')}
+             </button>
+           ) : (
+             <button
+               type="button"
+               style={{ ...btn, flex: 1, background: 'var(--ui-modal-btn-bg-strong)' }}
+               onClick={onNewGame}
+             >
+               {t('winModal.newGame')}
+             </button>
+           )}
+         </div>
       </div>
     </div>
   );

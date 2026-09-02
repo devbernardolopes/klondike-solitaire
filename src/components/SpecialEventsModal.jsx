@@ -12,14 +12,17 @@
 // That's expected and gets replaced in Phase 3, not a bug in this phase.
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useModalBackdrop } from './modalBackdrop.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
 import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { fetchSpecialEvents } from '../repo/specialEventsRepository.js';
+import { translateSpecialEvent } from '../i18n/db.js';
 
 export default function SpecialEventsModal() {
+  const { t } = useTranslation();
   const open = useUiStore((s) => s.specialEventsOpen);
   const setOpen = useUiStore((s) => s.setSpecialEventsOpen);
   const setDetail = useUiStore((s) => s.setEventDetailOpen);
@@ -34,7 +37,7 @@ export default function SpecialEventsModal() {
     if (!open) return;
     setLoaded(false);
     fetchSpecialEvents()
-      .then((evs) => setEvents(evs))
+      .then((evs) => setEvents(evs.map(translateSpecialEvent)))
       .catch(() => setEvents([]))
       .finally(() => setLoaded(true));
   }, [open]);
@@ -87,18 +90,18 @@ export default function SpecialEventsModal() {
   const subtitle = { fontWeight: 400, opacity: 0.8, fontSize: 12, display: 'block', marginTop: 2 };
 
   const progressLabel = (ev) => {
-    if (ev.totalPages === 0) return 'Coming soon';
-    if (ev.fullyCompleted) return `All ${ev.totalPages} page${ev.totalPages === 1 ? '' : 's'} solved`;
-    return `${ev.completedPages}/${ev.totalPages} page${ev.totalPages === 1 ? '' : 's'} solved`;
+    if (ev.totalPages === 0) return t('specialEvents.progress.comingSoon');
+    if (ev.fullyCompleted) return t('specialEvents.progress.allSolved', { count: ev.totalPages });
+    return t('specialEvents.progress.solved', { completed: ev.completedPages, total: ev.totalPages, count: ev.totalPages });
   };
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Special Events" {...backdrop} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3100, padding: 16 }}>
+    <div role="dialog" aria-modal="true" aria-label={t('specialEvents.title')} {...backdrop} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3100, padding: 16 }}>
       <div style={panel}>
-        <h2 style={{ margin: '0 0 14px', fontSize: 20, fontWeight: 800, textAlign: 'center', paddingRight: 36 }}>Special Events</h2>
+        <h2 style={{ margin: '0 0 14px', fontSize: 20, fontWeight: 800, textAlign: 'center', paddingRight: 36 }}>{t('specialEvents.title')}</h2>
         <ModalCloseButton onClick={() => setOpen(false)} />
         {loaded && events.length === 0 ? (
-          <p style={{ textAlign: 'center', opacity: 0.7, padding: '24px 0' }}>No events available yet. Check back soon!</p>
+          <p style={{ textAlign: 'center', opacity: 0.7, padding: '24px 0' }}>{t('specialEvents.noEvents')}</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {events.map((ev) => (
@@ -109,7 +112,7 @@ export default function SpecialEventsModal() {
                 onClick={() => setDetail(ev.id)}
               >
                 {ev.title}
-                {ev.fullyCompleted && <span style={COMPLETED_BADGE}>Completed</span>}
+                {ev.fullyCompleted && <span style={COMPLETED_BADGE}>{t('specialEvents.completed')}</span>}
                 <span style={subtitle}>{progressLabel(ev)}</span>
               </button>
             ))}

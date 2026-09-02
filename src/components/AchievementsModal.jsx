@@ -8,6 +8,7 @@
 // SettingsModal.jsx / ConfirmModal.jsx. Reached only from Settings.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import { useModalEscape } from '../hooks/useModalEscape.js';
@@ -19,6 +20,7 @@ import AchievementDetailModal from './AchievementDetailModal.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
+import { translateAchievement } from '../i18n/db.js';
 
 /**
  * A single achievement entry in the compact list. Unlocked entries are
@@ -43,6 +45,7 @@ const NEW_BADGE = {
 };
 
 function AchievementRow({ achievement, isNew, onOpen }) {
+  const { t } = useTranslation();
   const [hover, setHover] = useState(false);
   const [focus, setFocus] = useState(false);
   const unlocked = Boolean(achievement.earnedAt);
@@ -88,7 +91,7 @@ function AchievementRow({ achievement, isNew, onOpen }) {
         onError={onAchievementImageError}
         style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover', flex: '0 0 auto' }}
       />
-      {isNew && <span style={NEW_BADGE}>New</span>}
+      {isNew && <span style={NEW_BADGE}>{t('common.new')}</span>}
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 14, fontWeight: 700 }}>{achievement.name}</span>
@@ -106,6 +109,7 @@ function AchievementRow({ achievement, isNew, onOpen }) {
  * @param {() => void} props.onClose
  */
 export default function AchievementsModal({ open, onClose }) {
+  const { t } = useTranslation();
   const dialogRef = useRef(null);
   const scrollRef = useRef(null);
   const backdrop = useModalBackdrop(onClose);
@@ -208,7 +212,7 @@ export default function AchievementsModal({ open, onClose }) {
     const defsOk = !defsRes.error && defsRes.data;
     const unlockedOk = !unlockedRes.error && unlockedRes.data;
     if (defsOk) {
-      setDefs(defsRes.data);
+      setDefs(defsRes.data.map(translateAchievement));
     }
     let nextUnlocked = {};
     if (unlockedOk) {
@@ -299,7 +303,7 @@ export default function AchievementsModal({ open, onClose }) {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Achievements"
+        aria-label={t('achievements.title')}
         tabIndex={-1}
         ref={dialogRef}
         {...backdrop}
@@ -315,13 +319,13 @@ export default function AchievementsModal({ open, onClose }) {
         }}
       >
         <div style={panel}>
-          <h2 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>Achievements</h2>
+          <h2 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>{t('achievements.title')}</h2>
           <ModalCloseButton onClick={onClose} />
 
           <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
             <div ref={scrollRef} className="modal-body-scroll" style={{ height: '100%' }}>
             {loading ? (
-              <div style={{ opacity: 0.8, fontSize: 14, marginBottom: 16 }}>Loading…</div>
+              <div style={{ opacity: 0.8, fontSize: 14, marginBottom: 16 }}>{t('achievements.loading')}</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 18 }}>
                 {defs.map((a) => {
@@ -345,7 +349,7 @@ export default function AchievementsModal({ open, onClose }) {
             {showScrollUp && (
               <button
                 type="button"
-                aria-label="Scroll achievements to top"
+                aria-label={t('achievements.scrollTop')}
                 onClick={() => scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
                 style={{ ...scrollButton, top: 8 }}
               >
@@ -355,7 +359,7 @@ export default function AchievementsModal({ open, onClose }) {
             {showScrollDown && (
               <button
                 type="button"
-                aria-label="Scroll achievements to bottom"
+                aria-label={t('achievements.scrollBottom')}
                 onClick={() => {
                   const element = scrollRef.current;
                   element?.scrollTo({ top: element.scrollHeight, behavior: 'smooth' });
@@ -384,7 +388,7 @@ export default function AchievementsModal({ open, onClose }) {
                 fontWeight: 600,
               }}
             >
-              {resetting ? 'Resetting…' : 'Reset Achievements'}
+              {resetting ? t('achievements.resetting') : t('achievements.reset')}
             </button>
           )}
         </div>
@@ -400,10 +404,10 @@ export default function AchievementsModal({ open, onClose }) {
         open={confirmOpen}
         zIndex={Z.GRANDCHILD}
         z={Z.GRANDCHILD}
-        title="Reset Achievements?"
-        message="This will clear all of your unlocked achievements. They can be earned again by playing."
-        confirmText="Reset"
-        cancelText="Cancel"
+        title={t('achievements.confirm.title')}
+        message={t('achievements.confirm.message')}
+        confirmText={t('confirm.reset')}
+        cancelText={t('common.cancel')}
         onConfirm={handleReset}
         onCancel={() => setConfirmOpen(false)}
       />

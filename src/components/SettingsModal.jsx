@@ -5,6 +5,7 @@
 // used by ConfirmModal.jsx / NewGameModal.jsx.
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { HelpCircle } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import { useGameStore } from '../hooks/useGameStore.js';
@@ -56,6 +57,7 @@ export default function SettingsModal({
   onParticlesChange,
   bootstrapReady,
 }) {
+  const { t } = useTranslation();
   const dialogRef = useRef(null);
   const backdrop = useModalBackdrop(onClose);
   const helpOpen = useUiStore((s) => s.helpDialogOpen);
@@ -263,7 +265,7 @@ export default function SettingsModal({
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    useUiStore.getState().setAnnounce('Board snapshot exported');
+    useUiStore.getState().setAnnounce(t('mainMenu.announce.snapshotExported'));
   };
 
   // Export the START configuration of the current deal as a Solvitaire-format
@@ -283,7 +285,7 @@ export default function SettingsModal({
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    useUiStore.getState().setAnnounce('Solvitaire deal exported');
+    useUiStore.getState().setAnnounce(t('mainMenu.announce.solvitaireExported'));
   };
 
   return (
@@ -292,7 +294,7 @@ export default function SettingsModal({
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Main Menu"
+        aria-label={t('mainMenu.title')}
         tabIndex={-1}
         {...backdrop}
         style={{
@@ -318,7 +320,7 @@ export default function SettingsModal({
             paddingRight: 36,
           }}
         >
-          Main Menu
+          {t('mainMenu.title')}
           <span style={{ color: 'var(--ui-modal-panel-fg)', fontSize: 13, fontWeight: 400, userSelect: 'none', marginRight: 36 }}>
             v{pkg.version}
           </span>
@@ -332,51 +334,51 @@ export default function SettingsModal({
               style={{ ...btn, width: '100%' }}
               onClick={() => setSettingsOptionsOpen(true)}
             >
-              Settings
+              {t('mainMenu.settings')}
             </button>
             <button
               type="button"
               style={{ ...btn, width: '100%', position: 'relative' }}
               onClick={() => setThemeOpen(true)}
             >
-              Theme
-              {badgeDataReady && hasNewTheme && <span style={NEW_BADGE_R}>New</span>}
+              {t('mainMenu.theme')}
+              {badgeDataReady && hasNewTheme && <span style={NEW_BADGE_R}>{t('common.new')}</span>}
             </button>
             <button
               type="button"
               style={{ ...btn, width: '100%' }}
               onClick={() => setStatsOpen(true)}
             >
-              Statistics
+              {t('mainMenu.statistics')}
             </button>
             <button
               type="button"
               style={{ ...btn, width: '100%', position: 'relative' }}
               onClick={() => setAchievementsOpen(true)}
             >
-              Achievements
-              {badgeDataReady && hasNewAchievements && <span style={NEW_BADGE_R}>New</span>}
+              {t('mainMenu.achievements')}
+              {badgeDataReady && hasNewAchievements && <span style={NEW_BADGE_R}>{t('common.new')}</span>}
             </button>
             <button
               type="button"
               style={{ ...btn, width: '100%' }}
               onClick={() => setLeaderboardOpen(true)}
             >
-              Leaderboard
+              {t('mainMenu.leaderboard')}
             </button>
             <button
               type="button"
               style={{ ...btn, width: '100%' }}
               onClick={() => setStoreOpen(true)}
             >
-              Store
+              {t('mainMenu.store')}
             </button>
           </div>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
             <button
               type="button"
-              aria-label="Keyboard shortcuts"
-              title="Keyboard shortcuts"
+              aria-label={t('mainMenu.help')}
+              title={t('mainMenu.help')}
               style={{
                 ...btn,
                 display: 'inline-flex',
@@ -393,20 +395,20 @@ export default function SettingsModal({
               style={{ ...btn }}
               onClick={handleTakeSnapshot}
             >
-              Take Snapshot
+              {t('mainMenu.takeSnapshot')}
             </button>
             <button
               type="button"
               style={{ ...btn }}
               onClick={handleExportSolvitaire}
             >
-              Export
+              {t('mainMenu.export')}
             </button>
           </div>
 
           <div style={{ ...field, marginBottom: 20 }}>
             <div>
-              <div style={{ fontSize: 14, fontWeight: 600 }}>Account</div>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>{t('mainMenu.account')}</div>
               {editingName ? (
                 <div>
                   <input
@@ -416,7 +418,7 @@ export default function SettingsModal({
                       setNameInput(v);
                       setNameAvailable(null);
                       if (!NAME_PATTERN.test(v)) {
-                        setNameError('3-20 characters: letters, numbers, underscores only.');
+                        setNameError(t('mainMenu.rename.validation'));
                         return;
                       }
                       setNameError(null);
@@ -441,7 +443,7 @@ export default function SettingsModal({
                     <div style={{ color: 'crimson', fontSize: 12 }}>{nameError}</div>
                   )}
                   {!nameError && nameAvailable === false && (
-                    <div style={{ color: 'crimson', fontSize: 12 }}>That name is taken.</div>
+                    <div style={{ color: 'crimson', fontSize: 12 }}>{t('mainMenu.rename.taken')}</div>
                   )}
                   <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
                     <button
@@ -475,13 +477,13 @@ export default function SettingsModal({
                 </div>
               ) : isAnonymous ? (
                 <div style={{ fontSize: 13, opacity: 0.8 }}>
-                  Playing as {displayName ?? '…'}
+                  {t('mainMenu.playingAs', {name: displayName ?? '…'})}
                 </div>
               ) : onCooldown ? (
                 <div style={{ fontSize: 13, opacity: 0.8 }}>
-                  Signed in as {displayName ?? '…'}
+                  {t('mainMenu.signedInAs', {name: displayName ?? '…'})}
                   <div style={{ fontSize: 12, opacity: 0.7 }}>
-                    You can rename until {cooldownUntil.toLocaleDateString()}
+                    {t('mainMenu.rename.cooldown', {date: cooldownUntil.toLocaleDateString()})}
                   </div>
                 </div>
               ) : (
@@ -502,7 +504,7 @@ export default function SettingsModal({
                   }}
                 >
                   <span style={{ fontSize: 13, opacity: 0.8 }}>
-                    Signed in as {displayName ?? '…'}
+                    {t('mainMenu.signedInAs', {name: displayName ?? '…'})}
                   </span>
                 </button>
               )}
@@ -513,7 +515,7 @@ export default function SettingsModal({
                 style={btn}
                 onClick={() => useAuthStore.getState().linkWithGoogle()}
               >
-                Sign in with Google
+                {t('mainMenu.signInGoogle')}
               </button>
             )}
             {!isAnonymous && (
@@ -522,7 +524,7 @@ export default function SettingsModal({
                 style={btn}
                 onClick={() => setSignOutConfirmOpen(true)}
               >
-                Sign Out
+                {t('mainMenu.signOut')}
               </button>
             )}
           </div>
@@ -537,10 +539,10 @@ export default function SettingsModal({
 
       <ConfirmModal
         open={signOutConfirmOpen}
-        title="Sign out?"
-        message="This device will continue as a new guest. Your Google account's progress is safe on Supabase and you can sign back in anytime."
-        confirmText="Sign Out"
-        cancelText="Cancel"
+        title={t('mainMenu.signOutConfirm.title')}
+        message={t('mainMenu.signOutConfirm.message')}
+        confirmText={t('mainMenu.signOut')}
+        cancelText={t('common.cancel')}
         onConfirm={onConfirmSignOut}
         onCancel={() => setSignOutConfirmOpen(false)}
       />

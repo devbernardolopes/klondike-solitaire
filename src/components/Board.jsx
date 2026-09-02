@@ -25,6 +25,7 @@ import { playWinCascade } from '../render/animation/winCascade.js';
 import { isWon } from '../core/winDetection.js';
 import { solveAsync, STALE } from '../core/solverClient.js';
 import { getAutoFireSolveOptions } from '../core/solver.js';
+import { useTranslation } from 'react-i18next';
 import Pile from './Pile.jsx';
 import { CardFace } from './CardView.jsx';
 
@@ -94,6 +95,7 @@ function RunPreview({ cards, metrics }) {
 }
 
 export default function Board() {
+  const { t } = useTranslation();
   const state = useGameStore((s) => s.state);
   const drawFromStock = useGameStore((s) => s.drawFromStock);
   const boardRef = useRef(null);
@@ -217,21 +219,21 @@ export default function Board() {
       const nextStreak = (prev.currentStreak || 0) + 1;
       if (nextStreak > (prev.bestStreak || 0)) {
         useToastStore.getState().push({
-          name: `New Best Streak: ${nextStreak}!`,
-          description: `You've won ${nextStreak} game${nextStreak === 1 ? '' : 's'} in a row — new personal record.`,
+          name: t('toasts.newBestStreak.title', {count: nextStreak}),
+          description: t('toasts.newBestStreak.desc', {count: nextStreak}),
         });
       }
       if (newTime) {
         const secs = (durationMs / 1000).toFixed(1);
         useToastStore.getState().push({
-          name: 'New Best Time!',
-          description: `You beat your record — ${secs}s`,
+          name: t('toasts.newBestTime.title'),
+          description: t('toasts.newBestTime.desc', {secs}),
         });
       }
       if (newMoves) {
         useToastStore.getState().push({
-          name: 'New Best Moves!',
-          description: `You won in just ${moves} moves — new fewest!`,
+          name: t('toasts.newBestMoves.title'),
+          description: t('toasts.newBestMoves.desc', {count: moves}),
         });
       }
       // Persist the just-won game's stats cumulatively. The timer is frozen
@@ -322,7 +324,7 @@ export default function Board() {
       if (seq === STALE) return;
       if (useGameStore.getState().state !== snapshot) return;
       if (Array.isArray(seq) && seq.length > 0) {
-        setAnnounce('Auto-completing to foundations');
+        setAnnounce(t('board.autoCompleting'));
         useGameStore.getState().autoComplete(true, { seq });
       }
     });
@@ -349,17 +351,17 @@ export default function Board() {
            // hasn't started or has already finished deals immediately with no prompt.
            const stats = useStatsStore.getState();
            const timerRunning = stats.startTime !== null && stats.endTime === null && !stats.isOver;
-           if (timerRunning) {
-             useUiStore.getState().setPendingStartDeal(() => {
-               useGameStore.getState().dealNewGame(useUiStore.getState().lastNewGameMode);
-               useUiStore.getState().setAnnounce('New game dealt');
-             });
-             useUiStore.getState().setConfirmNewGameDialogOpen(true);
-             setAnnounce('Confirm new game');
-           } else {
-             setAnnounce('New game dealt');
-             dealNewGame(useUiStore.getState().lastNewGameMode);
-           }
+            if (timerRunning) {
+              useUiStore.getState().setPendingStartDeal(() => {
+                useGameStore.getState().dealNewGame(useUiStore.getState().lastNewGameMode);
+                useUiStore.getState().setAnnounce(t('board.newGameDealt'));
+              });
+              useUiStore.getState().setConfirmNewGameDialogOpen(true);
+              setAnnounce(t('board.confirmNewGame'));
+            } else {
+              setAnnounce(t('board.newGameDealt'));
+              dealNewGame(useUiStore.getState().lastNewGameMode);
+            }
            return;
         }
        if (won) return;
@@ -372,17 +374,17 @@ export default function Board() {
           }
           if (useGameStore.getState().state.stock.length > 0) drawFromStock();
           else if (useGameStore.getState().state.waste.length > 0) recycleStock();
-          setAnnounce('Drew from stock');
+          setAnnounce(t('board.drewFromStock'));
           break;
           case 'u':
-           clearSelection();
-           undo();
-           setAnnounce('Undo');
-           break;
+            clearSelection();
+            undo();
+            setAnnounce(t('board.undo'));
+            break;
           case 'a':
-           clearSelection();
-           autoComplete();
-           setAnnounce('Auto-completing to foundations');
+            clearSelection();
+            autoComplete();
+            setAnnounce(t('board.autoCompleting'));
            break;
          case 'h':
            clearSelection();
@@ -501,12 +503,12 @@ export default function Board() {
               textAlign: 'center',
             }}
           >
-            <strong style={{ display: 'block', fontSize: 18, marginBottom: 5 }}>Game Over</strong>
+            <strong style={{ display: 'block', fontSize: 18, marginBottom: 5 }}>{t('board.gameOver')}</strong>
             <span style={{ display: 'block', fontSize: 13, lineHeight: 1.4 }}>
               {overReason === 'moves'
-                ? 'The 500-move limit was reached.'
-                : 'The 30:00 time limit was reached.'}
-              {' Press N or use New Game to start again.'}
+                ? t('board.moveLimit')
+                : t('board.timeLimit')}
+              {' '}{t('board.pressNewGame')}
             </span>
           </div>
         </div>
@@ -517,7 +519,7 @@ export default function Board() {
           win state is reached (all cards on all four foundations). */}
       {autoCompletingToWin && !won && (
         <div className="auto-complete-banner" role="status" aria-live="polite">
-          Autocomplete
+          {t('board.autocomplete')}
         </div>
       )}
       {/* Centered "No hints available" banner shown when the user invokes the
@@ -533,7 +535,7 @@ export default function Board() {
           role="status"
           aria-live="polite"
         >
-          No hints available
+          {t('board.noHints')}
         </div>
       )}
       {/* Screen-reader live region for keyboard/shortcut feedback. */}

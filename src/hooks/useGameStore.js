@@ -26,6 +26,7 @@ import { cancelDrawSlide } from '../render/animation/useStockDrawSlide.js';
 import { cancelShake } from '../render/animation/playCardShake.js';
 import { cancelWinCascade } from '../render/animation/winCascade.js';
 import { MOTION } from '../render/animation/motion.js';
+import i18n from '../i18n/index.js';
 import { useUiStore, whenTransitionDone } from './useUiStore.js';
 import { useStatsStore } from './useStatsStore.js';
 import { useStatisticsStore } from './useStatisticsStore.js';
@@ -974,7 +975,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     const ui = useUiStore.getState();
     if (ui.hints.length > 0) {
       ui.clearHints();
-      ui.setAnnounce('Hints cleared');
+      ui.setAnnounce(i18n.t('board.hintsCleared'));
       return;
     }
     const hints = findHints(get().state);
@@ -983,11 +984,11 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
       // show the transient "No hints available" banner (it self-dismisses after
       // 3s and won't restart if the hint action is re-triggered while up).
       ui.showNoHintsBanner();
-      ui.setAnnounce('No moves available right now');
+      ui.setAnnounce(i18n.t('board.noMoves'));
       return;
     }
     ui.setHints(hints);
-    ui.setAnnounce(`Hint: ${hints.length} move${hints.length === 1 ? '' : 's'} available`);
+    ui.setAnnounce(i18n.t('board.hintAvailable', {count: hints.length}));
   },
 })));
 

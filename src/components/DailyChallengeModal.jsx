@@ -9,6 +9,7 @@
 // (core/dailyChallenge.seedForDate).
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Crosshair, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
@@ -35,7 +36,7 @@ import { loadAllDailyResults } from '../db/dailyResults.js';
 import { loadLastDailySelection, loadLastDailySelectionSync, saveLastDailySelection } from '../db/dailySelection.js';
 import { formatTime } from '../utils/formatTime.js';
 
-const MONTH_NAMES = [
+const MONTH_NAMES_FALLBACK = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
@@ -88,8 +89,14 @@ const fallbackDate = (() => {
 })();
 
 export default function DailyChallengeModal() {
+  const { t } = useTranslation();
   const open = useUiStore((s) => s.dailyChallengeDialogOpen);
   const dealDaily = useGameStore((s) => s.dealDaily);
+
+  const MONTH_NAMES = (() => {
+    const v = t('dailyChallenge.months', { returnObjects: true });
+    return Array.isArray(v) ? v : MONTH_NAMES_FALLBACK;
+  })();
 
   const setOpen = useUiStore((s) => s.setDailyChallengeDialogOpen);
   const setNewGameOpen = useUiStore((s) => s.setNewGameDialogOpen);
@@ -307,7 +314,7 @@ export default function DailyChallengeModal() {
           className={classes.join(' ')}
           onClick={() => { userPicked.current = true; applySelected(dateStr); }}
           aria-pressed={isSel}
-          aria-label={`Day ${d}${completed ? ' (completed)' : ''}${isToday ? ' (today)' : ''}`}
+          aria-label={`${t('dailyChallenge.dayAria', { d })}${completed ? t('dailyChallenge.dayCompleted') : ''}${isToday ? t('dailyChallenge.dayToday') : ''}`}
         >
           {d}
         </button>,
@@ -325,7 +332,7 @@ export default function DailyChallengeModal() {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Daily Challenge"
+      aria-label={t('dailyChallenge.title')}
       {...backdrop}
       style={{
         position: 'fixed',
@@ -340,7 +347,7 @@ export default function DailyChallengeModal() {
     >
       <div ref={panelRef} tabIndex={-1} style={panel}>
         <h2 style={{ margin: '0 0 14px', fontSize: 20, fontWeight: 800, textAlign: 'center', paddingRight: 36 }}>
-          Daily Challenge
+          {t('dailyChallenge.title')}
         </h2>
         <ModalCloseButton onClick={onDismiss} />
 
@@ -349,7 +356,7 @@ export default function DailyChallengeModal() {
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 44px' }}>
             <button
               type="button"
-              aria-label="Previous month"
+              aria-label={t('dailyChallenge.prevMonth')}
               disabled={!canPrev}
               onClick={() => { if (canPrev) { setViewM(prev.m); setViewY(prev.y); } }}
               style={{
@@ -366,7 +373,7 @@ export default function DailyChallengeModal() {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <select
-                aria-label="Month"
+                aria-label={t('dailyChallenge.month')}
                 value={viewM}
                 onChange={(e) => {
                   const m = Number(e.target.value);
@@ -381,7 +388,7 @@ export default function DailyChallengeModal() {
                 ))}
               </select>
               <select
-                aria-label="Year"
+                aria-label={t('dailyChallenge.year')}
                 value={viewY}
                 onChange={(e) => {
                   const y = Number(e.target.value);
@@ -397,7 +404,7 @@ export default function DailyChallengeModal() {
 
             <button
               type="button"
-              aria-label="Next month"
+              aria-label={t('dailyChallenge.nextMonth')}
               disabled={!canNext}
               onClick={() => { if (canNext) { setViewM(next.m); setViewY(next.y); } }}
               style={{
@@ -420,20 +427,20 @@ export default function DailyChallengeModal() {
             </div>
 
             <div style={{ flex: '1 1 220px', minWidth: 200, borderLeft: '1px solid var(--ui-modal-panel-border)', paddingLeft: 16 }}>
-              <h3 style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 700 }}>Best Result</h3>
+              <h3 style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 700 }}>{t('dailyChallenge.bestResult')}</h3>
               {selected ? (
                 <div style={{ fontSize: 13, lineHeight: 1.6 }}>
                   <div style={{ marginBottom: 8, fontWeight: 600 }}>{selected}</div>
-                  <div>Seed: {selectedResult ? selectedResult.seed : seedForDate(selected)}</div>
-                  <div>Best Score: {selectedResult ? selectedResult.bestScore : 0}</div>
-                  <div>Best Time: {selectedResult ? formatTime(selectedResult.bestTimeMs) : formatTime(0)}</div>
-                  <div>Best Moves: {selectedResult ? selectedResult.bestMoves : 0}</div>
+                  <div>{t('dailyChallenge.seed', { seed: selectedResult ? selectedResult.seed : seedForDate(selected) })}</div>
+                  <div>{t('dailyChallenge.bestScore', { value: selectedResult ? selectedResult.bestScore : 0 })}</div>
+                  <div>{t('dailyChallenge.bestTime', { value: selectedResult ? formatTime(selectedResult.bestTimeMs) : formatTime(0) })}</div>
+                  <div>{t('dailyChallenge.bestMoves', { value: selectedResult ? selectedResult.bestMoves : 0 })}</div>
                   <div style={{ opacity: 0.7 }}>
-                    Completed {selectedResult ? selectedResult.wins : 0} time(s)
+                    {t('dailyChallenge.completedTimes', { count: selectedResult ? selectedResult.wins : 0 })}
                   </div>
                 </div>
               ) : (
-                <div style={{ color: 'var(--ui-modal-panel-fg)', opacity: 0.75 }}>Select a day to see its best result.</div>
+                <div style={{ color: 'var(--ui-modal-panel-fg)', opacity: 0.75 }}>{t('dailyChallenge.selectDay')}</div>
               )}
             </div>
           </div>
@@ -442,8 +449,8 @@ export default function DailyChallengeModal() {
           <div style={{ display: 'flex', gap: 10, justifyContent: 'space-between' }}>
             <button
               type="button"
-              aria-label="Go to today"
-              title="Go to today"
+              aria-label={t('dailyChallenge.goToToday')}
+              title={t('dailyChallenge.goToToday')}
               onClick={onGoToday}
               style={{
                 ...btn,
@@ -468,7 +475,7 @@ export default function DailyChallengeModal() {
                 cursor: selected ? 'pointer' : 'default',
               }}
             >
-              Play
+              {t('dailyChallenge.play')}
             </button>
           </div>
         </div>
