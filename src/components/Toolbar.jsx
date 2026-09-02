@@ -25,7 +25,9 @@ const UNDO_REPEAT_INTERVAL_MS = 200;
  * Live elapsed game time. Derived from a fixed start/end timestamp (not from
  * accumulating interval ticks) and excluding hidden-tab spans via getElapsedMs,
  * so it reflects only actively-focused play. The display uses animation-frame
- * refreshes while a separate short interval enforces the time limit.
+ * refreshes with conditional React updates — only re-rendering when the
+ * centisecond digit changes — while a separate short interval enforces the
+ * time limit.
  * @returns {string} "MM:SS.hh"
  */
 function useElapsed() {
@@ -36,15 +38,30 @@ function useElapsed() {
   const pausedAt = useStatsStore((s) => s.pausedAt);
   const pausedAccumMs = useStatsStore((s) => s.pausedAccumMs);
   const [now, setNow] = useState(() => Date.now());
+  const lastCsRef = useRef(-1);
   useEffect(() => {
     if (startTime === null || endTime !== null || isOver) return undefined;
 
-    const id = setInterval(() => {
-      setNow(Date.now());
-      useStatsStore.getState().checkTimeLimit();
-    }, 100);
+    let frameId = null;
+    const refreshDisplay = () => {
+      const currentTime = Date.now();
+      const centisecond = Math.floor(currentTime / 10) % 100;
+      if (centisecond !== lastCsRef.current) {
+        lastCsRef.current = centisecond;
+        setNow(currentTime);
+      }
+      frameId = requestAnimationFrame(refreshDisplay);
+    };
+    frameId = requestAnimationFrame(refreshDisplay);
 
-    return () => clearInterval(id);
+    const limitTimerId = setInterval(() => {
+      useStatsStore.getState().checkTimeLimit();
+    }, 250);
+
+    return () => {
+      if (frameId !== null) cancelAnimationFrame(frameId);
+      clearInterval(limitTimerId);
+    };
   }, [startTime, endTime, isOver]);
   const elapsed = startTime === null ? 0 : useStatsStore.getState().getElapsedMs(now);
   return formatTime(elapsed);
