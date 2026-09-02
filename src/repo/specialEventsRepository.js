@@ -61,6 +61,25 @@ export async function fetchSpecialEvents() {
 }
 
 /**
+ * Flat set of every seed used by any currently-visible event's deals,
+ * wrapped in the `[{ seeds: number[] }]` shape core/randomSeed.js's
+ * buildKnownSet() expects — it only ever flattens whatever `.seeds` arrays
+ * it's given, so one synthetic group is sufficient (no need to keep events
+ * separate). Used to keep curated event seeds out of Random Shuffle deals.
+ * RLS on special_event_deals already restricts this to deals belonging to
+ * visible events, so no join/date filtering is needed here. Returns []
+ * (i.e. "no extra known seeds") on any failure — a random deal should never
+ * be blocked by this being unreachable.
+ * @returns {Promise<Array<{seeds: number[]}>>}
+ */
+export async function fetchAllEventSeeds() {
+  if (!supabase) return [];
+  const { data, error } = await supabase.from('special_event_deals').select('seed');
+  if (error || !data) return [];
+  return [{ seeds: data.map((d) => d.seed) }];
+}
+
+/**
  * One event's full page list with per-page lock/completed state resolved.
  * Locking rule: page 1 is always unlocked; page N is unlocked iff page N-1
  * is completed. Deal-level detail is intentionally NOT fetched here — that

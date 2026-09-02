@@ -21,7 +21,7 @@ import { fetchEventDetail } from '../repo/specialEventsRepository.js';
 const SWIPE_THRESHOLD_RATIO = 0.2; // fraction of viewport width to trigger a page change
 
 export default function EventDetailModal() {
-  const eventId = useUiStore((s) => s.eventDetailOpen);
+  const eventId = useUiStore((s) => s.eventDetailId);
   const setEventDetailOpen = useUiStore((s) => s.setEventDetailOpen);
   const setSpecialEventsOpen = useUiStore((s) => s.setSpecialEventsOpen);
 
