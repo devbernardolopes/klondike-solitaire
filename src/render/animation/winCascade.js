@@ -29,6 +29,13 @@ export function cancelWinCascade() {
 }
 
 export function playWinCascade() {
+  // The win celebration is optional and must be checked before acquiring any
+  // global animation lock or mutating card styles.
+  try {
+    if (!useSettingsStore.getState().winCascade) return;
+  } catch {
+    // Preserve the historical default if settings are unavailable.
+  }
   // A hidden/background tab pauses requestAnimationFrame, so an rAF-driven
   // cascade would stall until refocus. The win is already recorded by the caller,
   // so simply skip the visual celebration when hidden — it will not play.
@@ -105,7 +112,7 @@ export function playWinCascade() {
     try {
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
       const settings = useSettingsStore.getState();
-      if (!settings.cardEffects || !settings.winEnhanced) return false;
+      if (!settings.winEnhanced) return false;
     } catch {}
     return true;
   })();

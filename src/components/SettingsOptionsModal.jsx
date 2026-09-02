@@ -45,6 +45,7 @@ export default function SettingsOptionsModal({
   const shimmer = useSettingsStore((s) => s.shimmer);
   const uncover = useSettingsStore((s) => s.uncover);
   const winEnhanced = useSettingsStore((s) => s.winEnhanced);
+  const winCascade = useSettingsStore((s) => s.winCascade);
   const hoverGlow = useSettingsStore((s) => s.hoverGlow);
   const tableTexture = useSettingsStore((s) => s.tableTexture);
   const boardFrame = useSettingsStore((s) => s.boardFrame);
@@ -171,7 +172,7 @@ export default function SettingsOptionsModal({
           />
         </div>
 
-        {[['Card Flip Shimmer', shimmer, 'setShimmer'], ['Uncover Sparkle', uncover, 'setUncover'], ['Enhanced Win Celebration', winEnhanced, 'setWinEnhanced'], ['Hover Glow / Drop Highlight', hoverGlow, 'setHoverGlow']].map(([label, value, setter]) => (
+        {[['Card Flip Shimmer', shimmer, 'setShimmer'], ['Uncover Sparkle', uncover, 'setUncover'], ['Hover Glow / Drop Highlight', hoverGlow, 'setHoverGlow']].map(([label, value, setter]) => (
           <div key={label} style={{ ...field, marginLeft: 16, opacity: cardEffects ? 1 : 0.5, marginBottom: 20 }}>
             <label style={{ fontSize: 14, fontWeight: 600 }}>{label}</label>
             <ToggleSwitch checked={!!value} onChange={(v) => useSettingsStore.getState()[setter](v)} label={label} disabled={!cardEffects} />
@@ -185,6 +186,23 @@ export default function SettingsOptionsModal({
             onChange={(v) => useSettingsStore.getState().setGhostTrail(v)}
             label="Ghost Trail"
             disabled={!cardEffects}
+          />
+        </div>
+
+        <div style={{ ...field, marginBottom: 20 }}>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>Win Celebration</label>
+          <ToggleSwitch
+            checked={!!winCascade}
+            onChange={(v) => useSettingsStore.getState().setWinCascade(v)}
+            label="Falling Cards on Win"
+          />
+        </div>
+        <div style={{ ...field, marginBottom: 20 }}>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>Enhanced Win Celebration</label>
+          <ToggleSwitch
+            checked={!!winEnhanced}
+            onChange={(v) => useSettingsStore.getState().setWinEnhanced(v)}
+            label="Enhanced Win Celebration"
           />
         </div>
 

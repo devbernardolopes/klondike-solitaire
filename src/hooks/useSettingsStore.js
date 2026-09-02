@@ -26,6 +26,7 @@ const DEFAULTS = {
   shimmer: true,
   uncover: true,
   winEnhanced: true,
+  winCascade: true,
   hoverGlow: true,
 };
 
@@ -51,6 +52,7 @@ const LS_KEYS = {
   shimmer: 'klondike:shimmer',
   uncover: 'klondike:uncover',
   winEnhanced: 'klondike:winEnhanced',
+  winCascade: 'klondike:winCascade',
   hoverGlow: 'klondike:hoverGlow',
 };
 
@@ -98,6 +100,7 @@ export const useSettingsStore = create((set, get) => ({
   shimmer: readLS(LS_KEYS.shimmer, DEFAULTS.shimmer),
   uncover: readLS(LS_KEYS.uncover, DEFAULTS.uncover),
   winEnhanced: readLS(LS_KEYS.winEnhanced, DEFAULTS.winEnhanced),
+  winCascade: readLS(LS_KEYS.winCascade, DEFAULTS.winCascade),
   hoverGlow: readLS(LS_KEYS.hoverGlow, DEFAULTS.hoverGlow),
   seenThemeItemIds: [],
   seenAchievementIds: [],
@@ -109,7 +112,7 @@ export const useSettingsStore = create((set, get) => ({
    * keys fall back to DEFAULTS. Activates the loaded (or default) deck.
    */
   init: async () => {
-    const [theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostTrail, shimmer, uncover, winEnhanced, hoverGlow, seenThemeItemIds, seenAchievementIds, themeModalTab] = await Promise.all([
+    const [theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, seenThemeItemIds, seenAchievementIds, themeModalTab] = await Promise.all([
       getSetting('theme', DEFAULTS.theme),
       getSetting('interfaceTheme', DEFAULTS.interfaceTheme),
       getSetting('deck', DEFAULTS.deck),
@@ -125,6 +128,7 @@ export const useSettingsStore = create((set, get) => ({
       getSetting('shimmer', DEFAULTS.shimmer),
       getSetting('uncover', DEFAULTS.uncover),
       getSetting('winEnhanced', DEFAULTS.winEnhanced),
+      getSetting('winCascade', DEFAULTS.winCascade),
       getSetting('hoverGlow', DEFAULTS.hoverGlow),
       getSetting('seenThemeItemIds', []),
       getSetting('seenAchievementIds', []),
@@ -148,6 +152,7 @@ export const useSettingsStore = create((set, get) => ({
         ['shimmer', shimmer],
         ['uncover', uncover],
         ['winEnhanced', winEnhanced],
+        ['winCascade', winCascade],
         ['hoverGlow', hoverGlow],
       ];
       for (const [k, v] of toBackfill) {
@@ -158,7 +163,7 @@ export const useSettingsStore = create((set, get) => ({
         } catch {}
       }
     } catch {}
-    set({ theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostTrail, shimmer, uncover, winEnhanced, hoverGlow, seenThemeItemIds, seenAchievementIds, themeModalTab, loaded: true });
+    set({ theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, seenThemeItemIds, seenAchievementIds, themeModalTab, loaded: true });
   },
 
   /**
@@ -258,6 +263,7 @@ export const useSettingsStore = create((set, get) => ({
   setShimmer: (shimmer) => { set({ shimmer }); setSetting('shimmer', shimmer); writeLS(LS_KEYS.shimmer, shimmer); },
   setUncover: (uncover) => { set({ uncover }); setSetting('uncover', uncover); writeLS(LS_KEYS.uncover, uncover); },
   setWinEnhanced: (winEnhanced) => { set({ winEnhanced }); setSetting('winEnhanced', winEnhanced); writeLS(LS_KEYS.winEnhanced, winEnhanced); },
+  setWinCascade: (winCascade) => { set({ winCascade }); setSetting('winCascade', winCascade); writeLS(LS_KEYS.winCascade, winCascade); },
   setHoverGlow: (hoverGlow) => { set({ hoverGlow }); setSetting('hoverGlow', hoverGlow); writeLS(LS_KEYS.hoverGlow, hoverGlow); },
 
   /**
