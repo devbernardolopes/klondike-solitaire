@@ -10,6 +10,7 @@ import { shallow } from 'zustand/shallow';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { createAchievementTelemetry, useStatsStore } from '../hooks/useStatsStore.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
+import { useUiStore } from '../hooks/useUiStore.js';
 import { enqueue } from './syncEngine.js';
 import {
   saveActiveSession,
@@ -173,6 +174,15 @@ export async function restoreSession() {
 function applyRestore(row, savedAtMs) {
   const boardState = row.boardState ?? row.board_state;
   const replaySpec = row.replaySpec ?? row.replay_spec;
+  // `currentGameKind` is UI-only, so reconstruct it from the persisted replay
+  // description before App marks bootstrap complete. Older sessions may not
+  // have stored the kind; order-based specs are random, seeded specs are the
+  // legacy Winning Deal shape.
+  const restoredKind = replaySpec?.kind
+    ?? (Array.isArray(replaySpec?.order)
+      ? 'random'
+      : replaySpec?.seed !== undefined ? 'winning' : null);
+  const restoredDate = restoredKind === 'daily' ? (replaySpec?.date ?? null) : null;
   const moves = row.moves ?? 0;
   const score = row.score ?? 0;
   const undos = row.undos ?? 0;
@@ -197,6 +207,7 @@ function applyRestore(row, savedAtMs) {
     startTime === null ? basePaused : basePaused + Math.max(0, Date.now() - savedAtMs);
 
   useGameStore.setState({ state: boardState, replaySpec });
+  useUiStore.getState().setCurrentGame(restoredKind, restoredDate);
   useStatsStore.setState({
     moves,
     score,
