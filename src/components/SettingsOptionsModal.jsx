@@ -154,8 +154,8 @@ export default function SettingsOptionsModal({
         <h2 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>Settings</h2>
         <ModalCloseButton onClick={onClose} />
 
-        <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
-        <div ref={scrollRef} className="modal-body-scroll" style={{ height: '100%' }}>
+        <div style={{ position: 'relative', flex: '0 1 auto', minHeight: 0, maxHeight: 'calc(85vh - 74px)', overflow: 'hidden' }}>
+        <div ref={scrollRef} className="modal-body-scroll" style={{ height: '100%', paddingBottom: 12, boxSizing: 'border-box' }}>
         <div style={{ ...field, marginBottom: 20 }}>
           <label style={{ fontSize: 14, fontWeight: 600 }}>Hand</label>
           <select
