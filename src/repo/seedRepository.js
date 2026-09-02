@@ -158,7 +158,7 @@ export async function getEvents() {
 }
 
 export async function prefetch() {
-  await Promise.all([getWinningPool(), getDailyMap(), getEvents()].map((p) => p.catch(() => null)));
+  await Promise.all([getWinningPool(), getDailyMap()].map((p) => p.catch(() => null)));
 }
 
 export function clearMemoryCache() {
