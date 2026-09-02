@@ -183,6 +183,7 @@ function applyRestore(row, savedAtMs) {
       ? 'random'
       : replaySpec?.seed !== undefined ? 'winning' : null);
   const restoredDate = restoredKind === 'daily' ? (replaySpec?.date ?? null) : null;
+  const restoredEventDealId = restoredKind === 'event' ? (replaySpec?.eventDealId ?? null) : null;
   const moves = row.moves ?? 0;
   const score = row.score ?? 0;
   const undos = row.undos ?? 0;
@@ -207,7 +208,7 @@ function applyRestore(row, savedAtMs) {
     startTime === null ? basePaused : basePaused + Math.max(0, Date.now() - savedAtMs);
 
   useGameStore.setState({ state: boardState, replaySpec });
-  useUiStore.getState().setCurrentGame(restoredKind, restoredDate);
+  useUiStore.getState().setCurrentGame(restoredKind, restoredDate, restoredEventDealId);
   useStatsStore.setState({
     moves,
     score,

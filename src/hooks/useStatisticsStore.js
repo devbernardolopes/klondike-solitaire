@@ -43,12 +43,20 @@ export const useStatisticsStore = create((set, get) => ({
    * @param {{score:number, timeMs:number, moves:number, undos:number,
    *   seed?:number, gameKind?:'winning'|'random'|'daily', dailyDate?:string|null}} win
    */
-  recordWin: async ({ score, timeMs, moves, undos, seed, gameKind, dailyDate, achievementTelemetry }) => {
+  /**
+   * Fold a won game into the aggregates. Persists and refreshes state so the
+   * Statistics modal updates live.
+   * @param {{score:number, timeMs:number, moves:number, undos:number,
+   *   seed?:number, gameKind?:'winning'|'random'|'daily'|'event', dailyDate?:string|null,
+   *   eventDealId?:number|null}} win
+   */
+  recordWin: async ({ score, timeMs, moves, undos, seed, gameKind, dailyDate, eventDealId, achievementTelemetry }) => {
     const stats = await addWin({ score, timeMs, moves, undos });
     set({ stats, gameWon: true });
     // Parallel remote-sync path: one RPC folds the win into game_results, coins,
-    // streak, personal bests, achievement checks, played-seed tracking, and Daily
-    // Challenge results atomically server-side. Dexie remains the read source of truth.
+    // streak, personal bests, achievement checks, played-seed tracking, Daily
+    // Challenge results, and — when eventDealId is set — Special Events deal/page/
+    // event completion, atomically server-side. Dexie remains the read source of truth.
     enqueue('submit_game_result', {
       p_won: true,
       p_moves: moves,
@@ -58,6 +66,7 @@ export const useStatisticsStore = create((set, get) => ({
       p_seed: seed ?? null,
       p_game_kind: gameKind ?? null,
       p_daily_date: dailyDate ?? null,
+      p_event_deal_id: eventDealId ?? null,
       p_game_id: achievementTelemetry?.gameId ?? null,
       p_hint_used: achievementTelemetry?.hintUsed ?? false,
       p_undo_used: achievementTelemetry?.undoUsed ?? undos > 0,

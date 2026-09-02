@@ -351,13 +351,16 @@ export const useUiStore = create((set, get) => ({
   // useGameStore (winning / random / daily / event).
   currentGameKind: null, // 'winning' | 'random' | 'daily' | 'event' | null
   currentDailyDate: null, // YYYY-MM-DD when kind === 'daily'
+  currentEventDealId: null, // special_event_deals.id when kind === 'event'
 
   /**
-   * Record the kind of game just dealt (and the daily date when relevant).
+   * Record the kind of game just dealt (the daily date when relevant, the
+   * event deal id when relevant).
    * @param {'winning'|'random'|'daily'|'event'} kind
    * @param {string|null} [date]  the daily date when kind === 'daily'
+   * @param {number|null} [eventDealId]  special_event_deals.id when kind === 'event'
    */
-  setCurrentGame: (kind, date = null) => set({ currentGameKind: kind, currentDailyDate: date }),
+  setCurrentGame: (kind, date = null, eventDealId = null) => set({ currentGameKind: kind, currentDailyDate: date, currentEventDealId: eventDealId }),
 
   /** Clear the current selection (after a move or on new game). */
   clearSelection: () => set({ selectedCardId: null }),

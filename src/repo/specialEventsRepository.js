@@ -1,9 +1,7 @@
 // repo/specialEventsRepository.js
 // Data layer for the Phase-1 schema (special_events -> special_event_pages ->
 // special_event_deals, plus per-user event_deal_progress / event_page_progress /
-// event_progress). Deliberately separate from repo/seedRepository.js — that
-// module still serves the OLD flat event model consumed by core/specialEvents.js
-// until Phase 4 replaces it; this module is net-new.
+// event_progress).
 //
 // No offline cache/TTL layer here (unlike seedRepository.js's winning/daily
 // pools) — mirrors AchievementsModal.jsx's approach of a live fetch on open
@@ -80,16 +78,19 @@ export async function fetchAllEventSeeds() {
 }
 
 /**
- * One event's full page list with per-page lock/completed state resolved.
+ * One event's full page list with per-page lock/completed state resolved,
+ * and each page's deals with per-deal solved state (needed to render the
+ * reveal grid — an unsolved deal shows its numbered button, a solved one is
+ * permanently gone, exposing that slice of the page's postcard).
  * Locking rule: page 1 is always unlocked; page N is unlocked iff page N-1
- * is completed. Deal-level detail is intentionally NOT fetched here — that
- * arrives in Phase 4 alongside the reveal grid. Returns null if the event
- * doesn't exist / isn't visible / the fetch fails.
+ * is completed. Returns null if the event doesn't exist / isn't visible /
+ * the fetch fails.
  * @param {string} eventId
  * @returns {Promise<{id:string, title:string, description:string|null,
  *   gameKind:string, pages:Array<{id:number, pageNumber:number,
- *   gridSize:number, imagePath:string, coinReward:number,
- *   completed:boolean, unlocked:boolean}>}|null>}
+ *   gridSize:number, imagePath:string, coinReward:number, completed:boolean,
+ *   unlocked:boolean, deals:Array<{id:number, position:number, seed:number,
+ *   solved:boolean}>}>}|null>}
  */
 export async function fetchEventDetail(eventId) {
   if (!supabase || !eventId) return null;
@@ -109,12 +110,29 @@ export async function fetchEventDetail(eventId) {
   const sortedPages = pagesErr ? [] : (pages || []).slice().sort((a, b) => a.page_number - b.page_number);
 
   let completedIds = new Set();
+  const dealsByPage = new Map();
   if (sortedPages.length > 0) {
-    const { data: progress, error: progressErr } = await supabase
-      .from('event_page_progress')
-      .select('page_id')
-      .in('page_id', sortedPages.map((p) => p.id));
+    const pageIds = sortedPages.map((p) => p.id);
+    const [{ data: progress, error: progressErr }, { data: deals, error: dealsErr }] = await Promise.all([
+      supabase.from('event_page_progress').select('page_id').in('page_id', pageIds),
+      supabase.from('special_event_deals').select('id, page_id, position, seed').in('page_id', pageIds).order('position'),
+    ]);
     completedIds = new Set((progressErr ? [] : progress || []).map((r) => r.page_id));
+
+    const dealRows = dealsErr ? [] : deals || [];
+    let solvedDealIds = new Set();
+    if (dealRows.length > 0) {
+      const { data: dealProgress, error: dealProgressErr } = await supabase
+        .from('event_deal_progress')
+        .select('deal_id')
+        .in('deal_id', dealRows.map((d) => d.id));
+      solvedDealIds = new Set((dealProgressErr ? [] : dealProgress || []).map((r) => r.deal_id));
+    }
+    for (const d of dealRows) {
+      const list = dealsByPage.get(d.page_id) || [];
+      list.push({ id: d.id, position: d.position, seed: d.seed, solved: solvedDealIds.has(d.id) });
+      dealsByPage.set(d.page_id, list);
+    }
   }
 
   let previousCompleted = true; // page 1 always unlocked
@@ -122,6 +140,7 @@ export async function fetchEventDetail(eventId) {
     const completed = completedIds.has(p.id);
     const unlocked = previousCompleted;
     previousCompleted = completed;
+    const deals = (dealsByPage.get(p.id) || []).slice().sort((a, b) => a.position - b.position);
     return {
       id: p.id,
       pageNumber: p.page_number,
@@ -130,6 +149,7 @@ export async function fetchEventDetail(eventId) {
       coinReward: p.coin_reward,
       completed,
       unlocked,
+      deals,
     };
   });
 

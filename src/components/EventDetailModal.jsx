@@ -1,32 +1,35 @@
 // components/EventDetailModal.jsx
-// Page carousel shell for a single Special Event. Renders one placeholder
-// panel per page (locked / unlocked / completed) and lets the player browse
-// between pages via arrow buttons, a horizontal swipe/drag gesture, or the
-// dot indicators — all pages are always browsable, only PLAYING a locked
-// page's deals is blocked, and that blocking doesn't matter yet because no
-// phase has wired up "play" actions at all (that's Phase 4's deal grid).
+// Page carousel for a single Special Event. Renders each page's reveal grid
+// (EventDealGrid) for unlocked/completed pages, and a locked placeholder for
+// pages not yet reached, browsable via arrow buttons, horizontal swipe/drag,
+// or the dot indicators — all pages are always browsable, only PLAYING a
+// locked page's deals is blocked.
 //
-// Deliberately does not render postcard images yet — Phase 4 owns the
-// sliced-background-image reveal grid, this phase is carousel mechanics only.
+// Clicking an unsolved cell deals that exact seed via
+// useGameStore's dealSpecialEventDeal, behind the same "discard current
+// game?" confirmation DailyChallengeModal.jsx uses when a game is already in
+// progress, then closes both this modal and the events list to reveal the
+// board.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight, Lock, CheckCircle2 } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
 import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
 import { useUiStore } from '../hooks/useUiStore.js';
+import { useGameStore } from '../hooks/useGameStore.js';
+import { useStatsStore } from '../hooks/useStatsStore.js';
 import { fetchEventDetail } from '../repo/specialEventsRepository.js';
-import { translateSpecialEvent } from '../i18n/db.js';
+import EventDealGrid from './EventDealGrid.jsx';
 
 const SWIPE_THRESHOLD_RATIO = 0.2; // fraction of viewport width to trigger a page change
 
 export default function EventDetailModal() {
-  const { t } = useTranslation();
   const eventId = useUiStore((s) => s.eventDetailId);
   const setEventDetailOpen = useUiStore((s) => s.setEventDetailOpen);
   const setSpecialEventsOpen = useUiStore((s) => s.setSpecialEventsOpen);
+  const dealSpecialEventDeal = useGameStore((s) => s.dealSpecialEventDeal);
 
   const open = Boolean(eventId);
   const close = () => setEventDetailOpen(null);
@@ -37,6 +40,22 @@ export default function EventDetailModal() {
 
   const backdrop = useModalBackdrop(close);
   useModalEscape({ open, onClose: close, id: 'event-detail', z: Z.CHILD });
+
+  const onPlayDeal = (deal) => {
+    const run = () => {
+      dealSpecialEventDeal(deal.seed, deal.id);
+      setEventDetailOpen(null);
+      setSpecialEventsOpen(false);
+    };
+    // Same "discard current game?" guard DailyChallengeModal.jsx uses when a
+    // game is already in progress (records a loss on confirm).
+    if (useStatsStore.getState().isInProgress()) {
+      useUiStore.getState().setPendingStartDeal(run);
+      useUiStore.getState().setConfirmNewGameDialogOpen(true);
+    } else {
+      run();
+    }
+  };
 
   const [detail, setDetail] = useState(null);
   const [loaded, setLoaded] = useState(false);
@@ -60,14 +79,13 @@ export default function EventDetailModal() {
     setDetail(null);
     fetchEventDetail(eventId)
       .then((d) => {
-        const td = d ? translateSpecialEvent(d) : d;
-        setDetail(td);
-        if (td && td.pages.length > 0) {
+        setDetail(d);
+        if (d && d.pages.length > 0) {
           // Land on the first unlocked-but-not-yet-completed page, so a
           // returning player sees where to continue. Fall back to the last
           // page if everything's done, or page 0 if nothing's unlocked yet.
-          const target = td.pages.findIndex((p) => p.unlocked && !p.completed);
-          setIndex(target >= 0 ? target : td.pages.length - 1);
+          const target = d.pages.findIndex((p) => p.unlocked && !p.completed);
+          setIndex(target >= 0 ? target : d.pages.length - 1);
         } else {
           setIndex(0);
         }
@@ -161,26 +179,26 @@ export default function EventDetailModal() {
   });
 
   return (
-    <div role="dialog" aria-modal="true" aria-label={detail?.title || t('eventDetail.title')} {...backdrop} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3100, padding: 16 }}>
+    <div role="dialog" aria-modal="true" aria-label={detail?.title || 'Event'} {...backdrop} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3100, padding: 16 }}>
       <div ref={panelRef} tabIndex={-1} onKeyDown={onKeyDown} style={panel}>
-        <button type="button" onClick={backToList} style={{ position: 'absolute', top: 20, left: 22, background: 'none', border: 'none', color: 'var(--ui-modal-fg)', opacity: 0.7, cursor: 'pointer', fontSize: 13, padding: 0 }}>{t('eventDetail.back')}</button>
+        <button type="button" onClick={backToList} style={{ position: 'absolute', top: 20, left: 22, background: 'none', border: 'none', color: 'var(--ui-modal-fg)', opacity: 0.7, cursor: 'pointer', fontSize: 13, padding: 0 }}>← Events</button>
         <ModalCloseButton onClick={close} />
-        <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 800, textAlign: 'center', paddingTop: 2 }}>{detail?.title || (loaded ? t('eventDetail.title') : '')}</h2>
+        <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 800, textAlign: 'center', paddingTop: 2 }}>{detail?.title || (loaded ? 'Event' : '')}</h2>
         {detail?.description && (
           <p style={{ margin: '0 0 14px', textAlign: 'center', fontSize: 13, opacity: 0.75 }}>{detail.description}</p>
         )}
 
         {loaded && pages.length === 0 && (
-          <p style={{ textAlign: 'center', opacity: 0.7, padding: '24px 0' }}>{t('eventDetail.noPages')}</p>
+          <p style={{ textAlign: 'center', opacity: 0.7, padding: '24px 0' }}>This event doesn't have any pages yet.</p>
         )}
 
         {pages.length > 0 && (
           <>
             <div style={{ position: 'relative', marginTop: 8 }}>
-              <button type="button" aria-label={t('eventDetail.prevPage')} onClick={goPrev} disabled={clampedIndex === 0} style={{ ...arrowBtn(clampedIndex === 0), left: -6 }}>
+              <button type="button" aria-label="Previous page" onClick={goPrev} disabled={clampedIndex === 0} style={{ ...arrowBtn(clampedIndex === 0), left: -6 }}>
                 <ChevronLeft size={20} />
               </button>
-              <button type="button" aria-label={t('eventDetail.nextPage')} onClick={goNext} disabled={clampedIndex === pages.length - 1} style={{ ...arrowBtn(clampedIndex === pages.length - 1), right: -6 }}>
+              <button type="button" aria-label="Next page" onClick={goNext} disabled={clampedIndex === pages.length - 1} style={{ ...arrowBtn(clampedIndex === pages.length - 1), right: -6 }}>
                 <ChevronRight size={20} />
               </button>
 
@@ -190,12 +208,12 @@ export default function EventDetailModal() {
                 onPointerMove={onPointerMove}
                 onPointerUp={endDrag}
                 onPointerCancel={endDrag}
-                style={{ overflow: 'hidden', touchAction: 'pan-y', minHeight: 220 }}
+                style={{ overflow: 'hidden', touchAction: 'pan-y', minHeight: 400 }}
               >
                 <div style={{ display: 'flex', transform: trackTransform, transition: dragging ? 'none' : 'transform 0.3s ease' }}>
                   {pages.map((p) => (
                     <div key={p.id} style={{ flex: '0 0 100%', padding: '0 8px', boxSizing: 'border-box' }}>
-                      <PagePlaceholder page={p} t={t} />
+                      <PageContent page={p} onPlayDeal={onPlayDeal} />
                     </div>
                   ))}
                 </div>
@@ -207,7 +225,7 @@ export default function EventDetailModal() {
                 <button
                   key={p.id}
                   type="button"
-                  aria-label={t('eventDetail.pageAria', { n: p.pageNumber })}
+                  aria-label={`Page ${p.pageNumber}`}
                   aria-current={i === clampedIndex}
                   onClick={() => goTo(i)}
                   style={{
@@ -230,31 +248,37 @@ export default function EventDetailModal() {
   );
 }
 
-function PagePlaceholder({ page, t }) {
+function PageContent({ page, onPlayDeal }) {
   const dealCount = page.gridSize * page.gridSize;
 
   if (!page.unlocked) {
     return (
       <div style={placeholderStyle(true)}>
         <Lock size={28} style={{ opacity: 0.5 }} />
-        <div style={{ fontWeight: 700, marginTop: 10 }}>{t('eventDetail.pageLocked', { n: page.pageNumber })}</div>
-        <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>{t('eventDetail.unlockHint')}</div>
+        <div style={{ fontWeight: 700, marginTop: 10 }}>Page {page.pageNumber} locked</div>
+        <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>Complete the previous page to unlock</div>
       </div>
     );
   }
 
   return (
-    <div style={placeholderStyle(false)}>
-      {page.completed && <CheckCircle2 size={28} color="#2e7d32" />}
-      <div style={{ fontWeight: 700, marginTop: page.completed ? 10 : 0 }}>{t('eventDetail.pageTitle', { n: page.pageNumber })}</div>
-      <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>
-        {t('eventDetail.gridInfo', { grid: page.gridSize, count: dealCount })}
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+      <div style={{ textAlign: 'center' }}>
+        {page.completed && <CheckCircle2 size={22} color="#2e7d32" style={{ verticalAlign: 'middle', marginRight: 6 }} />}
+        <span style={{ fontWeight: 700 }}>Page {page.pageNumber}</span>
+        <span style={{ fontSize: 12, opacity: 0.75 }}> — {page.gridSize}×{page.gridSize}, {dealCount} deal{dealCount === 1 ? '' : 's'}</span>
       </div>
-      {page.coinReward > 0 && (
-        <div style={{ fontSize: 12, opacity: 0.75, marginTop: 2 }}>{t('eventDetail.coinReward', { coins: page.coinReward })}</div>
+
+      {page.deals.length === 0 ? (
+        <div style={placeholderStyle(false)}>
+          <div style={{ opacity: 0.7 }}>No deals authored for this page yet.</div>
+        </div>
+      ) : (
+        <EventDealGrid page={page} onPlayDeal={onPlayDeal} />
       )}
-      <div style={{ fontSize: 12, fontWeight: 700, marginTop: 8, color: page.completed ? '#2e7d32' : undefined, opacity: page.completed ? 1 : 0.6 }}>
-        {page.completed ? t('common.completed') : t('eventDetail.dealsSoon')}
+
+      <div style={{ fontSize: 12, fontWeight: 700, color: page.completed ? '#2e7d32' : undefined, opacity: page.completed ? 1 : 0.75 }}>
+        {page.completed ? 'Completed' : page.coinReward > 0 ? `+${page.coinReward} coins on completion` : 'In progress'}
       </div>
     </div>
   );

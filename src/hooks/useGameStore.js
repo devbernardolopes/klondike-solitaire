@@ -16,9 +16,8 @@ import { createEmptyGameState } from '../core/GameState.js';
 import { randomSolvableSeed, pickSolvableSeed } from '../core/solvablePool.js';
 import { randomUnusedSeed, knownSeedCount, buildKnownSet } from '../core/randomSeed.js';
 import { seedForDate } from '../core/dailyChallenge.js';
-import { getEvent } from '../core/specialEvents.js';
 import { getUsedRandomSeedsSet, addUsedRandomSeed, clearUsedRandomSeeds } from '../db/usedRandomSeeds.js';
-import { getWinningPool, getDailyMap, getEvents } from '../repo/seedRepository.js';
+import { getWinningPool, getDailyMap } from '../repo/seedRepository.js';
 import { fetchAllEventSeeds } from '../repo/specialEventsRepository.js';
 import { enqueueFlip } from '../render/animation/flipBridge.js';
 import { enqueueParticle } from '../render/animation/particleBridge.js';
@@ -159,15 +158,18 @@ function preDealFromDeck(deck, seed) {
 // animation tweens. Used by every new-game entry point (dealNewGame,
 // replayGame, and the initial app-load deal) so the deal animation is identical
 // regardless of mode.
-function runAnimatedDeal(get, set, { seed, order, deck, kind, date } = {}) {
+function runAnimatedDeal(get, set, { seed, order, deck, kind, date, eventDealId } = {}) {
   const usedDeck = deck ? deck.slice() : order ? order.slice() : shuffle(buildStandardDeck(), seed);
   const preDeal = preDealFromDeck(usedDeck, seed);
-  // Replay preserves the originating game kind (and date for Daily) so a replayed
-  // Random deal stays labeled "Random" and is never misclassified as Winning.
+  // Replay preserves the originating game kind (date for Daily, deal id for
+  // Special Events) so a replayed Random deal stays labeled "Random", is never
+  // misclassified as Winning, and a resumed Event deal still reports the right
+  // deal id on win.
   const replaySpec = {
     ...(seed !== undefined ? { seed } : { order: usedDeck.map((c) => ({ ...c })) }),
     kind,
     date,
+    eventDealId,
   };
   set({ state: preDeal, autoMoveState: {}, replaySpec, lastActionMeta: { type: 'draw' } });
   requestAnimationFrame(() => {
@@ -560,30 +562,27 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
   },
 
   /**
-   * Deal a Special Event game. Picks the seed at `index` (default 0) from the
-   * event's pre-generated 50-seed set. Unknown events return false.
+   * Deal a specific Special Events grid deal. Unlike the other curated deal
+   * modes, the caller already knows the exact seed and deal id (from the
+   * reveal grid) — there's no pool/index lookup. `eventDealId` rides along in
+   * replaySpec/currentEventDealId so a win can still be attributed to the
+   * right row in event_deal_progress even if the app is closed and reopened
+   * before the deal is finished.
    *
-   * @param {string} eventId
-   * @param {number} [index]
-   * @returns {Promise<boolean>} whether the game was dealt
+   * @param {number} seed
+   * @param {number} eventDealId  special_event_deals.id
    */
-  dealEvent: async (eventId, index = 0) => {
-    const events = await getEvents();
-    const ev = getEvent(eventId, events);
-    if (!ev || !ev.seeds || ev.seeds.length === 0) return false;
-    const i = Math.max(0, Math.min(Number.isFinite(index) ? Math.floor(index) : 0, ev.seeds.length - 1));
-    const seed = ev.seeds[i];
+  dealSpecialEventDeal: (seed, eventDealId) => {
     cancelAutoComplete(set);
     useStatisticsStore.getState().finalizeGame();
     useUiStore.getState().setNoMovesDialogOpen(false);
     useUiStore.getState().clearHints();
     cancelWinCascade();
-    if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) return false;
+    if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) return;
     useUiStore.getState().setLastNewGameMode('winning');
     useStatsStore.getState().resetStats();
-    useUiStore.getState().setCurrentGame('event');
-    runAnimatedDeal(get, set, { seed, kind: 'event' });
-    return true;
+    useUiStore.getState().setCurrentGame('event', null, eventDealId);
+    runAnimatedDeal(get, set, { seed, kind: 'event', eventDealId });
   },
 
   /**
