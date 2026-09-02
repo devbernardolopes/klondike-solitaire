@@ -196,7 +196,20 @@
     "dayAria": "Day {{d}}",
     "dayCompleted": " (completed)",
     "dayToday": " (today)",
-    "months": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+    "months": [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December"
+    ]
   },
   "specialEvents": {
     "title": "Special Events",
@@ -333,27 +346,158 @@
   },
   "db": {
     "achievements": {
-      "ace_collector": { "name": "Ace Collector", "description": "Move all four Aces to Foundation before any other Foundation card." },
-      "back_on_track": { "name": "Back on Track", "description": "Win 3 games in a row after a loss." },
-      "blitz": { "name": "Blitz", "description": "Win a game in under 30 seconds." },
-      "broken_chain": { "name": "Broken Chain", "description": "Win a game immediately after losing a game." },
-      "champion": { "name": "Champion", "description": "Win 10,000 games." },
-      "clean_hands": { "name": "Clean Hands", "description": "Win a game without using Undo." },
-      "clean_sweep": { "name": "Clean Sweep", "description": "Win a game without moving any card from Foundation back to Tableau." },
-      "collector": { "name": "Collector", "description": "Unlock all achievements." },
-      "first_win": { "name": "First Win", "description": "Win your first game." },
-      "streak_3": { "name": "Win Streak 3", "description": "Win 3 games in a row." },
-      "streak_5": { "name": "Win Streak 5", "description": "Win 5 games in a row." },
-      "streak_10": { "name": "Win Streak 10", "description": "Win 10 games in a row." }
+      "ace_collector": {
+        "name": "Ace Collector",
+        "description": "Move all four Aces to Foundation before any other Foundation card."
+      },
+      "back_on_track": {
+        "name": "Back on Track",
+        "description": "Win 3 games in a row after a loss."
+      },
+      "blitz": {
+        "name": "Blitz",
+        "description": "Win a game in under 30 seconds."
+      },
+      "broken_chain": {
+        "name": "Broken Chain",
+        "description": "Win a game immediately after losing a game."
+      },
+      "champion": {
+        "name": "Champion",
+        "description": "Win 10,000 games."
+      },
+      "clean_hands": {
+        "name": "Clean Hands",
+        "description": "Win a game without using Undo."
+      },
+      "clean_sweep": {
+        "name": "Clean Sweep",
+        "description": "Win a game without moving any card from Foundation back to Tableau."
+      },
+      "comeback": {
+        "name": "Comeback",
+        "description": "Lose a game and then establish a new personal win-streak record."
+      },
+      "first_things_first": {
+        "name": "First Things First",
+        "description": "Move a card to Foundation before making any Tableau-to-Tableau move."
+      },
+      "flawless": {
+        "name": "Flawless",
+        "description": "Win a game in under 105 moves."
+      },
+      "fortune": {
+        "name": "Fortune",
+        "description": "Earn 10,000 coins."
+      },
+      "hot_hand": {
+        "name": "Hot Hand",
+        "description": "Achieve a 25-game win streak."
+      },
+      "immortal": {
+        "name": "Immortal",
+        "description": "Play 100,000 games."
+      },
+      "legendary": {
+        "name": "Legendary",
+        "description": "Achieve a 500-game win streak."
+      },
+      "lightning": {
+        "name": "Lightning",
+        "description": "Win a game in under 45 seconds."
+      },
+      "master": {
+        "name": "Master",
+        "description": "Win 100,000 games."
+      },
+      "near_perfect": {
+        "name": "Near Perfect",
+        "description": "Win a game in under 100 moves."
+      },
+      "no_assistance": {
+        "name": "No Assistance",
+        "description": "Win a game without using a Hint."
+      },
+      "no_looking_back": {
+        "name": "No Looking Back",
+        "description": "Win a game without recycling the Stock."
+      },
+      "one_pass": {
+        "name": "One Pass",
+        "description": "Win a game with exactly one Stock recycle."
+      },
+      "perfect_game": {
+        "name": "Perfect Game",
+        "description": "Win a game without using Undo or Hint."
+      },
+      "perfect_timing": {
+        "name": "Perfect Timing",
+        "description": "Win a game in under 2 minutes and under 105 moves."
+      },
+      "pocket_change": {
+        "name": "Pocket Change",
+        "description": "Earn 1,000 coins."
+      },
+      "precision": {
+        "name": "Precision",
+        "description": "Win a game in under 110 moves."
+      },
+      "proven": {
+        "name": "Proven",
+        "description": "Win 1,000 games."
+      },
+      "quick_draw": {
+        "name": "Quick Draw",
+        "description": "Win a game in under 90 seconds and under 110 moves."
+      },
+      "seasoned": {
+        "name": "Seasoned",
+        "description": "Play 1,000 games."
+      },
+      "sharp_play": {
+        "name": "Sharp Play",
+        "description": "Win a game in under 120 moves."
+      },
+      "speed_demon": {
+        "name": "Speed Demon",
+        "description": "Win a game in under 60 seconds and under 120 moves."
+      },
+      "unstoppable": {
+        "name": "Unstoppable",
+        "description": "Achieve a 50-game win streak."
+      },
+      "untouchable": {
+        "name": "Untouchable",
+        "description": "Achieve a 100-game win streak."
+      },
+      "veteran": {
+        "name": "Veteran",
+        "description": "Play 10,000 games."
+      }
     },
     "storeItems": {
-      "card-back-red": { "name": "Red Card Back", "description": "A red-themed card back." },
-      "card-back-green": { "name": "Green Card Back", "description": "A green-themed card back." },
-      "bg-noir": { "name": "Noir", "description": "Deep black felt." },
-      "bg-retro-crt": { "name": "Retro CRT", "description": "Phosphor green tint." }
+      "card-back-red": {
+        "name": "Red Card Back",
+        "description": "A red-themed card back."
+      },
+      "card-back-green": {
+        "name": "Green Card Back",
+        "description": "A green-themed card back."
+      },
+      "bg-noir": {
+        "name": "Noir",
+        "description": "Deep black felt."
+      },
+      "bg-retro-crt": {
+        "name": "Retro CRT",
+        "description": "Phosphor green tint."
+      }
     },
     "specialEvents": {
-      "christmas-2026": { "title": "Christmas 2026", "description": "A festive three-page collection." }
+      "christmas-2026": {
+        "title": "Christmas 2026",
+        "description": "A festive three-page collection."
+      }
     }
   }
 }

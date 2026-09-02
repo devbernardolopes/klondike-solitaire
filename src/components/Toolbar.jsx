@@ -381,6 +381,7 @@ const hudColStyle = {
  * @returns {JSX.Element}
  */
 function ElapsedClock() {
+  const { t } = useTranslation();
   const elapsed = useElapsed();
   return (
     <div style={hudColStyle}>

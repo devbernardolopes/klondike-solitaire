@@ -13,6 +13,7 @@ import { supabase } from '../lib/supabaseClient.js';
 import { useAchievementEventsStore } from '../hooks/useAchievementEventsStore.js';
 import { useToastStore } from '../hooks/useToastStore.js';
 import { achievementImageUrl } from '../utils/achievementImage.js';
+import { translateAchievement } from '../i18n/db.js';
 
 // Session cache so the same id is never looked up twice.
 const cache = new Map();
@@ -36,7 +37,8 @@ async function resolve(id) {
         .single();
       if (data) {
         const image = achievementImageUrl(data.image_path);
-        result = { name: data.name || id, description: data.description || '', image };
+        const translated = translateAchievement({ id, name: data.name || id, description: data.description || '' });
+        result = { name: translated.name, description: translated.description, image };
       }
     } catch {
       // Leave the id-based fallback name if the lookup fails.

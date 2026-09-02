@@ -464,14 +464,14 @@ export default function SettingsModal({
                         }
                       }}
                     >
-                      Save
+                      {t('common.save')}
                     </button>
                     <button
                       type="button"
                       style={btn}
                       onClick={() => setEditingName(false)}
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                   </div>
                 </div>
