@@ -43,6 +43,7 @@ import pkg from '../../package.json';
  * @param {(v: boolean) => void} props.onHighlightCardChange
  * @param {boolean} props.particles  enable the foundation suit-burst effect
  * @param {(v: boolean) => void} props.onParticlesChange
+ * @param {boolean} props.bootstrapReady  startup session restoration completed
  */
 export default function SettingsModal({
   open,
@@ -53,6 +54,7 @@ export default function SettingsModal({
   onHighlightCardChange,
   particles,
   onParticlesChange,
+  bootstrapReady,
 }) {
   const dialogRef = useRef(null);
   const backdrop = useModalBackdrop(onClose);
@@ -60,6 +62,7 @@ export default function SettingsModal({
   const displayName = useAuthStore((s) => s.displayName);
   const displayNameUpdatedAt = useAuthStore((s) => s.displayNameUpdatedAt);
   const isAnonymous = useAuthStore((s) => s.isAnonymous);
+  const profileReady = useAuthStore((s) => s.profileReady);
   const [signOutConfirmOpen, setSignOutConfirmOpen] = useState(false);
   const [achievementsOpen, setAchievementsOpen] = useState(false);
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
@@ -75,10 +78,12 @@ export default function SettingsModal({
   const nameCheckTimer = useRef(null);
   const seenThemeItemIds = useSettingsStore((s) => s.seenThemeItemIds);
   const seenAchievementIds = useSettingsStore((s) => s.seenAchievementIds);
+  const settingsLoaded = useSettingsStore((s) => s.loaded);
   const achievementRevision = useAchievementEventsStore((s) => s.revision);
   const ownedItemIds = useAuthStore((s) => s.ownedItemIds);
   const [hasNewTheme, setHasNewTheme] = useState(false);
   const [hasNewAchievements, setHasNewAchievements] = useState(false);
+  const badgeDataReady = bootstrapReady && settingsLoaded && profileReady;
 
   // useAuthStore can't refresh these itself (circular import) — do it here,
   // after it has reset local caches and re-established an anonymous session.
@@ -117,7 +122,7 @@ export default function SettingsModal({
   }, [open]);
 
   useEffect(() => {
-    if (!open) {
+    if (!open || !badgeDataReady) {
       setHasNewTheme(false);
       return;
     }
@@ -134,10 +139,10 @@ export default function SettingsModal({
     return () => {
       cancelled = true;
     };
-  }, [open, ownedItemIds, seenThemeItemIds]);
+  }, [open, badgeDataReady, ownedItemIds, seenThemeItemIds]);
 
   useEffect(() => {
-    if (!open) {
+    if (!open || !badgeDataReady) {
       setHasNewAchievements(false);
       return;
     }
@@ -160,7 +165,7 @@ export default function SettingsModal({
     return () => {
       cancelled = true;
     };
-  }, [open, seenAchievementIds, achievementRevision]);
+  }, [open, badgeDataReady, seenAchievementIds, achievementRevision]);
 
   // Cancel any in-flight debounced availability check if the modal unmounts.
   useEffect(() => () => {
@@ -335,7 +340,7 @@ export default function SettingsModal({
               onClick={() => setThemeOpen(true)}
             >
               Theme
-              {hasNewTheme && <span style={NEW_BADGE_R}>New</span>}
+              {badgeDataReady && hasNewTheme && <span style={NEW_BADGE_R}>New</span>}
             </button>
             <button
               type="button"
@@ -350,7 +355,7 @@ export default function SettingsModal({
               onClick={() => setAchievementsOpen(true)}
             >
               Achievements
-              {hasNewAchievements && <span style={NEW_BADGE_R}>New</span>}
+              {badgeDataReady && hasNewAchievements && <span style={NEW_BADGE_R}>New</span>}
             </button>
             <button
               type="button"

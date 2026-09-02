@@ -528,6 +528,7 @@ function ElapsedClock() {
         onHighlightCardChange={onHighlightCardChange}
         particles={particles}
         onParticlesChange={onParticlesChange}
+        bootstrapReady={bootstrapReady}
       />
 
        <ConfirmModal
