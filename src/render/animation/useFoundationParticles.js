@@ -151,6 +151,11 @@ function spawnBurst(layer, event, cfg) {
           duration: cfg.duration,
           ease: cfg.ease,
           onComplete: release,
+          // If the tween is killed mid-animation (e.g. unmount or a new
+          // game mid-burst), onComplete never fires — onKill ensures
+          // activeCount is still decremented so the particle cap is not
+          // permanently blocked.
+          onKill: release,
         }
       );
     } catch {

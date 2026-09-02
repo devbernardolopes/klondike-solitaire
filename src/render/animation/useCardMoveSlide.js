@@ -26,6 +26,11 @@ const CONFIG_BY_TYPE = {
 // visually interfere). Only the unmount effect below kills them.
 const activeTweens = [];
 
+// Module-level registry of ghost DOM elements created by createGhosts().
+// Cleaned up on unmount so a killed tween (or component unmount) does not
+// orphan ghost elements in the DOM.
+const ghostEls = new Set();
+
 /**
  * Card-relocation animation for EVERY move except the stock→waste draw. Instead
  * of GSAP Flip (which fails to produce a delta for reparented cards), this
@@ -161,32 +166,33 @@ export function useCardMoveSlide() {
           g.removeAttribute('data-flip-id');
           document.body.appendChild(g);
           ghosts.push(g);
+          ghostEls.add(g);
           gsap.to(g, {
             opacity: 0,
             scale: MOTION.ghostTrail?.scale ?? 0.96,
             duration: (MOTION.ghostTrail?.duration ?? 0.35) * 0.9,
             ease: MOTION.ghostTrail?.ease ?? 'power2.out',
             delay: cfg.duration * 0.12,
-            onComplete: () => { try { g.remove(); } catch {} },
+            onComplete: () => { try { g.remove(); } catch {} ghostEls.delete(g); },
           });
         } catch {}
       }
     };
     const bounceCfg = MOTION.bounce;
-    const tl = gsap.timeline({
-      onComplete: () => {
-        completed = true;
-        moved.forEach((el) => gsap.set(el, { clearProps: 'scale,boxShadow,rotationZ' }));
-        ghosts.forEach((g) => { try { g.remove(); } catch {} });
-        movers.forEach(({ wrap, prevZ }) => {
-          if (wrap) wrap.style.zIndex = prevZ;
-        });
-        if (stockWrap) stockWrap.style.zIndex = prevStockZ;
-        const i = activeTweens.indexOf(tl);
-        if (i >= 0) activeTweens.splice(i, 1);
-        useUiStore.getState().endTransition(tid);
-      },
-    });
+     const tl = gsap.timeline({
+       onComplete: () => {
+         completed = true;
+         moved.forEach((el) => gsap.set(el, { clearProps: 'scale,boxShadow,rotationZ' }));
+         ghosts.forEach((g) => { try { g.remove(); } catch {} ghostEls.delete(g); });
+         movers.forEach(({ wrap, prevZ }) => {
+           if (wrap) wrap.style.zIndex = prevZ;
+         });
+         if (stockWrap) stockWrap.style.zIndex = prevStockZ;
+         const i = activeTweens.indexOf(tl);
+         if (i >= 0) activeTweens.splice(i, 1);
+         useUiStore.getState().endTransition(tid);
+       },
+     });
     if (shouldBounce && bounceCfg) {
       moved.forEach((el) => gsap.set(el, { scale: bounceCfg.scale ?? 1.06, rotationZ: gsap.utils.random(-(bounceCfg.rotation ?? 0.8), bounceCfg.rotation ?? 0.8), boxShadow: bounceCfg.boxShadow ?? '0 14px 32px rgba(0,0,0,0.45), 0 5px 12px rgba(0,0,0,0.35)' }));
       createGhosts();
@@ -219,16 +225,13 @@ export function useCardMoveSlide() {
     }
   }, [state, lastActionMeta]);
 
-  // Tear down every in-flight tween only when the board unmounts, and release
-  // any locks they held so a remount/route change can't leave the board stuck.
-  // We deliberately do NOT cancel/snap tweens when the tab is hidden: a hidden
-  // tab merely pauses requestAnimationFrame, so GSAP's tweens simply freeze in
-  // place and resume smoothly (via GSAP's default lagSmoothing) when the tab is
-  // refocused — no auto-complete step is skipped or jumped.
+  // Kill the draw tween only when the board unmounts.
   useEffect(() => {
     return () => {
       activeTweens.forEach((t) => t.kill());
       activeTweens.length = 0;
+      ghostEls.forEach((g) => { try { g.remove(); } catch {} });
+      ghostEls.clear();
       useUiStore.getState().clearAllTransitions();
     };
   }, []);

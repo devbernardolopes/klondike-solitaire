@@ -5,6 +5,12 @@ import { useSettingsStore } from '../../hooks/useSettingsStore.js';
 
 function spawnShimmer(cardEl) {
   if (!cardEl) return;
+  // Remove any orphaned shimmer from a previous flip whose GSAP tween
+  // was killed (e.g. during unmount or a rapid new-game) so they do
+  // not accumulate in the DOM across many flips.
+  try {
+    cardEl.querySelectorAll('[data-shimmer]').forEach((s) => s.remove());
+  } catch {}
   try {
     const settings = useSettingsStore.getState();
     if (!settings.cardEffects || !settings.shimmer) return;
@@ -12,6 +18,7 @@ function spawnShimmer(cardEl) {
   try {
     const shimmer = document.createElement('div');
     shimmer.setAttribute('aria-hidden', 'true');
+    shimmer.setAttribute('data-shimmer', 'true');
     shimmer.style.position = 'absolute';
     shimmer.style.left = '0';
     shimmer.style.top = '0';

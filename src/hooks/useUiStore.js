@@ -195,8 +195,13 @@ export const useUiStore = create((set, get) => ({
     }),
 
   /** Drop every in-flight transition (used on unmount / hard reset). */
-  clearAllTransitions: () =>
-    set({ animatingCards: new Set(), animatingLocs: new Set(), activeTransitions: {} }),
+  clearAllTransitions: () => {
+    // Resolve every pending whenTransitionDone promise so callers awaiting
+    // a transition never hang forever (e.g. on unmount / hard reset).
+    transitionDone.forEach((resolve) => { try { resolve(); } catch {} });
+    transitionDone.clear();
+    set({ animatingCards: new Set(), animatingLocs: new Set(), activeTransitions: {} });
+  },
 
   /** Set the all-encompassing lock used by the win cascade / deal reset. */
   setFullLock: (v) => set({ fullLock: v }),

@@ -43,6 +43,15 @@ export function playWinCascade() {
   if (prefersReduced) doConfetti = false;
   if (!doFall && !doConfetti) return;
   if (typeof document !== 'undefined' && document.hidden) return;
+
+  // Kill any in-flight cascade from a previous win (e.g. rapid new-game)
+  // so the old tween doesn't keep running and its onComplete corrupts state.
+  if (winTween) {
+    winTween.kill();
+    winTween = null;
+  }
+  foundationPiles = [];
+
   if (doConfetti) {
     try { playConfetti(); } catch {}
   }
