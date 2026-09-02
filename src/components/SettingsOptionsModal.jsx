@@ -103,7 +103,7 @@ export default function SettingsOptionsModal({
     padding: '20px 22px',
     width: 'min(90vw, 420px)',
     maxWidth: '100%',
-    height: '85vh',
+    maxHeight: '85vh',
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
