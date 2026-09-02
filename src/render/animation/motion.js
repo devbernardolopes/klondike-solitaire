@@ -109,8 +109,8 @@ export const MOTION = {
   // Initial deal: cards fan out one after another via stagger.
   deal:     { duration: 0.30, stagger: 0.02, ease: 'power2.out' },
 
-  // Victory cascade fallback (used when !cardEffects or prefers-reduced-motion).
-  // Enhanced path when cardEffects true uses winEnhanced below.
+  // Victory cascade — falling cards. Gated by `winCascade` only,
+  // independent of `cardEffects` and `winEnhanced` (confetti).
   win:      {
     duration: 0.5,         // per-card fly-off (s)
     stagger: 0.06,         // from:'end' so King peels first
@@ -156,12 +156,20 @@ export const MOTION = {
   // Wood frame entry (future GSAP reveal; currently CSS texture).
   boardFrame: { duration: 0.4, ease: 'power2.out' },
 
-  // Enhanced win (cardEffects true): two-phase lift then fall + confetti.
-  // phase1: brief lift/scale, phase2: fall with scatter. confettiCount respects mobile cap.
+  // Enhanced win cascade — two-phase lift then fall. Gated by `winCascade`
+  // only, independent of `cardEffects` and `winEnhanced` (confetti). Mobile cap
+  // handled in winCascade.js.
   winEnhanced: {
     phase1: { duration: 0.12, ease: 'power2.out', stagger: 0.015 },
     phase2: { duration: 0.82, ease: 'power1.in', stagger: 0.1 },
-    confettiCount: 32,
+  },
+
+  // Confetti shower — independent celebration. Gated by `winEnhanced` only,
+  // independent of `cardEffects` and `winCascade` (falling cards).
+  confetti: {
+    count: 32,
+    duration: 1.1,
+    ease: 'power2.in',
   },
 
   // Foundation particle burst: suit-glyph explosion from foundation center.
@@ -192,3 +200,9 @@ export const MOTION = {
     ease: 'back.out(1.7)',
   },
 };
+
+Object.defineProperty(MOTION.winEnhanced, 'confettiCount', {
+  get() { return MOTION.confetti.count; },
+  set(v) { MOTION.confetti.count = v; },
+  enumerable: false,
+});

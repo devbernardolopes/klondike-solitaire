@@ -71,7 +71,10 @@ export function MotionDebugPanel() {
   useControls('winEnhanced', {
     phase1Duration: { value: MOTION.winEnhanced.phase1.duration, min: 0.05, max: 1, step: 0.01, onChange: (v) => (MOTION.winEnhanced.phase1.duration = v) },
     phase2Duration: { value: MOTION.winEnhanced.phase2.duration, min: 0.1, max: 1.5, step: 0.01, onChange: (v) => (MOTION.winEnhanced.phase2.duration = v) },
-    confettiCount: { value: MOTION.winEnhanced.confettiCount, min: 0, max: 50, step: 1, onChange: (v) => (MOTION.winEnhanced.confettiCount = v) },
+  });
+  useControls('confetti', {
+    count: { value: MOTION.confetti.count, min: 0, max: 50, step: 1, onChange: (v) => (MOTION.confetti.count = v) },
+    duration: { value: MOTION.confetti.duration, min: 0.5, max: 2, step: 0.05, onChange: (v) => (MOTION.confetti.duration = v) },
   });
   useControls('particles', {
     duration: { value: MOTION.particles.duration, min: 0.1, max: 2, step: 0.01, onChange: (v) => (MOTION.particles.duration = v) },
