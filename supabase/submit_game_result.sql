@@ -1,7 +1,23 @@
 -- Canonical submit_game_result definition. The schema changes and reset RPC
--- are applied by klondike_supabase_migration_018.sql.
+-- are applied by klondike_supabase_migration_018.sql. This revision (paired
+-- with migration_022.sql) adds p_event_deal_id: when a win comes from a
+-- Special Events grid cell, the client passes that deal's id and this
+-- function atomically (1) marks the deal solved, (2) if that was the deal
+-- that completed its page, awards the page's coin bonus exactly once, and
+-- (3) if that was the page that completed the event, flags the event as
+-- fully solved exactly once (for the deferred prize feature). All three
+-- steps are idempotent via on-conflict-do-nothing, on top of the existing
+-- game_id dedup guard at the top of the function.
+--
+-- The flat per-win coin reward (v_coins_awarded, currently 10) already
+-- applies to event deals same as any other win — no change needed there,
+-- this only adds the event-specific bonus layer on top.
 
-drop function if exists public.submit_game_result(boolean, integer, integer, integer, integer, bigint, text, date);
+drop function if exists public.submit_game_result(
+  boolean, integer, integer, integer, integer, bigint, text, date, uuid,
+  boolean, boolean, integer, integer, integer, integer, boolean, boolean,
+  integer, jsonb
+);
 
 create or replace function public.submit_game_result(
   p_won boolean,
@@ -22,7 +38,8 @@ create or replace function public.submit_game_result(
   p_foundation_first_eligible boolean default true,
   p_ace_collector_eligible boolean default true,
   p_aces_to_foundation integer default 0,
-  p_ace_ids_to_foundation jsonb default '[]'::jsonb
+  p_ace_ids_to_foundation jsonb default '[]'::jsonb,
+  p_event_deal_id bigint default null
 )
 returns jsonb
 language plpgsql
@@ -41,6 +58,18 @@ declare
   v_coins_awarded integer := 0;
   v_context jsonb;
   v_newly text[] := '{}';
+  -- event progress locals
+  v_event_page_id bigint;
+  v_event_grid_size integer;
+  v_event_page_coin_reward integer;
+  v_event_id text;
+  v_deal_inserted boolean := false;
+  v_page_solved_count integer;
+  v_page_inserted boolean := false;
+  v_event_total_pages integer;
+  v_event_completed_pages integer;
+  v_event_inserted boolean := false;
+  v_event_result jsonb := '{}'::jsonb;
 begin
   if v_user_id is null then
     raise exception 'Not authenticated';
@@ -56,7 +85,7 @@ begin
     select 1 from public.game_results
     where user_id = v_user_id and game_id = v_game_id
   ) then
-    return jsonb_build_object('newly_unlocked_achievement_ids', '{}'::text[]);
+    return jsonb_build_object('newly_unlocked_achievement_ids', '{}'::text[], 'event_progress', '{}'::jsonb);
   end if;
 
   if p_won and (p_duration_ms is null or p_duration_ms < 0) then
@@ -164,6 +193,71 @@ begin
           best_moves = least(public.daily_results.best_moves, excluded.best_moves),
           wins = public.daily_results.wins + 1;
     end if;
+
+    -- Special Events: mark the deal solved, then cascade page/event completion.
+    if p_event_deal_id is not null then
+      select sep.id, sep.grid_size, sep.coin_reward, sep.event_id
+        into v_event_page_id, v_event_grid_size, v_event_page_coin_reward, v_event_id
+      from public.special_event_deals sed
+      join public.special_event_pages sep on sep.id = sed.page_id
+      where sed.id = p_event_deal_id;
+
+      if v_event_page_id is not null then
+        insert into public.event_deal_progress (user_id, deal_id, score, time_ms, moves)
+        values (v_user_id, p_event_deal_id, p_score, p_duration_ms, p_moves)
+        on conflict (user_id, deal_id) do nothing;
+        v_deal_inserted := found;
+
+        if v_deal_inserted then
+          select count(*) into v_page_solved_count
+          from public.event_deal_progress edp
+          join public.special_event_deals sed2 on sed2.id = edp.deal_id
+          where edp.user_id = v_user_id and sed2.page_id = v_event_page_id;
+
+          if v_page_solved_count >= (v_event_grid_size * v_event_grid_size) then
+            insert into public.event_page_progress (user_id, page_id, coins_awarded)
+            values (v_user_id, v_event_page_id, v_event_page_coin_reward)
+            on conflict (user_id, page_id) do nothing;
+            v_page_inserted := found;
+
+            if v_page_inserted and v_event_page_coin_reward > 0 then
+              update public.profiles
+              set coins = coins + v_event_page_coin_reward,
+                  coins_earned_total = coins_earned_total + v_event_page_coin_reward,
+                  updated_at = now()
+              where id = v_user_id;
+            end if;
+
+            if v_page_inserted then
+              select count(*) into v_event_total_pages
+              from public.special_event_pages
+              where event_id = v_event_id;
+
+              select count(*) into v_event_completed_pages
+              from public.event_page_progress epp
+              join public.special_event_pages sep2 on sep2.id = epp.page_id
+              where epp.user_id = v_user_id and sep2.event_id = v_event_id;
+
+              if v_event_completed_pages >= v_event_total_pages then
+                insert into public.event_progress (user_id, event_id)
+                values (v_user_id, v_event_id)
+                on conflict (user_id, event_id) do nothing;
+                v_event_inserted := found;
+              end if;
+            end if;
+          end if;
+        end if;
+      end if;
+
+      v_event_result := jsonb_build_object(
+        'deal_solved', coalesce(v_deal_inserted, false),
+        'event_id', v_event_id,
+        'page_id', v_event_page_id,
+        'page_completed', coalesce(v_page_inserted, false),
+        'page_coins_awarded', case when v_page_inserted then v_event_page_coin_reward else 0 end,
+        'event_completed', coalesce(v_event_inserted, false)
+      );
+    end if;
   else
     update public.profiles
     set current_streak = 0,
@@ -174,12 +268,15 @@ begin
     where id = v_user_id;
   end if;
 
-  return jsonb_build_object('newly_unlocked_achievement_ids', v_newly);
+  return jsonb_build_object(
+    'newly_unlocked_achievement_ids', v_newly,
+    'event_progress', v_event_result
+  );
 end;
 $$;
 
 grant execute on function public.submit_game_result(
   boolean, integer, integer, integer, integer, bigint, text, date, uuid,
   boolean, boolean, integer, integer, integer, integer, boolean, boolean,
-  integer, jsonb
+  integer, jsonb, bigint
 ) to authenticated;
