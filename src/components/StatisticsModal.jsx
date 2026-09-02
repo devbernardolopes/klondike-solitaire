@@ -41,6 +41,16 @@ export default function StatisticsModal({ open, onClose }) {
   const [scrollMetrics, setScrollMetrics] = useState({ scrollTop: 0, scrollHeight: 0, clientHeight: 0 });
   const backdrop = useModalBackdrop(onClose);
 
+  const isEmpty =
+    stats.totalGamesPlayed === 0 &&
+    stats.totalGamesWon === 0 &&
+    stats.bestStreak === 0 &&
+    stats.currentStreak === 0 &&
+    stats.lowestTimeMs == null &&
+    stats.lowestMoves == null &&
+    stats.totalTimeMsWon === 0 &&
+    stats.totalMovesWon === 0;
+
   useModalEscape({ open, onClose, id: 'stats', z: Z.BASE });
 
   useEffect(() => {
@@ -69,16 +79,6 @@ export default function StatisticsModal({ open, onClose }) {
   }, [open, isEmpty]);
 
   if (!open) return null;
-
-  const isEmpty =
-    stats.totalGamesPlayed === 0 &&
-    stats.totalGamesWon === 0 &&
-    stats.bestStreak === 0 &&
-    stats.currentStreak === 0 &&
-    stats.lowestTimeMs == null &&
-    stats.lowestMoves == null &&
-    stats.totalTimeMsWon === 0 &&
-    stats.totalMovesWon === 0;
 
   const wonPct =
     stats.totalGamesPlayed > 0
