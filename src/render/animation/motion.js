@@ -159,9 +159,9 @@ export const MOTION = {
   // Enhanced win (cardEffects true): two-phase lift then fall + confetti.
   // phase1: brief lift/scale, phase2: fall with scatter. confettiCount respects mobile cap.
   winEnhanced: {
-    phase1: { duration: 0.22, ease: 'power2.out', stagger: 0.015 },
-    phase2: { duration: 0.62, ease: 'power1.in', stagger: 0.05 },
-    confettiCount: 18,
+    phase1: { duration: 0.12, ease: 'power2.out', stagger: 0.015 },
+    phase2: { duration: 0.82, ease: 'power1.in', stagger: 0.1 },
+    confettiCount: 32,
   },
 
   // Foundation particle burst: suit-glyph explosion from foundation center.
@@ -177,7 +177,7 @@ export const MOTION = {
 
   // Achievement toast. slide: off-screen entrance; fade: dismiss/timeout.
   toast: {
-    slide: { duration: 0.3, ease: 'power2.out', distance: 80 },
+    slide: { duration: 0.3, ease: 'power2.out', distance: 44 },
     fade: { duration: 0.2, ease: 'power1.out' },
   },
 
@@ -188,7 +188,7 @@ export const MOTION = {
     toScale: 1,
     fromOpacity: 0,
     toOpacity: 1,
-    duration: 0.55,
+    duration: 0.75,
     ease: 'back.out(1.7)',
   },
 };
