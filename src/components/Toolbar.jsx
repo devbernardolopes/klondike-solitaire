@@ -31,6 +31,7 @@ const UNDO_REPEAT_INTERVAL_MS = 200;
 function useElapsed() {
   const startTime = useStatsStore((s) => s.startTime);
   const endTime = useStatsStore((s) => s.endTime);
+  const isOver = useStatsStore((s) => s.isOver);
   // Subscribe to the pause bookkeeping so the HUD re-renders on focus change.
   const pausedAt = useStatsStore((s) => s.pausedAt);
   const pausedAccumMs = useStatsStore((s) => s.pausedAccumMs);
