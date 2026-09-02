@@ -17,6 +17,9 @@ import DailyChallengeModal from './DailyChallengeModal.jsx';
 import { formatTime } from '../utils/formatTime.js';
 import { Z } from '../utils/modalStack.js';
 
+const UNDO_HOLD_DELAY_MS = 400;
+const UNDO_REPEAT_INTERVAL_MS = 200;
+
 /**
  * Live elapsed game time. Derived from a fixed start/end timestamp (not from
  * accumulating interval ticks) and excluding hidden-tab spans via getElapsedMs,
@@ -104,6 +107,75 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   // progress) — disable undo/hint and surface the Game Over dialog when a limit
   // (not a win) ended the game.
   const locked = won || isOver || autoCompleting;
+
+  // A short press is left to the native click handler so mouse clicks, touch
+  // taps, and keyboard activation all remain one undo. Once the hold delay is
+  // crossed, repeated undo calls own the interaction and the trailing click is
+  // suppressed to avoid an extra undo.
+  const undoHoldTimer = useRef(null);
+  const undoRepeatTimer = useRef(null);
+  const undoPointerId = useRef(null);
+  const undoRepeating = useRef(false);
+  const suppressUndoClick = useRef(false);
+  const clearUndoHold = useCallback(() => {
+    if (undoHoldTimer.current !== null) {
+      clearTimeout(undoHoldTimer.current);
+      undoHoldTimer.current = null;
+    }
+    if (undoRepeatTimer.current !== null) {
+      clearInterval(undoRepeatTimer.current);
+      undoRepeatTimer.current = null;
+    }
+    undoPointerId.current = null;
+    undoRepeating.current = false;
+  }, []);
+  const repeatUndo = useCallback(() => {
+    const current = useGameStore.getState();
+    const currentStats = useStatsStore.getState();
+    if (current.autoCompleting || isWon(current.state) || !current.canUndo() || currentStats.isOver) {
+      clearUndoHold();
+      return;
+    }
+    undo();
+  }, [clearUndoHold, undo]);
+  const onUndoPointerDown = useCallback((e) => {
+    if (e.isPrimary === false || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    clearUndoHold();
+    undoPointerId.current = e.pointerId;
+    undoRepeating.current = false;
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    undoHoldTimer.current = setTimeout(() => {
+      undoHoldTimer.current = null;
+      if (undoPointerId.current !== e.pointerId) return;
+      undoRepeating.current = true;
+      suppressUndoClick.current = true;
+      repeatUndo();
+      if (undoPointerId.current === e.pointerId) {
+        undoRepeatTimer.current = setInterval(repeatUndo, UNDO_REPEAT_INTERVAL_MS);
+      }
+    }, UNDO_HOLD_DELAY_MS);
+  }, [clearUndoHold, repeatUndo]);
+  const onUndoPointerEnd = useCallback((e) => {
+    if (undoPointerId.current !== null && e.pointerId !== undoPointerId.current) return;
+    clearUndoHold();
+  }, [clearUndoHold]);
+  const onUndoClick = useCallback((e) => {
+    if (suppressUndoClick.current) {
+      suppressUndoClick.current = false;
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    undo();
+  }, [undo]);
+  useEffect(() => {
+    const cancel = () => clearUndoHold();
+    window.addEventListener('blur', cancel);
+    return () => {
+      window.removeEventListener('blur', cancel);
+      clearUndoHold();
+    };
+  }, [clearUndoHold]);
   useEffect(() => {
     if (isOver) setGameOverDialogOpen(true);
   }, [isOver, setGameOverDialogOpen]);
@@ -411,10 +483,15 @@ function ElapsedClock() {
       </button>
 
        <button
-        style={{ ...fab, right: 16, opacity: locked || !canUndo ? 0.4 : 1 }}
+        style={{ ...fab, right: 16, opacity: locked || !canUndo ? 0.4 : 1, touchAction: 'manipulation' }}
         aria-label="Undo"
         disabled={locked || !canUndo}
-        onClick={undo}
+        onPointerDown={onUndoPointerDown}
+        onPointerUp={onUndoPointerEnd}
+        onPointerCancel={onUndoPointerEnd}
+        onPointerLeave={onUndoPointerEnd}
+        onLostPointerCapture={onUndoPointerEnd}
+        onClick={onUndoClick}
       >
         <Undo2 size={20} />
       </button>
