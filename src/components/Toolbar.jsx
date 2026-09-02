@@ -31,7 +31,6 @@ const UNDO_REPEAT_INTERVAL_MS = 200;
 function useElapsed() {
   const startTime = useStatsStore((s) => s.startTime);
   const endTime = useStatsStore((s) => s.endTime);
-  const isOver = useStatsStore((s) => s.isOver);
   // Subscribe to the pause bookkeeping so the HUD re-renders on focus change.
   const pausedAt = useStatsStore((s) => s.pausedAt);
   const pausedAccumMs = useStatsStore((s) => s.pausedAccumMs);
@@ -39,21 +38,12 @@ function useElapsed() {
   useEffect(() => {
     if (startTime === null || endTime !== null || isOver) return undefined;
 
-    let frameId = null;
-    const refreshDisplay = () => {
+    const id = setInterval(() => {
       setNow(Date.now());
-      frameId = requestAnimationFrame(refreshDisplay);
-    };
-    frameId = requestAnimationFrame(refreshDisplay);
-
-    const limitTimerId = setInterval(() => {
       useStatsStore.getState().checkTimeLimit();
-    }, 250);
+    }, 100);
 
-    return () => {
-      if (frameId !== null) cancelAnimationFrame(frameId);
-      clearInterval(limitTimerId);
-    };
+    return () => clearInterval(id);
   }, [startTime, endTime, isOver]);
   const elapsed = startTime === null ? 0 : useStatsStore.getState().getElapsedMs(now);
   return formatTime(elapsed);
