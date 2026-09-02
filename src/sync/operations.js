@@ -17,8 +17,8 @@ import { useAuthStore } from '../hooks/useAuthStore.js';
  */
 
 export const operations = {
-  record_game_started: async () => {
-    const { data, error } = await supabase.rpc('record_game_started');
+  record_game_started: async (payload = {}) => {
+    const { data, error } = await supabase.rpc('record_game_started', payload);
     if (error) throw error;
     const ids = data?.newly_unlocked_achievement_ids;
     if (Array.isArray(ids) && ids.length > 0) {

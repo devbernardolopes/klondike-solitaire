@@ -78,7 +78,7 @@ export const useStatisticsStore = create((set, get) => ({
   recordGamePlayed: async () => {
     const stats = await addGamePlayed();
     set({ stats });
-    enqueue('record_game_started', {});
+    enqueue('record_game_started', { p_game_id: useStatsStore.getState().achievementTelemetry.gameId });
   },
 
   /**
