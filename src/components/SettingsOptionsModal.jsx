@@ -38,6 +38,7 @@ export default function SettingsOptionsModal({
 }) {
   const dialogRef = useRef(null);
   const scrollRef = useRef(null);
+  const contentRef = useRef(null);
   const [scrollMetrics, setScrollMetrics] = useState({ scrollTop: 0, scrollHeight: 0, clientHeight: 0 });
   const backdrop = useModalBackdrop(onClose);
   const leaderboardVisible = useAuthStore((s) => s.leaderboardVisible);
@@ -73,6 +74,7 @@ export default function SettingsOptionsModal({
     update();
     const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(update) : null;
     observer?.observe(element);
+    if (contentRef.current) observer?.observe(contentRef.current);
     return () => {
       element.removeEventListener('scroll', update);
       window.removeEventListener('resize', update);
@@ -154,8 +156,9 @@ export default function SettingsOptionsModal({
         <h2 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>Settings</h2>
         <ModalCloseButton onClick={onClose} />
 
-        <div style={{ position: 'relative', flex: '0 1 auto', minHeight: 0, maxHeight: 'calc(85vh - 74px)', overflow: 'hidden' }}>
-        <div ref={scrollRef} className="modal-body-scroll" style={{ height: '100%', paddingBottom: 12, boxSizing: 'border-box' }}>
+        <div style={{ position: 'relative', flex: '0 1 auto', minHeight: 0, overflow: 'hidden' }}>
+        <div ref={scrollRef} className="modal-body-scroll" style={{ height: 'auto', maxHeight: 'calc(85vh - 74px)', overflowY: 'auto', paddingBottom: 12, boxSizing: 'border-box' }}>
+        <div ref={contentRef}>
         <div style={{ ...field, marginBottom: 20 }}>
           <label style={{ fontSize: 14, fontWeight: 600 }}>Hand</label>
           <select
@@ -265,6 +268,7 @@ export default function SettingsOptionsModal({
             label="Appear on Leaderboard"
             disabled={!supabase}
           />
+        </div>
         </div>
         </div>
         {showScrollUp && <button type="button" aria-label="Scroll settings to top" onClick={() => scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })} style={{ ...scrollButton, top: 8 }}><ChevronUp size={18} strokeWidth={2.5} aria-hidden="true" /></button>}
