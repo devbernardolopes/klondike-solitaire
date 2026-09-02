@@ -23,25 +23,37 @@ const UNDO_REPEAT_INTERVAL_MS = 200;
 /**
  * Live elapsed game time. Derived from a fixed start/end timestamp (not from
  * accumulating interval ticks) and excluding hidden-tab spans via getElapsedMs,
- * so it reflects only actively-focused play. A short interval only exists to
- * refresh the displayed value and enforce the time limit.
- * @returns {string} "MM:SS"
+ * so it reflects only actively-focused play. The display uses animation-frame
+ * refreshes while a separate short interval enforces the time limit.
+ * @returns {string} "MM:SS.hh"
  */
 function useElapsed() {
   const startTime = useStatsStore((s) => s.startTime);
   const endTime = useStatsStore((s) => s.endTime);
+  const isOver = useStatsStore((s) => s.isOver);
   // Subscribe to the pause bookkeeping so the HUD re-renders on focus change.
   const pausedAt = useStatsStore((s) => s.pausedAt);
   const pausedAccumMs = useStatsStore((s) => s.pausedAccumMs);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    if (startTime === null) return undefined;
-    const id = setInterval(() => {
+    if (startTime === null || endTime !== null || isOver) return undefined;
+
+    let frameId = null;
+    const refreshDisplay = () => {
       setNow(Date.now());
+      frameId = requestAnimationFrame(refreshDisplay);
+    };
+    frameId = requestAnimationFrame(refreshDisplay);
+
+    const limitTimerId = setInterval(() => {
       useStatsStore.getState().checkTimeLimit();
     }, 250);
-    return () => clearInterval(id);
-  }, [startTime]);
+
+    return () => {
+      if (frameId !== null) cancelAnimationFrame(frameId);
+      clearInterval(limitTimerId);
+    };
+  }, [startTime, endTime, isOver]);
   const elapsed = startTime === null ? 0 : useStatsStore.getState().getElapsedMs(now);
   return formatTime(elapsed);
 }
