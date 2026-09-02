@@ -5,7 +5,7 @@
 // used by ConfirmModal.jsx / NewGameModal.jsx.
 
 import { useEffect, useRef, useState } from 'react';
-import { HelpCircle } from 'lucide-react';
+import { ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { deal } from '../core/dealer.js';
@@ -83,6 +83,8 @@ export default function SettingsModal({
   const ownedItemIds = useAuthStore((s) => s.ownedItemIds);
   const [hasNewTheme, setHasNewTheme] = useState(false);
   const [hasNewAchievements, setHasNewAchievements] = useState(false);
+  const scrollRef = useRef(null);
+  const [scrollMetrics, setScrollMetrics] = useState({ scrollTop: 0, scrollHeight: 0, clientHeight: 0 });
   const badgeDataReady = bootstrapReady && settingsLoaded && profileReady;
 
   // useAuthStore can't refresh these itself (circular import) — do it here,
@@ -167,6 +169,26 @@ export default function SettingsModal({
     };
   }, [open, badgeDataReady, seenAchievementIds, achievementRevision]);
 
+  useEffect(() => {
+    if (!open) {
+      setScrollMetrics({ scrollTop: 0, scrollHeight: 0, clientHeight: 0 });
+      return undefined;
+    }
+    const element = scrollRef.current;
+    if (!element) return undefined;
+    const update = () => setScrollMetrics({ scrollTop: element.scrollTop, scrollHeight: element.scrollHeight, clientHeight: element.clientHeight });
+    element.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    update();
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(update) : null;
+    observer?.observe(element);
+    return () => {
+      element.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+      observer?.disconnect();
+    };
+  }, [open, settingsOptionsOpen, themeOpen, achievementsOpen, leaderboardOpen, storeOpen, statsOpen]);
+
   // Cancel any in-flight debounced availability check if the modal unmounts.
   useEffect(() => () => {
     if (nameCheckTimer.current) clearTimeout(nameCheckTimer.current);
@@ -195,7 +217,15 @@ export default function SettingsModal({
     padding: '20px 22px',
     width: 'min(90vw, 420px)',
     maxWidth: '100%',
+    height: '85vh',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
   };
+
+  const showScrollUp = scrollMetrics.scrollTop > 0;
+  const showScrollDown = scrollMetrics.scrollTop + scrollMetrics.clientHeight < scrollMetrics.scrollHeight - 1;
+  const scrollButton = { position: 'absolute', left: '50%', transform: 'translateX(-50%)', width: 34, height: 28, display: 'grid', placeItems: 'center', padding: 0, border: '1px solid var(--ui-modal-panel-border)', borderRadius: 999, background: 'color-mix(in srgb, var(--ui-modal-panel-bg) 82%, transparent)', color: 'var(--ui-modal-panel-fg)', boxShadow: '0 2px 8px rgba(0,0,0,0.22)', backdropFilter: 'blur(4px)', cursor: 'pointer', zIndex: 1 };
 
   const NEW_BADGE_R = {
     position: 'absolute',
@@ -325,7 +355,8 @@ export default function SettingsModal({
         </h2>
         <ModalCloseButton onClick={onClose} />
 
-        <div className="modal-body-scroll" style={{ flex: 1, minHeight: 0 }}>
+        <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
+        <div ref={scrollRef} className="modal-body-scroll" style={{ height: '100%' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
             <button
               type="button"
@@ -372,7 +403,7 @@ export default function SettingsModal({
               Store
             </button>
           </div>
-
+        </div>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
             <button
               type="button"
@@ -527,8 +558,9 @@ export default function SettingsModal({
               </button>
             )}
           </div>
+        {showScrollUp && <button type="button" aria-label="Scroll settings to top" onClick={() => scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })} style={{ ...scrollButton, top: 8 }}><ChevronUp size={18} strokeWidth={2.5} aria-hidden="true" /></button>}
+        {showScrollDown && <button type="button" aria-label="Scroll settings to bottom" onClick={() => { const element = scrollRef.current; element?.scrollTo({ top: element.scrollHeight, behavior: 'smooth' }); }} style={{ ...scrollButton, bottom: 8 }}><ChevronDown size={18} strokeWidth={2.5} aria-hidden="true" /></button>}
         </div>
-
       </div>
     </div>
 
