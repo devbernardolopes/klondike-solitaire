@@ -19,6 +19,7 @@ import { seedForDate } from '../core/dailyChallenge.js';
 import { getEvent } from '../core/specialEvents.js';
 import { getUsedRandomSeedsSet, addUsedRandomSeed, clearUsedRandomSeeds } from '../db/usedRandomSeeds.js';
 import { getWinningPool, getDailyMap, getEvents } from '../repo/seedRepository.js';
+import { fetchAllEventSeeds } from '../repo/specialEventsRepository.js';
 import { enqueueFlip } from '../render/animation/flipBridge.js';
 import { enqueueParticle } from '../render/animation/particleBridge.js';
 import { cancelDrawSlide } from '../render/animation/useStockDrawSlide.js';
@@ -497,7 +498,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
       if (exhausted) useSeedStore.getState().resetPlayed();
       seed = s;
     } else {
-      const [pool, dailyMap, events] = await Promise.all([getWinningPool(), getDailyMap(), getEvents()]);
+      const [pool, dailyMap, events] = await Promise.all([getWinningPool(), getDailyMap(), fetchAllEventSeeds()]);
       const known = buildKnownSet({ winningPool: pool, dailyMap, events });
       const used = getUsedRandomSeedsSet();
       if (used.size >= 0x100000000 - knownSeedCount(known)) clearUsedRandomSeeds();
