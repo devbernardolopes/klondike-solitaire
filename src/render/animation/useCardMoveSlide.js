@@ -165,6 +165,12 @@ export function useCardMoveSlide() {
           g.style.pointerEvents = 'none';
           g.style.zIndex = '1400';
           g.style.opacity = String(MOTION.ghostTrail?.alpha ?? 0.18);
+          // Strip the inline transform GSAP applied to the source (so the
+          // source could be parked at its old position via translate). Without
+          // this, the clone inherits the source's transform and renders at
+          // oldRect + transform = newRect instead of the intended oldRect.
+          g.style.transform = 'none';
+          g.style.removeProperty('translate');
           g.removeAttribute('data-card');
           g.removeAttribute('data-flip-id');
           document.body.appendChild(g);
