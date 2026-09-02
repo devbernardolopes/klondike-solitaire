@@ -60,10 +60,10 @@ export function MotionDebugPanel() {
     scale: { value: MOTION.bounce.scale, min: 1, max: 1.15, step: 0.01, onChange: (v) => (MOTION.bounce.scale = v) },
     rotation: { value: MOTION.bounce.rotation, min: 0, max: 2, step: 0.1, onChange: (v) => (MOTION.bounce.rotation = v) },
   });
-  useControls('ghostTrail', {
-    duration: { value: MOTION.ghostTrail.duration, min: 0.05, max: 1, step: 0.01, onChange: (v) => (MOTION.ghostTrail.duration = v) },
-    alpha: { value: MOTION.ghostTrail.alpha, min: 0, max: 1, step: 0.01, onChange: (v) => (MOTION.ghostTrail.alpha = v) },
-    scale: { value: MOTION.ghostTrail.scale, min: 0.8, max: 1.1, step: 0.01, onChange: (v) => (MOTION.ghostTrail.scale = v) },
+  useControls('ghostEcho', {
+    duration: { value: MOTION.ghostEcho.duration, min: 0.05, max: 1, step: 0.01, onChange: (v) => (MOTION.ghostEcho.duration = v) },
+    alpha: { value: MOTION.ghostEcho.alpha, min: 0, max: 1, step: 0.01, onChange: (v) => (MOTION.ghostEcho.alpha = v) },
+    scale: { value: MOTION.ghostEcho.scale, min: 0.8, max: 1.1, step: 0.01, onChange: (v) => (MOTION.ghostEcho.scale = v) },
   });
   useControls('boardFrame', {
     duration: { value: MOTION.boardFrame.duration, min: 0.05, max: 1.5, step: 0.01, onChange: (v) => (MOTION.boardFrame.duration = v) },

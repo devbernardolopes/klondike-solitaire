@@ -48,7 +48,7 @@ export default function SettingsOptionsModal({
   const setLeaderboardVisible = useAuthStore((s) => s.setLeaderboardVisible);
   const cardEffects = useSettingsStore((s) => s.cardEffects);
   const bounce = useSettingsStore((s) => s.bounce);
-  const ghostTrail = useSettingsStore((s) => s.ghostTrail);
+  const ghostEcho = useSettingsStore((s) => s.ghostEcho);
   const shimmer = useSettingsStore((s) => s.shimmer);
   const uncover = useSettingsStore((s) => s.uncover);
   const winEnhanced = useSettingsStore((s) => s.winEnhanced);
@@ -236,11 +236,11 @@ export default function SettingsOptionsModal({
         ))}
 
         <div style={{ ...field, marginLeft: 16, opacity: cardEffects ? 1 : 0.5, marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.ghostTrail')}</label>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.ghostEcho')}</label>
           <ToggleSwitch
-            checked={!!ghostTrail}
-            onChange={(v) => useSettingsStore.getState().setGhostTrail(v)}
-            label={t('settings.ghostTrail')}
+            checked={!!ghostEcho}
+            onChange={(v) => useSettingsStore.getState().setGhostEcho(v)}
+            label={t('settings.ghostEcho')}
             disabled={!cardEffects}
           />
         </div>

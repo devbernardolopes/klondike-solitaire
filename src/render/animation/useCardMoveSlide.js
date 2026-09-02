@@ -133,7 +133,7 @@ export function useCardMoveSlide() {
       try {
         const s = useSettingsStore.getState();
         if (!s.cardEffects) return false;
-        if (!s.ghostTrail) return false;
+        if (!s.ghostEcho) return false;
       } catch {}
       return type === 'move' || type === 'auto' || type === 'undo';
     })();
@@ -148,7 +148,7 @@ export function useCardMoveSlide() {
     })();
     const createGhosts = () => {
       if (!shouldGhost || moved.length === 0) return;
-      const cap = MOTION.ghostTrail?.maxConcurrent ?? 8;
+      const cap = MOTION.ghostEcho?.maxConcurrent ?? 8;
       const toSpawn = Math.min(moved.length, cap);
       for (let i = 0; i < toSpawn; i++) {
         const el = moved[i];
@@ -164,7 +164,7 @@ export function useCardMoveSlide() {
           g.style.margin = '0';
           g.style.pointerEvents = 'none';
           g.style.zIndex = '1400';
-          g.style.opacity = String(MOTION.ghostTrail?.alpha ?? 0.18);
+          g.style.opacity = String(MOTION.ghostEcho?.alpha ?? 0.18);
           // Strip the inline transform GSAP applied to the source (so the
           // source could be parked at its old position via translate). Without
           // this, the clone inherits the source's transform and renders at
@@ -178,9 +178,9 @@ export function useCardMoveSlide() {
           ghostEls.add(g);
           gsap.to(g, {
             opacity: 0,
-            scale: MOTION.ghostTrail?.scale ?? 0.96,
-            duration: (MOTION.ghostTrail?.duration ?? 0.35) * 0.9,
-            ease: MOTION.ghostTrail?.ease ?? 'power2.out',
+            scale: MOTION.ghostEcho?.scale ?? 0.96,
+            duration: (MOTION.ghostEcho?.duration ?? 0.35) * 0.9,
+            ease: MOTION.ghostEcho?.ease ?? 'power2.out',
             delay: cfg.duration * 0.12,
             onComplete: () => { try { g.remove(); } catch {} ghostEls.delete(g); },
           });

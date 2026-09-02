@@ -149,9 +149,10 @@ export const MOTION = {
   // pop. Gated by cardEffects && bounce && !prefers-reduced-motion.
   bounce: { duration: 0.20, ease: 'back.out(0.6)', scale: 1.06, rotation: 0.8, y: -6, boxShadow: '0 14px 32px rgba(0,0,0,0.45), 0 5px 12px rgba(0,0,0,0.35)' },
 
-  // Ghost trail left behind on every move/auto/undo. Cloned node at oldRect
-  // fades/scale. Capped to maxConcurrent to avoid DOM flood during overlap auto.
-  ghostTrail: { duration: 0.45, ease: 'power1.out', alpha: 0.18, scale: 0.96, maxConcurrent: 8 },
+  // Ghost echo left at the source position on every move/auto/undo. A single
+  // cloned node parked at oldRect fades and shrinks in place. Capped to
+  // maxConcurrent to avoid DOM flood during overlap auto.
+  ghostEcho: { duration: 0.45, ease: 'power1.out', alpha: 0.18, scale: 0.96, maxConcurrent: 8 },
 
   // Wood frame entry (future GSAP reveal; currently CSS texture).
   boardFrame: { duration: 0.4, ease: 'power2.out' },
