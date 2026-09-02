@@ -223,7 +223,7 @@ export default function AchievementsModal({ open, onClose }) {
     }
     if (defsOk && unlockedOk) {
       const seen = useSettingsStore.getState().seenAchievementIds;
-      const fresh = Object.keys(nextUnlocked).filter((id) => !seen.includes(id));
+      const fresh = Object.keys(nextUnlocked).filter((id) => !seen.has(id));
       setNewIds(fresh);
       if (fresh.length) markAchievementsSeen(fresh);
     } else {

@@ -98,7 +98,7 @@ export default function ThemeModal({ open, onClose }) {
       .then((data) => {
         setCatalogItems(data);
         const themeIds = data.filter((it) => it.kind === 'card_back' || it.kind === 'table_felt' || it.kind === 'deck').map((it) => it.id);
-        const fresh = ownedItemIds.filter((id) => themeIds.includes(id) && !seenThemeItemIds.includes(id));
+        const fresh = ownedItemIds.filter((id) => themeIds.includes(id) && !seenThemeItemIds.has(id));
         setNewIds(fresh);
         if (fresh.length) markThemeItemsSeen(fresh);
       })

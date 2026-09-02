@@ -135,6 +135,29 @@ export async function getSetting(key, fallback = undefined) {
 }
 
 /**
+ * Read multiple setting values in a single IndexedDB transaction via
+ * `bulkGet`. Returns an array in the same order as `keys`. Each entry is
+ * the stored value, or the per-key fallback from `fallbackMap` (or the
+ * scalar `fallback`) when the key is missing.
+ * @param {string[]} keys
+ * @param {Record<string, *>|*} [fallbackMap]  per-key default values, or a
+ *   single default to use for any missing key when a per-key entry is absent.
+ * @returns {Promise<Array<*>>}
+ */
+export async function getSettings(keys, fallbackMap) {
+  if (!keys || keys.length === 0) return [];
+  const rows = await db.settings.bulkGet(keys);
+  return rows.map((row, i) => {
+    if (row) return row.value;
+    const key = keys[i];
+    if (fallbackMap && typeof fallbackMap === 'object' && !Array.isArray(fallbackMap) && key in fallbackMap) {
+      return fallbackMap[key];
+    }
+    return fallbackMap;
+  });
+}
+
+/**
  * Write a single setting value.
  * @param {string} key
  * @param {*} value

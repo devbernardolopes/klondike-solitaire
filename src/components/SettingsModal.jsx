@@ -133,7 +133,7 @@ export default function SettingsModal({
       .then((data) => {
         if (cancelled) return;
         const themeIds = data.filter((it) => it.kind === 'card_back' || it.kind === 'table_felt' || it.kind === 'deck').map((it) => it.id);
-        setHasNewTheme(ownedItemIds.some((id) => themeIds.includes(id) && !seenThemeItemIds.includes(id)));
+        setHasNewTheme(ownedItemIds.some((id) => themeIds.includes(id) && !seenThemeItemIds.has(id)));
       })
       .catch(() => {
         if (!cancelled) setHasNewTheme(false);
@@ -158,7 +158,7 @@ export default function SettingsModal({
       .select('achievement_id')
       .then(({ data, error }) => {
         if (cancelled || error) return;
-        const fresh = (data ?? []).some((r) => !seenAchievementIds.includes(r.achievement_id));
+        const fresh = (data ?? []).some((r) => !seenAchievementIds.has(r.achievement_id));
         setHasNewAchievements(fresh);
       })
       .catch(() => {

@@ -8,8 +8,31 @@
 
 import { create } from 'zustand';
 import { setActiveDeck } from '../render/deck/deckRegistry.js';
-import { getSetting, setSetting } from '../db/schema.js';
+import { getSetting, getSettings, setSetting } from '../db/schema.js';
 import i18n, { detectSystemLocale, SUPPORTED, DEFAULT_LOCALE } from '../i18n/index.js';
+
+// Hard cap on seen-ids sets as a defensive upper bound. The actual sizes are
+// bounded by the achievement catalog (~32) and theme items catalog (~50), so
+// this is a safety net against runaway growth from any future bug or migration.
+const SEEN_IDS_CAP = 500;
+
+/**
+ * Convert a persisted array of seen ids back to a Set, defensively capping
+ * its size to SEEN_IDS_CAP. Drops non-string entries and duplicates (the
+ * Set constructor already dedupes, so the cap is applied after dedup).
+ * @param {*} arr
+ * @returns {Set<string>}
+ */
+function toCappedSet(arr) {
+  if (!Array.isArray(arr)) return new Set();
+  const out = new Set();
+  for (const v of arr) {
+    if (typeof v !== 'string' || out.size >= SEEN_IDS_CAP) continue;
+    if (v.length === 0) continue;
+    out.add(v);
+  }
+  return out;
+}
 
 const DEFAULTS = {
   language: DEFAULT_LOCALE,
@@ -117,8 +140,8 @@ export const useSettingsStore = create((set, get) => ({
   winEnhanced: readLS(LS_KEYS.winEnhanced, DEFAULTS.winEnhanced),
   winCascade: readLS(LS_KEYS.winCascade, DEFAULTS.winCascade),
   hoverGlow: readLS(LS_KEYS.hoverGlow, DEFAULTS.hoverGlow),
-  seenThemeItemIds: [],
-  seenAchievementIds: [],
+  seenThemeItemIds: new Set(),
+  seenAchievementIds: new Set(),
   themeModalTab: 'interface',
   loaded: false,
 
@@ -127,31 +150,47 @@ export const useSettingsStore = create((set, get) => ({
    * keys fall back to DEFAULTS. Activates the loaded (or default) deck.
    */
   init: async () => {
-    const [language, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, seenThemeItemIds, seenAchievementIds, themeModalTab] = await Promise.all([
-      getSetting('language', readLanguageLS()),
-      getSetting('theme', DEFAULTS.theme),
-      getSetting('interfaceTheme', DEFAULTS.interfaceTheme),
-      getSetting('deck', DEFAULTS.deck),
-      getSetting('cardBack', DEFAULTS.cardBack),
-      getSetting('handedness', DEFAULTS.handedness),
-      getSetting('highlightCard', DEFAULTS.highlightCard),
-      getSetting('particles', DEFAULTS.particles),
-      getSetting('cardEffects', DEFAULTS.cardEffects),
-      getSetting('tableTexture', DEFAULTS.tableTexture),
-      getSetting('boardFrame', DEFAULTS.boardFrame),
-      getSetting('bounce', DEFAULTS.bounce),
-      getSetting('ghostTrail', DEFAULTS.ghostTrail),
-      getSetting('shimmer', DEFAULTS.shimmer),
-      getSetting('uncover', DEFAULTS.uncover),
-      getSetting('winEnhanced', DEFAULTS.winEnhanced),
-      getSetting('winCascade', DEFAULTS.winCascade),
-      getSetting('hoverGlow', DEFAULTS.hoverGlow),
-      getSetting('seenThemeItemIds', []),
-      getSetting('seenAchievementIds', []),
-      getSetting('themeModalTab', 'background'),
-    ]);
-    const normalizedLang = SUPPORTED.includes(language) ? language : DEFAULT_LOCALE;
+    // Single bulkGet for all 21 settings → 1 IndexedDB transaction instead of
+    // 21 individual getSetting() calls. Per-key defaults via the fallbackMap.
+    const SETTING_KEYS = [
+      'language', 'theme', 'interfaceTheme', 'deck', 'cardBack', 'handedness',
+      'highlightCard', 'particles', 'cardEffects', 'tableTexture', 'boardFrame',
+      'bounce', 'ghostTrail', 'shimmer', 'uncover', 'winEnhanced', 'winCascade',
+      'hoverGlow', 'seenThemeItemIds', 'seenAchievementIds', 'themeModalTab',
+    ];
+    const SETTING_DEFAULTS = {
+      theme: DEFAULTS.theme,
+      interfaceTheme: DEFAULTS.interfaceTheme,
+      deck: DEFAULTS.deck,
+      cardBack: DEFAULTS.cardBack,
+      handedness: DEFAULTS.handedness,
+      highlightCard: DEFAULTS.highlightCard,
+      particles: DEFAULTS.particles,
+      cardEffects: DEFAULTS.cardEffects,
+      tableTexture: DEFAULTS.tableTexture,
+      boardFrame: DEFAULTS.boardFrame,
+      bounce: DEFAULTS.bounce,
+      ghostTrail: DEFAULTS.ghostTrail,
+      shimmer: DEFAULTS.shimmer,
+      uncover: DEFAULTS.uncover,
+      winEnhanced: DEFAULTS.winEnhanced,
+      winCascade: DEFAULTS.winCascade,
+      hoverGlow: DEFAULTS.hoverGlow,
+      seenThemeItemIds: [],
+      seenAchievementIds: [],
+      themeModalTab: 'background',
+    };
+    const [language, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, seenThemeItemIdsArr, seenAchievementIdsArr, themeModalTab] = await getSettings(SETTING_KEYS, SETTING_DEFAULTS);
+    // Use the LS read for language as a last-resort fallback for the language
+    // key (the per-key default above is a static DEFAULT_LOCALE; the LS version
+    // may have detected the system locale on a previous session).
+    const resolvedLanguage = language ?? readLanguageLS();
+    const normalizedLang = SUPPORTED.includes(resolvedLanguage) ? resolvedLanguage : DEFAULT_LOCALE;
     setActiveDeck(deck);
+    // Re-hydrate persisted seen-id arrays back into Sets (Sets are not
+    // serializable through Dexie/JSON, so we always persist as arrays).
+    const seenThemeIds = toCappedSet(seenThemeItemIdsArr);
+    const seenAchievementIds = toCappedSet(seenAchievementIdsArr);
     try {
       const toBackfill = [
         ['language', normalizedLang],
@@ -173,11 +212,15 @@ export const useSettingsStore = create((set, get) => ({
         ['winCascade', winCascade],
         ['hoverGlow', hoverGlow],
       ];
+      // Unconditional write: the in-memory value is the source of truth
+      // (either just loaded from Dexie or the in-code DEFAULTS). Skipping
+      // the prior getItem() check removes 18 redundant localStorage reads
+      // on every app start.
       for (const [k, v] of toBackfill) {
         const lsKey = LS_KEYS[k];
         if (!lsKey) continue;
         try {
-          if (localStorage.getItem(lsKey) == null) writeLS(lsKey, v);
+          localStorage.setItem(lsKey, String(v));
         } catch {}
       }
     } catch {}
@@ -185,7 +228,7 @@ export const useSettingsStore = create((set, get) => ({
       if (i18n.language !== normalizedLang) await i18n.changeLanguage(normalizedLang);
       try { document.documentElement.lang = normalizedLang; } catch {}
     } catch {}
-    set({ language: normalizedLang, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, seenThemeItemIds, seenAchievementIds, themeModalTab, loaded: true });
+    set({ language: normalizedLang, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, seenThemeItemIds: seenThemeIds, seenAchievementIds: seenAchievementIds, themeModalTab, loaded: true });
   },
 
   /**
@@ -309,14 +352,22 @@ export const useSettingsStore = create((set, get) => ({
 
   /**
    * Mark theme items as having been seen in the Theme modal so their "New"
-   * badge stops showing. Merges with the existing set and persists to Dexie.
+   * badge stops showing. Merges with the existing Set and persists to Dexie
+   * (as an array, since Sets are not JSON-serializable). Hard-capped at
+   * SEEN_IDS_CAP to prevent unbounded growth.
    * @param {string[]} ids
    */
   markThemeItemsSeen: (ids) => {
     if (!ids || ids.length === 0) return;
     set((s) => {
-      const next = Array.from(new Set([...s.seenThemeItemIds, ...ids]));
-      setSetting('seenThemeItemIds', next);
+      const next = new Set(s.seenThemeItemIds);
+      for (const id of ids) {
+        if (typeof id !== 'string' || id.length === 0) continue;
+        if (next.size >= SEEN_IDS_CAP) break;
+        next.add(id);
+      }
+      if (next.size === s.seenThemeItemIds.size) return s;
+      setSetting('seenThemeItemIds', Array.from(next));
       return { seenThemeItemIds: next };
     });
   },
@@ -324,14 +375,20 @@ export const useSettingsStore = create((set, get) => ({
   markAchievementsSeen: (ids) => {
     if (!ids || ids.length === 0) return;
     set((s) => {
-      const next = Array.from(new Set([...s.seenAchievementIds, ...ids]));
-      setSetting('seenAchievementIds', next);
+      const next = new Set(s.seenAchievementIds);
+      for (const id of ids) {
+        if (typeof id !== 'string' || id.length === 0) continue;
+        if (next.size >= SEEN_IDS_CAP) break;
+        next.add(id);
+      }
+      if (next.size === s.seenAchievementIds.size) return s;
+      setSetting('seenAchievementIds', Array.from(next));
       return { seenAchievementIds: next };
     });
   },
 
   clearAchievementsSeen: () => {
-    set({ seenAchievementIds: [] });
+    set({ seenAchievementIds: new Set() });
     setSetting('seenAchievementIds', []);
   },
 }));
