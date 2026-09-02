@@ -26,20 +26,43 @@ import { useTranslation } from 'react-i18next';
 import Pile from './Pile.jsx';
 import { CardFace } from './CardView.jsx';
 
-// Resolve a CSS length expression (clamp()/calc()/var()) to a pixel number by
-// mounting a hidden probe element. Custom-property tokens are NOT pre-resolved
-// by getComputedStyle, so this is the reliable way to read --tableau-fan etc.
-// Cache by expression and invalidate on viewport/resize changes.
+// Resolve a batch of CSS length expressions (clamp()/calc()/var()) to pixel
+// numbers in a single DOM probe pass. Custom-property tokens are NOT pre-resolved
+// by getComputedStyle, so a real layout is required to read --tableau-fan etc.
+// Mounting ONE probe with one child per expression avoids 8 separate
+// appendChild/removeChild/layout invalidation cycles per Board measurement
+// (which fires on every viewport resize and board layout change).
 const _fanMetricCache = new Map();
-function measureVar(expr) {
-  if (_fanMetricCache.has(expr)) return _fanMetricCache.get(expr);
+function measureVarsBatch(expressions) {
+  const result = [];
+  const uncached = [];
+  for (const expr of expressions) {
+    if (_fanMetricCache.has(expr)) {
+      result.push(_fanMetricCache.get(expr));
+    } else {
+      result.push(null);
+      uncached.push(expr);
+    }
+  }
+  if (uncached.length === 0) return result;
   const probe = document.createElement('div');
-  probe.style.cssText = `position:absolute;visibility:hidden;height:${expr};`;
+  probe.style.cssText = 'position:absolute;visibility:hidden;width:0;height:0;top:-9999px;left:-9999px;';
+  for (const expr of uncached) {
+    const child = document.createElement('div');
+    child.style.cssText = `height:${expr};width:0;`;
+    probe.appendChild(child);
+  }
   document.body.appendChild(probe);
-  const px = probe.offsetHeight;
+  let childIndex = 0;
+  for (let i = 0; i < expressions.length; i++) {
+    if (result[i] !== null) continue;
+    const child = probe.children[childIndex++];
+    const px = child.offsetHeight;
+    result[i] = px;
+    _fanMetricCache.set(expressions[i], px);
+  }
   document.body.removeChild(probe);
-  _fanMetricCache.set(expr, px);
-  return px;
+  return result;
 }
 function clearFanMetrics() {
   _fanMetricCache.clear();
@@ -115,15 +138,20 @@ export default function Board() {
       const board = boardRef.current;
       if (!board) return;
       clearFanMetrics();
-      const cardH = measureVar('var(--card-height)');
-      const fanUp = measureVar('var(--tableau-fan)');
-      const fanDown = measureVar('var(--tableau-fan-down)');
-      const fanDownMin = measureVar('var(--tableau-fan-down-min)');
-      const fanUpEmergencyMin = measureVar('var(--tableau-fan-up-emergency-min)');
-      const gap = measureVar('clamp(6px, 1.2vw, 14px)');
-      const pad = measureVar('clamp(8px, 2vw, 20px)');
+      // Single batched DOM probe for all CSS-length measurements — 1 appendChild
+      // / 1 removeChild / 1 layout pass instead of 8.
+      const exprs = [
+        'var(--card-height)',
+        'var(--tableau-fan)',
+        'var(--tableau-fan-down)',
+        'var(--tableau-fan-down-min)',
+        'var(--tableau-fan-up-emergency-min)',
+        'clamp(6px, 1.2vw, 14px)',
+        'clamp(8px, 2vw, 20px)',
+        boardFrame ? 'var(--wood-frame-width, 0px)' : '0px',
+      ];
+      const [cardH, fanUp, fanDown, fanDownMin, fanUpEmergencyMin, gap, pad, frame] = measureVarsBatch(exprs);
       const frameMargin = boardFrame ? 16 : 0;
-      const frame = boardFrame ? measureVar('var(--wood-frame-width, 0px)') : 0;
       const avail = Math.max(0, board.clientHeight - 2 * cardH - gap - 2 * pad - 2 * frame - frameMargin - 8);
       setMetrics({ cardH, fanUp, fanDown, fanDownMin, fanUpEmergencyMin, avail });
     };
@@ -136,7 +164,6 @@ export default function Board() {
       window.removeEventListener('resize', measure);
     };
   }, [boardFrame, theme]);
-  const recycleStock = useGameStore((s) => s.recycleStock);
   const autoMove = useGameStore((s) => s.autoMove);
   const autoComplete = useGameStore((s) => s.autoComplete);
   const undo = useGameStore((s) => s.undo);
@@ -161,6 +188,18 @@ export default function Board() {
   const stockWasteBusy = useUiStore(
     (s) => s.animatingLocs.has('stock') || s.animatingLocs.has('waste'),
   );
+  // Board-level subscriptions for actions that Pile used to subscribe to itself.
+  // Hoisted here so every Pile doesn't need its own subscription (×7).
+  const moveCard = useGameStore((s) => s.moveCard);
+  const recycleStock = useGameStore((s) => s.recycleStock);
+  // Read hints once at Board level; per-pile isHintSource/isHintTarget are
+  // derived here and passed as plain booleans/arrays to avoid 7× subscriptions.
+  const hints = useUiStore((s) => s.hints);
+  // The Set of animating card ids must reach each Pile so the source pile
+  // can hide the moving card from its resting render. Reading the Set
+  // reference here is one subscription; passing the same reference down
+  // doesn't cause additional re-renders.
+  const animatingIds = useUiStore((s) => s.animatingCards);
   const pendingDrawRef = useRef(false);
   const locked = won || isOver || anyAnimating || autoCompleting;
   const { sensors, onDragStart, onDragEnd, onDragCancel, activeRun } =
@@ -439,12 +478,29 @@ export default function Board() {
 
   const hiddenIds = activeRun ? new Set(activeRun.map((c) => c.id)) : null;
 
+  // Per-pile derived data, computed ONCE at Board level (instead of inside
+  // each Pile component, which used to subscribe to `hints` and `animatingCards`
+  // individually). Each pile now receives plain booleans / arrays as props.
+  const hintByLoc = new Map(); // loc -> { sourceIds: string[], isTarget: boolean }
+  for (const h of hints) {
+    if (!h || !h.to) continue;
+    const t = hintByLoc.get(h.to) || { sourceIds: [], isTarget: false };
+    t.isTarget = true;
+    hintByLoc.set(h.to, t);
+    if (h.from) {
+      const s = hintByLoc.get(h.from) || { sourceIds: [], isTarget: false };
+      if (!s.sourceIds.includes(h.cardId)) s.sourceIds.push(h.cardId);
+      hintByLoc.set(h.from, s);
+    }
+  }
+  const hintDataFor = (loc) => hintByLoc.get(loc) || { sourceIds: [], isTarget: false };
+
   const pilesGrid = (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, var(--card-width))', gap: 'clamp(6px, 1.2vw, 14px)', justifyContent: 'center', padding: 'clamp(8px, 2vw, 20px)', maxWidth: '100%' }}>
       {handedness === 'right'
-        ? [...state.foundations.map((pile, i) => <Pile key={`f${i}`} loc={`foundation:${i}`} cards={pile} hiddenIds={hiddenIds} onAutoMove={autoMove} />), <div key="spacer" />, <Pile key="waste" loc="waste" cards={state.waste} hiddenIds={hiddenIds} onAutoMove={autoMove} />, <Pile key="stock" loc="stock" cards={state.stock} onClick={onStockClick} label={state.stock.length === 0 ? '↻' : ''} hiddenIds={hiddenIds} />]
-        : [<Pile key="stock" loc="stock" cards={state.stock} onClick={onStockClick} label={state.stock.length === 0 ? '↻' : ''} hiddenIds={hiddenIds} />, <Pile key="waste" loc="waste" cards={state.waste} hiddenIds={hiddenIds} onAutoMove={autoMove} />, <div key="spacer" />, ...state.foundations.map((pile, i) => <Pile key={`f${i}`} loc={`foundation:${i}`} cards={pile} hiddenIds={hiddenIds} onAutoMove={autoMove} />)]}
-      {state.tableau.map((pile, i) => <Pile key={`t${i}`} loc={`tableau:${i}`} cards={pile} fanned metrics={metrics} hiddenIds={hiddenIds} onAutoMove={autoMove} />)}
+        ? [...state.foundations.map((pile, i) => { const h = hintDataFor(`foundation:${i}`); return <Pile key={`f${i}`} loc={`foundation:${i}`} cards={pile} hiddenIds={hiddenIds} onAutoMove={autoMove} moveCard={moveCard} sourceCardIds={h.sourceIds} isHintTarget={h.isTarget} animatingIds={animatingIds} />; }), <div key="spacer" />, (() => { const h = hintDataFor('waste'); return <Pile key="waste" loc="waste" cards={state.waste} hiddenIds={hiddenIds} onAutoMove={autoMove} moveCard={moveCard} sourceCardIds={h.sourceIds} isHintTarget={h.isTarget} animatingIds={animatingIds} />; })(), (() => { const h = hintDataFor('stock'); return <Pile key="stock" loc="stock" cards={state.stock} onClick={onStockClick} label={state.stock.length === 0 ? '↻' : ''} hiddenIds={hiddenIds} moveCard={moveCard} sourceCardIds={h.sourceIds} isHintTarget={h.isTarget} animatingIds={animatingIds} />; })()]
+        : [(() => { const h = hintDataFor('stock'); return <Pile key="stock" loc="stock" cards={state.stock} onClick={onStockClick} label={state.stock.length === 0 ? '↻' : ''} hiddenIds={hiddenIds} moveCard={moveCard} sourceCardIds={h.sourceIds} isHintTarget={h.isTarget} animatingIds={animatingIds} />; })(), (() => { const h = hintDataFor('waste'); return <Pile key="waste" loc="waste" cards={state.waste} hiddenIds={hiddenIds} onAutoMove={autoMove} moveCard={moveCard} sourceCardIds={h.sourceIds} isHintTarget={h.isTarget} animatingIds={animatingIds} />; })(), <div key="spacer" />, ...state.foundations.map((pile, i) => { const h = hintDataFor(`foundation:${i}`); return <Pile key={`f${i}`} loc={`foundation:${i}`} cards={pile} hiddenIds={hiddenIds} onAutoMove={autoMove} moveCard={moveCard} sourceCardIds={h.sourceIds} isHintTarget={h.isTarget} animatingIds={animatingIds} />; })]}
+      {state.tableau.map((pile, i) => { const h = hintDataFor(`tableau:${i}`); return <Pile key={`t${i}`} loc={`tableau:${i}`} cards={pile} fanned metrics={metrics} hiddenIds={hiddenIds} onAutoMove={autoMove} moveCard={moveCard} sourceCardIds={h.sourceIds} isHintTarget={h.isTarget} animatingIds={animatingIds} />; })}
     </div>
   );
 

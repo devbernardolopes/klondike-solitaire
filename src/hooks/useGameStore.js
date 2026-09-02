@@ -48,11 +48,12 @@ import { useSeedStore } from './useSeedStore.js';
 function captureFlip(type, animIds) {
   const rects = new Map();
   if (animIds && animIds.length) {
-    const want = new Set(animIds);
-    document.querySelectorAll('[data-card]').forEach((el) => {
-      const id = el.getAttribute('data-flip-id') || el.getAttribute('data-card');
-      if (want.has(id)) rects.set(id, el.getBoundingClientRect());
-    });
+    // Iterate the moved ids directly instead of scanning the full DOM and
+    // filtering — O(moved) instead of O(all cards).
+    for (const id of animIds) {
+      const el = document.querySelector(`[data-flip-id="${CSS.escape(id)}"]`);
+      if (el) rects.set(id, el.getBoundingClientRect());
+    }
   }
   return enqueueFlip(type, rects);
 }

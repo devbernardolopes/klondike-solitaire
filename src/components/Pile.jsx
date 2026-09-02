@@ -24,19 +24,18 @@ import { isWon } from '../core/winDetection.js';
  * @param {Set<string>} [props.hiddenIds] card ids to hide (e.g. while shown in a DragOverlay)
  * @param {(cardId: string, from: string) => void} [props.onAutoMove]  tap-to-move handler for face-up cards
  * @param {{ cardH:number, fanUp:number, fanDown:number, fanDownMin:number, fanUpEmergencyMin:number, avail:number }|null} [props.metrics] measured geometry for adaptive tableau spacing
+ * @param {string[]} [props.sourceCardIds] list of card ids in this pile that are the source of a move hint (computed in Board)
+ * @param {boolean} [props.isHintTarget] whether this pile is a destination of at least one move hint (computed in Board)
+ * @param {Set<string>} [props.animatingIds] set of card ids currently in flight (passed from Board to filter moving cards from the pile's resting render)
  */
-export default function Pile({ loc, cards, fanned = false, onClick, label, hiddenIds, onAutoMove, metrics }) {
+export default function Pile({ loc, cards, fanned = false, onClick, label, hiddenIds, onAutoMove, metrics, sourceCardIds, isHintTarget, animatingIds }) {
   const { t } = useTranslation();
   const { setNodeRef, isOver } = useDroppable({ id: loc, data: { loc } });
-  const moveCard = useGameStore((s) => s.moveCard);
-  const drawFromStock = useGameStore((s) => s.drawFromStock);
-  const recycleStock = useGameStore((s) => s.recycleStock);
   const selectedCardId = useUiStore((s) => s.selectedCardId);
   const clearSelection = useUiStore((s) => s.clearSelection);
   const setAnnounce = useUiStore((s) => s.setAnnounce);
   const won = useGameStore((s) => isWon(s.state));
   const sessionOver = useStatsStore((s) => s.isOver);
-  const hints = useUiStore((s) => s.hints);
   const draggingFrom = useUiStore((s) => s.draggingFrom);
   const draggingCard = useUiStore((s) => s.draggingCard);
   // While an auto-complete (toward the win) is animating, the whole board is
@@ -45,12 +44,9 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
   // Block this pile only when it is the busy destination of an in-flight move.
   // Source piles and all other piles stay fully interactive.
   const isAnimating = useUiStore((s) => s.animatingLocs.has(loc));
-  const animatingCards = useUiStore((s) => s.animatingCards);
   const locked = won || sessionOver || isAnimating || autoCompleting;
 
   const kind = loc.split(':')[0];
-  const isHintTarget = hints.some((h) => h.to === loc);
-  const isHintSource = hints.some((h) => h.from === loc);
 
   // Whether to show the dashed drop-target highlight while a drag is hovering
   // this pile. Rendered as a top-layer overlay (see below) so it sits above all
@@ -77,8 +73,11 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
   const FAN_DOWN_MIN = metrics?.fanDownMin ?? 3;
   const FAN_UP_EMERGENCY_MIN = metrics?.fanUpEmergencyMin ?? 8;
 
-  const freezeVisual = fanned && isAnimating && cards.some((c) => animatingCards.has(c.id));
-  const effectiveCardsForVisual = freezeVisual ? cards.filter((c) => !animatingCards.has(c.id)) : null;
+  // Visual freeze for cards in flight: hide the moving card from the resting
+  // stack so the moving wrapper (lifted above) renders cleanly above the pile.
+  const animatingIdsSet = animatingIds || null;
+  const freezeVisual = fanned && isAnimating && animatingIdsSet && cards.some((c) => animatingIdsSet.has(c.id));
+  const effectiveCardsForVisual = freezeVisual ? cards.filter((c) => !animatingIdsSet.has(c.id)) : null;
   const effectiveLenForVisual = freezeVisual ? effectiveCardsForVisual.length : cards.length;
 
   let tops = null;
@@ -163,9 +162,7 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
   // each gets its own highlight rectangle. (They may nest, since a run always
   // extends to the top of the column — that nesting correctly shows multiple
   // distinct "from" moves starting at different levels.)
-  const sourceCardIds = isHintSource
-    ? [...new Set(hints.filter((h) => h.from === loc).map((h) => h.cardId))]
-    : [];
+  const sourceCardIdsLocal = sourceCardIds || [];
 
   const targetStartIdx = cards.length > 0 ? cards.length - 1 : 0;
   const targetTop = topForIndex(targetStartIdx);
@@ -198,7 +195,7 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
       setAnnounce(t('piles.noLongerAvailable'));
       return;
     }
-    const ok = moveCard(from, loc, selectedCardId);
+    const ok = useGameStore.getState().moveCard(from, loc, selectedCardId);
     if (ok) {
       clearSelection();
       setAnnounce(t('piles.movedTo', { pile: pileName }));
@@ -304,7 +301,7 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
         </span>
       )}
 
-      {sourceCardIds.map((cid) => {
+      {sourceCardIdsLocal.map((cid) => {
         const idx = cards.findIndex((c) => c.id === cid);
         if (idx < 0) return null;
         const top = topForIndex(idx);

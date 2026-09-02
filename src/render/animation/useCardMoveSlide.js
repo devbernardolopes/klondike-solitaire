@@ -67,6 +67,10 @@ export function useCardMoveSlide() {
 
     // Park every card that moved at its OLD position (via a transform offset),
     // then collect the nodes so we can tween them all together.
+    // Iterate the SNAPSHOT (the moved card ids) directly instead of scanning
+    // the full DOM for every [data-card] node — this is O(moved) rather than
+    // O(all cards on the board) and avoids a getBoundingClientRect() per
+    // non-moved card on every move animation.
     const moved = [];
     // Each moved card's wrapper <div> (Pile.jsx, `zIndex: i`) controls its
     // stacking order in the shared root stacking context. While sliding, a card
@@ -75,14 +79,13 @@ export function useCardMoveSlide() {
     // for the duration of the tween, preserving the run's own relative order via
     // `+base`, then restore the original z-index on completion.
     const movers = [];
-    document.querySelectorAll('[data-card]').forEach((el) => {
-      const id = el.getAttribute('data-flip-id') || el.getAttribute('data-card');
-      const oldRect = snapshot.get(id);
-      if (!oldRect) return;
+    for (const [id, oldRect] of snapshot) {
+      const el = document.querySelector(`[data-flip-id="${CSS.escape(id)}"]`);
+      if (!el) continue;
       const newRect = el.getBoundingClientRect();
       const dx = oldRect.left - newRect.left;
       const dy = oldRect.top - newRect.top;
-      if (dx === 0 && dy === 0) return;
+      if (dx === 0 && dy === 0) continue;
       gsap.set(el, { x: dx, y: dy });
       const wrap = el.parentElement;
       const prevZ = wrap ? wrap.style.zIndex : '';
@@ -92,7 +95,7 @@ export function useCardMoveSlide() {
       }
       moved.push(el);
       movers.push({ wrap, prevZ });
-    });
+    }
 
     // During a deal, the cards being dealt fly out from the face-down stock. We
     // want them to appear BENEATH the remaining face-down stock cards (as if
