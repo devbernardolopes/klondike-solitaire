@@ -66,7 +66,9 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const autoCompleting = useGameStore((s) => s.autoCompleting);
   const won = useGameStore((s) => isWon(s.state));
   const isOver = useStatsStore((s) => s.isOver);
+  const startTime = useStatsStore((s) => s.startTime);
   const overReason = useStatsStore((s) => s.overReason);
+  const canReplay = startTime !== null;
   const { play } = useSound();
 
   const newGameDialogOpen = useUiStore((s) => s.newGameDialogOpen);
@@ -132,6 +134,7 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   }, []);
 
   const onReplay = useCallback(() => {
+    if (useStatsStore.getState().startTime === null) return;
     startDealOrConfirm(() => {
       setNewGameDialogOpen(false);
       replayGame();
@@ -419,6 +422,7 @@ function ElapsedClock() {
       <NewGameModal
         open={newGameDialogOpen}
         onReplay={onReplay}
+        canReplay={canReplay}
         onWinningDeal={onWinningDeal}
         onRandomShuffle={onRandomShuffle}
         onDailyChallenge={onDailyChallenge}

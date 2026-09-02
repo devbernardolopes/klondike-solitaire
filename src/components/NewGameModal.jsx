@@ -19,13 +19,14 @@ import { pullRemoteProfile } from '../sync/pullProfile.js';
  * @param {object} props
  * @param {boolean} props.open
  * @param {() => void} props.onReplay    // restart the current game identically
+ * @param {boolean} props.canReplay      // whether the current deal has started
  * @param {() => void} props.onWinningDeal
  * @param {() => void} props.onRandomShuffle
  * @param {() => void} props.onDailyChallenge  // open the Daily Challenge calendar
  * @param {() => void} props.onSpecialEvents
  * @param {() => void} props.onDismiss   // Escape / backdrop click / explicit close — does nothing else
  */
-export default function NewGameModal({ open, onReplay, onWinningDeal, onRandomShuffle, onDailyChallenge, onSpecialEvents, onDismiss }) {
+export default function NewGameModal({ open, onReplay, canReplay, onWinningDeal, onRandomShuffle, onDailyChallenge, onSpecialEvents, onDismiss }) {
   const firstBtnRef = useRef(null);
   const backdrop = useModalBackdrop(onDismiss);
 
@@ -129,7 +130,14 @@ export default function NewGameModal({ open, onReplay, onWinningDeal, onRandomSh
           </button>
           <button
             type="button"
-            style={{ ...btn, background: 'var(--ui-modal-btn-bg-strong)', textAlign: 'left' }}
+            disabled={!canReplay}
+            style={{
+              ...btn,
+              background: 'var(--ui-modal-btn-bg-strong)',
+              textAlign: 'left',
+              opacity: canReplay ? 1 : 0.4,
+              cursor: canReplay ? 'pointer' : 'not-allowed',
+            }}
             onClick={onReplay}
           >
             Replay this Game{' '}
