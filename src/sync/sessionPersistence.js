@@ -220,6 +220,17 @@ function applyRestore(row, savedAtMs) {
     pausedAt: null,
   });
 
+  const endTime = row.endTime ?? row.end_time ?? null;
+  const isUnstartedDeal =
+    moves === 0 &&
+    startTime === null &&
+    endTime === null &&
+    !row.isOver &&
+    replaySpec &&
+    (replaySpec.seed !== undefined || Array.isArray(replaySpec.order)) &&
+    !useGameStore.getState().isWon();
+  if (isUnstartedDeal) useGameStore.getState().replayRestoredDeal(replaySpec);
+
   // Mirror the restored row back into local Dexie so subsequent closes restore
   // from the fast path (and the elapsed-gap baseline resets to now).
   try {

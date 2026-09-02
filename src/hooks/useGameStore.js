@@ -604,6 +604,21 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     runAnimatedDeal(get, set, { seed: INITIAL_SEED, deck: INITIAL_DECK, kind: 'winning' });
   },
 
+  /** Replay a persisted deal that had not started before the page closed. */
+  replayRestoredDeal: (spec) => {
+    if (!spec || (spec.seed === undefined && !Array.isArray(spec.order))) return false;
+    const kind = spec.kind ?? (Array.isArray(spec.order) ? 'random' : 'winning');
+    const date = kind === 'daily' ? (spec.date ?? null) : null;
+    runAnimatedDeal(
+      get,
+      set,
+      spec.seed !== undefined
+        ? { seed: spec.seed, kind, date }
+        : { order: spec.order, kind, date },
+    );
+    return true;
+  },
+
   /**
    * Restart the current game identically. Uses the captured `replaySpec`:
    *  - Winning Deal (seed)   → re-deal with the same seed.
