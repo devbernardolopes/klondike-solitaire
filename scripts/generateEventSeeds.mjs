@@ -53,14 +53,15 @@ function sqlEscape(str) {
 
 // ---- Resume support: parse existing SQL to find already-authored pages + seeds ----
 
-const DEAL_HEADER = /SELECT id, unnest\(array\[([^\]]+)\]\), unnest\(array\[([^\]]+)\]::bigint\[\]\)/;
+const DEAL_HEADER = /select id, unnest\(array\[([^\]]+)\]\), unnest\(array\[([^\]]+)\]::bigint\[\]\)/i;
 
 function parseExistingDeals(sqlText) {
   const seenPages = new Map(); // event_id -> Set<page_number>
   const usedSeeds = new Set();
+  const preservedBlocks = new Map(); // `${eventId}:${pageNumber}` -> verbatim SQL block
 
   // Find each special_event_deals block.
-  const dealRegex = /INSERT INTO special_event_deals\b([\s\S]*?)WHERE event_id = '([^']+)' AND page_number = (\d+);/g;
+  const dealRegex = /insert into special_event_deals\b([\s\S]*?)where event_id = '([^']+)' and page_number = (\d+);/gi;
   let m;
   while ((m = dealRegex.exec(sqlText)) !== null) {
     const body = m[1];
@@ -68,6 +69,7 @@ function parseExistingDeals(sqlText) {
     const pageNum = parseInt(m[3], 10);
     if (!seenPages.has(eventId)) seenPages.set(eventId, new Set());
     seenPages.get(eventId).add(pageNum);
+    preservedBlocks.set(`${eventId}:${pageNum}`, m[0]);
 
     const arrays = DEAL_HEADER.exec(body);
     if (arrays) {
@@ -78,7 +80,7 @@ function parseExistingDeals(sqlText) {
       }
     }
   }
-  return { seenPages, usedSeeds };
+  return { seenPages, usedSeeds, preservedBlocks };
 }
 
 // ---- SQL generation ----
@@ -99,7 +101,7 @@ function generateDealSection(eventId, pageNumber, gridSize, seeds) {
   ].join('\n');
 }
 
-function generateEventSql(event, used, solveFn, seenPages) {
+function generateEventSql(event, used, solveFn, seenPages, preservedBlocks) {
   const { id, title, description, startsAt, gameKind, sortOrder, pages } = event;
   const lines = [];
 
@@ -130,8 +132,14 @@ function generateEventSql(event, used, solveFn, seenPages) {
     const dealCount = gridSize * gridSize;
 
     if (seenPages && seenPages.has(id) && seenPages.get(id).has(pageNumber)) {
-      lines.push(`-- Page ${pageNumber} (${gridSize}×${gridSize} = ${dealCount} deals) — already authored, skipping.`);
-      lines.push('');
+      const preserved = preservedBlocks && preservedBlocks.get(`${id}:${pageNumber}`);
+      if (preserved) {
+        lines.push(preserved.trim());
+        lines.push('');
+      } else {
+        lines.push(`-- Page ${pageNumber} (${gridSize}×${gridSize} = ${dealCount} deals) — already authored, skipping.`);
+        lines.push('');
+      }
       continue;
     }
 
@@ -145,12 +153,12 @@ function generateEventSql(event, used, solveFn, seenPages) {
 
 // ---- Core generation routine ----
 
-function generateAll({ catalog, used, solveFn, seenPages }) {
+function generateAll({ catalog, used, solveFn, seenPages, preservedBlocks }) {
   const sections = [];
   const stats = [];
 
   for (const event of catalog) {
-    sections.push(generateEventSql(event, used, solveFn, seenPages));
+    sections.push(generateEventSql(event, used, solveFn, seenPages, preservedBlocks));
     const totalDeals = event.pages.reduce((sum, p) => sum + p.gridSize * p.gridSize, 0);
     stats.push({ eventId: event.id, events: 1, totalDeals });
   }
@@ -249,17 +257,19 @@ function main() {
   // Build exclusion set from pool + daily + existing SQL seeds (if resuming).
   const used = buildUsedSet();
   let seenPages = null;
+  let preservedBlocks = null;
   if (resume && existsSync(outPath)) {
     const existingSql = readFileSync(outPath, 'utf8');
     const parsed = parseExistingDeals(existingSql);
     for (const seed of parsed.usedSeeds) used.add(seed);
     seenPages = parsed.seenPages;
+    preservedBlocks = parsed.preservedBlocks;
     console.error(`Resuming from ${outPath}: ${[...parsed.usedSeeds].length} existing seeds, skipping already-authored pages.`);
   }
 
   console.error(binary ? `KlondikeSolver found: ${binary}` : 'KlondikeSolver not found — using embedded JS fallback (slow).');
 
-  const { sql, stats } = generateAll({ catalog, used, solveFn, seenPages });
+  const { sql, stats } = generateAll({ catalog, used, solveFn, seenPages, preservedBlocks });
 
   const header = [
     `-- ============================================================`,

@@ -4,7 +4,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -68,4 +68,36 @@ test('daily loader reflects the bundled data file', () => {
     assert.equal(isDateBundled(dates[0]), true);
   }
   assert.equal(isDateBundled('2099-01-01'), false);
+});
+
+test('special-event seeds never collide with winning-pool or daily-challenge seeds', () => {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const root = join(here, '..', '..');
+
+  const pool = JSON.parse(readFileSync(join(root, 'src/data/solvableSeeds.json'), 'utf8'));
+  const daily = JSON.parse(readFileSync(join(root, 'src/data/dailyChallenge.json'), 'utf8'));
+  const sqlPath = join(root, 'scripts/eventSeeds.sql');
+  assert.ok(existsSync(sqlPath), `eventSeeds.sql missing at ${sqlPath} — run generateEventSeeds.mjs first`);
+  const sql = readFileSync(sqlPath, 'utf8');
+
+  const eventSeeds = [];
+  const seedRegex = /unnest\(array\[([^\]]+)\]::bigint\[\]\)/g;
+  let m;
+  while ((m = seedRegex.exec(sql)) !== null) {
+    for (const tok of m[1].split(',')) {
+      const n = Number(tok.trim());
+      if (Number.isInteger(n)) eventSeeds.push(n >>> 0);
+    }
+  }
+  assert.ok(eventSeeds.length > 0, 'no event seeds parsed from eventSeeds.sql');
+
+  const poolSet = new Set(Array.isArray(pool) ? pool : []);
+  const dailySeeds = Object.values((daily && daily.seeds) || {});
+  const dailySet = new Set(dailySeeds);
+
+  for (const s of eventSeeds) {
+    assert.ok(!poolSet.has(s), `seed ${s} appears in both event and winning pools`);
+    assert.ok(!dailySet.has(s), `seed ${s} appears in both event and daily pools`);
+  }
+  assert.equal(new Set(eventSeeds).size, eventSeeds.length, 'eventSeeds.sql contains duplicate seeds');
 });

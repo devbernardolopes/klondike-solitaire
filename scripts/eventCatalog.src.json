@@ -11,5 +11,18 @@
       { "gridSize": 3, "imagePath": "christmas-2026/page2.png", "coinReward": 100 },
       { "gridSize": 4, "imagePath": "christmas-2026/page3.png", "coinReward": 200 }
     ]
+  },
+  {
+    "id": "tribute-in-light",
+    "title": "Tribute in Light",
+    "description": "A three-page memorial collection honoring the September 11 anniversary.",
+    "startsAt": "2026-09-01T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 5,
+    "pages": [
+      { "gridSize": 2, "imagePath": "tribute-in-light/page1.png", "coinReward": 50 },
+      { "gridSize": 3, "imagePath": "tribute-in-light/page2.png", "coinReward": 100 },
+      { "gridSize": 4, "imagePath": "tribute-in-light/page3.png", "coinReward": 200 }
+    ]
   }
 ]
