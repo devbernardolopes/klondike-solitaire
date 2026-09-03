@@ -194,9 +194,8 @@ function main() {
     const used = new Set();
     const { sql, stats } = generateAll({ catalog, used, solveFn: stubSolve, seenPages: null });
 
-    // --- Validate deal counts ---
-    if (stats[0].totalDeals !== 4) throw new Error(`SMOKE FAIL: expected 4 deals for 2×2, got ${stats[0].totalDeals}`);
-    if (stats[1].totalDeals !== 9) throw new Error(`SMOKE FAIL: expected 9 deals for 3×3, got ${stats[1].totalDeals}`);
+    // --- Validate deal counts (stats[0] is the smoke event total across all its pages: 2×2 + 3×3 = 13) ---
+    if (stats[0].totalDeals !== 13) throw new Error(`SMOKE FAIL: expected 13 deals across pages, got ${stats[0].totalDeals}`);
 
     // --- Validate SQL structure ---
     if (!sql.includes('insert into special_events')) throw new Error('SMOKE FAIL: missing special_events INSERT');
@@ -282,10 +281,12 @@ function main() {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  main().catch((e) => {
+  try {
+    main();
+  } catch (e) {
     console.error(e);
     process.exit(1);
-  });
+  }
 }
 
 export { generateEventSql, generateAll, parseExistingDeals, sqlEscape };
