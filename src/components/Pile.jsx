@@ -13,6 +13,7 @@ import { useUiStore, findCardLocator } from '../hooks/useUiStore.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { MOTION } from '../render/animation/motion.js';
 import { isWon } from '../core/winDetection.js';
+import { shouldRenderPileHoverOverlay } from './pileHoverOverlay.js';
 
 /**
  * @param {object} props
@@ -370,20 +371,29 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
           overlay (not the container border) so it draws ABOVE all stacked
           cards, and so toggling it causes no layout shift (it takes no space
           and the container keeps a constant 1px border). `showHover` already
-          encodes the stock/waste/empty-foundation rules above. */}
-      {showHover && (
+          encodes the stock/waste/empty-foundation rules above.
+
+          The overlay is ONLY mounted when the user has both the cardEffects
+          master toggle AND the hoverGlow sub-toggle enabled. Disabling either
+          removes the overlay from the DOM entirely — never just swaps to a
+          different style — so the setting actually does what it says. See
+          shouldRenderPileHoverOverlay in ./pileHoverOverlay.js (the single
+          source of truth, exhaustively unit-tested). */}
+      {shouldRenderPileHoverOverlay({ showHover, cardEffects, hoverGlow }) && (
         <div
           aria-hidden="true"
+          data-pile-hover
+          data-hover-glow="true"
           style={{
             position: 'absolute',
-            inset: cardEffects && hoverGlow ? -4 : 0,
+            inset: -4,
             boxSizing: 'border-box',
-            borderRadius: cardEffects && hoverGlow ? 'calc(var(--card-radius) + 4px)' : 'var(--card-radius)',
-            border: cardEffects && hoverGlow ? '2px solid rgba(255,255,255,0.92)' : '2px dashed rgba(255,255,255,0.9)',
-            boxShadow: cardEffects ? '0 0 0 4px rgba(52,214,255,0.22), 0 0 22px rgba(52,214,255,0.55), inset 0 0 12px rgba(52,214,255,0.25)' : 'none',
+            borderRadius: 'calc(var(--card-radius) + 4px)',
+            border: '2px solid rgba(255,255,255,0.92)',
+            boxShadow: '0 0 0 4px rgba(52,214,255,0.22), 0 0 22px rgba(52,214,255,0.55), inset 0 0 12px rgba(52,214,255,0.25)',
             pointerEvents: 'none',
             zIndex: 900,
-            animation: cardEffects && hoverGlow ? `pileGlow ${MOTION.hoverGlow.duration}s ease-in-out infinite alternate` : 'none',
+            animation: `pileGlow ${MOTION.hoverGlow.duration}s ease-in-out infinite alternate`,
           }}
         />
       )}
