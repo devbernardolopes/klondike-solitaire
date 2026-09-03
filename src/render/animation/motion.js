@@ -72,25 +72,25 @@ export const MOTION = {
   // diagonal; a multi-card run lands as RIGID BLOCK (stagger 0). Do not use
   // back/bounce/elastic here — stagger+overlap would make multiple cards bounce
   // on top of each other. Keep ease decelerating (power*.out / sine.out).
-  move:     { duration: 0.20, ease: 'power4.out', stagger: 0.00 },
+  move:     { duration: 0.20, ease: 'power3.in', stagger: 0.00 },
 
   // Auto-complete relocation (greedy foundation peel + solver win sequence).
   // Independent of `move` so it can be tuned snappier without touching manual
   // tap. Consumed via CONFIG_BY_TYPE.auto in useCardMoveSlide.
-  auto:     { duration: 0.14, ease: 'power3.out', stagger: 0.01 },
+  auto:     { duration: 0.20, ease: 'power3.in', stagger: 0.01 },
 
   // Waste → stock recycle relocation.
   recycle:  { duration: 0.15, ease: 'power4.out', stagger: 0.00 },
 
   // Undo relocation. Same path as `move` (cards glide back), separate preset
   // so undo can feel quicker without changing tap feel. Consumed via CONFIG_BY_TYPE.undo.
-  undo:     { duration: 0.10, ease: 'power2.out', stagger: 0.00 },
+  undo:     { duration: 0.20, ease: 'power3.out', stagger: 0.01 },
 
   // Auto-complete step pacing (SEQUENCE cadence, not per-card tween which is MOTION.auto).
   //   'sequential' — next card starts after previous LANDED + stepDelay ms (no concurrency)
   //   'overlap'    — next card starts stepDelay ms after previous BEGAN (airborne overlap)
   // stepDelay: milliseconds, clamped 0..1000. 0 = immediate.
-  autoComplete: { mode: 'overlap', stepDelay: 75 },
+  autoComplete: { mode: 'overlap', stepDelay: 50 },
 
   // 3D rotateY face flip (face-down ↔ face-up) in useCardFaceFlip. Subtle
   // back.out(0.6) gives a tiny overshoot pop; duration must be readable
@@ -102,12 +102,12 @@ export const MOTION = {
   // automatically via layout; no direction field needed.
   draw:     {
     duration: 0.05,         // horizontal slide (s)
-    ease: 'power2.out',
-    overshoot: 12,           // extra px beyond natural pile-to-pile distance
+    ease: 'power3.in',
+    overshoot: 6,           // extra px beyond natural pile-to-pile distance
   },
 
   // Initial deal: cards fan out one after another via stagger.
-  deal:     { duration: 0.30, stagger: 0.02, ease: 'power2.out' },
+  deal:     { duration: 0.35, stagger: 0.04, ease: 'power2.in' },
 
   // Victory cascade — falling cards. Gated by `winCascade` only,
   // independent of `cardEffects` and `winEnhanced` (confetti).
