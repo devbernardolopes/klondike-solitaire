@@ -357,6 +357,8 @@ export const useUiStore = create((set, get) => ({
   currentGameKind: null, // 'winning' | 'random' | 'daily' | 'event' | null
   currentDailyDate: null, // YYYY-MM-DD when kind === 'daily'
   currentEventDealId: null, // special_event_deals.id when kind === 'event'
+  currentEventTitle: null, // human title of the event (used by the WinModal banner)
+  currentEventId: null, // text id of the event (used by WinModal's "Return to Event" handler)
 
   /**
    * Record the kind of game just dealt (the daily date when relevant, the
@@ -365,7 +367,17 @@ export const useUiStore = create((set, get) => ({
    * @param {string|null} [date]  the daily date when kind === 'daily'
    * @param {number|null} [eventDealId]  special_event_deals.id when kind === 'event'
    */
-  setCurrentGame: (kind, date = null, eventDealId = null) => set({ currentGameKind: kind, currentDailyDate: date, currentEventDealId: eventDealId }),
+  setCurrentGame: (kind, date = null, eventDealId = null) => set({ currentGameKind: kind, currentDailyDate: date, currentEventDealId: eventDealId, currentEventTitle: null, currentEventId: null }),
+
+  /**
+   * Record the event id and title alongside the current event deal. Called by
+   * EventDetailModal.onPlayDeal so the post-win WinModal can render a banner
+   * with the event's name and a "Return to Special Event" affordance that
+   * lands the user on the right page without a second fetch.
+   * @param {string} eventId
+   * @param {string} title
+   */
+  setCurrentEventMeta: (eventId, title) => set({ currentEventId: eventId, currentEventTitle: title }),
 
   /** Clear the current selection (after a move or on new game). */
   clearSelection: () => set({ selectedCardId: null }),

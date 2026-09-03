@@ -30,6 +30,8 @@ export default function WinModal() {
   const closeWinDialog = useUiStore((s) => s.closeWinDialog);
   const setDailyChallengeDialogOpen = useUiStore((s) => s.setDailyChallengeDialogOpen);
   const setDailyChallengeOrigin = useUiStore((s) => s.setDailyChallengeOrigin);
+  const setSpecialEventsOpen = useUiStore((s) => s.setSpecialEventsOpen);
+  const setEventDetailOpen = useUiStore((s) => s.setEventDetailOpen);
   const dealNewGame = useGameStore((s) => s.dealNewGame);
   const replayGame = useGameStore((s) => s.replayGame);
 
@@ -54,7 +56,7 @@ export default function WinModal() {
 
   if (!winDialogOpen || !summary) return null;
 
-  const { score, timeMs, moves, newScore, newTime, newMoves, bestScore, bestTimeMs, bestMoves, dailyDate, seed } = summary;
+  const { score, timeMs, moves, newScore, newTime, newMoves, bestScore, bestTimeMs, bestMoves, dailyDate, eventDealId, eventTitle, seed } = summary;
 
   const onNewGame = () => {
     closeWinDialog();
@@ -86,6 +88,17 @@ export default function WinModal() {
     // Challenge leaves no modal behind when this one is closed.
     setDailyChallengeOrigin('win');
     setDailyChallengeDialogOpen(true);
+  };
+  const onReturnEvent = () => {
+    closeWinDialog();
+    // Open the events list modal first (so it sits underneath the detail
+    // modal at z=CHILD). Then open the detail modal directly to this event —
+    // EventDetailModal's own useEffect (EventDetailModal.jsx:76-95) lands on
+    // the first unlocked-but-not-yet-completed page, which after a fresh win
+    // is the page containing the just-won deal. Closing the detail modal then
+    // naturally reveals the list, mirroring the daily-return flow.
+    setSpecialEventsOpen(true);
+    setEventDetailOpen(useUiStore.getState().currentEventId);
   };
 
   const btn = {
@@ -223,6 +236,21 @@ export default function WinModal() {
            </div>
          )}
 
+         {eventDealId && (
+           <div
+             style={{
+               textAlign: 'center',
+               fontSize: 14,
+               fontWeight: 600,
+               margin: '0 0 14px',
+               color: 'var(--ui-modal-panel-fg)',
+               opacity: 0.85,
+             }}
+           >
+             {t('winModal.eventBanner', { title: eventTitle || t('winModal.eventFallbackTitle'), seed })}
+           </div>
+         )}
+
           <div style={{ marginBottom: 18 }}>
            <HeaderRow />
            <StatRow label={t('winModal.score')} value={String(score)} best={String(bestScore)} isNew={newScore} />
@@ -255,6 +283,14 @@ export default function WinModal() {
                onClick={onReturnDaily}
              >
                {t('winModal.returnDaily')}
+             </button>
+           ) : eventDealId ? (
+             <button
+               type="button"
+               style={{ ...btn, flex: 1, background: 'var(--ui-modal-btn-bg-strong)' }}
+               onClick={onReturnEvent}
+             >
+               {t('winModal.returnEvent')}
              </button>
            ) : (
              <button

@@ -660,7 +660,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     const kind = spec.kind || (spec.seed !== undefined ? 'winning' : 'random');
     const date = spec.date || null;
     useUiStore.getState().setLastNewGameMode(kind === 'random' ? 'random' : 'winning');
-    useUiStore.getState().setCurrentGame(kind, date);
+    useUiStore.getState().setCurrentGame(kind, date, spec.eventDealId);
     useStatsStore.getState().resetStats();
     runAnimatedDeal(
       get,

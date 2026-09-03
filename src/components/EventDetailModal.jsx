@@ -43,6 +43,15 @@ export default function EventDetailModal() {
 
   const onPlayDeal = (deal) => {
     const run = () => {
+      // Cache the event id + title on the UI store so WinModal can render a
+      // banner with the event's name and a "Return to Special Event" button
+      // without a second fetch. The detail object is loaded by the useEffect
+      // above; null-check defensively in case the user clicks before fetch
+      // resolves (rare; the modal is loading-shielded but the click lands
+      // synchronously).
+      if (detail) {
+        useUiStore.getState().setCurrentEventMeta(detail.id, detail.title);
+      }
       dealSpecialEventDeal(deal.seed, deal.id);
       setEventDetailOpen(null);
       setSpecialEventsOpen(false);

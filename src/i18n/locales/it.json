@@ -161,6 +161,8 @@
   "winModal": {
     "title": "You Won",
     "dailyBanner": "Daily Challenge: {{date}} (seed {{seed}})",
+    "eventBanner": "Special Event: {{title}} (seed {{seed}})",
+    "eventFallbackTitle": "Special Event",
     "current": "Current",
     "best": "Best",
     "score": "Score",
@@ -168,6 +170,7 @@
     "moves": "Moves",
     "replay": "Replay this Game",
     "returnDaily": "Return to Daily Challenge",
+    "returnEvent": "Return to Special Event",
     "newGame": "New Game"
   },
   "newGameModal": {

@@ -248,6 +248,8 @@ export default function Board() {
         bestMoves: prev.lowestMoves,
         bestUndos: prev.lowestUndos,
         dailyDate: gameKind === 'daily' ? dailyDate : null,
+        eventDealId: gameKind === 'event' ? uiState.currentEventDealId : null,
+        eventTitle: gameKind === 'event' ? uiState.currentEventTitle : null,
         seed: gameState.seed,
       });
       const nextStreak = (prev.currentStreak || 0) + 1;
