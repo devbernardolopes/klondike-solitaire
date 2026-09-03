@@ -21,12 +21,18 @@ const CONFIG_BY_TYPE = {
   undo: MOTION.undo,
 };
 
-// Module-level registry of in-flight timelines. These are intentionally NOT tied
-// to a single effect instance's cleanup, so a second move starting while the
-// first is still sliding does NOT kill the first tween — the two animate
-// concurrently (they always involve disjoint cards/piles, so they never
-// visually interfere). Only the unmount effect below kills them.
-const activeTweens = [];
+// Module-level registry of in-flight slide timelines, keyed by card id. Multi-
+// card runs share ONE tween, so every card id in the run points to the same
+// record. These are intentionally NOT tied to a single effect instance's
+// cleanup, so a second move starting while the first is still sliding does
+// NOT kill the first tween — the two animate concurrently (they always
+// involve disjoint cards/piles, so they never visually interfere). Only the
+// unmount effect below kills them.
+//
+// The Map shape (vs. the prior flat array) is what lets cancelSlideTween()
+// below interrupt a specific card mid-slide (e.g. when the player undoes a
+// move that is still animating) without disturbing other in-flight tweens.
+const activeTweens = new Map(); // cardId -> { tl, tid, cardIds:Set, moved, movers, stockWrap, prevStockZ }
 
 // Module-level registry of ghost echo DOM elements created by createGhosts().
 // Cleaned up on unmount so a killed tween (or component unmount) does not
@@ -59,6 +65,52 @@ function rectsApproxEqual(a, b) {
  * tweens in parallel, with the clicked card leading). All timing lives in
  * MOTION.move (duration / ease / stagger), so motion.js is the single source.
  */
+
+/**
+ * Cancel the in-flight slide tween for the given card ids. Kills the
+ * timeline WITHOUT firing its onComplete, leaving the inline `x`/`y`
+ * transform on each DOM node so the next snapshot
+ * (e.g. an undo's `enqueueFlip('undo', ...)`) reads the live mid-slide
+ * position via `getBoundingClientRect()`. Releases the per-tween
+ * transition lock via `endTransition(tid)` so the destination pile is
+ * unlocked and a new tween can `beginTransition` cleanly.
+ *
+ * Multi-card runs share ONE tween, so killing the timeline once cleans
+ * up every card id registered against it. Other in-flight tweens (for
+ * cards NOT in `cardIds`) keep running and keep their locks — only the
+ * matching tween's tid is released.
+ *
+ * No-op if no tween matches the given ids. Mirrors `cancelDrawSlide` in
+ * `useStockDrawSlide.js`. The killed tween's `onComplete` is skipped, so
+ * the zIndex restoration and the `clearProps: 'scale,boxShadow,rotationZ'`
+ * cleanup the tween would normally perform are left for the NEXT tween
+ * (e.g. the undo's) to handle. Ghost echoes and ghost trail segments
+ * (which own their own timelines via `activeEchoByCard` and
+ * `ghostTrail.js`) are unaffected; they self-remove on their own.
+ *
+ * @param {string[]|Set<string>} cardIds
+ */
+export function cancelSlideTween(cardIds) {
+  if (!cardIds) return;
+  const seenTweens = new Set();
+  const seenTids = new Set();
+  for (const id of cardIds) {
+    const rec = activeTweens.get(id);
+    if (!rec) continue;
+    if (!seenTweens.has(rec.tl)) {
+      seenTweens.add(rec.tl);
+      try { rec.tl.kill(); } catch {}
+    }
+    if (!seenTids.has(rec.tid)) {
+      seenTids.add(rec.tid);
+      try { useUiStore.getState().endTransition(rec.tid); } catch {}
+    }
+  }
+  // Deregister every id we touched. We do this in a second pass so the
+  // lookup-and-fire loop above stays simple.
+  for (const id of cardIds) activeTweens.delete(id);
+}
+
 export function useCardMoveSlide() {
   const state = useGameStore((s) => s.state);
   const lastActionMeta = useGameStore((s) => s.lastActionMeta);
@@ -264,6 +316,10 @@ export function useCardMoveSlide() {
       }
     };
     const bounceCfg = MOTION.bounce;
+     // Capture every card id participating in this tween so the registry
+     // can dereference them in onComplete (and so cancelSlideTween can
+     // find this tween by any one of them).
+     const cardIds = moved.map((el) => el.getAttribute('data-flip-id') || el.getAttribute('data-card'));
      const tl = gsap.timeline({
        onComplete: () => {
          completed = true;
@@ -273,9 +329,26 @@ export function useCardMoveSlide() {
            if (wrap) wrap.style.zIndex = prevZ;
          });
          if (stockWrap) stockWrap.style.zIndex = prevStockZ;
-         const i = activeTweens.indexOf(tl);
-         if (i >= 0) activeTweens.splice(i, 1);
-         useUiStore.getState().endTransition(tid);
+         // Deregister every card id this tween owned. Only delete if the
+         // registered record still points at THIS tween (cancelSlideTween
+         // may have already removed the entry, in which case this is a
+         // no-op — and importantly, endTransition was already called by
+         // the cancel path, so we must not call it again here).
+         let deregisterTid = true;
+         for (const id of cardIds) {
+           const cur = activeTweens.get(id);
+           if (cur && cur.tl === tl) {
+             activeTweens.delete(id);
+           } else if (cur && cur.tl !== tl) {
+             // cancelSlideTween swapped in a different tween for this id;
+             // leave it alone, and skip endTransition below since the
+             // prior call already handled it.
+             deregisterTid = false;
+           }
+         }
+         if (deregisterTid) {
+           useUiStore.getState().endTransition(tid);
+         }
        },
      });
     if (shouldBounce && bounceCfg) {
@@ -306,7 +379,13 @@ export function useCardMoveSlide() {
     for (const step of bounceSteps) {
       tl.to(moved, { ...step.props, duration: step.duration, ease: step.ease, stagger: 0 }, step.position);
     }
-    activeTweens.push(tl);
+    // Register this tween against every card id it owns. cancelSlideTween
+    // looks up by card id; multi-card runs share one record so all the
+    // affected ids map to the same tl/tid. Deregistration happens in the
+    // tl's onComplete (or via cancelSlideTween, which removes its own
+    // entries and skips endTransition in the onComplete branch).
+    const slideRec = { tl, tid, cardIds: new Set(cardIds) };
+    for (const id of cardIds) activeTweens.set(id, slideRec);
 
     // IMPORTANT: no cleanup that kills `tl` on effect re-run. A new transition
     // re-running this effect must start its OWN tween, not tear down the prior
@@ -315,11 +394,13 @@ export function useCardMoveSlide() {
     }
   }, [state, lastActionMeta]);
 
-  // Kill the draw tween only when the board unmounts.
+  // Kill every slide tween only when the board unmounts.
   useEffect(() => {
     return () => {
-      activeTweens.forEach((t) => t.kill());
-      activeTweens.length = 0;
+      for (const rec of activeTweens.values()) {
+        try { rec.tl.kill(); } catch {}
+      }
+      activeTweens.clear();
       ghostEls.forEach((g) => { try { g.remove(); } catch {} });
       ghostEls.clear();
       activeEchoByCard.clear();

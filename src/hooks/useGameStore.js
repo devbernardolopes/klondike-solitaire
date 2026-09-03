@@ -22,6 +22,7 @@ import { fetchAllEventSeeds } from '../repo/specialEventsRepository.js';
 import { enqueueFlip } from '../render/animation/flipBridge.js';
 import { enqueueParticle } from '../render/animation/particleBridge.js';
 import { cancelDrawSlide } from '../render/animation/useStockDrawSlide.js';
+import { cancelSlideTween } from '../render/animation/useCardMoveSlide.js';
 import { cancelShake } from '../render/animation/playCardShake.js';
 import { cancelWinCascade } from '../render/animation/winCascade.js';
 import { triggerUncoverSparkle } from '../render/animation/useUncoverSparkle.js';
@@ -837,13 +838,15 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     const { state } = get();
     if (get().autoCompleting) return;
     if (state.moveHistory.length === 0 || useStatsStore.getState().isOver) return;
-    // Undo doesn't animate and would corrupt an in-flight tween, so block it
-    // whenever any card is still moving.
-    if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) return;
-    // Capture the rects of the cards that undo will relocate BEFORE the state
-    // change, so the render-layer hook can tween them back as a `move` (using
-    // the independent MOTION.undo preset) instead of snapping. Derive the moved
-    // cards from the inverse of the last recorded move.
+    // No longer a hard guard on animatingCards/slidingCards: the user can
+    // undo a move while its slide tween is still in flight. We cancel the
+    // specific tween(s) for the affected cards below, which kills the
+    // timeline WITHOUT firing its onComplete and leaves the inline x/y
+    // transform on the node. The next snapshot (captureFlip below) then
+    // reads the live mid-slide position via getBoundingClientRect() and
+    // the undo tween animates from "where the card is right now" back to
+    // its origin pile. Other in-flight tweens (for cards NOT being
+    // undone) are left untouched and keep their locks.
     const last = state.moveHistory[state.moveHistory.length - 1];
     useStatsStore.getState().recordUndo();
     if (last.type === 'moveCards') {
@@ -865,6 +868,23 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     } else if (last.type === 'recycle') {
       undoIds = state.stock.map((c) => c.id);
       undoDest = ['waste'];
+    }
+    // Cancel any in-flight slide/draw tween that targets one of the cards
+    // we are about to undo. The killed tween's inline x/y transform stays
+    // on the node, so the snapshot's getBoundingClientRect() reads the
+    // live mid-slide position. The matching destination-pile lock is
+    // released by endTransition() inside cancelSlideTween. Other in-
+    // flight tweens (for cards NOT in undoIds) keep running and keep
+    // their locks.
+    if (undoIds.length > 0) {
+      try { cancelSlideTween(undoIds); } catch {}
+      // For draw undos the card may still be on the useStockDrawSlide
+      // timeline (its own registry). cancelDrawSlide kills the tween,
+      // leaves the inline transform, and releases the slide lock so
+      // captureFlip can re-begin.
+      try {
+        for (const id of undoIds) cancelDrawSlide(id);
+      } catch {}
     }
     const next = coreUndo(state);
     if (undoIds.length > 0) {
