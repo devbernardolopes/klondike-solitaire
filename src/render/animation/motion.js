@@ -120,7 +120,7 @@ export const MOTION = {
   },
 
   // Invalid-move shake. Sub-steps are fractions of duration; distance is px.
-  shake:    { duration: 0.25, distance: 8 },
+  shake:    { duration: 0.20, distance: 8 },
 
   // Tableau uncover sparkle: star burst when face-down flips face-up via reveal.
   uncover: {
