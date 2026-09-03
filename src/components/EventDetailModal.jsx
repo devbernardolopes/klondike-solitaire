@@ -12,7 +12,7 @@
 // board.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Lock, CheckCircle2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Lock } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
 import { useModalEscape } from '../hooks/useModalEscape.js';
@@ -208,12 +208,16 @@ export default function EventDetailModal() {
         {pages.length > 0 && (
           <>
             <div style={{ position: 'relative', marginTop: 8 }}>
-              <button type="button" aria-label="Previous page" onClick={goPrev} disabled={clampedIndex === 0} style={{ ...arrowBtn(clampedIndex === 0), left: -6 }}>
-                <ChevronLeft size={20} />
-              </button>
-              <button type="button" aria-label="Next page" onClick={goNext} disabled={clampedIndex === pages.length - 1} style={{ ...arrowBtn(clampedIndex === pages.length - 1), right: -6 }}>
-                <ChevronRight size={20} />
-              </button>
+              {pages.length > 1 && clampedIndex > 0 && (
+                <button type="button" aria-label="Previous page" onClick={goPrev} style={{ ...arrowBtn(false), left: -6 }}>
+                  <ChevronLeft size={20} />
+                </button>
+              )}
+              {pages.length > 1 && clampedIndex < pages.length - 1 && (
+                <button type="button" aria-label="Next page" onClick={goNext} style={{ ...arrowBtn(false), right: -6 }}>
+                  <ChevronRight size={20} />
+                </button>
+              )}
 
               <div
                 ref={viewportRef}
@@ -233,27 +237,29 @@ export default function EventDetailModal() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 7, marginTop: 14 }}>
-              {pages.map((p, i) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  aria-label={`Page ${p.pageNumber}`}
-                  aria-current={i === clampedIndex}
-                  onClick={() => goTo(i)}
-                  style={{
-                    width: 9,
-                    height: 9,
-                    padding: 0,
-                    border: i === clampedIndex ? '1px solid var(--ui-modal-fg)' : 'none',
-                    borderRadius: '50%',
-                    cursor: 'pointer',
-                    background: p.completed ? '#2e7d32' : p.unlocked ? 'var(--ui-modal-fg)' : 'rgba(128,128,128,0.5)',
-                    opacity: i === clampedIndex ? 1 : 0.55,
-                  }}
-                />
-              ))}
-            </div>
+            {pages.length > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 7, marginTop: 14 }}>
+                {pages.map((p, i) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    aria-label={`Page ${p.pageNumber}`}
+                    aria-current={i === clampedIndex}
+                    onClick={() => goTo(i)}
+                    style={{
+                      width: 9,
+                      height: 9,
+                      padding: 0,
+                      border: i === clampedIndex ? '1px solid var(--ui-modal-fg)' : 'none',
+                      borderRadius: '50%',
+                      cursor: 'pointer',
+                      background: p.completed ? '#2e7d32' : p.unlocked ? 'var(--ui-modal-fg)' : 'rgba(128,128,128,0.5)',
+                      opacity: i === clampedIndex ? 1 : 0.55,
+                    }}
+                  />
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>
@@ -262,8 +268,6 @@ export default function EventDetailModal() {
 }
 
 function PageContent({ page, onPlayDeal }) {
-  const dealCount = page.gridSize * page.gridSize;
-
   if (!page.unlocked) {
     return (
       <div style={placeholderStyle(true)}>
@@ -276,12 +280,6 @@ function PageContent({ page, onPlayDeal }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-      <div style={{ textAlign: 'center' }}>
-        {page.completed && <CheckCircle2 size={22} color="#2e7d32" style={{ verticalAlign: 'middle', marginRight: 6 }} />}
-        <span style={{ fontWeight: 700 }}>Page {page.pageNumber}</span>
-        <span style={{ fontSize: 12, opacity: 0.75 }}> — {page.gridSize}×{page.gridSize}, {dealCount} deal{dealCount === 1 ? '' : 's'}</span>
-      </div>
-
       {page.deals.length === 0 ? (
         <div style={placeholderStyle(false)}>
           <div style={{ opacity: 0.7 }}>No deals authored for this page yet.</div>

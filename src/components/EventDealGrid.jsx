@@ -71,7 +71,7 @@ export default function EventDealGrid({ page, onPlayDeal, disabled }) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: gridSize >= 5 ? 13 : 16,
+              fontSize: gridSize >= 5 ? 22 : gridSize >= 4 ? 28 : gridSize >= 3 ? 36 : 48,
               fontWeight: 700,
               border: 'none',
               background: 'var(--ui-modal-btn-bg)',
