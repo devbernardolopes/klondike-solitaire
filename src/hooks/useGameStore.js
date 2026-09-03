@@ -24,6 +24,8 @@ import { enqueueParticle } from '../render/animation/particleBridge.js';
 import { cancelDrawSlide } from '../render/animation/useStockDrawSlide.js';
 import { cancelShake } from '../render/animation/playCardShake.js';
 import { cancelWinCascade } from '../render/animation/winCascade.js';
+import { triggerUncoverSparkle } from '../render/animation/useUncoverSparkle.js';
+import { shouldFireUncoverSparkle } from '../render/animation/shouldFireUncoverSparkle.js';
 import { MOTION } from '../render/animation/motion.js';
 import i18n from '../i18n/index.js';
 import { useUiStore, whenTransitionDone } from './useUiStore.js';
@@ -284,6 +286,15 @@ function applyAutoStep(get, set, move) {
     const card = findCardInState(cur, move.cardIds[0]);
     if (card) enqueueParticle(card.suit, move.to);
   }
+  // Uncover Sparkle is suppressed during auto-complete (the win cascade +
+  // confetti provide the celebration; per-step sparkles would be visual
+  // noise). Pass 'auto' so the helper short-circuits — see
+  // shouldFireUncoverSparkle.js.
+  shouldFireUncoverSparkle({
+    moveRecord: next.moveHistory[next.moveHistory.length - 1],
+    actionType: 'auto',
+    trigger: triggerUncoverSparkle,
+  });
   useStatsStore.getState().startTimerIfValid(cur);
   useStatsStore.getState().addMoves(1);
   return tid;
@@ -793,6 +804,11 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     // the destination and skip the animating lock so the next move is immediate.
     if (opts.metaType === 'drag') {
       set({ state: next, lastActionMeta: { type: 'move' } });
+      shouldFireUncoverSparkle({
+        moveRecord: next.moveHistory[next.moveHistory.length - 1],
+        actionType: 'move',
+        trigger: triggerUncoverSparkle,
+      });
       useUiStore.getState().clearHints();
       useStatsStore.getState().startTimerIfValid(state);
       useStatsStore.getState().addMoves(1);
@@ -802,6 +818,11 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     const tid = captureFlip(opts.metaType ?? 'move', moveIds);
     useUiStore.getState().beginTransition(tid, moveIds, [to]);
     set({ state: next, lastActionMeta: { type: opts.metaType ?? 'move' } });
+    shouldFireUncoverSparkle({
+      moveRecord: next.moveHistory[next.moveHistory.length - 1],
+      actionType: 'move',
+      trigger: triggerUncoverSparkle,
+    });
     useUiStore.getState().clearHints();
     useStatsStore.getState().startTimerIfValid(state);
     useStatsStore.getState().addMoves(1);

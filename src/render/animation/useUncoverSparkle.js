@@ -1,7 +1,11 @@
-import { useLayoutEffect, useRef, useEffect } from 'react';
 import { gsap } from './gsapSetup.js';
 import { MOTION } from './motion.js';
 import { useSettingsStore } from '../../hooks/useSettingsStore.js';
+
+// Module-level layer + counter for the floating ✦ stars. Created lazily on
+// first use. The MAX is a defensive cap so a pathological call site (or a
+// future bug) cannot accumulate hundreds of star DOM nodes and tank the
+// main thread.
 
 let layerEl = null;
 let activeCount = 0;
@@ -62,29 +66,19 @@ function spawnAt(x, y, cfg) {
   }
 }
 
-export function useUncoverSparkle() {
-  const cardEffects = useSettingsStore((s) => s.cardEffects);
-  const prevFaceUp = useRef(new Map());
-  useLayoutEffect(() => {
-    const nodes = document.querySelectorAll('[data-card]');
-    for (const el of nodes) {
-      const tracked = el.getAttribute('data-card');
-      const faceUp = el.querySelector('.card-flip-inner')?.style.transform !== 'rotateY(180deg)';
-      const was = prevFaceUp.current.get(tracked);
-      if (cardEffects && useSettingsStore.getState().uncover && was === false && faceUp === true) {
-        const locEl = el.closest('[data-loc^="tableau"]');
-        if (locEl) {
-          const r = el.getBoundingClientRect();
-          spawnAt(r.left + r.width / 2, r.top + r.height / 2, MOTION.uncover);
-        }
-      }
-      prevFaceUp.current.set(tracked, faceUp);
-    }
-  });
-
-  useEffect(() => () => { if (layerEl) { layerEl.remove(); layerEl = null; } }, []);
-}
-
+// Public dispatch for the Uncover Sparkle. Called by useGameStore at the
+// moment a `moveCards` action actually exposed a face-down tableau card
+// (i.e. the move record's `flippedId` is set). The store's call site uses
+// the pure `shouldFireUncoverSparkle` helper from ./shouldFireUncoverSparkle.js
+// to decide whether to call this — that helper is the single source of truth
+// for the trigger policy and is exhaustively unit-tested.
+//
+// This function is the only public API of this module. The previous
+// `useUncoverSparkle` React hook (which DOM-diffed `style.transform` after
+// the fact) was the source of the regressions: sparkles leaked onto
+// `deal`, `draw`, and `recycle` actions because the diff was action-agnostic
+// and raced with GSAP's async style writes. Driving the sparkle from the
+// store at the moment the move is applied removes both bugs.
 export function triggerUncoverSparkle(cardId) {
   try {
     const settings = useSettingsStore.getState();
