@@ -248,7 +248,8 @@
     "gridInfo_one": "{{grid}}×{{grid}} grid — {{count}} deal",
     "gridInfo_other": "{{grid}}×{{grid}} grid — {{count}} deals",
     "coinReward": "+{{coins}} coins on completion",
-    "dealsSoon": "Deals coming soon"
+    "dealsSoon": "Deals coming soon",
+    "play": "Play"
   },
   "achievements": {
     "title": "Achievements",

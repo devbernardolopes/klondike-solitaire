@@ -13,10 +13,19 @@
 // gridSize+1 = row 1/col 0, etc. This is an authoring convention — deals
 // must be inserted in that reading order for the revealed image to look
 // right, since nothing in the schema enforces it.
+//
+// Clicking a tile no longer starts a deal. It only selects the tile (a
+// 3px accent outline), and the EventDetailModal's footer "Play" button is
+// what actually starts the game. The selection is persisted in
+// db/eventSelection.js and survives modal close/reopen and page navigation.
 
 import { eventImageUrl, onEventImageError } from '../utils/eventImage.js';
 
-export default function EventDealGrid({ page, onPlayDeal, disabled }) {
+// Accent color for the selected-tile outline. Falls back to the modal's
+// foreground color so it stays visible against any theme.
+const SELECTED_OUTLINE = 'var(--ui-accent, var(--ui-modal-fg))';
+
+export default function EventDealGrid({ page, onSelectDeal, selectedDealId, disabled }) {
   const { gridSize, imagePath, deals } = page;
   const imageUrl = eventImageUrl(imagePath);
 
@@ -42,16 +51,32 @@ export default function EventDealGrid({ page, onPlayDeal, disabled }) {
         const col = index % gridSize;
         const posX = gridSize === 1 ? 0 : (col / (gridSize - 1)) * 100;
         const posY = gridSize === 1 ? 0 : (row / (gridSize - 1)) * 100;
+        const isSelected = deal.id === selectedDealId;
 
         if (deal.solved) {
           return (
             <div
               key={deal.id}
+              role="button"
+              tabIndex={disabled ? -1 : 0}
               aria-label={`Deal ${deal.position} — solved`}
+              aria-pressed={isSelected}
+              onClick={() => { if (!disabled) onSelectDeal(deal); }}
+              onKeyDown={(e) => {
+                if (disabled) return;
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onSelectDeal(deal);
+                }
+              }}
               style={{
+                position: 'relative',
                 backgroundImage: `url(${imageUrl})`,
                 backgroundSize: `${gridSize * 100}% ${gridSize * 100}%`,
                 backgroundPosition: `${posX}% ${posY}%`,
+                cursor: disabled ? 'default' : 'pointer',
+                outline: isSelected ? `3px solid ${SELECTED_OUTLINE}` : 'none',
+                outlineOffset: isSelected ? '-3px' : 0,
               }}
             >
               {/* Hidden img just to trigger onEventImageError's placeholder swap consistently with the rest of the app */}
@@ -65,8 +90,9 @@ export default function EventDealGrid({ page, onPlayDeal, disabled }) {
             key={deal.id}
             type="button"
             aria-label={`Play deal ${deal.position}`}
+            aria-pressed={isSelected}
             disabled={disabled}
-            onClick={() => onPlayDeal(deal)}
+            onClick={() => onSelectDeal(deal)}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -78,6 +104,8 @@ export default function EventDealGrid({ page, onPlayDeal, disabled }) {
               color: 'var(--ui-modal-fg)',
               cursor: disabled ? 'default' : 'pointer',
               opacity: disabled ? 0.6 : 1,
+              outline: isSelected ? `3px solid ${SELECTED_OUTLINE}` : 'none',
+              outlineOffset: isSelected ? '-3px' : 0,
             }}
           >
             {deal.position}

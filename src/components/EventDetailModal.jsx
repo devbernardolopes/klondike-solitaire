@@ -5,13 +5,15 @@
 // or the dot indicators — all pages are always browsable, only PLAYING a
 // locked page's deals is blocked.
 //
-// Clicking an unsolved cell deals that exact seed via
-// useGameStore's dealSpecialEventDeal, behind the same "discard current
-// game?" confirmation DailyChallengeModal.jsx uses when a game is already in
-// progress, then closes both this modal and the events list to reveal the
-// board.
+// Clicking a cell SELECTS that tile (a 3px accent outline); a footer "Play"
+// button is what actually starts the game. The selection is persisted in
+// db/eventSelection.js so a returning player finds the same tile pre-selected
+// across modal reopen and page navigation. The deal-launch logic is the same
+// "discard current game?" confirmation DailyChallengeModal.jsx uses when a
+// game is already in progress.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight, Lock } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
@@ -21,11 +23,13 @@ import { useUiStore } from '../hooks/useUiStore.js';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
 import { fetchEventDetail } from '../repo/specialEventsRepository.js';
+import { loadEventSelectionSync, saveEventSelection } from '../db/eventSelection.js';
 import EventDealGrid from './EventDealGrid.jsx';
 
 const SWIPE_THRESHOLD_RATIO = 0.2; // fraction of viewport width to trigger a page change
 
 export default function EventDetailModal() {
+  const { t } = useTranslation();
   const eventId = useUiStore((s) => s.eventDetailId);
   const setEventDetailOpen = useUiStore((s) => s.setEventDetailOpen);
   const setSpecialEventsOpen = useUiStore((s) => s.setSpecialEventsOpen);
@@ -41,36 +45,15 @@ export default function EventDetailModal() {
   const backdrop = useModalBackdrop(close);
   useModalEscape({ open, onClose: close, id: 'event-detail', z: Z.CHILD });
 
-  const onPlayDeal = (deal) => {
-    const run = () => {
-      // Cache the event id + title on the UI store so WinModal can render a
-      // banner with the event's name and a "Return to Special Event" button
-      // without a second fetch. The detail object is loaded by the useEffect
-      // above; null-check defensively in case the user clicks before fetch
-      // resolves (rare; the modal is loading-shielded but the click lands
-      // synchronously).
-      if (detail) {
-        useUiStore.getState().setCurrentEventMeta(detail.id, detail.title);
-      }
-      dealSpecialEventDeal(deal.seed, deal.id);
-      setEventDetailOpen(null);
-      setSpecialEventsOpen(false);
-    };
-    // Same "discard current game?" guard DailyChallengeModal.jsx uses when a
-    // game is already in progress (records a loss on confirm).
-    if (useStatsStore.getState().isInProgress()) {
-      useUiStore.getState().setPendingStartDeal(run);
-      useUiStore.getState().setConfirmNewGameDialogOpen(true);
-    } else {
-      run();
-    }
-  };
-
   const [detail, setDetail] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const [index, setIndex] = useState(0);
   const [dragPx, setDragPx] = useState(0);
   const [dragging, setDragging] = useState(false);
+  // Per-page selected deal id, persisted in db/eventSelection.js. Keys are
+  // stringified pageNumbers. Hydrated from the sync mirror on open so a
+  // returning player sees the same selection immediately.
+  const [selectedDealIdByPage, setSelectedDealIdByPage] = useState({});
 
   const viewportRef = useRef(null);
   const panelRef = useRef(null);
@@ -83,9 +66,12 @@ export default function EventDetailModal() {
   }, [open]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !eventId) return;
     setLoaded(false);
     setDetail(null);
+    // Synchronously hydrate per-page selection from the local cache so the
+    // modal opens with the right tile pre-selected (no flash-to-default).
+    setSelectedDealIdByPage(loadEventSelectionSync(eventId) || {});
     fetchEventDetail(eventId)
       .then((d) => {
         setDetail(d);
@@ -95,6 +81,26 @@ export default function EventDetailModal() {
           // page if everything's done, or page 0 if nothing's unlocked yet.
           const target = d.pages.findIndex((p) => p.unlocked && !p.completed);
           setIndex(target >= 0 ? target : d.pages.length - 1);
+          // Ensure every unlocked page has a selection. First-visit default is
+          // the deal at position 1; persisted selections (set on a prior visit)
+          // win if the saved dealId is still valid in the freshly-loaded
+          // page's deals list.
+          setSelectedDealIdByPage((prev) => {
+            const next = { ...prev };
+            for (const p of d.pages) {
+              if (!p.unlocked) continue;
+              const prevId = prev[String(p.pageNumber)];
+              const prevStillValid = prevId != null && p.deals.some((dl) => dl.id === prevId);
+              if (!prevStillValid) {
+                const first = p.deals[0];
+                if (first) {
+                  next[String(p.pageNumber)] = first.id;
+                  saveEventSelection(d.id, p.pageNumber, first.id).catch(() => {});
+                }
+              }
+            }
+            return next;
+          });
         } else {
           setIndex(0);
         }
@@ -102,6 +108,41 @@ export default function EventDetailModal() {
       .catch(() => setDetail(null))
       .finally(() => setLoaded(true));
   }, [open, eventId]);
+
+  // Click handler for a deal cell — only selects, never starts a deal.
+  const onSelectDeal = (deal, page) => {
+    setSelectedDealIdByPage((prev) => ({ ...prev, [String(page.pageNumber)]: deal.id }));
+    if (eventId) saveEventSelection(eventId, page.pageNumber, deal.id).catch(() => {});
+  };
+
+  // Footer "Play" button handler — starts the deal for the currently-selected
+  // tile of the currently-visible page. Behind the same "discard current
+  // game?" confirmation DailyChallengeModal.jsx uses.
+  const onPlaySelected = () => {
+    if (!detail) return;
+    const currentPage = pages[clampedIndex];
+    if (!currentPage || !currentPage.unlocked) return;
+    const dealId = selectedDealIdByPage[String(currentPage.pageNumber)];
+    const deal = currentPage.deals.find((d) => d.id === dealId);
+    if (!deal) return;
+    const run = () => {
+      // Cache the event id + title on the UI store so WinModal can render a
+      // banner with the event's name and a "Return to Special Event" button
+      // without a second fetch.
+      if (detail) {
+        useUiStore.getState().setCurrentEventMeta(detail.id, detail.title);
+      }
+      dealSpecialEventDeal(deal.seed, deal.id);
+      setEventDetailOpen(null);
+      setSpecialEventsOpen(false);
+    };
+    if (useStatsStore.getState().isInProgress()) {
+      useUiStore.getState().setPendingStartDeal(run);
+      useUiStore.getState().setConfirmNewGameDialogOpen(true);
+    } else {
+      run();
+    }
+  };
 
   const pages = detail?.pages ?? [];
   const clampedIndex = Math.min(index, Math.max(0, pages.length - 1));
@@ -165,6 +206,23 @@ export default function EventDetailModal() {
   );
 
   if (!open) return null;
+
+  // The currently-visible page drives the footer Play button's enabled state.
+  const currentPage = pages[clampedIndex];
+  const playDisabled = !currentPage || !currentPage.unlocked;
+  const currentSelectedId = currentPage ? selectedDealIdByPage[String(currentPage.pageNumber)] : null;
+  const canPlay = !playDisabled && currentSelectedId != null;
+
+  const btn = {
+    padding: '9px 14px',
+    borderRadius: 6,
+    border: '1px solid var(--ui-modal-btn-border)',
+    background: 'var(--ui-modal-btn-bg)',
+    color: 'var(--ui-modal-fg)',
+    cursor: 'pointer',
+    fontSize: 14,
+    fontWeight: 600,
+  };
 
   const panel = {
     position: 'relative',
@@ -239,7 +297,11 @@ export default function EventDetailModal() {
                 <div style={{ display: 'flex', transform: trackTransform, transition: dragging ? 'none' : 'transform 0.3s ease' }}>
                   {pages.map((p) => (
                     <div key={p.id} style={{ flex: '0 0 100%', padding: '0 8px', boxSizing: 'border-box' }}>
-                      <PageContent page={p} onPlayDeal={onPlayDeal} />
+                      <PageContent
+                        page={p}
+                        onSelectDeal={onSelectDeal}
+                        selectedDealId={selectedDealIdByPage[String(p.pageNumber)] ?? null}
+                      />
                     </div>
                   ))}
                 </div>
@@ -269,6 +331,22 @@ export default function EventDetailModal() {
                 ))}
               </div>
             )}
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 14 }}>
+              <button
+                type="button"
+                disabled={!canPlay}
+                onClick={onPlaySelected}
+                style={{
+                  ...btn,
+                  background: 'var(--ui-modal-btn-bg-strong)',
+                  opacity: canPlay ? 1 : 0.45,
+                  cursor: canPlay ? 'pointer' : 'default',
+                }}
+              >
+                {t('eventDetail.play')}
+              </button>
+            </div>
           </>
         )}
       </div>
@@ -276,7 +354,7 @@ export default function EventDetailModal() {
   );
 }
 
-function PageContent({ page, onPlayDeal }) {
+function PageContent({ page, onSelectDeal, selectedDealId }) {
   if (!page.unlocked) {
     return (
       <div style={placeholderStyle(true)}>
@@ -294,7 +372,11 @@ function PageContent({ page, onPlayDeal }) {
           <div style={{ opacity: 0.7 }}>No deals authored for this page yet.</div>
         </div>
       ) : (
-        <EventDealGrid page={page} onPlayDeal={onPlayDeal} />
+        <EventDealGrid
+          page={page}
+          onSelectDeal={(deal) => onSelectDeal(deal, page)}
+          selectedDealId={selectedDealId}
+        />
       )}
 
       <div style={{ fontSize: 12, fontWeight: 700, color: page.completed ? '#2e7d32' : undefined, opacity: page.completed ? 1 : 0.75 }}>
