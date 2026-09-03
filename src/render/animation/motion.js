@@ -72,12 +72,12 @@ export const MOTION = {
   // diagonal; a multi-card run lands as RIGID BLOCK (stagger 0). Do not use
   // back/bounce/elastic here — stagger+overlap would make multiple cards bounce
   // on top of each other. Keep ease decelerating (power*.out / sine.out).
-  move:     { duration: 0.20, ease: 'power3.in', stagger: 0.00 },
+  move:     { duration: 0.20, ease: 'power3.out', stagger: 0.00 },
 
   // Auto-complete relocation (greedy foundation peel + solver win sequence).
   // Independent of `move` so it can be tuned snappier without touching manual
   // tap. Consumed via CONFIG_BY_TYPE.auto in useCardMoveSlide.
-  auto:     { duration: 0.20, ease: 'power3.in', stagger: 0.01 },
+  auto:     { duration: 0.20, ease: 'power3.out', stagger: 0.01 },
 
   // Waste → stock recycle relocation.
   recycle:  { duration: 0.15, ease: 'power4.out', stagger: 0.00 },
@@ -102,12 +102,12 @@ export const MOTION = {
   // automatically via layout; no direction field needed.
   draw:     {
     duration: 0.05,         // horizontal slide (s)
-    ease: 'power3.in',
+    ease: 'power3.out',
     overshoot: 6,           // extra px beyond natural pile-to-pile distance
   },
 
   // Initial deal: cards fan out one after another via stagger.
-  deal:     { duration: 0.35, stagger: 0.04, ease: 'power2.in' },
+  deal:     { duration: 0.35, stagger: 0.01, ease: 'power2.out' },
 
   // Victory cascade — falling cards. Gated by `winCascade` only,
   // independent of `cardEffects` and `winEnhanced` (confetti).
