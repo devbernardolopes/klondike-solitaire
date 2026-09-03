@@ -57,6 +57,8 @@ export default function SettingsOptionsModal({
   const hoverGlow = useSettingsStore((s) => s.hoverGlow);
   const tableTexture = useSettingsStore((s) => s.tableTexture);
   const boardFrame = useSettingsStore((s) => s.boardFrame);
+  const cardShake = useSettingsStore((s) => s.cardShake);
+  const centisecondsOn = useSettingsStore((s) => s.centisecondsOn);
 
   useModalEscape({ open, onClose, id: 'settings-options', z: Z.CHILD });
 
@@ -207,6 +209,24 @@ export default function SettingsOptionsModal({
             checked={!!particles}
             onChange={onParticlesChange}
             label={t('settings.foundationParticles')}
+          />
+        </div>
+
+        <div style={{ ...field, marginBottom: 20 }}>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.cardShake')}</label>
+          <ToggleSwitch
+            checked={!!cardShake}
+            onChange={(v) => useSettingsStore.getState().setCardShake(v)}
+            label={t('settings.cardShake')}
+          />
+        </div>
+
+        <div style={{ ...field, marginBottom: 20 }}>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.centiseconds')}</label>
+          <ToggleSwitch
+            checked={!!centisecondsOn}
+            onChange={(v) => useSettingsStore.getState().setCentisecondsOn(v)}
+            label={t('settings.centiseconds.desc')}
           />
         </div>
 

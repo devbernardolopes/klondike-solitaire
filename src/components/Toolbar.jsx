@@ -8,6 +8,7 @@ import { useGameStore } from '../hooks/useGameStore.js';
 import { useUiStore, isAnyModalOpen } from '../hooks/useUiStore.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
+import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { useSound } from '../hooks/useSound.js';
 import { isWon } from '../core/winDetection.js';
 import ConfirmModal from './ConfirmModal.jsx';
@@ -15,7 +16,7 @@ import NewGameModal from './NewGameModal.jsx';
 import SettingsModal from './SettingsModal.jsx';
 import SeedInputModal from './SeedInputModal.jsx';
 import DailyChallengeModal from './DailyChallengeModal.jsx';
-import { formatTime } from '../utils/formatTime.js';
+import { formatTimeClock } from '../utils/formatTime.js';
 import { Z } from '../utils/modalStack.js';
 
 const UNDO_HOLD_DELAY_MS = 400;
@@ -26,9 +27,14 @@ const UNDO_REPEAT_INTERVAL_MS = 200;
  * accumulating interval ticks) and excluding hidden-tab spans via getElapsedMs,
  * so it reflects only actively-focused play. The display uses animation-frame
  * refreshes with conditional React updates — only re-rendering when the
- * centisecond digit changes — while a separate short interval enforces the
- * time limit.
- * @returns {string} "MM:SS.hh"
+ * displayed digit changes (centisecond when centisecondsOn, otherwise whole
+ * second) — while a separate short interval enforces the time limit.
+ *
+ * The refresh cadence is driven by the `centisecondsOn` setting: when ON we
+ * update on the 10 ms boundary (~100 Hz state updates); when OFF we update on
+ * the 1 s boundary (~1 Hz). Disabling centiseconds therefore drops the HUD
+ * re-render rate by ~100×.
+ * @returns {string} "MM:SS.hh" or "MM:SS" (centiseconds hidden)
  */
 function useElapsed() {
   const startTime = useStatsStore((s) => s.startTime);
@@ -37,23 +43,34 @@ function useElapsed() {
   // Subscribe to the pause bookkeeping so the HUD re-renders on focus change.
   const pausedAt = useStatsStore((s) => s.pausedAt);
   const pausedAccumMs = useStatsStore((s) => s.pausedAccumMs);
+  const centisecondsOn = useSettingsStore((s) => s.centisecondsOn);
   const [now, setNow] = useState(() => Date.now());
-  const lastCsRef = useRef(-1);
+  const lastBucketRef = useRef(-1);
   useEffect(() => {
     if (startTime === null || endTime !== null || isOver) return undefined;
+
+    // Bucket size: 10 ms (centiseconds visible) or 1000 ms (hidden). The
+    // refresh loop only commits a React state update when the bucket changes,
+    // so a 120 Hz display with centiseconds hidden still produces ≤1 state
+    // update per second.
+    const bucketMs = centisecondsOn ? 10 : 1000;
+    lastBucketRef.current = -1;
 
     let frameId = null;
     const refreshDisplay = () => {
       const currentTime = Date.now();
-      const centisecond = Math.floor(currentTime / 10) % 100;
-      if (centisecond !== lastCsRef.current) {
-        lastCsRef.current = centisecond;
+      const bucket = Math.floor(currentTime / bucketMs);
+      if (bucket !== lastBucketRef.current) {
+        lastBucketRef.current = bucket;
         setNow(currentTime);
       }
       frameId = requestAnimationFrame(refreshDisplay);
     };
     frameId = requestAnimationFrame(refreshDisplay);
 
+    // The 250 ms checkTimeLimit interval is INDEPENDENT of the display
+    // cadence — the 30:00 game-over boundary must be enforced whether the
+    // HUD shows hundredths or not, so it stays at its safety-oriented tick.
     const limitTimerId = setInterval(() => {
       useStatsStore.getState().checkTimeLimit();
     }, 250);
@@ -62,9 +79,9 @@ function useElapsed() {
       if (frameId !== null) cancelAnimationFrame(frameId);
       clearInterval(limitTimerId);
     };
-  }, [startTime, endTime, isOver]);
+  }, [startTime, endTime, isOver, centisecondsOn]);
   const elapsed = startTime === null ? 0 : useStatsStore.getState().getElapsedMs(now);
-  return formatTime(elapsed);
+  return formatTimeClock(elapsed, { centiseconds: centisecondsOn });
 }
 
 /**

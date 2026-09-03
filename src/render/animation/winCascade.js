@@ -41,7 +41,14 @@ export function playWinCascade() {
   let prefersReduced = false;
   try { prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch {}
   if (prefersReduced) doConfetti = false;
-  if (!doFall && !doConfetti) return;
+  if (!doFall && !doConfetti) {
+    // Both effects are disabled (e.g. user toggled winCascade + winEnhanced off
+    // since the previous win). Abort any in-flight cascade so its onComplete
+    // doesn't later fire and drop the global lock, and so a leftover tween
+    // doesn't keep animating cards against the user's preference.
+    cancelWinCascade();
+    return;
+  }
   if (typeof document !== 'undefined' && document.hidden) return;
 
   // Kill any in-flight cascade from a previous win (e.g. rapid new-game)

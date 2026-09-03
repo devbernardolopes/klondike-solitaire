@@ -1,6 +1,7 @@
 import { gsap } from './gsapSetup.js';
 import { MOTION } from './motion.js';
 import { useUiStore } from '../../hooks/useUiStore.js';
+import { useSettingsStore } from '../../hooks/useSettingsStore.js';
 
 // "No valid move" feedback: a short horizontal jitter on the card that decays
 // back to rest. On finish we clear the inline transform so it never collides
@@ -29,6 +30,14 @@ export function playCardShake(node) {
   if (gsap.isTweening(node)) return;
   const cardId = node.getAttribute('data-card');
   if (!cardId) return;
+  // Gated by the user setting. When disabled we early-out BEFORE the
+  // `addShaking` lock + `gsap.timeline(...)` allocation, so a spam-tapper
+  // who has shakes off pays nothing for invalid taps.
+  try {
+    if (!useSettingsStore.getState().cardShake) return;
+  } catch {
+    /* settings store unavailable — fall through and play */
+  }
   const ui = useUiStore.getState();
   ui.addShaking(cardId);
   const { duration, distance } = MOTION.shake;
