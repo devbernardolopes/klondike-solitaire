@@ -108,14 +108,14 @@ export function useStockDrawSlide() {
 
     const flip = MOTION.flipCard;
     const slide = MOTION.draw;
-    const shouldBounceFlip = (() => {
+    const shouldFlipOvershoot = (() => {
       try {
         if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
       } catch {}
       try {
         const s = useSettingsStore.getState();
         if (!s.cardEffects) return false;
-        if (!s.bounce) return false;
+        if (!s.flipOvershoot) return false;
       } catch {}
       return true;
     })();
@@ -140,7 +140,7 @@ export function useStockDrawSlide() {
     tl.to(inner, {
       rotateY: 0,
       duration: flip.duration,
-      ease: shouldBounceFlip ? flip.ease : 'power2.out',
+      ease: shouldFlipOvershoot ? flip.ease : 'power2.out',
     });
     // Phase 2: slide horizontally to the waste pile position. When this slide
     // begins, promote the card from the fully-locked flip phase to the slide

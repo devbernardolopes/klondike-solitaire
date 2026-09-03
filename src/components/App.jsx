@@ -101,14 +101,14 @@ export default function App() {
 
   const tableTexture = useSettingsStore((s) => s.tableTexture);
   const cardEffects = useSettingsStore((s) => s.cardEffects);
-  const bounce = useSettingsStore((s) => s.bounce);
+  const hoverLift = useSettingsStore((s) => s.hoverLift);
   useEffect(() => {
     try {
-      const on = !!(cardEffects && bounce);
-      if (!on) { document.documentElement.removeAttribute('data-bounce'); }
-      else { document.documentElement.setAttribute('data-bounce', 'on'); }
+      const on = !!(cardEffects && hoverLift);
+      if (!on) { document.documentElement.removeAttribute('data-hover-lift'); }
+      else { document.documentElement.setAttribute('data-hover-lift', 'on'); }
     } catch {}
-  }, [cardEffects, bounce]);
+  }, [cardEffects, hoverLift]);
   useEffect(() => {
     try {
       if (!tableTexture) {

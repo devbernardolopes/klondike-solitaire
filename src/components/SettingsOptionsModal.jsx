@@ -59,6 +59,8 @@ export default function SettingsOptionsModal({
   const boardFrame = useSettingsStore((s) => s.boardFrame);
   const cardShake = useSettingsStore((s) => s.cardShake);
   const centisecondsOn = useSettingsStore((s) => s.centisecondsOn);
+  const hoverLift = useSettingsStore((s) => s.hoverLift);
+  const flipOvershoot = useSettingsStore((s) => s.flipOvershoot);
 
   useModalEscape({ open, onClose, id: 'settings-options', z: Z.CHILD });
 
@@ -230,22 +232,48 @@ export default function SettingsOptionsModal({
           />
         </div>
 
+        {/* Three independent interaction-preference toggles. Each has a single
+            responsibility and is NOT gated by the cardEffects master toggle:
+              - hoverLift:      CSS :hover rise (raised-card affordance)
+              - flipOvershoot:  3D face-flip back.out ease (subtle reveal pop)
+              - bounce:         move-landing pop on single-card moves
+            Previously all three were lumped into a single `bounce` toggle via
+            a data-bounce CSS attribute, which coupled the hover-rise to the
+            move-landing pop. See useSettingsStore + useCardMoveSlide for the
+            underlying state. */}
+        <div style={{ ...field, marginBottom: 20 }}>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.hoverLift')}</label>
+          <ToggleSwitch
+            checked={!!hoverLift}
+            onChange={(v) => useSettingsStore.getState().setHoverLift(v)}
+            label={t('settings.hoverLift.desc')}
+          />
+        </div>
+
+        <div style={{ ...field, marginBottom: 20 }}>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.flipOvershoot')}</label>
+          <ToggleSwitch
+            checked={!!flipOvershoot}
+            onChange={(v) => useSettingsStore.getState().setFlipOvershoot(v)}
+            label={t('settings.flipOvershoot.desc')}
+          />
+        </div>
+
+        <div style={{ ...field, marginBottom: 20 }}>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.cardBounce')}</label>
+          <ToggleSwitch
+            checked={!!bounce}
+            onChange={(v) => useSettingsStore.getState().setBounce(v)}
+            label={t('settings.cardBounce')}
+          />
+        </div>
+
         <div style={{ ...field, marginBottom: 20 }}>
           <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.cardEffects')}</label>
           <ToggleSwitch
             checked={!!cardEffects}
             onChange={(v) => useSettingsStore.getState().setCardEffects(v)}
             label={t('settings.cardEffects')}
-          />
-        </div>
-
-        <div style={{ ...field, marginLeft: 16, opacity: cardEffects ? 1 : 0.5, marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.cardBounce')}</label>
-          <ToggleSwitch
-            checked={!!bounce}
-            onChange={(v) => useSettingsStore.getState().setBounce(v)}
-            label={t('settings.cardBounce')}
-            disabled={!cardEffects}
           />
         </div>
 

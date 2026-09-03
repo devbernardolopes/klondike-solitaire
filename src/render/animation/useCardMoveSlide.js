@@ -6,6 +6,7 @@ import { useGameStore } from '../../hooks/useGameStore.js';
 import { useUiStore } from '../../hooks/useUiStore.js';
 import { useSettingsStore } from '../../hooks/useSettingsStore.js';
 import { spawnTrailCascade, clearAllGhostTrails } from './ghostTrail.js';
+import { buildBounceSteps } from './useCardMoveSlideBounce.js';
 
 const CONFIG_BY_TYPE = {
   // All generic card relocations (single cards and multi-card runs) share the
@@ -278,7 +279,9 @@ export function useCardMoveSlide() {
        },
      });
     if (shouldBounce && bounceCfg) {
-      moved.forEach((el) => gsap.set(el, { scale: bounceCfg.scale ?? 1.06, rotationZ: gsap.utils.random(-(bounceCfg.rotation ?? 0.8), bounceCfg.rotation ?? 0.8), boxShadow: bounceCfg.boxShadow ?? '0 14px 32px rgba(0,0,0,0.45), 0 5px 12px rgba(0,0,0,0.35)' }));
+      // Bounce no longer pre-applies scale/rotation/boxShadow here — those
+      // are now applied AT the moment of landing (positioned at cfg.duration
+      // below), so the card slides normally and only pops when it arrives.
       createGhosts();
     } else if (shouldGhost) {
       createGhosts();
@@ -294,15 +297,14 @@ export function useCardMoveSlide() {
       ease: cfg.ease,
       stagger: cfg.stagger ?? 0,
     });
-    if (shouldBounce && bounceCfg) {
-      tl.to(moved, {
-        scale: 1,
-        rotationZ: 0,
-        boxShadow: '0 4px 10px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.28)',
-        duration: bounceCfg.duration ?? 0.20,
-        ease: bounceCfg.ease ?? 'back.out(0.6)',
-        stagger: 0,
-      }, 0);
+    // Post-slide bounce. The helper (./useCardMoveSlideBounce.js) is the
+    // single source of truth for the step shape and the cfg.duration
+    // position — exhaustively unit-tested to lock in the
+    // "lands-then-pops-then-settles" sequence. Editing the timing here
+    // without updating the helper is a regression.
+    const bounceSteps = buildBounceSteps({ cfg, bounceCfg, shouldBounce });
+    for (const step of bounceSteps) {
+      tl.to(moved, { ...step.props, duration: step.duration, ease: step.ease, stagger: 0 }, step.position);
     }
     activeTweens.push(tl);
 

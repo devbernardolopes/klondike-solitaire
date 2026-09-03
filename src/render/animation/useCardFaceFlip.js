@@ -49,14 +49,14 @@ export function useCardFaceFlip(nodeRef, faceUp) {
   useLayoutEffect(() => {
     if (prev.current === faceUp) return;
     const flippingToUp = faceUp === true;
-    const shouldBounceFlip = (() => {
+    const shouldFlipOvershoot = (() => {
       try {
         if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
       } catch {}
       try {
         const s = useSettingsStore.getState();
         if (!s.cardEffects) return false;
-        if (!s.bounce) return false;
+        if (!s.flipOvershoot) return false;
       } catch {}
       return true;
     })();
@@ -66,7 +66,7 @@ export function useCardFaceFlip(nodeRef, faceUp) {
       {
         rotateY: faceUp ? 0 : -180,
         duration: MOTION.flipCard.duration,
-        ease: shouldBounceFlip ? MOTION.flipCard.ease : 'power2.out',
+        ease: shouldFlipOvershoot ? MOTION.flipCard.ease : 'power2.out',
         onComplete: () => {
           if (flippingToUp && nodeRef.current) {
             const cardEl = nodeRef.current.closest('[data-card]');

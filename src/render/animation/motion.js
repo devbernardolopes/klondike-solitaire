@@ -144,10 +144,20 @@ export const MOTION = {
   // in classic.css; kept here so MotionDebugPanel can tune. Wire to JS if needed.
   hoverLift: { y: -4, scale: 1.02, duration: 0.15, ease: 'power2.out' },
 
-  // Landing bounce on move/auto (single-card only). Independent of `move` slide
-  // so translation stays power3.out while bounce alone may use back.out subtle
-  // pop. Gated by cardEffects && bounce && !prefers-reduced-motion.
-  bounce: { duration: 0.20, ease: 'back.out(0.6)', scale: 1.06, rotation: 0.8, y: -6, boxShadow: '0 14px 32px rgba(0,0,0,0.45), 0 5px 12px rgba(0,0,0,0.35)' },
+  // Landing bounce on move/auto (single-card only). Independent of the `move`
+  // slide so translation stays power3.out while bounce alone may use back.out
+  // for a subtle pop. The pop is applied AT the moment of landing
+  // (positioned at cfg.duration in the timeline) and tweens back to rest.
+  //
+  // Tone-down history: earlier defaults were scale 1.06, rotation ±0.8°, and
+  // a 14-px-blur boxShadow. Those values made the moving card look inflated
+  // and wobbly mid-flight — the bounce was firing at slide start, not at
+  // landing. Current defaults are deliberately subtle (scale 1.03, no
+  // rotation, smaller shadow) and rely on the post-slide positioning fix in
+  // useCardMoveSlide.js to actually fire at the destination.
+  //
+  // Gated by cardEffects && bounce && !prefers-reduced-motion.
+  bounce: { duration: 0.20, ease: 'back.out(0.6)', scale: 1.03, rotation: 0.0, y: -3, boxShadow: '0 6px 16px rgba(0,0,0,0.28), 0 2px 6px rgba(0,0,0,0.22)' },
 
   // Ghost echo left at the source position on every move/auto/undo. A single
   // cloned node parked at oldRect fades and shrinks in place. Capped to

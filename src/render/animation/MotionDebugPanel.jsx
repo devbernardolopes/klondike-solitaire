@@ -60,6 +60,23 @@ export function MotionDebugPanel() {
     scale: { value: MOTION.bounce.scale, min: 1, max: 1.15, step: 0.01, onChange: (v) => (MOTION.bounce.scale = v) },
     rotation: { value: MOTION.bounce.rotation, min: 0, max: 2, step: 0.1, onChange: (v) => (MOTION.bounce.rotation = v) },
   });
+  useControls('flipOvershoot', {
+    duration: { value: MOTION.flipCard.duration, min: 0.05, max: 0.5, step: 0.01, onChange: (v) => (MOTION.flipCard.duration = v) },
+    // The ease is a `back.out(<tension>)` string. Tension 0 collapses to
+    // `power2.out` (matching the off-state in useCardFaceFlip.js when the
+    // user's flipOvershoot toggle is off). Keeping the string format preserves
+    // the runtime branch in useCardFaceFlip.js that picks between the two
+    // eases on a per-call basis.
+    tension: {
+      value: 0.4,
+      min: 0,
+      max: 1.5,
+      step: 0.05,
+      onChange: (v) => {
+        MOTION.flipCard.ease = v > 0 ? `back.out(${v})` : 'power2.out';
+      },
+    },
+  });
   useControls('ghostEcho', {
     duration: { value: MOTION.ghostEcho.duration, min: 0.05, max: 1, step: 0.01, onChange: (v) => (MOTION.ghostEcho.duration = v) },
     alpha: { value: MOTION.ghostEcho.alpha, min: 0, max: 1, step: 0.01, onChange: (v) => (MOTION.ghostEcho.alpha = v) },
