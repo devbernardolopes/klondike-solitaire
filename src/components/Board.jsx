@@ -12,6 +12,8 @@ import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
 import { useSeedStore } from '../hooks/useSeedStore.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { saveDailyResult } from '../db/dailyResults.js';
+import { fetchEventDetail } from '../repo/specialEventsRepository.js';
+import { saveEventSelection, saveLastViewedPage } from '../db/eventSelection.js';
 import { useCardMoveSlide } from '../render/animation/useCardMoveSlide.js';
 import { useStockDrawSlide } from '../render/animation/useStockDrawSlide.js';
 import { useFoundationParticles } from '../render/animation/useFoundationParticles.js';
@@ -296,6 +298,37 @@ export default function Board() {
       // count in the global cumulative stats (handled by recordWin above).
       if (gameKind === 'daily' && dailyDate) {
         saveDailyResult(dailyDate, { seed: gameState.seed, score, timeMs: durationMs, moves });
+      }
+      // Auto-advance the player's persisted event selection to the next
+      // non-completed deal in this event (left-to-right, advancing pages as
+      // needed). If the just-won deal was the last non-completed one in the
+      // event, leave the persisted selection alone (per the per-event "if
+      // none found don't change selection" rule). Fire-and-forget so the win
+      // cascade / WinModal isn't blocked.
+      if (gameKind === 'event' && uiState.currentEventId && uiState.currentEventDealId) {
+        const winEvtId = uiState.currentEventId;
+        const wonDealId = uiState.currentEventDealId;
+        fetchEventDetail(winEvtId)
+          .then((d) => {
+            if (!d || !d.pages || d.pages.length === 0) return;
+            const flat = [];
+            for (const p of d.pages) {
+              for (const deal of p.deals) {
+                flat.push({ deal, pageNumber: p.pageNumber });
+              }
+            }
+            const wonIdx = flat.findIndex((f) => f.deal.id === wonDealId);
+            if (wonIdx < 0) return;
+            let target = null;
+            for (let i = wonIdx + 1; i < flat.length; i++) {
+              if (flat[i].deal.id === wonDealId) continue;
+              if (!flat[i].deal.solved) { target = flat[i]; break; }
+            }
+            if (!target) return; // no next non-completed deal — leave selection alone
+            saveEventSelection(winEvtId, target.pageNumber, target.deal.id).catch(() => {});
+            saveLastViewedPage(winEvtId, target.pageNumber).catch(() => {});
+          })
+          .catch(() => {});
       }
     }
     wasWon.current = won;

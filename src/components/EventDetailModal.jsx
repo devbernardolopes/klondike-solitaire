@@ -23,7 +23,7 @@ import { useUiStore } from '../hooks/useUiStore.js';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
 import { fetchEventDetail } from '../repo/specialEventsRepository.js';
-import { loadEventSelectionSync, saveEventSelection } from '../db/eventSelection.js';
+import { loadEventSelectionSync, saveEventSelection, loadLastViewedPageSync, saveLastViewedPage } from '../db/eventSelection.js';
 import EventDealGrid from './EventDealGrid.jsx';
 
 const SWIPE_THRESHOLD_RATIO = 0.2; // fraction of viewport width to trigger a page change
@@ -76,11 +76,26 @@ export default function EventDetailModal() {
       .then((d) => {
         setDetail(d);
         if (d && d.pages.length > 0) {
-          // Land on the first unlocked-but-not-yet-completed page, so a
-          // returning player sees where to continue. Fall back to the last
-          // page if everything's done, or page 0 if nothing's unlocked yet.
-          const target = d.pages.findIndex((p) => p.unlocked && !p.completed);
-          setIndex(target >= 0 ? target : d.pages.length - 1);
+          // Choose the initial page index with this priority:
+          //  1. The page the player last viewed (if it still exists and is
+          //     unlocked) — the natural "return where I was" semantic.
+          //  2. The first unlocked-but-not-yet-completed page, so a returning
+          //     player who has progress to make sees the next un-solved page.
+          //  3. The last page if everything's done, or 0 if nothing's
+          //     unlocked yet.
+          const lastPage = loadLastViewedPageSync(eventId);
+          const lastPageIdx = lastPage != null
+            ? d.pages.findIndex((p) => p.pageNumber === lastPage && p.unlocked)
+            : -1;
+          const heuristicIdx = d.pages.findIndex((p) => p.unlocked && !p.completed);
+          const initialIdx = lastPageIdx >= 0
+            ? lastPageIdx
+            : (heuristicIdx >= 0 ? heuristicIdx : d.pages.length - 1);
+          setIndex(initialIdx);
+          // Persist the chosen page back so a future re-open (e.g. before
+          // any user interaction) is consistent with the user's last visit.
+          const initialPage = d.pages[initialIdx];
+          if (initialPage) saveLastViewedPage(d.id, initialPage.pageNumber).catch(() => {});
           // Ensure every unlocked page has a selection. First-visit default is
           // the deal at position 1; persisted selections (set on a prior visit)
           // win if the saved dealId is still valid in the freshly-loaded
@@ -110,9 +125,14 @@ export default function EventDetailModal() {
   }, [open, eventId]);
 
   // Click handler for a deal cell — only selects, never starts a deal.
+  // Also writes the page number so re-opening the event lands here, even
+  // if the user arrived on a different page and dragged / arrowed over.
   const onSelectDeal = (deal, page) => {
     setSelectedDealIdByPage((prev) => ({ ...prev, [String(page.pageNumber)]: deal.id }));
-    if (eventId) saveEventSelection(eventId, page.pageNumber, deal.id).catch(() => {});
+    if (eventId) {
+      saveEventSelection(eventId, page.pageNumber, deal.id).catch(() => {});
+      saveLastViewedPage(eventId, page.pageNumber).catch(() => {});
+    }
   };
 
   // Footer "Play" button handler — starts the deal for the currently-selected
@@ -126,13 +146,15 @@ export default function EventDetailModal() {
     const deal = currentPage.deals.find((d) => d.id === dealId);
     if (!deal) return;
     const run = () => {
-      // Cache the event id + title on the UI store so WinModal can render a
-      // banner with the event's name and a "Return to Special Event" button
-      // without a second fetch.
+      dealSpecialEventDeal(deal.seed, deal.id);
+      // Cache the event id + title AFTER dealSpecialEventDeal, which internally
+      // calls setCurrentGame('event', null, eventDealId) — that setter clears
+      // currentEventId and currentEventTitle. Setting the meta afterwards
+      // ensures currentEventId survives the deal session and is available to
+      // WinModal's "Return to Special Event" handler.
       if (detail) {
         useUiStore.getState().setCurrentEventMeta(detail.id, detail.title);
       }
-      dealSpecialEventDeal(deal.seed, deal.id);
       setEventDetailOpen(null);
       setSpecialEventsOpen(false);
     };
@@ -147,7 +169,16 @@ export default function EventDetailModal() {
   const pages = detail?.pages ?? [];
   const clampedIndex = Math.min(index, Math.max(0, pages.length - 1));
 
-  const goTo = (i) => setIndex(Math.min(Math.max(i, 0), Math.max(0, pages.length - 1)));
+  // Persist the page the user navigates to so a re-open of the event lands
+  // on the same page (the modal otherwise picks "first unlocked-but-not-yet-
+  // completed" by default). Fired by arrow buttons, dot indicators, and the
+  // landing heuristic via the open-time effect.
+  const goTo = (i) => {
+    const clamped = Math.min(Math.max(i, 0), Math.max(0, pages.length - 1));
+    setIndex(clamped);
+    const target = pages[clamped];
+    if (target && eventId) saveLastViewedPage(eventId, target.pageNumber).catch(() => {});
+  };
   const goPrev = () => goTo(clampedIndex - 1);
   const goNext = () => goTo(clampedIndex + 1);
 
