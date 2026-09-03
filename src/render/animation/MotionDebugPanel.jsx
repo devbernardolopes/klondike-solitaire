@@ -72,7 +72,9 @@ export function MotionDebugPanel() {
     scaleEnd: { value: MOTION.ghostTrail.scale.end, min: 0.8, max: 1.1, step: 0.01, onChange: (v) => (MOTION.ghostTrail.scale.end = v) },
     segments: { value: MOTION.ghostTrail.segments, min: 1, max: 10, step: 1, onChange: (v) => (MOTION.ghostTrail.segments = v) },
     segmentInterval: { value: MOTION.ghostTrail.segmentInterval, min: 0, max: 0.1, step: 0.005, onChange: (v) => (MOTION.ghostTrail.segmentInterval = v) },
-    maxConcurrent: { value: MOTION.ghostTrail.maxConcurrent, min: 1, max: 60, step: 1, onChange: (v) => (MOTION.ghostTrail.maxConcurrent = v) },
+    maxConcurrent: { value: MOTION.ghostTrail.maxConcurrent, min: 1, max: 100, step: 1, onChange: (v) => (MOTION.ghostTrail.maxConcurrent = v) },
+    dragDuration: { value: MOTION.ghostTrail.dragDuration, min: 0.05, max: 2, step: 0.01, onChange: (v) => (MOTION.ghostTrail.dragDuration = v) },
+    dragSpawnIntervalMs: { value: MOTION.ghostTrail.dragSpawnIntervalMs, min: 5, max: 200, step: 5, onChange: (v) => (MOTION.ghostTrail.dragSpawnIntervalMs = v) },
   });
   useControls('boardFrame', {
     duration: { value: MOTION.boardFrame.duration, min: 0.05, max: 1.5, step: 0.01, onChange: (v) => (MOTION.boardFrame.duration = v) },

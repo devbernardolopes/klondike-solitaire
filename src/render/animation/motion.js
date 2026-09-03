@@ -161,7 +161,18 @@ export const MOTION = {
   // alpha controls the NEWEST segment's opacity; the oldest is alpha * 0.2.
   // scale.start is the newest, scale.end is the oldest. segmentInterval is the
   // delay (s) between successive spawns so they cascade in over time.
-  ghostTrail: { duration: 0.45, ease: 'power1.out', alpha: 0.25, scale: { start: 1.0, end: 0.94 }, segments: 5, segmentInterval: 0.03, maxConcurrent: 24 },
+  //
+  // The CONTINUOUS drag mode uses different parameters:
+  //   dragDuration         per-segment fade duration (longer than the post-move
+  //                        duration so the trail feels like a real "wake" left
+  //                        behind a dragged card).
+  //   dragSpawnIntervalMs  minimum ms between successive segment spawns while
+  //                        a drag is in progress (throttle for performance).
+  //   maxConcurrent        shared DOM cap across cascade + continuous + multi-
+  //                        card run spawns. Raised to 48 to support a long drag
+  //                        (which can spawn 30+ segments/s for several seconds)
+  //                        without starving the cascade or each other.
+  ghostTrail: { duration: 0.45, ease: 'power1.out', alpha: 0.25, scale: { start: 1.0, end: 0.94 }, segments: 5, segmentInterval: 0.03, maxConcurrent: 48, dragDuration: 0.8, dragSpawnIntervalMs: 30 },
 
   // Wood frame entry (future GSAP reveal; currently CSS texture).
   boardFrame: { duration: 0.4, ease: 'power2.out' },

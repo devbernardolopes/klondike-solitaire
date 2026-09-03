@@ -202,7 +202,7 @@ export default function Board() {
   const animatingIds = useUiStore((s) => s.animatingCards);
   const pendingDrawRef = useRef(false);
   const locked = won || isOver || anyAnimating || autoCompleting;
-  const { sensors, onDragStart, onDragEnd, onDragCancel, activeRun } =
+  const { sensors, onDragStart, onDragMove, onDragEnd, onDragCancel, activeRun } =
     useDragEngine();
 
   // Plays the move/relocation translation after each pile-mutating state change
@@ -594,6 +594,7 @@ export default function Board() {
     <DndContext
       sensors={sensors}
       onDragStart={onDragStart}
+      onDragMove={onDragMove}
       onDragEnd={onDragEnd}
       onDragCancel={onDragCancel}
     >
