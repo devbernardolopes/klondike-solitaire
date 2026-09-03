@@ -113,9 +113,9 @@ export default function EventDetailModal() {
       startY: e.clientY,
       width: viewportRef.current?.clientWidth || 1,
       active: true,
+      pointerId: e.pointerId,
+      committed: false,
     };
-    setDragging(true);
-    e.currentTarget.setPointerCapture(e.pointerId);
   };
 
   const onPointerMove = (e) => {
@@ -123,16 +123,29 @@ export default function EventDetailModal() {
     const dx = e.clientX - dragStateRef.current.startX;
     const dy = e.clientY - dragStateRef.current.startY;
     if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 12) return; // vertical gesture, ignore
-    setDragPx(dx);
+    if (!dragStateRef.current.committed && Math.abs(dx) > 10) {
+      e.currentTarget.setPointerCapture(dragStateRef.current.pointerId);
+      dragStateRef.current.committed = true;
+      setDragging(true);
+    }
+    if (dragStateRef.current.committed) {
+      setDragPx(dx);
+    }
   };
 
-  const endDrag = () => {
+  const endDrag = (e) => {
     if (!dragStateRef.current.active) return;
-    const { width } = dragStateRef.current;
-    const threshold = width * SWIPE_THRESHOLD_RATIO;
-    if (dragPx <= -threshold) goNext();
-    else if (dragPx >= threshold) goPrev();
+    const { width, committed, pointerId } = dragStateRef.current;
+    if (committed && e && e.currentTarget && typeof e.currentTarget.hasPointerCapture === 'function' && e.currentTarget.hasPointerCapture(pointerId)) {
+      e.currentTarget.releasePointerCapture(pointerId);
+    }
+    if (committed) {
+      const threshold = width * SWIPE_THRESHOLD_RATIO;
+      if (dragPx <= -threshold) goNext();
+      else if (dragPx >= threshold) goPrev();
+    }
     dragStateRef.current.active = false;
+    dragStateRef.current.committed = false;
     setDragging(false);
     setDragPx(0);
   };
