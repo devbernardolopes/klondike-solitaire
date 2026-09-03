@@ -65,6 +65,15 @@ export function MotionDebugPanel() {
     alpha: { value: MOTION.ghostEcho.alpha, min: 0, max: 1, step: 0.01, onChange: (v) => (MOTION.ghostEcho.alpha = v) },
     scale: { value: MOTION.ghostEcho.scale, min: 0.8, max: 1.1, step: 0.01, onChange: (v) => (MOTION.ghostEcho.scale = v) },
   });
+  useControls('ghostTrail', {
+    duration: { value: MOTION.ghostTrail.duration, min: 0.05, max: 1, step: 0.01, onChange: (v) => (MOTION.ghostTrail.duration = v) },
+    alpha: { value: MOTION.ghostTrail.alpha, min: 0, max: 1, step: 0.01, onChange: (v) => (MOTION.ghostTrail.alpha = v) },
+    scaleStart: { value: MOTION.ghostTrail.scale.start, min: 0.8, max: 1.1, step: 0.01, onChange: (v) => (MOTION.ghostTrail.scale.start = v) },
+    scaleEnd: { value: MOTION.ghostTrail.scale.end, min: 0.8, max: 1.1, step: 0.01, onChange: (v) => (MOTION.ghostTrail.scale.end = v) },
+    segments: { value: MOTION.ghostTrail.segments, min: 1, max: 10, step: 1, onChange: (v) => (MOTION.ghostTrail.segments = v) },
+    segmentInterval: { value: MOTION.ghostTrail.segmentInterval, min: 0, max: 0.1, step: 0.005, onChange: (v) => (MOTION.ghostTrail.segmentInterval = v) },
+    maxConcurrent: { value: MOTION.ghostTrail.maxConcurrent, min: 1, max: 60, step: 1, onChange: (v) => (MOTION.ghostTrail.maxConcurrent = v) },
+  });
   useControls('boardFrame', {
     duration: { value: MOTION.boardFrame.duration, min: 0.05, max: 1.5, step: 0.01, onChange: (v) => (MOTION.boardFrame.duration = v) },
   });

@@ -48,6 +48,7 @@ const DEFAULTS = {
   boardFrame: true,
   bounce: true,
   ghostEcho: true,
+  ghostTrail: true,
   shimmer: true,
   uncover: true,
   winEnhanced: true,
@@ -75,6 +76,7 @@ const LS_KEYS = {
   boardFrame: 'klondike:boardFrame',
   bounce: 'klondike:bounce',
   ghostEcho: 'klondike:ghostEcho',
+  ghostTrail: 'klondike:ghostTrail',
   shimmer: 'klondike:shimmer',
   uncover: 'klondike:uncover',
   winEnhanced: 'klondike:winEnhanced',
@@ -135,6 +137,7 @@ export const useSettingsStore = create((set, get) => ({
   boardFrame: readLS(LS_KEYS.boardFrame, DEFAULTS.boardFrame),
   bounce: readLS(LS_KEYS.bounce, DEFAULTS.bounce),
   ghostEcho: readLS(LS_KEYS.ghostEcho, DEFAULTS.ghostEcho),
+  ghostTrail: readLS(LS_KEYS.ghostTrail, DEFAULTS.ghostTrail),
   shimmer: readLS(LS_KEYS.shimmer, DEFAULTS.shimmer),
   uncover: readLS(LS_KEYS.uncover, DEFAULTS.uncover),
   winEnhanced: readLS(LS_KEYS.winEnhanced, DEFAULTS.winEnhanced),
@@ -155,7 +158,7 @@ export const useSettingsStore = create((set, get) => ({
     const SETTING_KEYS = [
       'language', 'theme', 'interfaceTheme', 'deck', 'cardBack', 'handedness',
       'highlightCard', 'particles', 'cardEffects', 'tableTexture', 'boardFrame',
-      'bounce', 'ghostEcho', 'shimmer', 'uncover', 'winEnhanced', 'winCascade',
+      'bounce', 'ghostEcho', 'ghostTrail', 'shimmer', 'uncover', 'winEnhanced', 'winCascade',
       'hoverGlow', 'seenThemeItemIds', 'seenAchievementIds', 'themeModalTab',
     ];
     const SETTING_DEFAULTS = {
@@ -171,6 +174,7 @@ export const useSettingsStore = create((set, get) => ({
       boardFrame: DEFAULTS.boardFrame,
       bounce: DEFAULTS.bounce,
       ghostEcho: DEFAULTS.ghostEcho,
+      ghostTrail: DEFAULTS.ghostTrail,
       shimmer: DEFAULTS.shimmer,
       uncover: DEFAULTS.uncover,
       winEnhanced: DEFAULTS.winEnhanced,
@@ -180,7 +184,7 @@ export const useSettingsStore = create((set, get) => ({
       seenAchievementIds: [],
       themeModalTab: 'background',
     };
-    const [language, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostEcho, shimmer, uncover, winEnhanced, winCascade, hoverGlow, seenThemeItemIdsArr, seenAchievementIdsArr, themeModalTab] = await getSettings(SETTING_KEYS, SETTING_DEFAULTS);
+    const [language, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostEcho, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, seenThemeItemIdsArr, seenAchievementIdsArr, themeModalTab] = await getSettings(SETTING_KEYS, SETTING_DEFAULTS);
     // Use the LS read for language as a last-resort fallback for the language
     // key (the per-key default above is a static DEFAULT_LOCALE; the LS version
     // may have detected the system locale on a previous session).
@@ -206,6 +210,7 @@ export const useSettingsStore = create((set, get) => ({
         ['boardFrame', boardFrame],
         ['bounce', bounce],
         ['ghostEcho', ghostEcho],
+        ['ghostTrail', ghostTrail],
         ['shimmer', shimmer],
         ['uncover', uncover],
         ['winEnhanced', winEnhanced],
@@ -228,7 +233,7 @@ export const useSettingsStore = create((set, get) => ({
       if (i18n.language !== normalizedLang) await i18n.changeLanguage(normalizedLang);
       try { document.documentElement.lang = normalizedLang; } catch {}
     } catch {}
-    set({ language: normalizedLang, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostEcho, shimmer, uncover, winEnhanced, winCascade, hoverGlow, seenThemeItemIds: seenThemeIds, seenAchievementIds: seenAchievementIds, themeModalTab, loaded: true });
+    set({ language: normalizedLang, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostEcho, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, seenThemeItemIds: seenThemeIds, seenAchievementIds: seenAchievementIds, themeModalTab, loaded: true });
   },
 
   /**
@@ -324,6 +329,12 @@ export const useSettingsStore = create((set, get) => ({
     set({ ghostEcho });
     setSetting('ghostEcho', ghostEcho);
     writeLS(LS_KEYS.ghostEcho, ghostEcho);
+  },
+
+  setGhostTrail: (ghostTrail) => {
+    set({ ghostTrail });
+    setSetting('ghostTrail', ghostTrail);
+    writeLS(LS_KEYS.ghostTrail, ghostTrail);
   },
   setLanguage: (language) => {
     const v = SUPPORTED.includes(language) ? language : DEFAULT_LOCALE;

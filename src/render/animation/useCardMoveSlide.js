@@ -31,6 +31,27 @@ const activeTweens = [];
 // orphan ghost elements in the DOM.
 const ghostEls = new Set();
 
+// Module-level registry of trail segment DOM elements created by
+// createGhostTrail(). Cleaned up on unmount like the echo set.
+const trailEls = new Set();
+
+// Per-card registry of the currently-active echo and trail, so that an echo
+// or trail for a card returning to a position where one is still playing
+// is CANCELLED in favor of the new one (avoids two echoes on the same card
+// in the same spot when the user spams tap/undo). Keyed by cardId, each
+// entry stores the elements and tweens to kill if a new echo/trail is
+// spawned for the same card at the same position.
+const activeEchoByCard = new Map(); // cardId -> { el, tween, oldRect: {left,top,width,height} }
+const activeTrailByCard = new Map(); // cardId -> { els: HTMLElement[], tweens: GSAPTween[], oldRect: DOMRect }
+
+function rectsApproxEqual(a, b) {
+  if (!a || !b) return false;
+  return Math.abs(a.left - b.left) < 1
+      && Math.abs(a.top - b.top) < 1
+      && Math.abs(a.width - b.width) < 1
+      && Math.abs(a.height - b.height) < 1;
+}
+
 /**
  * Card-relocation animation for EVERY move except the stock→waste draw. Instead
  * of GSAP Flip (which fails to produce a delta for reparented cards), this
@@ -130,10 +151,30 @@ export function useCardMoveSlide() {
         if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
       } catch {}
       if (type === 'deal') return false;
+      if (type === 'recycle') return false; // explicit: stock→waste recycle never echoes
+      if (type === 'drag') return false;    // explicit: manual drag never echoes
       try {
         const s = useSettingsStore.getState();
         if (!s.cardEffects) return false;
         if (!s.ghostEcho) return false;
+      } catch {}
+      return type === 'move' || type === 'auto' || type === 'undo';
+    })();
+    // Ghost trail — ALWAYS fires on drag (per spec: "Drag should YES trigger trail
+    // always"). Other rules match Ghost Echo: no deal / recycle / draw. drag
+    // passes 'move' as the transition type (via metaType: 'drag' in useDragEngine),
+    // so it falls under the 'move' branch below.
+    const shouldTrail = (() => {
+      try {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
+      } catch {}
+      if (type === 'deal') return false;
+      if (type === 'recycle') return false;
+      // No explicit `if (type === 'drag') return false` here — trail fires on drag.
+      try {
+        const s = useSettingsStore.getState();
+        if (!s.cardEffects) return false;
+        if (!s.ghostTrail) return false;
       } catch {}
       return type === 'move' || type === 'auto' || type === 'undo';
     })();
@@ -153,8 +194,20 @@ export function useCardMoveSlide() {
       for (let i = 0; i < toSpawn; i++) {
         const el = moved[i];
         try {
-          const oldRect = snapshot.get(el.getAttribute('data-flip-id') || el.getAttribute('data-card'));
+          const cardId = el.getAttribute('data-flip-id') || el.getAttribute('data-card');
+          const oldRect = snapshot.get(cardId);
           if (!oldRect) continue;
+          // Per-card dedup: if there's already an echo for this card at the
+          // same position, cancel it before spawning the new one (so the user
+          // never sees two echoes on the same card in the same spot when
+          // spamming tap+undo).
+          const existing = activeEchoByCard.get(cardId);
+          if (existing && rectsApproxEqual(existing.oldRect, oldRect)) {
+            try { existing.tween.kill(); } catch {}
+            try { existing.el.remove(); } catch {}
+            ghostEls.delete(existing.el);
+            activeEchoByCard.delete(cardId);
+          }
           const g = el.cloneNode(true);
           g.style.position = 'fixed';
           g.style.left = `${oldRect.left}px`;
@@ -176,14 +229,112 @@ export function useCardMoveSlide() {
           document.body.appendChild(g);
           ghosts.push(g);
           ghostEls.add(g);
-          gsap.to(g, {
+          const tween = gsap.to(g, {
             opacity: 0,
             scale: MOTION.ghostEcho?.scale ?? 0.96,
             duration: (MOTION.ghostEcho?.duration ?? 0.35) * 0.9,
             ease: MOTION.ghostEcho?.ease ?? 'power2.out',
             delay: cfg.duration * 0.12,
-            onComplete: () => { try { g.remove(); } catch {} ghostEls.delete(g); },
+            onComplete: () => {
+              try { g.remove(); } catch {}
+              ghostEls.delete(g);
+              // Only clear the per-card registry if it still points at us
+              // (a newer echo may have replaced us already).
+              const cur = activeEchoByCard.get(cardId);
+              if (cur && cur.el === g) activeEchoByCard.delete(cardId);
+            },
           });
+          activeEchoByCard.set(cardId, { el: g, tween, oldRect });
+        } catch {}
+      }
+    };
+    // Multi-segment ghost trail. Spawns N clones per moved card at fractions
+    // along the oldRect→newRect path. Newest segment has full alpha and
+    // scale.start; oldest is alpha * 0.2 and scale.end. The new tween spawned
+    // for the same card at the same position cancels the previous one.
+    const createGhostTrail = () => {
+      if (!shouldTrail || moved.length === 0) return;
+      const tcfg = MOTION.ghostTrail;
+      if (!tcfg) return;
+      const segments = tcfg.segments ?? 5;
+      const segmentInterval = tcfg.segmentInterval ?? 0.03;
+      const segmentDuration = tcfg.duration / segments;
+      const alpha = tcfg.alpha ?? 0.25;
+      const scaleStart = tcfg.scale?.start ?? 1.0;
+      const scaleEnd = tcfg.scale?.end ?? 0.94;
+      const maxConcurrent = tcfg.maxConcurrent ?? 24;
+      const z = type === 'drag' ? '1450' : '1400'; // drag trail sits above echoes
+      for (let i = 0; i < moved.length; i++) {
+        const el = moved[i];
+        try {
+          const cardId = el.getAttribute('data-flip-id') || el.getAttribute('data-card');
+          const oldRect = snapshot.get(cardId);
+          if (!oldRect) continue;
+          const newRect = el.getBoundingClientRect();
+          const dx = newRect.left - oldRect.left;
+          const dy = newRect.top - oldRect.top;
+          if (dx === 0 && dy === 0) continue; // same-pile reshuffle — no trail needed
+          // Per-card dedup (same rule as echo).
+          const existing = activeTrailByCard.get(cardId);
+          if (existing && rectsApproxEqual(existing.oldRect, oldRect)) {
+            for (const tw of existing.tweens) { try { tw.kill(); } catch {} }
+            for (const e of existing.els) { try { e.remove(); } catch {} trailEls.delete(e); }
+            activeTrailByCard.delete(cardId);
+          }
+          const els = [];
+          const tweens = [];
+          for (let s = 0; s < segments; s++) {
+            if (trailEls.size >= maxConcurrent) break;
+            // fraction 1/segments..segments/segments — oldest first.
+            const fraction = (s + 1) / segments;
+            const left = oldRect.left + dx * fraction;
+            const top = oldRect.top + dy * fraction;
+            // Newest segment (fraction→1) has the highest opacity; oldest has
+            // alpha * 0.2 (matches "almost 100% transparency at the tail").
+            const opacity = alpha * (1 - fraction * 0.8);
+            const scale = scaleStart - (scaleStart - scaleEnd) * fraction;
+            const seg = el.cloneNode(true);
+            seg.style.position = 'fixed';
+            seg.style.left = `${left}px`;
+            seg.style.top = `${top}px`;
+            seg.style.width = `${oldRect.width}px`;
+            seg.style.height = `${oldRect.height}px`;
+            seg.style.margin = '0';
+            seg.style.pointerEvents = 'none';
+            seg.style.zIndex = z;
+            seg.style.opacity = String(opacity);
+            seg.style.transform = 'none';
+            seg.style.removeProperty('translate');
+            seg.removeAttribute('data-card');
+            seg.removeAttribute('data-flip-id');
+            document.body.appendChild(seg);
+            els.push(seg);
+            trailEls.add(seg);
+            const tw = gsap.to(seg, {
+              opacity: 0,
+              scale: scale * 0.92,
+              duration: segmentDuration,
+              ease: tcfg.ease ?? 'power2.out',
+              delay: s * segmentInterval,
+              onComplete: () => {
+                try { seg.remove(); } catch {}
+                trailEls.delete(seg);
+                // Only clear the per-card registry if all our segments are done
+                // AND the entry still points at us.
+                const cur = activeTrailByCard.get(cardId);
+                if (cur && cur.els === els) {
+                  const stillOurs = cur.tweens.includes(tw);
+                  if (!stillOurs || cur.tweens.every((t) => t.paused() || t.progress() >= 1)) {
+                    activeTrailByCard.delete(cardId);
+                  }
+                }
+              },
+            });
+            tweens.push(tw);
+          }
+          if (els.length) {
+            activeTrailByCard.set(cardId, { els, tweens, oldRect });
+          }
         } catch {}
       }
     };
@@ -208,6 +359,10 @@ export function useCardMoveSlide() {
     } else if (shouldGhost) {
       createGhosts();
     }
+    // Trail always runs after echo (if echo is enabled) so they don't fight
+    // for the same source — the echo sits at the origin, the trail leads
+    // toward the new position.
+    if (shouldTrail) createGhostTrail();
     tl.to(moved, {
       x: 0,
       y: 0,
@@ -241,6 +396,10 @@ export function useCardMoveSlide() {
       activeTweens.length = 0;
       ghostEls.forEach((g) => { try { g.remove(); } catch {} });
       ghostEls.clear();
+      trailEls.forEach((g) => { try { g.remove(); } catch {} });
+      trailEls.clear();
+      activeEchoByCard.clear();
+      activeTrailByCard.clear();
       useUiStore.getState().clearAllTransitions();
     };
   }, []);

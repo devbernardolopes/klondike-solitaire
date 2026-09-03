@@ -154,6 +154,15 @@ export const MOTION = {
   // maxConcurrent to avoid DOM flood during overlap auto.
   ghostEcho: { duration: 0.45, ease: 'power1.out', alpha: 0.18, scale: 0.96, maxConcurrent: 8 },
 
+  // Multi-segment ghost trail that follows the card along its path. Spawns N
+  // clone nodes per moved card, each parked at a fraction along the oldRect
+  // → newRect segment. Newer segments (closer to the card) have higher opacity
+  // and a larger scale; older segments (closer to the origin) fade out first.
+  // alpha controls the NEWEST segment's opacity; the oldest is alpha * 0.2.
+  // scale.start is the newest, scale.end is the oldest. segmentInterval is the
+  // delay (s) between successive spawns so they cascade in over time.
+  ghostTrail: { duration: 0.45, ease: 'power1.out', alpha: 0.25, scale: { start: 1.0, end: 0.94 }, segments: 5, segmentInterval: 0.03, maxConcurrent: 24 },
+
   // Wood frame entry (future GSAP reveal; currently CSS texture).
   boardFrame: { duration: 0.4, ease: 'power2.out' },
 
