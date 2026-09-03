@@ -8,7 +8,7 @@ import '../render/themes/felts.css';
 import { applyFeltTexture } from '../render/themes/feltTextures.js';
 // Side-effect imports register the deck renderers with the registry.
 import '../render/deck/ProceduralDeckRenderer.js';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Toolbar from './Toolbar.jsx';
 import Board from './Board.jsx';
 import WinModal from './WinModal.jsx';
@@ -31,6 +31,8 @@ import { initAchievementToastBridge } from '../toast/achievementToastBridge.js';
 import ToastHost from './ToastHost.jsx';
 import SpecialEventsModal from './SpecialEventsModal.jsx';
 import EventDetailModal from './EventDetailModal.jsx';
+import { useSound } from '../hooks/useSound.js';
+import { Z } from '../utils/modalStack.js';
 import {
   ensureDeviceId,
   restoreSession,
@@ -169,6 +171,82 @@ export default function App() {
     return () => document.removeEventListener('pointerdown', onPointerDown, true);
   }, []);
 
+  // --- Confirm modals (no-moves / game-over / discard-current-game) ---
+  // These three ConfirmModals used to live inside Toolbar.jsx, which sits
+  // inside a wrapper div with `position: relative; zIndex: 1` in App.jsx
+  // (line 202). That wrapper creates a CSS stacking context, so the modals'
+  // inline zIndex: Z.GRANDCHILD (3200) could not outpaint the
+  // SpecialEventsModal / EventDetailModal mounted at the React root at
+  // zIndex: 3100 — the stacking context trap. Moving the modals here, as
+  // siblings of the other root-level modals, puts them in the same stacking
+  // context, so their zIndex values actually compare.
+
+  const noMovesDialogOpen = useUiStore((s) => s.noMovesDialogOpen);
+  const setNoMovesDialogOpen = useUiStore((s) => s.setNoMovesDialogOpen);
+  const gameOverDialogOpen = useUiStore((s) => s.gameOverDialogOpen);
+  const setGameOverDialogOpen = useUiStore((s) => s.setGameOverDialogOpen);
+  const confirmNewGameDialogOpen = useUiStore((s) => s.confirmNewGameDialogOpen);
+  const setConfirmNewGameDialogOpen = useUiStore((s) => s.setConfirmNewGameDialogOpen);
+  const setDailyChallengeDialogOpen = useUiStore((s) => s.setDailyChallengeDialogOpen);
+  const setDailyChallengeOrigin = useUiStore((s) => s.setDailyChallengeOrigin);
+  const overReason = useStatsStore((s) => s.overReason);
+  const isOver = useStatsStore((s) => s.isOver);
+  const lastNewGameMode = useUiStore((s) => s.lastNewGameMode);
+  const currentGameKind = useUiStore((s) => s.currentGameKind);
+  const dealNewGame = useGameStore((s) => s.dealNewGame);
+  const replayGame = useGameStore((s) => s.replayGame);
+  const undo = useGameStore((s) => s.undo);
+  const { play } = useSound();
+
+  // When the session hits a hard limit (time or moves), useStatsStore.freeze()
+  // sets `isOver: true`; surface it as a confirm dialog here at the root.
+  useEffect(() => {
+    if (isOver) setGameOverDialogOpen(true);
+  }, [isOver, setGameOverDialogOpen]);
+
+  // Stable action identities for the three confirm modals. The hint-banner
+  // pointerdown listener above re-fires every interaction; if these handlers
+  // were inline arrows their identity would change on every render.
+  const closeNoMoves = useCallback(() => setNoMovesDialogOpen(false), [setNoMovesDialogOpen]);
+  const closeGameOver = useCallback(() => setGameOverDialogOpen(false), [setGameOverDialogOpen]);
+  const onNoMovesConfirm = useCallback(() => {
+    setNoMovesDialogOpen(false);
+    dealNewGame(lastNewGameMode);
+  }, [setNoMovesDialogOpen, dealNewGame, lastNewGameMode]);
+  const onNoMovesCancel = useCallback(() => {
+    setNoMovesDialogOpen(false);
+    undo();
+  }, [setNoMovesDialogOpen, undo]);
+  const onNoMovesReplay = useCallback(() => {
+    setNoMovesDialogOpen(false);
+    replayGame();
+    play('deal');
+  }, [setNoMovesDialogOpen, replayGame, play]);
+  // "Keep Going" just closes the dialog without undoing, leaving the board so
+  // the user can recycle the stock (or make another move) if they choose to.
+  const onNoMovesKeepGoing = useCallback(
+    () => setNoMovesDialogOpen(false),
+    [setNoMovesDialogOpen],
+  );
+  // When a daily challenge reaches a dead end, the primary button returns to the
+  // Daily Challenge calendar WITHOUT advancing the day (advancing only happens
+  // on a win, via the Win modal).
+  const onNoMovesReturnDaily = useCallback(() => {
+    setNoMovesDialogOpen(false);
+    useUiStore.getState().setDailyChallengeOrigin('newgame');
+    useUiStore.getState().setDailyChallengeDialogOpen(true);
+  }, [setNoMovesDialogOpen]);
+  const onConfirmNewGame = useCallback(() => {
+    setConfirmNewGameDialogOpen(false);
+    const action = useUiStore.getState().pendingStartDeal;
+    useUiStore.getState().setPendingStartDeal(null);
+    if (action) action();
+  }, [setConfirmNewGameDialogOpen]);
+  const onCancelNewGame = useCallback(() => {
+    useUiStore.getState().setPendingStartDeal(null);
+    setConfirmNewGameDialogOpen(false);
+  }, [setConfirmNewGameDialogOpen]);
+
   return (
     <div
       className={`theme-${theme} ui-${interfaceTheme}`}
@@ -228,6 +306,47 @@ export default function App() {
         cancelText={t('mainMenu.account.switch.cancel')}
         onConfirm={() => useAuthStore.getState().resolveLinkConflict(true)}
         onCancel={() => useAuthStore.getState().resolveLinkConflict(false)}
+      />
+      <ConfirmModal
+        open={noMovesDialogOpen}
+        dismissable={false}
+        title={t('toolbar.noMoves.title')}
+        message={t('toolbar.noMoves.message')}
+        confirmText={currentGameKind === 'daily' ? t('toolbar.noMoves.dailyConfirm') : t('toolbar.noMoves.confirm')}
+        cancelText={t('toolbar.noMoves.cancel')}
+        tertiaryText={t('toolbar.noMoves.tertiary')}
+        onTertiary={onNoMovesReplay}
+        quaternaryText={t('toolbar.noMoves.quaternary')}
+        onQuaternary={onNoMovesKeepGoing}
+        onConfirm={currentGameKind === 'daily' ? onNoMovesReturnDaily : onNoMovesConfirm}
+        onCancel={onNoMovesCancel}
+        onCloseIcon={onNoMovesKeepGoing}
+      />
+      <ConfirmModal
+        open={gameOverDialogOpen}
+        title={t('toolbar.gameOver.title')}
+        message={
+          overReason === 'moves'
+            ? t('toolbar.gameOver.moves')
+            : t('toolbar.gameOver.time')
+        }
+        confirmText={t('common.ok')}
+        hideCancel
+        dismissable={false}
+        onConfirm={closeGameOver}
+        onCancel={closeGameOver}
+        onCloseIcon={closeGameOver}
+      />
+      <ConfirmModal
+        open={confirmNewGameDialogOpen}
+        title={t('toolbar.confirmNewGame.title')}
+        zIndex={Z.GRANDCHILD}
+        z={Z.GRANDCHILD}
+        message={t('toolbar.confirmNewGame.message')}
+        confirmText={t('confirm.confirm')}
+        cancelText={t('confirm.cancel')}
+        onConfirm={onConfirmNewGame}
+        onCancel={onCancelNewGame}
       />
     </div>
   );

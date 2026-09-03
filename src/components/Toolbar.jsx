@@ -11,13 +11,11 @@ import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { useSound } from '../hooks/useSound.js';
 import { isWon } from '../core/winDetection.js';
-import ConfirmModal from './ConfirmModal.jsx';
 import NewGameModal from './NewGameModal.jsx';
 import SettingsModal from './SettingsModal.jsx';
 import SeedInputModal from './SeedInputModal.jsx';
 import DailyChallengeModal from './DailyChallengeModal.jsx';
 import { formatTimeClock } from '../utils/formatTime.js';
-import { Z } from '../utils/modalStack.js';
 
 const UNDO_HOLD_DELAY_MS = 400;
 const UNDO_REPEAT_INTERVAL_MS = 200;
@@ -109,19 +107,15 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const won = useGameStore((s) => isWon(s.state));
   const isOver = useStatsStore((s) => s.isOver);
   const startTime = useStatsStore((s) => s.startTime);
-  const overReason = useStatsStore((s) => s.overReason);
   const canReplay = startTime !== null;
   const { play } = useSound();
 
   const newGameDialogOpen = useUiStore((s) => s.newGameDialogOpen);
   const setNewGameDialogOpen = useUiStore((s) => s.setNewGameDialogOpen);
-  const lastNewGameMode = useUiStore((s) => s.lastNewGameMode);
   const currentGameKind = useUiStore((s) => s.currentGameKind);
   const currentDailyDate = useUiStore((s) => s.currentDailyDate);
   const setDailyChallengeDialogOpen = useUiStore((s) => s.setDailyChallengeDialogOpen);
   const setDailyChallengeOrigin = useUiStore((s) => s.setDailyChallengeOrigin);
-  const noMovesDialogOpen = useUiStore((s) => s.noMovesDialogOpen);
-  const setNoMovesDialogOpen = useUiStore((s) => s.setNoMovesDialogOpen);
   const settingsDialogOpen = useUiStore((s) => s.settingsDialogOpen);
   const setSettingsDialogOpen = useUiStore((s) => s.setSettingsDialogOpen);
   const setHelpDialogOpen = useUiStore((s) => s.setHelpDialogOpen);
@@ -130,10 +124,6 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const setAnnounce = useUiStore((s) => s.setAnnounce);
   const coins = useAuthStore((s) => s.coins);
   const profileReady = useAuthStore((s) => s.profileReady);
-  const gameOverDialogOpen = useUiStore((s) => s.gameOverDialogOpen);
-  const setGameOverDialogOpen = useUiStore((s) => s.setGameOverDialogOpen);
-  const confirmNewGameDialogOpen = useUiStore((s) => s.confirmNewGameDialogOpen);
-  const setConfirmNewGameDialogOpen = useUiStore((s) => s.setConfirmNewGameDialogOpen);
   const anyModalOpen = useUiStore(isAnyModalOpen);
   const newGameNeedsAttention = !anyModalOpen && !autoCompleting && (won || isOver);
 
@@ -215,9 +205,6 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
       clearUndoHold();
     };
   }, [clearUndoHold]);
-  useEffect(() => {
-    if (isOver) setGameOverDialogOpen(true);
-  }, [isOver, setGameOverDialogOpen]);
 
   // Stable modal callback identities. The live clock ticks re-render Toolbar
   // every 250ms while a game is in progress; if these handlers were inline
@@ -309,41 +296,6 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
       setSeedInputDialogOpen(true);
     }
   }, [setSeedInputDialogOpen]);
-  const closeNoMoves = useCallback(() => setNoMovesDialogOpen(false), [setNoMovesDialogOpen]);
-  const onNoMovesConfirm = useCallback(() => {
-    setNoMovesDialogOpen(false);
-    dealNewGame(lastNewGameMode);
-  }, [setNoMovesDialogOpen, dealNewGame, lastNewGameMode]);
-  const onNoMovesCancel = useCallback(() => {
-    setNoMovesDialogOpen(false);
-    undo();
-  }, [setNoMovesDialogOpen, undo]);
-  const onNoMovesReplay = useCallback(() => {
-    setNoMovesDialogOpen(false);
-    replayGame();
-    play('deal');
-  }, [setNoMovesDialogOpen, replayGame, play]);
-  // "Keep Going" just closes the dialog without undoing, leaving the board so
-  // the user can recycle the stock (or make another move) if they choose to.
-  const onNoMovesKeepGoing = useCallback(
-    () => setNoMovesDialogOpen(false),
-    [setNoMovesDialogOpen],
-  );
-  // When a daily challenge reaches a dead end, the primary button returns to the
-  // Daily Challenge calendar WITHOUT advancing the day (advancing only happens
-  // on a win, via the Win modal).
-  const onNoMovesReturnDaily = useCallback(() => {
-    setNoMovesDialogOpen(false);
-    useUiStore.getState().setDailyChallengeOrigin('newgame');
-    useUiStore.getState().setDailyChallengeDialogOpen(true);
-  }, [setNoMovesDialogOpen]);
-  const closeGameOver = useCallback(() => setGameOverDialogOpen(false), [setGameOverDialogOpen]);
-  const onConfirmNewGame = useCallback(() => {
-    setConfirmNewGameDialogOpen(false);
-    const action = useUiStore.getState().pendingStartDeal;
-    useUiStore.getState().setPendingStartDeal(null);
-    if (action) action();
-  }, [setConfirmNewGameDialogOpen]);
 
   const btn = {
     padding: '6px 10px',
@@ -572,53 +524,6 @@ function ElapsedClock() {
         particles={particles}
         onParticlesChange={onParticlesChange}
         bootstrapReady={bootstrapReady}
-      />
-
-       <ConfirmModal
-        open={noMovesDialogOpen}
-        dismissable={false}
-        title={t('toolbar.noMoves.title')}
-        message={t('toolbar.noMoves.message')}
-        confirmText={currentGameKind === 'daily' ? t('toolbar.noMoves.dailyConfirm') : t('toolbar.noMoves.confirm')}
-        cancelText={t('toolbar.noMoves.cancel')}
-        tertiaryText={t('toolbar.noMoves.tertiary')}
-        onTertiary={onNoMovesReplay}
-        quaternaryText={t('toolbar.noMoves.quaternary')}
-        onQuaternary={onNoMovesKeepGoing}
-        onConfirm={currentGameKind === 'daily' ? onNoMovesReturnDaily : onNoMovesConfirm}
-        onCancel={onNoMovesCancel}
-        onCloseIcon={onNoMovesKeepGoing}
-      />
-
-       <ConfirmModal
-        open={gameOverDialogOpen}
-        title={t('toolbar.gameOver.title')}
-        message={
-          overReason === 'moves'
-            ? t('toolbar.gameOver.moves')
-            : t('toolbar.gameOver.time')
-        }
-        confirmText={t('common.ok')}
-        hideCancel
-        dismissable={false}
-        onConfirm={closeGameOver}
-        onCancel={closeGameOver}
-        onCloseIcon={closeGameOver}
-      />
-
-      <ConfirmModal
-        open={confirmNewGameDialogOpen}
-        title={t('toolbar.confirmNewGame.title')}
-        zIndex={Z.GRANDCHILD}
-        z={Z.GRANDCHILD}
-        message={t('toolbar.confirmNewGame.message')}
-        confirmText={t('confirm.confirm')}
-        cancelText={t('confirm.cancel')}
-        onConfirm={onConfirmNewGame}
-        onCancel={() => {
-          useUiStore.getState().setPendingStartDeal(null);
-          setConfirmNewGameDialogOpen(false);
-        }}
       />
     </>
   );
