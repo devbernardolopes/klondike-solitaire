@@ -72,7 +72,7 @@ export const MOTION = {
   // diagonal; a multi-card run lands as RIGID BLOCK (stagger 0). Do not use
   // back/bounce/elastic here — stagger+overlap would make multiple cards bounce
   // on top of each other. Keep ease decelerating (power*.out / sine.out).
-  move:     { duration: 0.16, ease: 'power4.out', stagger: 0.00 },
+  move:     { duration: 0.20, ease: 'power4.out', stagger: 0.00 },
 
   // Auto-complete relocation (greedy foundation peel + solver win sequence).
   // Independent of `move` so it can be tuned snappier without touching manual
@@ -127,7 +127,7 @@ export const MOTION = {
     count: 10,
     radius: 55,
     size: 18,
-    duration: 0.45,
+    duration: 1.0,
     ease: 'power2.out',
     spin: 70,
   },
@@ -152,7 +152,7 @@ export const MOTION = {
   // Ghost echo left at the source position on every move/auto/undo. A single
   // cloned node parked at oldRect fades and shrinks in place. Capped to
   // maxConcurrent to avoid DOM flood during overlap auto.
-  ghostEcho: { duration: 0.45, ease: 'power1.out', alpha: 0.18, scale: 0.96, maxConcurrent: 8 },
+  ghostEcho: { duration: 0.50, ease: 'power1.out', alpha: 1.0, scale: 0.96, maxConcurrent: 8 },
 
   // Multi-segment ghost trail that follows the card along its path. Spawns N
   // clone nodes per moved card, each parked at a fraction along the oldRect
