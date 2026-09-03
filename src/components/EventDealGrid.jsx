@@ -18,14 +18,22 @@
 // 3px accent outline), and the EventDetailModal's footer "Play" button is
 // what actually starts the game. The selection is persisted in
 // db/eventSelection.js and survives modal close/reopen and page navigation.
+//
+// `locked: true` flips every cell into a non-interactive preview: no number,
+// no number click handler, no selectable, just a centered Lock icon overlay
+// so the player can see the upcoming grid layout (and any already-solved
+// image slices) before unlocking. The grid container's layout, aspect ratio,
+// gap, and border are unchanged from the unlocked branch so the carousel
+// doesn't reflow when swiping between locked and unlocked pages.
 
+import { Lock } from 'lucide-react';
 import { eventImageUrl, onEventImageError } from '../utils/eventImage.js';
 
 // Accent color for the selected-tile outline. Falls back to the modal's
 // foreground color so it stays visible against any theme.
 const SELECTED_OUTLINE = 'var(--ui-accent, var(--ui-modal-fg))';
 
-export default function EventDealGrid({ page, onSelectDeal, selectedDealId, disabled }) {
+export default function EventDealGrid({ page, onSelectDeal, selectedDealId, disabled, locked }) {
   const { gridSize, imagePath, deals } = page;
   const imageUrl = eventImageUrl(imagePath);
 
@@ -51,6 +59,30 @@ export default function EventDealGrid({ page, onSelectDeal, selectedDealId, disa
         const col = index % gridSize;
         const posX = gridSize === 1 ? 0 : (col / (gridSize - 1)) * 100;
         const posY = gridSize === 1 ? 0 : (row / (gridSize - 1)) * 100;
+
+        if (locked) {
+          return (
+            <div
+              key={deal.id}
+              aria-hidden="true"
+              style={{
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'var(--ui-modal-btn-bg)',
+                backgroundImage: deal.solved ? `url(${imageUrl})` : undefined,
+                backgroundSize: deal.solved ? `${gridSize * 100}% ${gridSize * 100}%` : undefined,
+                backgroundPosition: deal.solved ? `${posX}% ${posY}%` : undefined,
+                opacity: 0.6,
+                pointerEvents: 'none',
+              }}
+            >
+              <Lock size={28} style={{ color: 'var(--ui-modal-fg)', opacity: 0.85 }} />
+            </div>
+          );
+        }
+
         const isSelected = deal.id === selectedDealId;
 
         if (deal.solved) {

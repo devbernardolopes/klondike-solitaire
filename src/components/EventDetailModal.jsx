@@ -14,7 +14,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronLeft, ChevronRight, Lock } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
 import { useModalEscape } from '../hooks/useModalEscape.js';
@@ -355,33 +355,28 @@ export default function EventDetailModal() {
 }
 
 function PageContent({ page, onSelectDeal, selectedDealId }) {
-  if (!page.unlocked) {
+  if (page.deals.length === 0) {
     return (
-      <div style={placeholderStyle(true)}>
-        <Lock size={28} style={{ opacity: 0.5 }} />
-        <div style={{ fontWeight: 700, marginTop: 10 }}>Page {page.pageNumber} locked</div>
-        <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>Complete the previous page to unlock</div>
+      <div style={placeholderStyle(false)}>
+        <div style={{ opacity: 0.7 }}>No deals authored for this page yet.</div>
       </div>
     );
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-      {page.deals.length === 0 ? (
-        <div style={placeholderStyle(false)}>
-          <div style={{ opacity: 0.7 }}>No deals authored for this page yet.</div>
-        </div>
-      ) : (
-        <EventDealGrid
-          page={page}
-          onSelectDeal={(deal) => onSelectDeal(deal, page)}
-          selectedDealId={selectedDealId}
-        />
-      )}
+      <EventDealGrid
+        page={page}
+        locked={!page.unlocked}
+        onSelectDeal={(deal) => onSelectDeal(deal, page)}
+        selectedDealId={selectedDealId}
+      />
 
-      <div style={{ fontSize: 12, fontWeight: 700, color: page.completed ? '#2e7d32' : undefined, opacity: page.completed ? 1 : 0.75 }}>
-        {page.completed ? 'Completed' : page.coinReward > 0 ? `+${page.coinReward} coins on completion` : 'In progress'}
-      </div>
+      {page.unlocked && (
+        <div style={{ fontSize: 12, fontWeight: 700, color: page.completed ? '#2e7d32' : undefined, opacity: page.completed ? 1 : 0.75 }}>
+          {page.completed ? 'Completed' : page.coinReward > 0 ? `+${page.coinReward} coins on completion` : 'In progress'}
+        </div>
+      )}
     </div>
   );
 }
