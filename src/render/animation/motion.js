@@ -162,7 +162,7 @@ export const MOTION = {
   // Ghost echo left at the source position on every move/auto/undo. A single
   // cloned node parked at oldRect fades and shrinks in place. Capped to
   // maxConcurrent to avoid DOM flood during overlap auto.
-  ghostEcho: { duration: 0.50, ease: 'power1.out', alpha: 1.0, scale: 0.96, maxConcurrent: 8 },
+  ghostEcho: { duration: 0.25, ease: 'power2.out', alpha: 0.50, scale: 0.96, maxConcurrent: 8 },
 
   // Multi-segment ghost trail that follows the card along its path. Spawns N
   // clone nodes per moved card, each parked at a fraction along the oldRect
