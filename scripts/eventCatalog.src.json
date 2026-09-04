@@ -133,5 +133,19 @@
         "coinReward": 50
       }
     ]
+  },
+  {
+    "id": "memorial-day-2026",
+    "title": "Memorial Day 2026",
+    "startsAt": "2026-05-25T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "memorial-day-2026/page1.jpg",
+        "coinReward": 50
+      }
+    ]
   }
 ]
