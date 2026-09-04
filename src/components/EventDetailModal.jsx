@@ -37,10 +37,6 @@ export default function EventDetailModal() {
 
   const open = Boolean(eventId);
   const close = () => setEventDetailOpen(null);
-  const backToList = () => {
-    setEventDetailOpen(null);
-    setSpecialEventsOpen(true);
-  };
 
   const backdrop = useModalBackdrop(close);
   useModalEscape({ open, onClose: close, id: 'event-detail', z: Z.CHILD });
@@ -354,7 +350,6 @@ export default function EventDetailModal() {
   return (
     <div role="dialog" aria-modal="true" aria-label={detail?.title || 'Event'} {...backdrop} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3100, padding: 16 }}>
       <div ref={panelRef} tabIndex={-1} onKeyDown={onKeyDown} style={panel}>
-        <button type="button" onClick={backToList} style={{ position: 'absolute', top: 20, left: 22, background: 'none', border: 'none', color: 'var(--ui-modal-fg)', opacity: 0.7, cursor: 'pointer', fontSize: 13, padding: 0 }}>← Events</button>
         <ModalCloseButton onClick={close} />
         <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 800, textAlign: 'center', paddingTop: 2 }}>{detail?.title || (loaded ? 'Event' : '')}</h2>
         {detail?.description && (
@@ -466,9 +461,9 @@ function PageContent({ page, onSelectDeal, selectedDealId }) {
         selectedDealId={selectedDealId}
       />
 
-      {page.unlocked && (
-        <div style={{ fontSize: 12, fontWeight: 700, color: page.completed ? '#2e7d32' : undefined, opacity: page.completed ? 1 : 0.75 }}>
-          {page.completed ? 'Completed' : page.coinReward > 0 ? `+${page.coinReward} coins on completion` : 'In progress'}
+      {page.unlocked && !page.completed && (
+        <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.75 }}>
+          {page.coinReward > 0 ? `+${page.coinReward} coins on completion` : 'In progress'}
         </div>
       )}
     </div>
