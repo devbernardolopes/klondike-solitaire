@@ -80,7 +80,11 @@
     "account.switch.title": "Google account already linked",
     "account.switch.message": "This Google account is already linked to a different player profile. Continuing will switch this device to that profile's data — this device's current progress (not yet linked to any account) will not be kept.",
     "account.switch.confirm": "Switch to that profile",
-    "account.switch.cancel": "Stay on this device"
+    "account.switch.cancel": "Stay on this device",
+    "sync.ok": "Sync: up to date",
+    "sync.pending": "Sync: {{count}} pending",
+    "sync.failed": "Sync failed: {{error}}",
+    "sync.deviceId": "Device sync ID: {{id}}"
   },
   "toolbar": {
     "time": "Time",

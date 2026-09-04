@@ -35,6 +35,35 @@ export default function SpecialEventsModal() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    if (!open || eventDetailId != null) return;
+    const refresh = () => {
+      fetchSpecialEvents()
+        .then((fresh) => {
+          setEvents((prev) => {
+            const freshIds = fresh.map((e) => e.id).join('|');
+            const prevIds = prev.map((e) => e.id).join('|');
+            const differ = freshIds !== prevIds || fresh.some((f, i) => {
+              const c = prev[i];
+              return !c || f.totalPages !== c.totalPages || f.completedPages !== c.completedPages || f.fullyCompleted !== c.fullyCompleted;
+            });
+            return differ ? fresh.map(translateSpecialEvent) : prev;
+          });
+        })
+        .catch(() => {});
+    };
+    const onFlushed = () => refresh();
+    const onVisible = () => {
+      if (!document.hidden) refresh();
+    };
+    window.addEventListener('sync-flushed', onFlushed);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('sync-flushed', onFlushed);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [open, eventDetailId]);
+
+  useEffect(() => {
     if (!open) return;
     if (eventDetailId != null) return;
     const cached = getCachedEventsSummarySync();

@@ -22,8 +22,8 @@ import { Z } from '../utils/modalStack.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
-import { fetchEventDetail, getCachedEventDetailSync, resolveInitialPageIndex, detailsDiffer, setCachedEventDetailSync } from '../repo/specialEventsRepository.js';
-import { applyOptimisticSolve, cloneDetail, findNextUnsolvedDeal } from '../repo/specialEventsProgress.js';
+import { fetchEventDetail, getCachedEventDetailSync, resolveInitialPageIndex, detailsDiffer } from '../repo/specialEventsRepository.js';
+import { findNextUnsolvedDeal } from '../repo/specialEventsProgress.js';
 import { loadEventSelectionSync, saveEventSelection, loadLastViewedPageSync, saveLastViewedPage } from '../db/eventSelection.js';
 import EventDealGrid from './EventDealGrid.jsx';
 
@@ -108,6 +108,29 @@ export default function EventDetailModal() {
 
   useEffect(() => {
     if (!open || !eventId) return;
+    const refresh = () => {
+      const optimisticId = useUiStore.getState().winSummary?.eventDealId ?? null;
+      fetchEventDetail(eventId, { optimisticDealIds: optimisticId != null ? [optimisticId] : [] })
+        .then((fresh) => {
+          if (!fresh) return;
+          setDetail((prev) => (prev && !detailsDiffer(prev, fresh) ? prev : fresh));
+        })
+        .catch(() => {});
+    };
+    const onFlushed = () => refresh();
+    const onVisible = () => {
+      if (!document.hidden) refresh();
+    };
+    window.addEventListener('sync-flushed', onFlushed);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('sync-flushed', onFlushed);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [open, eventId]);
+
+  useEffect(() => {
+    if (!open || !eventId) return;
     const cached = getCachedEventDetailSync(eventId);
     setSelectedDealIdByPage(loadEventSelectionSync(eventId) || {});
     if (cached) {
@@ -135,23 +158,12 @@ export default function EventDetailModal() {
         return next;
       });
       {
-        const optimisticId =
-          useUiStore.getState().winSummary?.eventDealId ??
-          useUiStore.getState().currentEventDealId ??
-          useGameStore.getState().replaySpec?.eventDealId ??
-          null;
+        const optimisticId = useUiStore.getState().winSummary?.eventDealId ?? null;
         const optimisticDealIds = optimisticId != null ? [optimisticId] : [];
         fetchEventDetail(eventId, { optimisticDealIds })
         .then((fresh) => {
           if (!fresh) return;
-          let patched = fresh;
-          if (fresh && fresh.pages && optimisticId != null) {
-            patched = cloneDetail(fresh);
-            applyOptimisticSolve(patched, optimisticId);
-          }
-          try {
-            setCachedEventDetailSync(patched);
-          } catch {}
+          const patched = fresh;
           if (!detailsDiffer(cached, patched)) return;
           setDetail(patched);
           setSelectedDealIdByPage((prev) => {
@@ -180,22 +192,11 @@ export default function EventDetailModal() {
     setLoaded(false);
     setDetail(null);
     {
-      const optimisticId =
-        useUiStore.getState().winSummary?.eventDealId ??
-        useUiStore.getState().currentEventDealId ??
-        useGameStore.getState().replaySpec?.eventDealId ??
-        null;
+      const optimisticId = useUiStore.getState().winSummary?.eventDealId ?? null;
       const optimisticDealIds = optimisticId != null ? [optimisticId] : [];
       fetchEventDetail(eventId, { optimisticDealIds })
       .then((d) => {
-        let patched = d;
-        if (d && d.pages && optimisticId != null) {
-          patched = cloneDetail(d);
-          applyOptimisticSolve(patched, optimisticId);
-        }
-        try {
-          if (patched) setCachedEventDetailSync(patched);
-        } catch {}
+        const patched = d;
         setDetail(patched);
         if (patched && patched.pages.length > 0) {
           const lastPage = loadLastViewedPageSync(eventId);

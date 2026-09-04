@@ -49,20 +49,30 @@ export async function flush() {
     if (!userId) return; // no session yet (offline/new install) — retry on next trigger
 
     const pending = await listQueuedOps();
+    let flushedCount = 0;
     for (const op of pending) {
       const handler = operations[op.type];
       if (!handler) {
         // Unknown type (e.g. from an older build) — drop rather than block forever.
         await removeQueuedOp(op.id);
+        flushedCount++;
         continue;
       }
       try {
         await handler(op.payload);
         await removeQueuedOp(op.id);
+        flushedCount++;
       } catch (err) {
         await markOpFailed(op.id, String(err?.message ?? err));
         break;
       }
+    }
+    if (flushedCount > 0) {
+      try {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('sync-flushed', { detail: { count: flushedCount } }));
+        }
+      } catch {}
     }
   } finally {
     flushing = false;

@@ -3,6 +3,7 @@ import { db } from '../db/schema.js';
 import { saveCatalogDetail, getCatalogDetail, deleteCatalogDetail, deleteImageBlob } from '../db/eventCache.js';
 import { ensureImageCached, warmImageCache } from '../utils/eventImageCache.js';
 import { collectSolvedIds, mergeSolvedIds } from './specialEventsProgress.js';
+import { listQueuedOps } from '../db/syncQueue.js';
 
 const catalogMemory = new Map();
 
@@ -333,9 +334,16 @@ export async function fetchEventDetail(eventId, opts) {
           for (const id of collectSolvedIds(prev)) knownSolved.add(id);
         }
         try {
-          const dexieRow = await getCatalogDetail(detail.id);
-          if (dexieRow?.detail) {
-            for (const id of collectSolvedIds(dexieRow.detail)) knownSolved.add(id);
+          const dexieDetail = await getCatalogDetail(detail.id);
+          if (dexieDetail) {
+            for (const id of collectSolvedIds(dexieDetail)) knownSolved.add(id);
+          }
+        } catch {}
+        try {
+          const queued = await listQueuedOps();
+          for (const op of queued) {
+            const dealId = op?.type === 'submit_game_result' ? op?.payload?.p_event_deal_id : null;
+            if (dealId != null) knownSolved.add(dealId);
           }
         } catch {}
         mergeSolvedIds(detail, knownSolved);

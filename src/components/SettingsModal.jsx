@@ -18,6 +18,7 @@ import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
 import { useSeedStore } from '../hooks/useSeedStore.js';
 import ToggleSwitch from './ToggleSwitch.jsx';
 import ModalCloseButton from './ModalCloseButton.jsx';
+import SyncStatus from './SyncStatus.jsx';
 import HelpModal from './HelpModal.jsx';
 import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
@@ -527,6 +528,7 @@ export default function SettingsModal({
                 {t('mainMenu.signOut')}
               </button>
             )}
+            <SyncStatus />
           </div>
         </div>
       </div>
