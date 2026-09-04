@@ -161,5 +161,19 @@
         "coinReward": 50
       }
     ]
+  },
+  {
+    "id": "thanksgiving-day-2024",
+    "title": "Thanksgiving Day 2024",
+    "startsAt": "2024-11-28T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "thanksgiving-day-2024/page1.jpg",
+        "coinReward": 50
+      }
+    ]
   }
 ]
