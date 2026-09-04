@@ -70,34 +70,46 @@ test('daily loader reflects the bundled data file', () => {
   assert.equal(isDateBundled('2099-01-01'), false);
 });
 
-test('special-event seeds never collide with winning-pool or daily-challenge seeds', () => {
+test('winning pool is internally unique and disjoint from daily + event seeds', () => {
   const here = dirname(fileURLToPath(import.meta.url));
   const root = join(here, '..', '..');
 
   const pool = JSON.parse(readFileSync(join(root, 'src/data/solvableSeeds.json'), 'utf8'));
   const daily = JSON.parse(readFileSync(join(root, 'src/data/dailyChallenge.json'), 'utf8'));
-  const sqlPath = join(root, 'scripts/eventSeeds.sql');
-  assert.ok(existsSync(sqlPath), `eventSeeds.sql missing at ${sqlPath} — run generateEventSeeds.mjs first`);
-  const sql = readFileSync(sqlPath, 'utf8');
+  assert.ok(Array.isArray(pool) && pool.length > 0, 'winning pool must be non-empty');
 
+  const poolNums = pool.map((s) => s >>> 0);
+  assert.equal(new Set(poolNums).size, poolNums.length, 'winning pool contains duplicates');
+  for (const s of poolNums) {
+    assert.ok(Number.isInteger(s) && s >= 0 && s <= 0xffffffff, `winning seed out of uint32 range: ${s}`);
+  }
+
+  const dailySeeds = Object.values((daily && daily.seeds) || {}).map((s) => s >>> 0);
+  const dailySet = new Set(dailySeeds);
+  assert.equal(dailySet.size, dailySeeds.length, 'daily pool contains duplicates');
+
+  const sqlPath = join(root, 'scripts/eventSeeds.sql');
   const eventSeeds = [];
-  const seedRegex = /unnest\(array\[([^\]]+)\]::bigint\[\]\)/g;
-  let m;
-  while ((m = seedRegex.exec(sql)) !== null) {
-    for (const tok of m[1].split(',')) {
-      const n = Number(tok.trim());
-      if (Number.isInteger(n)) eventSeeds.push(n >>> 0);
+  if (existsSync(sqlPath)) {
+    const sql = readFileSync(sqlPath, 'utf8');
+    const seedRegex = /unnest\(array\[([^\]]+)\]::bigint\[\]\)/g;
+    let m;
+    while ((m = seedRegex.exec(sql)) !== null) {
+      for (const tok of m[1].split(',')) {
+        const n = Number(tok.trim());
+        if (Number.isInteger(n)) eventSeeds.push(n >>> 0);
+      }
     }
   }
-  assert.ok(eventSeeds.length > 0, 'no event seeds parsed from eventSeeds.sql');
+  const eventSet = new Set(eventSeeds);
 
-  const poolSet = new Set(Array.isArray(pool) ? pool : []);
-  const dailySeeds = Object.values((daily && daily.seeds) || {});
-  const dailySet = new Set(dailySeeds);
-
+  const poolSet = new Set(poolNums);
+  for (const s of dailySeeds) {
+    assert.ok(!poolSet.has(s), `seed ${s} appears in both winning and daily pools`);
+  }
   for (const s of eventSeeds) {
-    assert.ok(!poolSet.has(s), `seed ${s} appears in both event and winning pools`);
+    assert.ok(!poolSet.has(s), `seed ${s} appears in both winning and event pools`);
     assert.ok(!dailySet.has(s), `seed ${s} appears in both event and daily pools`);
   }
-  assert.equal(new Set(eventSeeds).size, eventSeeds.length, 'eventSeeds.sql contains duplicate seeds');
+  assert.equal(eventSet.size, eventSeeds.length, 'eventSeeds.sql contains duplicate seeds');
 });

@@ -1,7 +1,7 @@
 {
   "name": "klondike-solitaire",
   "private": true,
-  "version": "0.0.462",
+  "version": "0.0.463",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "test": "node --test",
     "event:new": "node scripts/createSpecialEvent.mjs",
+    "winning:regenerate": "node scripts/regenerateWinningPool.mjs",
     "prepare": "husky"
   },
   "dependencies": {
