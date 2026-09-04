@@ -165,6 +165,8 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
       clearUndoHold();
       return;
     }
+    const { animatingCards, slidingCards, animatingLocs } = useUiStore.getState();
+    if (animatingCards.size > 0 || slidingCards.size > 0 || animatingLocs.size > 0) return;
     undo();
   }, [clearUndoHold, undo]);
   const onUndoPointerDown = useCallback((e) => {
