@@ -147,5 +147,19 @@
         "coinReward": 50
       }
     ]
+  },
+  {
+    "id": "thanksgiving-day-2025",
+    "title": "Thanksgiving Day 2025",
+    "startsAt": "2025-11-27T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "thanksgiving-day-2025/page1.jpg",
+        "coinReward": 50
+      }
+    ]
   }
 ]
