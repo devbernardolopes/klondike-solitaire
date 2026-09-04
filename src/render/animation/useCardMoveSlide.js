@@ -173,14 +173,16 @@ export function useCardMoveSlide() {
     // stock pile wrapper has no z-index of its own, so it does not create a
     // stacking context; giving it a value above the movers' `2000 + base` groups
     // its face-down cards at that level, above the dealt cards, without touching
-    // the movers' own lift (they stay above all other piles). Restored below.
+    // the movers' own lift (they stay above all other piles). Must stay < Z.BASE
+    // (3000) so a modal opened before the initial deal (preDeal → rAF window)
+    // stays over the stock while cards fly. Restored below.
     let stockWrap = null;
     let prevStockZ = '';
     if (type === 'deal') {
       stockWrap = document.querySelector('[data-pile="stock"]');
       if (stockWrap) {
         prevStockZ = stockWrap.style.zIndex;
-        stockWrap.style.zIndex = '3000';
+        stockWrap.style.zIndex = '2500';
       }
     }
 
