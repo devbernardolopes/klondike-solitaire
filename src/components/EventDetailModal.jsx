@@ -22,7 +22,7 @@ import { Z } from '../utils/modalStack.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
-import { fetchEventDetail } from '../repo/specialEventsRepository.js';
+import { fetchEventDetail, getCachedEventDetailSync, resolveInitialPageIndex, detailsDiffer } from '../repo/specialEventsRepository.js';
 import { loadEventSelectionSync, saveEventSelection, loadLastViewedPageSync, saveLastViewedPage } from '../db/eventSelection.js';
 import EventDealGrid from './EventDealGrid.jsx';
 
@@ -106,11 +106,75 @@ export default function EventDetailModal() {
 
   useEffect(() => {
     if (!open || !eventId) return;
+    const cached = getCachedEventDetailSync(eventId);
+    setSelectedDealIdByPage(loadEventSelectionSync(eventId) || {});
+    if (cached) {
+      const lastPage = loadLastViewedPageSync(eventId);
+      const initialIdx = resolveInitialPageIndex(cached, lastPage);
+      setDetail(cached);
+      setIndex(initialIdx);
+      setLoaded(true);
+      const initialPage = cached.pages[initialIdx];
+      if (initialPage) saveLastViewedPage(cached.id, initialPage.pageNumber).catch(() => {});
+      setSelectedDealIdByPage((prev) => {
+        const next = { ...prev };
+        for (const p of cached.pages) {
+          if (!p.unlocked) continue;
+          const prevId = prev[String(p.pageNumber)];
+          const prevStillValid = prevId != null && p.deals.some((dl) => dl.id === prevId);
+          if (!prevStillValid) {
+            const first = p.deals[0];
+            if (first) {
+              next[String(p.pageNumber)] = first.id;
+              saveEventSelection(cached.id, p.pageNumber, first.id).catch(() => {});
+            }
+          }
+        }
+        return next;
+      });
+      fetchEventDetail(eventId)
+        .then((fresh) => {
+          if (!fresh) return;
+          if (fresh && fresh.pages) {
+            const optimisticId =
+              useUiStore.getState().winSummary?.eventDealId ??
+              useUiStore.getState().currentEventDealId ??
+              useGameStore.getState().replaySpec?.eventDealId ??
+              null;
+            if (optimisticId != null) {
+              for (const p of fresh.pages) {
+                for (const dl of p.deals) {
+                  if (dl.id === optimisticId && !dl.solved) dl.solved = true;
+                }
+              }
+            }
+          }
+          if (!detailsDiffer(cached, fresh)) return;
+          setDetail(fresh);
+          setSelectedDealIdByPage((prev) => {
+            const next = { ...prev };
+            let changed = false;
+            for (const p of fresh.pages) {
+              if (!p.unlocked) continue;
+              const prevId = prev[String(p.pageNumber)];
+              const prevStillValid = prevId != null && p.deals.some((dl) => dl.id === prevId);
+              if (!prevStillValid) {
+                const first = p.deals[0];
+                if (first && prevId !== first.id) {
+                  next[String(p.pageNumber)] = first.id;
+                  changed = true;
+                  saveEventSelection(fresh.id, p.pageNumber, first.id).catch(() => {});
+                }
+              }
+            }
+            return changed ? next : prev;
+          });
+        })
+        .catch(() => {});
+      return;
+    }
     setLoaded(false);
     setDetail(null);
-    // Synchronously hydrate per-page selection from the local cache so the
-    // modal opens with the right tile pre-selected (no flash-to-default).
-    setSelectedDealIdByPage(loadEventSelectionSync(eventId) || {});
     fetchEventDetail(eventId)
       .then((d) => {
         if (d && d.pages) {
@@ -129,30 +193,11 @@ export default function EventDetailModal() {
         }
         setDetail(d);
         if (d && d.pages.length > 0) {
-          // Choose the initial page index with this priority:
-          //  1. The page the player last viewed (if it still exists and is
-          //     unlocked) — the natural "return where I was" semantic.
-          //  2. The first unlocked-but-not-yet-completed page, so a returning
-          //     player who has progress to make sees the next un-solved page.
-          //  3. The last page if everything's done, or 0 if nothing's
-          //     unlocked yet.
           const lastPage = loadLastViewedPageSync(eventId);
-          const lastPageIdx = lastPage != null
-            ? d.pages.findIndex((p) => p.pageNumber === lastPage && p.unlocked)
-            : -1;
-          const heuristicIdx = d.pages.findIndex((p) => p.unlocked && !p.completed);
-          const initialIdx = lastPageIdx >= 0
-            ? lastPageIdx
-            : (heuristicIdx >= 0 ? heuristicIdx : d.pages.length - 1);
+          const initialIdx = resolveInitialPageIndex(d, lastPage);
           setIndex(initialIdx);
-          // Persist the chosen page back so a future re-open (e.g. before
-          // any user interaction) is consistent with the user's last visit.
           const initialPage = d.pages[initialIdx];
           if (initialPage) saveLastViewedPage(d.id, initialPage.pageNumber).catch(() => {});
-          // Ensure every unlocked page has a selection. First-visit default is
-          // the deal at position 1; persisted selections (set on a prior visit)
-          // win if the saved dealId is still valid in the freshly-loaded
-          // page's deals list.
           setSelectedDealIdByPage((prev) => {
             const next = { ...prev };
             for (const p of d.pages) {

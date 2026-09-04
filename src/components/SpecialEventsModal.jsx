@@ -18,7 +18,7 @@ import ModalCloseButton from './ModalCloseButton.jsx';
 import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
 import { useUiStore } from '../hooks/useUiStore.js';
-import { fetchSpecialEvents } from '../repo/specialEventsRepository.js';
+import { fetchSpecialEvents, getCachedEventsSummarySync } from '../repo/specialEventsRepository.js';
 import { translateSpecialEvent } from '../i18n/db.js';
 
 export default function SpecialEventsModal() {
@@ -35,6 +35,24 @@ export default function SpecialEventsModal() {
 
   useEffect(() => {
     if (!open) return;
+    const cached = getCachedEventsSummarySync();
+    if (cached) {
+      setEvents(cached.map(translateSpecialEvent));
+      setLoaded(true);
+      fetchSpecialEvents()
+        .then((fresh) => {
+          const freshIds = fresh.map((e) => e.id).join('|');
+          const cachedIds = cached.map((e) => e.id).join('|');
+          const differ = freshIds !== cachedIds || fresh.some((f, i) => {
+            const c = cached[i];
+            return !c || f.totalPages !== c.totalPages || f.completedPages !== c.completedPages || f.fullyCompleted !== c.fullyCompleted;
+          });
+          if (differ) setEvents(fresh.map(translateSpecialEvent));
+        })
+        .catch(() => {})
+        .finally(() => setLoaded(true));
+      return;
+    }
     setLoaded(false);
     fetchSpecialEvents()
       .then((evs) => setEvents(evs.map(translateSpecialEvent)))

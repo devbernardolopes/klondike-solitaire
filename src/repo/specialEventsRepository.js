@@ -1,7 +1,56 @@
 import { supabase } from '../lib/supabaseClient.js';
 import { db } from '../db/schema.js';
 import { saveCatalogDetail, getCatalogDetail } from '../db/eventCache.js';
-import { ensureImageCached } from '../utils/eventImageCache.js';
+import { ensureImageCached, warmImageCache } from '../utils/eventImageCache.js';
+
+const catalogMemory = new Map();
+
+export function getCachedEventDetailSync(eventId) {
+  return catalogMemory.get(eventId) ?? null;
+}
+
+export function getCachedEventsSummarySync() {
+  if (catalogMemory.size === 0) return null;
+  const list = Array.from(catalogMemory.values()).map(summaryFromDetail);
+  return list.length ? list.sort((a, b) => a.id.localeCompare(b.id)) : null;
+}
+
+export async function hydrateEventCachesFromDexie() {
+  try {
+    const rows = await db.eventCatalogCache.toArray();
+    for (const r of rows) {
+      if (r.detail && r.eventId) catalogMemory.set(r.eventId, r.detail);
+    }
+  } catch {}
+  try {
+    await warmImageCache();
+  } catch {}
+}
+
+export function resolveInitialPageIndex(detail, lastViewedPage) {
+  if (!detail || !detail.pages || detail.pages.length === 0) return 0;
+  const lastPageIdx = lastViewedPage != null
+    ? detail.pages.findIndex((p) => p.pageNumber === lastViewedPage && p.unlocked)
+    : -1;
+  const heuristicIdx = detail.pages.findIndex((p) => p.unlocked && !p.completed);
+  if (lastPageIdx >= 0) return lastPageIdx;
+  if (heuristicIdx >= 0) return heuristicIdx;
+  return detail.pages.length - 1;
+}
+
+export function detailsDiffer(a, b) {
+  if (!a || !b) return true;
+  if (a.pages.length !== b.pages.length) return true;
+  for (let i = 0; i < a.pages.length; i++) {
+    const pa = a.pages[i];
+    const pb = b.pages[i];
+    if (pa.id !== pb.id || pa.completed !== pb.completed || pa.unlocked !== pb.unlocked || pa.deals.length !== pb.deals.length) return true;
+    for (let j = 0; j < pa.deals.length; j++) {
+      if (pa.deals[j].id !== pb.deals[j].id || pa.deals[j].solved !== pb.deals[j].solved) return true;
+    }
+  }
+  return false;
+}
 
 function summaryFromDetail(detail) {
   const totalPages = detail.pages.length;
@@ -194,6 +243,7 @@ export async function fetchEventDetail(eventId) {
         pages: pagesWithState,
       };
 
+      catalogMemory.set(detail.id, detail);
       saveCatalogDetail(detail).catch(() => {});
       for (const p of pagesWithState) {
         if (p.imagePath) ensureImageCached(p.imagePath).catch(() => {});
@@ -202,5 +252,7 @@ export async function fetchEventDetail(eventId) {
     } catch {}
   }
 
-  return getCatalogDetail(eventId);
+  const cached = await getCatalogDetail(eventId);
+  if (cached) catalogMemory.set(eventId, cached);
+  return cached;
 }
