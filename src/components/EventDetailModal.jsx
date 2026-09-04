@@ -58,12 +58,18 @@ export default function EventDetailModal() {
   const viewportRef = useRef(null);
   const panelRef = useRef(null);
   const dragStateRef = useRef({ startX: 0, startY: 0, width: 1, active: false });
+  const justSwipedRef = useRef(false);
+  const justSwipedTimerRef = useRef(null);
 
   useEffect(() => {
     if (!open) return;
     const id = setTimeout(() => panelRef.current?.focus(), 0);
     return () => clearTimeout(id);
   }, [open]);
+
+  useEffect(() => () => {
+    if (justSwipedTimerRef.current) clearTimeout(justSwipedTimerRef.current);
+  }, []);
 
   useEffect(() => {
     if (!open || !eventId) return;
@@ -74,6 +80,20 @@ export default function EventDetailModal() {
     setSelectedDealIdByPage(loadEventSelectionSync(eventId) || {});
     fetchEventDetail(eventId)
       .then((d) => {
+        if (d && d.pages) {
+          const optimisticId =
+            useUiStore.getState().winSummary?.eventDealId ??
+            useUiStore.getState().currentEventDealId ??
+            useGameStore.getState().replaySpec?.eventDealId ??
+            null;
+          if (optimisticId != null) {
+            for (const p of d.pages) {
+              for (const dl of p.deals) {
+                if (dl.id === optimisticId && !dl.solved) dl.solved = true;
+              }
+            }
+          }
+        }
         setDetail(d);
         if (d && d.pages.length > 0) {
           // Choose the initial page index with this priority:
@@ -216,11 +236,24 @@ export default function EventDetailModal() {
       const threshold = width * SWIPE_THRESHOLD_RATIO;
       if (dragPx <= -threshold) goNext();
       else if (dragPx >= threshold) goPrev();
+      justSwipedRef.current = true;
+      if (justSwipedTimerRef.current) clearTimeout(justSwipedTimerRef.current);
+      justSwipedTimerRef.current = setTimeout(() => {
+        justSwipedRef.current = false;
+        justSwipedTimerRef.current = null;
+      }, 250);
     }
     dragStateRef.current.active = false;
     dragStateRef.current.committed = false;
     setDragging(false);
     setDragPx(0);
+  };
+
+  const handleViewportClickCapture = (e) => {
+    if (justSwipedRef.current) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
   };
 
   const trackTransform = useMemo(
@@ -315,6 +348,7 @@ export default function EventDetailModal() {
                 onPointerMove={onPointerMove}
                 onPointerUp={endDrag}
                 onPointerCancel={endDrag}
+                onClickCapture={handleViewportClickCapture}
                 style={{ overflow: 'hidden', touchAction: 'pan-y', minHeight: 400 }}
               >
                 <div style={{ display: 'flex', transform: trackTransform, transition: dragging ? 'none' : 'transform 0.3s ease' }}>

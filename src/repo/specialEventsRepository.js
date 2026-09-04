@@ -23,23 +23,14 @@ import { supabase } from '../lib/supabaseClient.js';
 export async function fetchSpecialEvents() {
   if (!supabase) return [];
 
-  const { data: events, error: eventsErr } = await supabase
-    .from('special_events')
-    .select('id, title, description, game_kind, sort_order')
-    .order('sort_order');
+  const [{ data: events, error: eventsErr }, { data: pages, error: pagesErr }, { data: progress, error: progressErr }] = await Promise.all([
+    supabase.from('special_events').select('id, title, description, game_kind, sort_order').order('sort_order'),
+    supabase.from('special_event_pages').select('id, event_id').order('page_number'),
+    supabase.from('event_page_progress').select('page_id'),
+  ]);
   if (eventsErr || !events || events.length === 0) return [];
 
-  const { data: pages, error: pagesErr } = await supabase
-    .from('special_event_pages')
-    .select('id, event_id')
-    .order('page_number');
   const pageRows = pagesErr ? [] : pages || [];
-
-  // event_page_progress is RLS-scoped to auth.uid() = user_id, so this
-  // already returns only the current session's completed pages.
-  const { data: progress, error: progressErr } = await supabase
-    .from('event_page_progress')
-    .select('page_id');
   const completedPageIds = new Set((progressErr ? [] : progress || []).map((r) => r.page_id));
 
   return events.map((e) => {
@@ -95,18 +86,12 @@ export async function fetchAllEventSeeds() {
 export async function fetchEventDetail(eventId) {
   if (!supabase || !eventId) return null;
 
-  const { data: event, error: eventErr } = await supabase
-    .from('special_events')
-    .select('id, title, description, game_kind')
-    .eq('id', eventId)
-    .maybeSingle();
+  const [{ data: event, error: eventErr }, { data: pages, error: pagesErr }] = await Promise.all([
+    supabase.from('special_events').select('id, title, description, game_kind').eq('id', eventId).maybeSingle(),
+    supabase.from('special_event_pages').select('id, page_number, grid_size, image_path, coin_reward').eq('event_id', eventId).order('page_number'),
+  ]);
   if (eventErr || !event) return null;
 
-  const { data: pages, error: pagesErr } = await supabase
-    .from('special_event_pages')
-    .select('id, page_number, grid_size, image_path, coin_reward')
-    .eq('event_id', eventId)
-    .order('page_number');
   const sortedPages = pagesErr ? [] : (pages || []).slice().sort((a, b) => a.page_number - b.page_number);
 
   let completedIds = new Set();
