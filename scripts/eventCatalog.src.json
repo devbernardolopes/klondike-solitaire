@@ -114,5 +114,24 @@
         "coinReward": 50
       }
     ]
+  },
+  {
+    "id": "valentines-day-2025",
+    "title": "Valentine's Day 2025",
+    "startsAt": "2025-02-14T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "valentines-day-2025/page1.jpg",
+        "coinReward": 50
+      },
+      {
+        "gridSize": 3,
+        "imagePath": "valentines-day-2025/page2.jpg",
+        "coinReward": 50
+      }
+    ]
   }
 ]
