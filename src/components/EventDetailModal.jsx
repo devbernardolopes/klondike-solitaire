@@ -475,7 +475,6 @@ export default function EventDetailModal() {
                         page={p}
                         onSelectDeal={onSelectDeal}
                         selectedDealId={selectedDealIdByPage[String(p.pageNumber)] ?? null}
-                        justWonDealId={justWonDealId}
                       />
                     </div>
                   ))}
@@ -529,7 +528,7 @@ export default function EventDetailModal() {
   );
 }
 
-function PageContent({ page, onSelectDeal, selectedDealId, justWonDealId }) {
+function PageContent({ page, onSelectDeal, selectedDealId }) {
   if (page.deals.length === 0) {
     return (
       <div style={placeholderStyle(false)}>
@@ -545,7 +544,6 @@ function PageContent({ page, onSelectDeal, selectedDealId, justWonDealId }) {
         locked={!page.unlocked}
         onSelectDeal={(deal) => onSelectDeal(deal, page)}
         selectedDealId={selectedDealId}
-        justWonDealId={justWonDealId}
       />
 
       {page.unlocked && !page.completed && (

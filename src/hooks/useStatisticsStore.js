@@ -14,7 +14,6 @@ import { db } from '../db/schema.js';
 import { applyOptimisticSolve, cloneDetail, findNextUnsolvedDeal } from '../repo/specialEventsProgress.js';
 import { getCachedEventDetailSync, patchCachedEventDealSolved } from '../repo/specialEventsRepository.js';
 import { saveEventSelection, saveLastViewedPage } from '../db/eventSelection.js';
-import { clearSeenDissolve } from '../db/eventDissolveSeen.js';
 import { useUiStore } from './useUiStore.js';
 
 const EMPTY = {
@@ -90,9 +89,6 @@ export const useStatisticsStore = create((set, get) => ({
     if (gameKind === 'event' && eventDealId != null) {
       try {
         patchCachedEventDealSolved(eventDealId);
-      } catch {}
-      try {
-        clearSeenDissolve(eventDealId);
       } catch {}
       try {
         const cached = eventId ? getCachedEventDetailSync(eventId) : null;
