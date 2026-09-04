@@ -11,7 +11,10 @@ import { useStatsStore } from './useStatsStore.js';
 import { enqueue } from '../sync/syncEngine.js';
 import { useAuthStore, WIN_COIN_REWARD } from '../hooks/useAuthStore.js';
 import { db } from '../db/schema.js';
-import { applyOptimisticSolve, cloneDetail } from '../repo/specialEventsProgress.js';
+import { applyOptimisticSolve, cloneDetail, findNextUnsolvedDeal } from '../repo/specialEventsProgress.js';
+import { getCachedEventDetailSync, patchCachedEventDealSolved } from '../repo/specialEventsRepository.js';
+import { saveEventSelection, saveLastViewedPage } from '../db/eventSelection.js';
+import { clearSeenDissolve } from '../db/eventDissolveSeen.js';
 import { useUiStore } from './useUiStore.js';
 
 const EMPTY = {
@@ -51,9 +54,9 @@ export const useStatisticsStore = create((set, get) => ({
    * Statistics modal updates live.
    * @param {{score:number, timeMs:number, moves:number, undos:number,
    *   seed?:number, gameKind?:'winning'|'random'|'daily'|'event', dailyDate?:string|null,
-   *   eventDealId?:number|null}} win
+   *   eventDealId?:number|null, eventId?:string|null}} win
    */
-  recordWin: async ({ score, timeMs, moves, undos, seed, gameKind, dailyDate, eventDealId, achievementTelemetry }) => {
+  recordWin: async ({ score, timeMs, moves, undos, seed, gameKind, dailyDate, eventDealId, eventId, achievementTelemetry }) => {
     const stats = await addWin({ score, timeMs, moves, undos });
     set({ stats, gameWon: true });
     // Parallel remote-sync path: one RPC folds the win into game_results, coins,
@@ -85,6 +88,20 @@ export const useStatisticsStore = create((set, get) => ({
     // balance is re-synced from Supabase on the next boot via hydrateProfile().
     useAuthStore.getState().addCoinsOptimistic(WIN_COIN_REWARD);
     if (gameKind === 'event' && eventDealId != null) {
+      try {
+        patchCachedEventDealSolved(eventDealId);
+      } catch {}
+      try {
+        clearSeenDissolve(eventDealId);
+      } catch {}
+      try {
+        const cached = eventId ? getCachedEventDetailSync(eventId) : null;
+        const target = cached ? findNextUnsolvedDeal(cached, eventDealId) : null;
+        if (cached && target) {
+          saveEventSelection(cached.id, target.pageNumber, target.deal.id).catch(() => {});
+          saveLastViewedPage(cached.id, target.pageNumber).catch(() => {});
+        }
+      } catch {}
       (async () => {
         try {
           const rows = await db.eventCatalogCache.toArray();
@@ -97,11 +114,19 @@ export const useStatisticsStore = create((set, get) => ({
             applyOptimisticSolve(cloned, eventDealId);
             await db.eventCatalogCache.put({ eventId: cloned.id, detail: cloned, updatedAt: Date.now() });
             try {
-              const ui = useUiStore.getState();
-              if (ui.eventDetailId === cloned.id && typeof window !== 'undefined') {
+              if (typeof window !== 'undefined') {
                 window.dispatchEvent(new CustomEvent('event-detail-optimistic', { detail: { eventId: cloned.id, dealId: eventDealId } }));
               }
             } catch {}
+            if (!eventId) {
+              try {
+                const target = findNextUnsolvedDeal(cloned, eventDealId);
+                if (target) {
+                  saveEventSelection(cloned.id, target.pageNumber, target.deal.id).catch(() => {});
+                  saveLastViewedPage(cloned.id, target.pageNumber).catch(() => {});
+                }
+              } catch {}
+            }
             break;
           }
         } catch {}

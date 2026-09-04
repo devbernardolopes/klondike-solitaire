@@ -9,6 +9,51 @@ export function getCachedEventDetailSync(eventId) {
   return catalogMemory.get(eventId) ?? null;
 }
 
+export function setCachedEventDetailSync(detail) {
+  if (!detail || !detail.id) return;
+  catalogMemory.set(detail.id, detail);
+}
+
+export function patchCachedEventDealSolved(dealId) {
+  if (dealId == null) return null;
+  let patchedId = null;
+  for (const [key, detail] of catalogMemory) {
+    if (!detail || !Array.isArray(detail.pages)) continue;
+    const hasDeal = detail.pages.some((p) => (p.deals || []).some((d) => d.id === dealId));
+    if (!hasDeal) continue;
+    let touched = false;
+    const next = {
+      ...detail,
+      pages: detail.pages.map((p) => ({
+        ...p,
+        deals: (p.deals || []).map((d) => {
+          if (d.id === dealId && !d.solved) {
+            touched = true;
+            return { ...d, solved: true };
+          }
+          return d;
+        }),
+      })),
+    };
+    if (!touched) {
+      patchedId = key;
+      continue;
+    }
+    let prevCompleted = true;
+    for (const p of next.pages) {
+      const allSolved = p.deals.length > 0 && p.deals.every((d) => d.solved);
+      const completed = p.completed || allSolved;
+      const unlocked = prevCompleted;
+      p.completed = completed;
+      p.unlocked = unlocked;
+      prevCompleted = completed;
+    }
+    catalogMemory.set(key, next);
+    patchedId = key;
+  }
+  return patchedId;
+}
+
 export function compareEventSummaries(a, b) {
   const order = (a.sortOrder ?? Infinity) - (b.sortOrder ?? Infinity);
   return order !== 0 ? order : a.id.localeCompare(b.id);

@@ -23,6 +23,7 @@ import { useUiStore } from '../hooks/useUiStore.js';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
 import { fetchEventDetail, getCachedEventDetailSync, resolveInitialPageIndex, detailsDiffer } from '../repo/specialEventsRepository.js';
+import { applyOptimisticSolve, cloneDetail, findNextUnsolvedDeal } from '../repo/specialEventsProgress.js';
 import { loadEventSelectionSync, saveEventSelection, loadLastViewedPageSync, saveLastViewedPage } from '../db/eventSelection.js';
 import EventDealGrid from './EventDealGrid.jsx';
 
@@ -50,6 +51,7 @@ export default function EventDetailModal() {
   // stringified pageNumbers. Hydrated from the sync mirror on open so a
   // returning player sees the same selection immediately.
   const [selectedDealIdByPage, setSelectedDealIdByPage] = useState({});
+  const justWonDealId = useUiStore((s) => s.winSummary?.eventDealId ?? null);
 
   const viewportRef = useRef(null);
   const panelRef = useRef(null);
@@ -70,7 +72,7 @@ export default function EventDetailModal() {
   useEffect(() => {
     const handler = (e) => {
       const { eventId: eid, dealId } = e.detail || {};
-      if (eid !== eventId || dealId == null || !detail) return;
+      if (eid !== eventId || dealId == null) return;
       setDetail((prev) => {
         if (!prev) return prev;
         let patched = false;
@@ -102,7 +104,7 @@ export default function EventDetailModal() {
     };
     window.addEventListener('event-detail-optimistic', handler);
     return () => window.removeEventListener('event-detail-optimistic', handler);
-  }, [eventId, detail]);
+  }, [eventId]);
 
   useEffect(() => {
     if (!open || !eventId) return;
@@ -135,6 +137,7 @@ export default function EventDetailModal() {
       fetchEventDetail(eventId)
         .then((fresh) => {
           if (!fresh) return;
+          let patched = fresh;
           if (fresh && fresh.pages) {
             const optimisticId =
               useUiStore.getState().winSummary?.eventDealId ??
@@ -142,19 +145,16 @@ export default function EventDetailModal() {
               useGameStore.getState().replaySpec?.eventDealId ??
               null;
             if (optimisticId != null) {
-              for (const p of fresh.pages) {
-                for (const dl of p.deals) {
-                  if (dl.id === optimisticId && !dl.solved) dl.solved = true;
-                }
-              }
+              patched = cloneDetail(fresh);
+              applyOptimisticSolve(patched, optimisticId);
             }
           }
-          if (!detailsDiffer(cached, fresh)) return;
-          setDetail(fresh);
+          if (!detailsDiffer(cached, patched)) return;
+          setDetail(patched);
           setSelectedDealIdByPage((prev) => {
             const next = { ...prev };
             let changed = false;
-            for (const p of fresh.pages) {
+            for (const p of patched.pages) {
               if (!p.unlocked) continue;
               const prevId = prev[String(p.pageNumber)];
               const prevStillValid = prevId != null && p.deals.some((dl) => dl.id === prevId);
@@ -163,7 +163,7 @@ export default function EventDetailModal() {
                 if (first && prevId !== first.id) {
                   next[String(p.pageNumber)] = first.id;
                   changed = true;
-                  saveEventSelection(fresh.id, p.pageNumber, first.id).catch(() => {});
+                  saveEventSelection(patched.id, p.pageNumber, first.id).catch(() => {});
                 }
               }
             }
@@ -177,6 +177,7 @@ export default function EventDetailModal() {
     setDetail(null);
     fetchEventDetail(eventId)
       .then((d) => {
+        let patched = d;
         if (d && d.pages) {
           const optimisticId =
             useUiStore.getState().winSummary?.eventDealId ??
@@ -184,23 +185,20 @@ export default function EventDetailModal() {
             useGameStore.getState().replaySpec?.eventDealId ??
             null;
           if (optimisticId != null) {
-            for (const p of d.pages) {
-              for (const dl of p.deals) {
-                if (dl.id === optimisticId && !dl.solved) dl.solved = true;
-              }
-            }
+            patched = cloneDetail(d);
+            applyOptimisticSolve(patched, optimisticId);
           }
         }
-        setDetail(d);
-        if (d && d.pages.length > 0) {
+        setDetail(patched);
+        if (patched && patched.pages.length > 0) {
           const lastPage = loadLastViewedPageSync(eventId);
-          const initialIdx = resolveInitialPageIndex(d, lastPage);
+          const initialIdx = resolveInitialPageIndex(patched, lastPage);
           setIndex(initialIdx);
-          const initialPage = d.pages[initialIdx];
-          if (initialPage) saveLastViewedPage(d.id, initialPage.pageNumber).catch(() => {});
+          const initialPage = patched.pages[initialIdx];
+          if (initialPage) saveLastViewedPage(patched.id, initialPage.pageNumber).catch(() => {});
           setSelectedDealIdByPage((prev) => {
             const next = { ...prev };
-            for (const p of d.pages) {
+            for (const p of patched.pages) {
               if (!p.unlocked) continue;
               const prevId = prev[String(p.pageNumber)];
               const prevStillValid = prevId != null && p.deals.some((dl) => dl.id === prevId);
@@ -208,7 +206,7 @@ export default function EventDetailModal() {
                 const first = p.deals[0];
                 if (first) {
                   next[String(p.pageNumber)] = first.id;
-                  saveEventSelection(d.id, p.pageNumber, first.id).catch(() => {});
+                  saveEventSelection(patched.id, p.pageNumber, first.id).catch(() => {});
                 }
               }
             }
@@ -221,6 +219,38 @@ export default function EventDetailModal() {
       .catch(() => setDetail(null))
       .finally(() => setLoaded(true));
   }, [open, eventId]);
+
+  useEffect(() => {
+    if (!open || !detail) return;
+    setSelectedDealIdByPage((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      const apply = (pageNumber, dealId, evtId) => {
+        const key = String(pageNumber);
+        if (next[key] !== dealId) {
+          next[key] = dealId;
+          changed = true;
+          saveEventSelection(evtId, pageNumber, dealId).catch(() => {});
+          saveLastViewedPage(evtId, pageNumber).catch(() => {});
+        }
+      };
+      if (justWonDealId != null) {
+        const target = findNextUnsolvedDeal(detail, justWonDealId);
+        if (target) apply(target.pageNumber, target.deal.id, detail.id);
+      }
+      for (const p of detail.pages) {
+        if (!p.unlocked) continue;
+        const key = String(p.pageNumber);
+        const sel = next[key];
+        const selDeal = p.deals.find((d) => d.id === sel);
+        if (selDeal && selDeal.solved) {
+          const firstOpen = p.deals.find((d) => !d.solved);
+          if (firstOpen && next[key] !== firstOpen.id) apply(p.pageNumber, firstOpen.id, detail.id);
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [open, detail, justWonDealId]);
 
   // Click handler for a deal cell — only selects, never starts a deal.
   // Also writes the page number so re-opening the event lands here, even
@@ -435,6 +465,7 @@ export default function EventDetailModal() {
                         page={p}
                         onSelectDeal={onSelectDeal}
                         selectedDealId={selectedDealIdByPage[String(p.pageNumber)] ?? null}
+                        justWonDealId={justWonDealId}
                       />
                     </div>
                   ))}
@@ -488,7 +519,7 @@ export default function EventDetailModal() {
   );
 }
 
-function PageContent({ page, onSelectDeal, selectedDealId }) {
+function PageContent({ page, onSelectDeal, selectedDealId, justWonDealId }) {
   if (page.deals.length === 0) {
     return (
       <div style={placeholderStyle(false)}>
@@ -504,6 +535,7 @@ function PageContent({ page, onSelectDeal, selectedDealId }) {
         locked={!page.unlocked}
         onSelectDeal={(deal) => onSelectDeal(deal, page)}
         selectedDealId={selectedDealId}
+        justWonDealId={justWonDealId}
       />
 
       {page.unlocked && !page.completed && (

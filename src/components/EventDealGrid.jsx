@@ -6,9 +6,10 @@ import { hasSeenDissolve, markSeenDissolve } from '../db/eventDissolveSeen.js';
 
 const SELECTED_OUTLINE = 'var(--ui-accent, var(--ui-modal-fg))';
 
-function SolvedTile({ deal, imageUrl, gridSize, posX, posY, isSelected, disabled, onSelectDeal, locked }) {
+function SolvedTile({ deal, imageUrl, gridSize, posX, posY, isSelected, disabled, onSelectDeal, locked, justWonDealId }) {
   const ref = useRef(null);
-  const shouldDissolve = deal.solved && !hasSeenDissolve(deal.id);
+  const isJustWon = justWonDealId != null && deal.id === justWonDealId;
+  const shouldDissolve = deal.solved && (isJustWon || !hasSeenDissolve(deal.id));
 
   useEffect(() => {
     if (!shouldDissolve || !ref.current) return;
@@ -127,7 +128,7 @@ function SolvedTile({ deal, imageUrl, gridSize, posX, posY, isSelected, disabled
   );
 }
 
-export default function EventDealGrid({ page, onSelectDeal, selectedDealId, disabled, locked }) {
+export default function EventDealGrid({ page, onSelectDeal, selectedDealId, disabled, locked, justWonDealId }) {
   const { gridSize, imagePath, deals } = page;
   const imageUrl = eventImageUrl(imagePath);
 
@@ -156,7 +157,7 @@ export default function EventDealGrid({ page, onSelectDeal, selectedDealId, disa
 
         if (locked) {
           if (deal.solved) {
-            return <SolvedTile key={deal.id} deal={deal} imageUrl={imageUrl} gridSize={gridSize} posX={posX} posY={posY} locked />;
+            return <SolvedTile key={deal.id} deal={deal} imageUrl={imageUrl} gridSize={gridSize} posX={posX} posY={posY} locked justWonDealId={justWonDealId} />;
           }
           return (
             <div
@@ -180,7 +181,7 @@ export default function EventDealGrid({ page, onSelectDeal, selectedDealId, disa
         const isSelected = deal.id === selectedDealId;
 
         if (deal.solved) {
-          return <SolvedTile key={deal.id} deal={deal} imageUrl={imageUrl} gridSize={gridSize} posX={posX} posY={posY} isSelected={isSelected} disabled={disabled} onSelectDeal={onSelectDeal} />;
+          return <SolvedTile key={deal.id} deal={deal} imageUrl={imageUrl} gridSize={gridSize} posX={posX} posY={posY} isSelected={isSelected} disabled={disabled} onSelectDeal={onSelectDeal} justWonDealId={justWonDealId} />;
         }
 
         return (

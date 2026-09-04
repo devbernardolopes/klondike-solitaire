@@ -37,3 +37,20 @@ export function cloneDetail(detail) {
     })),
   };
 }
+
+export function findNextUnsolvedDeal(detail, wonDealId) {
+  if (!detail || !Array.isArray(detail.pages) || wonDealId == null) return null;
+  const flat = [];
+  for (const p of detail.pages) {
+    for (const deal of p.deals || []) {
+      flat.push({ deal, pageNumber: p.pageNumber });
+    }
+  }
+  const wonIdx = flat.findIndex((f) => f.deal.id === wonDealId);
+  if (wonIdx < 0) return null;
+  for (let i = wonIdx + 1; i < flat.length; i++) {
+    if (flat[i].deal.id === wonDealId) continue;
+    if (!flat[i].deal.solved) return flat[i];
+  }
+  return null;
+}

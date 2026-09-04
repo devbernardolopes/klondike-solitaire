@@ -31,3 +31,10 @@ export function markSeenDissolve(dealId) {
   memory.add(key);
   saveSet(memory);
 }
+
+export function clearSeenDissolve(dealId) {
+  const key = String(dealId);
+  if (!memory.has(key)) return;
+  memory.delete(key);
+  saveSet(memory);
+}
