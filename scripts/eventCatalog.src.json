@@ -95,5 +95,24 @@
         "coinReward": 50
       }
     ]
+  },
+  {
+    "id": "juneteenth-2025",
+    "title": "Juneteenth 2025",
+    "startsAt": "2025-06-19T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "juneteenth-2025/page1.jpg",
+        "coinReward": 50
+      },
+      {
+        "gridSize": 3,
+        "imagePath": "juneteenth-2025/page2.jpg",
+        "coinReward": 50
+      }
+    ]
   }
 ]
