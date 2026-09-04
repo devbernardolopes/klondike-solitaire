@@ -72,6 +72,43 @@ export default function EventDetailModal() {
   }, []);
 
   useEffect(() => {
+    const handler = (e) => {
+      const { eventId: eid, dealId } = e.detail || {};
+      if (eid !== eventId || dealId == null || !detail) return;
+      setDetail((prev) => {
+        if (!prev) return prev;
+        let patched = false;
+        const next = {
+          ...prev,
+          pages: prev.pages.map((p) => ({
+            ...p,
+            deals: p.deals.map((d) => {
+              if (d.id === dealId && !d.solved) {
+                patched = true;
+                return { ...d, solved: true };
+              }
+              return d;
+            }),
+          })),
+        };
+        if (!patched) return prev;
+        let prevCompleted = true;
+        for (const p of next.pages) {
+          const allSolved = p.deals.length > 0 && p.deals.every((d) => d.solved);
+          const completed = p.completed || allSolved;
+          const unlocked = prevCompleted;
+          p.completed = completed;
+          p.unlocked = unlocked;
+          prevCompleted = completed;
+        }
+        return next;
+      });
+    };
+    window.addEventListener('event-detail-optimistic', handler);
+    return () => window.removeEventListener('event-detail-optimistic', handler);
+  }, [eventId, detail]);
+
+  useEffect(() => {
     if (!open || !eventId) return;
     setLoaded(false);
     setDetail(null);

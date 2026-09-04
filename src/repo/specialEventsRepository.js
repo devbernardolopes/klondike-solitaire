@@ -1,15 +1,51 @@
-// repo/specialEventsRepository.js
-// Data layer for the Phase-1 schema (special_events -> special_event_pages ->
-// special_event_deals, plus per-user event_deal_progress / event_page_progress /
-// event_progress).
-//
-// No offline cache/TTL layer here (unlike seedRepository.js's winning/daily
-// pools) — mirrors AchievementsModal.jsx's approach of a live fetch on open
-// with a graceful empty/null fallback. Visibility (enabled + starts_at) is
-// enforced server-side via RLS on special_events (and cascades to its pages/
-// deals), so a hidden event simply never appears here — no client date logic.
-
 import { supabase } from '../lib/supabaseClient.js';
+import { db } from '../db/schema.js';
+import { saveCatalogDetail, getCatalogDetail } from '../db/eventCache.js';
+import { ensureImageCached } from '../utils/eventImageCache.js';
+
+function summaryFromDetail(detail) {
+  const totalPages = detail.pages.length;
+  const completedPages = detail.pages.filter((p) => p.completed).length;
+  return {
+    id: detail.id,
+    title: detail.title,
+    description: detail.description,
+    gameKind: detail.gameKind,
+    totalPages,
+    completedPages,
+    fullyCompleted: totalPages > 0 && completedPages >= totalPages,
+  };
+}
+
+async function buildSummaryFromCache() {
+  try {
+    const rows = await db.eventCatalogCache.toArray();
+    if (!rows.length) return [];
+    return rows
+      .map((r) => r.detail)
+      .filter(Boolean)
+      .map(summaryFromDetail)
+      .sort((a, b) => a.id.localeCompare(b.id));
+  } catch {
+    return [];
+  }
+}
+
+function kickOffCatalogSync(eventIds) {
+  if (!eventIds || eventIds.length === 0) return;
+  const concurrency = 3;
+  let idx = 0;
+  const runNext = async () => {
+    while (idx < eventIds.length) {
+      const id = eventIds[idx++];
+      try {
+        await fetchEventDetail(id);
+      } catch {}
+    }
+  };
+  const workers = Array.from({ length: Math.min(concurrency, eventIds.length) }, () => runNext());
+  Promise.all(workers).catch(() => {});
+}
 
 /**
  * All currently-visible events with page-level progress folded in.
@@ -21,32 +57,42 @@ import { supabase } from '../lib/supabaseClient.js';
  *   fullyCompleted:boolean}>>}
  */
 export async function fetchSpecialEvents() {
-  if (!supabase) return [];
+  if (!supabase) {
+    return buildSummaryFromCache();
+  }
 
-  const [{ data: events, error: eventsErr }, { data: pages, error: pagesErr }, { data: progress, error: progressErr }] = await Promise.all([
-    supabase.from('special_events').select('id, title, description, game_kind, sort_order').order('sort_order'),
-    supabase.from('special_event_pages').select('id, event_id').order('page_number'),
-    supabase.from('event_page_progress').select('page_id'),
-  ]);
-  if (eventsErr || !events || events.length === 0) return [];
+  try {
+    const [{ data: events, error: eventsErr }, { data: pages, error: pagesErr }, { data: progress, error: progressErr }] = await Promise.all([
+      supabase.from('special_events').select('id, title, description, game_kind, sort_order').order('sort_order'),
+      supabase.from('special_event_pages').select('id, event_id').order('page_number'),
+      supabase.from('event_page_progress').select('page_id'),
+    ]);
+    if (eventsErr) throw eventsErr;
+    if (!events || events.length === 0) return [];
 
-  const pageRows = pagesErr ? [] : pages || [];
-  const completedPageIds = new Set((progressErr ? [] : progress || []).map((r) => r.page_id));
+    const pageRows = pagesErr ? [] : pages || [];
+    const completedPageIds = new Set((progressErr ? [] : progress || []).map((r) => r.page_id));
 
-  return events.map((e) => {
-    const eventPages = pageRows.filter((p) => p.event_id === e.id);
-    const totalPages = eventPages.length;
-    const completedPages = eventPages.filter((p) => completedPageIds.has(p.id)).length;
-    return {
-      id: e.id,
-      title: e.title,
-      description: e.description,
-      gameKind: e.game_kind,
-      totalPages,
-      completedPages,
-      fullyCompleted: totalPages > 0 && completedPages >= totalPages,
-    };
-  });
+    const result = events.map((e) => {
+      const eventPages = pageRows.filter((p) => p.event_id === e.id);
+      const totalPages = eventPages.length;
+      const completedPages = eventPages.filter((p) => completedPageIds.has(p.id)).length;
+      return {
+        id: e.id,
+        title: e.title,
+        description: e.description,
+        gameKind: e.game_kind,
+        totalPages,
+        completedPages,
+        fullyCompleted: totalPages > 0 && completedPages >= totalPages,
+      };
+    });
+
+    kickOffCatalogSync(result.map((r) => r.id));
+    return result;
+  } catch {
+    return buildSummaryFromCache();
+  }
 }
 
 /**
@@ -84,65 +130,77 @@ export async function fetchAllEventSeeds() {
  *   solved:boolean}>}>}|null>}
  */
 export async function fetchEventDetail(eventId) {
-  if (!supabase || !eventId) return null;
+  if (!eventId) return null;
 
-  const [{ data: event, error: eventErr }, { data: pages, error: pagesErr }] = await Promise.all([
-    supabase.from('special_events').select('id, title, description, game_kind').eq('id', eventId).maybeSingle(),
-    supabase.from('special_event_pages').select('id, page_number, grid_size, image_path, coin_reward').eq('event_id', eventId).order('page_number'),
-  ]);
-  if (eventErr || !event) return null;
+  if (supabase) {
+    try {
+      const [{ data: event, error: eventErr }, { data: pages, error: pagesErr }] = await Promise.all([
+        supabase.from('special_events').select('id, title, description, game_kind').eq('id', eventId).maybeSingle(),
+        supabase.from('special_event_pages').select('id, page_number, grid_size, image_path, coin_reward').eq('event_id', eventId).order('page_number'),
+      ]);
+      if (eventErr || !event) throw eventErr || new Error('no event');
 
-  const sortedPages = pagesErr ? [] : (pages || []).slice().sort((a, b) => a.page_number - b.page_number);
+      const sortedPages = pagesErr ? [] : (pages || []).slice().sort((a, b) => a.page_number - b.page_number);
 
-  let completedIds = new Set();
-  const dealsByPage = new Map();
-  if (sortedPages.length > 0) {
-    const pageIds = sortedPages.map((p) => p.id);
-    const [{ data: progress, error: progressErr }, { data: deals, error: dealsErr }] = await Promise.all([
-      supabase.from('event_page_progress').select('page_id').in('page_id', pageIds),
-      supabase.from('special_event_deals').select('id, page_id, position, seed').in('page_id', pageIds).order('position'),
-    ]);
-    completedIds = new Set((progressErr ? [] : progress || []).map((r) => r.page_id));
+      let completedIds = new Set();
+      const dealsByPage = new Map();
+      if (sortedPages.length > 0) {
+        const pageIds = sortedPages.map((p) => p.id);
+        const [{ data: progress, error: progressErr }, { data: deals, error: dealsErr }] = await Promise.all([
+          supabase.from('event_page_progress').select('page_id').in('page_id', pageIds),
+          supabase.from('special_event_deals').select('id, page_id, position, seed').in('page_id', pageIds).order('position'),
+        ]);
+        completedIds = new Set((progressErr ? [] : progress || []).map((r) => r.page_id));
 
-    const dealRows = dealsErr ? [] : deals || [];
-    let solvedDealIds = new Set();
-    if (dealRows.length > 0) {
-      const { data: dealProgress, error: dealProgressErr } = await supabase
-        .from('event_deal_progress')
-        .select('deal_id')
-        .in('deal_id', dealRows.map((d) => d.id));
-      solvedDealIds = new Set((dealProgressErr ? [] : dealProgress || []).map((r) => r.deal_id));
-    }
-    for (const d of dealRows) {
-      const list = dealsByPage.get(d.page_id) || [];
-      list.push({ id: d.id, position: d.position, seed: d.seed, solved: solvedDealIds.has(d.id) });
-      dealsByPage.set(d.page_id, list);
-    }
+        const dealRows = dealsErr ? [] : deals || [];
+        let solvedDealIds = new Set();
+        if (dealRows.length > 0) {
+          const { data: dealProgress, error: dealProgressErr } = await supabase
+            .from('event_deal_progress')
+            .select('deal_id')
+            .in('deal_id', dealRows.map((d) => d.id));
+          solvedDealIds = new Set((dealProgressErr ? [] : dealProgress || []).map((r) => r.deal_id));
+        }
+        for (const d of dealRows) {
+          const list = dealsByPage.get(d.page_id) || [];
+          list.push({ id: d.id, position: d.position, seed: d.seed, solved: solvedDealIds.has(d.id) });
+          dealsByPage.set(d.page_id, list);
+        }
+      }
+
+      let previousCompleted = true;
+      const pagesWithState = sortedPages.map((p) => {
+        const completed = completedIds.has(p.id);
+        const unlocked = previousCompleted;
+        previousCompleted = completed;
+        const deals = (dealsByPage.get(p.id) || []).slice().sort((a, b) => a.position - b.position);
+        return {
+          id: p.id,
+          pageNumber: p.page_number,
+          gridSize: p.grid_size,
+          imagePath: p.image_path,
+          coinReward: p.coin_reward,
+          completed,
+          unlocked,
+          deals,
+        };
+      });
+
+      const detail = {
+        id: event.id,
+        title: event.title,
+        description: event.description,
+        gameKind: event.game_kind,
+        pages: pagesWithState,
+      };
+
+      saveCatalogDetail(detail).catch(() => {});
+      for (const p of pagesWithState) {
+        if (p.imagePath) ensureImageCached(p.imagePath).catch(() => {});
+      }
+      return detail;
+    } catch {}
   }
 
-  let previousCompleted = true; // page 1 always unlocked
-  const pagesWithState = sortedPages.map((p) => {
-    const completed = completedIds.has(p.id);
-    const unlocked = previousCompleted;
-    previousCompleted = completed;
-    const deals = (dealsByPage.get(p.id) || []).slice().sort((a, b) => a.position - b.position);
-    return {
-      id: p.id,
-      pageNumber: p.page_number,
-      gridSize: p.grid_size,
-      imagePath: p.image_path,
-      coinReward: p.coin_reward,
-      completed,
-      unlocked,
-      deals,
-    };
-  });
-
-  return {
-    id: event.id,
-    title: event.title,
-    description: event.description,
-    gameKind: event.game_kind,
-    pages: pagesWithState,
-  };
+  return getCatalogDetail(eventId);
 }

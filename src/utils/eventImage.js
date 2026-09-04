@@ -1,12 +1,10 @@
 import { supabase } from '../lib/supabaseClient.js';
+import { getEventImageUrlSync } from './eventImageCache.js';
 
 export const EVENT_IMAGE_PLACEHOLDER = '/event_placeholder.jpg';
 
 export function eventImageUrl(imagePath) {
-  if (imagePath && supabase) {
-    return supabase.storage.from('event-images').getPublicUrl(imagePath).data.publicUrl;
-  }
-  return EVENT_IMAGE_PLACEHOLDER;
+  return getEventImageUrlSync(imagePath);
 }
 
 export function onEventImageError(e) {

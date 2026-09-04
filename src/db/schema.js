@@ -113,6 +113,23 @@ db.version(9).stores({
   seedCache: 'key',
   eventProgress: 'eventId',
 });
+// v10 adds durable offline caches for Special Events: the full catalog detail
+// per event (eventCatalogCache) and the postcard images as blobs (eventImageCache).
+// New tables only — no migration of existing data.
+db.version(10).stores({
+  games: '++id, startedAt, finishedAt, won, durationMs',
+  settings: 'key',
+  stats: 'key',
+  playedSeeds: 'key',
+  dailyResults: 'date',
+  syncQueue: '++id, type, createdAt, dedupeKey',
+  activeSession: 'key',
+  usedRandomSeeds: 'seed',
+  seedCache: 'key',
+  eventProgress: 'eventId',
+  eventCatalogCache: 'eventId',
+  eventImageCache: 'imagePath',
+});
 
 /**
  * Insert a finished/abandoned game record.

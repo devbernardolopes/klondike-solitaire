@@ -10,6 +10,9 @@ import { loadStats, addWin, addGamePlayed, recordLoss as dbRecordLoss, resetStat
 import { useStatsStore } from './useStatsStore.js';
 import { enqueue } from '../sync/syncEngine.js';
 import { useAuthStore, WIN_COIN_REWARD } from '../hooks/useAuthStore.js';
+import { db } from '../db/schema.js';
+import { applyOptimisticSolve, cloneDetail } from '../repo/specialEventsProgress.js';
+import { useUiStore } from './useUiStore.js';
 
 const EMPTY = {
   totalGamesPlayed: 0,
@@ -81,6 +84,29 @@ export const useStatisticsStore = create((set, get) => ({
     // Optimistic local coin bump for instant UI feedback; the authoritative
     // balance is re-synced from Supabase on the next boot via hydrateProfile().
     useAuthStore.getState().addCoinsOptimistic(WIN_COIN_REWARD);
+    if (gameKind === 'event' && eventDealId != null) {
+      (async () => {
+        try {
+          const rows = await db.eventCatalogCache.toArray();
+          for (const row of rows) {
+            const detail = row.detail;
+            if (!detail || !detail.pages) continue;
+            const hasDeal = detail.pages.some((p) => p.deals.some((d) => d.id === eventDealId));
+            if (!hasDeal) continue;
+            const cloned = cloneDetail(detail);
+            applyOptimisticSolve(cloned, eventDealId);
+            await db.eventCatalogCache.put({ eventId: cloned.id, detail: cloned, updatedAt: Date.now() });
+            try {
+              const ui = useUiStore.getState();
+              if (ui.eventDetailId === cloned.id && typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('event-detail-optimistic', { detail: { eventId: cloned.id, dealId: eventDealId } }));
+              }
+            } catch {}
+            break;
+          }
+        } catch {}
+      })();
+    }
   },
 
   /** Increment the total-games-played counter. */

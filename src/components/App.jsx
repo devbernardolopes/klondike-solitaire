@@ -39,6 +39,7 @@ import {
   initSessionPersistence,
 } from '../sync/sessionPersistence.js';
 import { prefetch as prefetchSeeds } from '../repo/seedRepository.js';
+import { warmImageCache } from '../utils/eventImageCache.js';
 
 export default function App() {
   const [bootstrapReady, setBootstrapReady] = useState(false);
@@ -81,6 +82,7 @@ export default function App() {
       initSeeds();
       await initUsedRandomSeeds();
       prefetchSeeds().catch(() => {});
+      warmImageCache().catch(() => {});
       // Resolve the per-device id, then restore any in-progress session from
       // local Dexie (or Supabase for a linked account). Skip the initial deal
       // when a session was restored — this is a resume, not a fresh game.
