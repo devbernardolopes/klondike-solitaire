@@ -26,6 +26,7 @@ export default function SpecialEventsModal() {
   const open = useUiStore((s) => s.specialEventsOpen);
   const setOpen = useUiStore((s) => s.setSpecialEventsOpen);
   const setDetail = useUiStore((s) => s.setEventDetailOpen);
+  const eventDetailId = useUiStore((s) => s.eventDetailId);
 
   const backdrop = useModalBackdrop(() => setOpen(false));
   useModalEscape({ open, onClose: () => setOpen(false), id: 'events', z: Z.CHILD });
@@ -35,6 +36,7 @@ export default function SpecialEventsModal() {
 
   useEffect(() => {
     if (!open) return;
+    if (eventDetailId != null) return;
     const cached = getCachedEventsSummarySync();
     if (cached) {
       setEvents(cached.map(translateSpecialEvent));
@@ -58,7 +60,7 @@ export default function SpecialEventsModal() {
       .then((evs) => setEvents(evs.map(translateSpecialEvent)))
       .catch(() => setEvents([]))
       .finally(() => setLoaded(true));
-  }, [open]);
+  }, [open, eventDetailId]);
 
   if (!open) return null;
 
