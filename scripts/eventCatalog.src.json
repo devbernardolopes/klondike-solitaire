@@ -175,5 +175,24 @@
         "coinReward": 50
       }
     ]
+  },
+  {
+    "id": "national-girl-scout-day-2026",
+    "title": "National Girl Scout Day 2026",
+    "startsAt": "2026-03-12T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "national-girl-scout-day-2026/page1.jpg",
+        "coinReward": 50
+      },
+      {
+        "gridSize": 2,
+        "imagePath": "national-girl-scout-day-2026/page2.jpg",
+        "coinReward": 50
+      }
+    ]
   }
 ]
