@@ -511,6 +511,24 @@ function PageContent({ page, onSelectDeal, selectedDealId }) {
           {page.coinReward > 0 ? `+${page.coinReward} coins on completion` : 'In progress'}
         </div>
       )}
+      {page.unlocked && page.completed && (
+        <button
+          type="button"
+          onClick={() => {}}
+          style={{
+            padding: '6px 14px',
+            borderRadius: 6,
+            border: '1px solid var(--ui-modal-btn-border)',
+            background: 'var(--ui-modal-btn-bg)',
+            color: 'var(--ui-modal-fg)',
+            cursor: 'pointer',
+            fontSize: 13,
+            fontWeight: 600,
+          }}
+        >
+          Show Postcard
+        </button>
+      )}
     </div>
   );
 }

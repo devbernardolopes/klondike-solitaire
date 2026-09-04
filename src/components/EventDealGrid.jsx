@@ -1,37 +1,131 @@
-// components/EventDealGrid.jsx
-// Renders one page's deals as a square N x N grid. Solved deals have no
-// button at all — just their slice of the page's postcard image, sliced via
-// background-size/background-position (a standard CSS sprite-sheet trick: a
-// single <img>-less div per cell, background-size scaled to gridSize x
-// gridSize so each cell shows exactly 1/gridSize of the image, positioned by
-// that cell's row/col). Unsolved deals are a solid numbered button — no
-// image peeks through an unsolved cell at all, by design (the number is the
-// only thing shown until it's actually won).
-//
-// Deal `position` (1-indexed) maps row-major, left-to-right top-to-bottom:
-// position 1 = row 0/col 0, position 2 = row 0/col 1, ..., position
-// gridSize+1 = row 1/col 0, etc. This is an authoring convention — deals
-// must be inserted in that reading order for the revealed image to look
-// right, since nothing in the schema enforces it.
-//
-// Clicking a tile no longer starts a deal. It only selects the tile (a
-// 3px accent outline), and the EventDetailModal's footer "Play" button is
-// what actually starts the game. The selection is persisted in
-// db/eventSelection.js and survives modal close/reopen and page navigation.
-//
-// `locked: true` flips every cell into a non-interactive preview: no number,
-// no number click handler, no selectable, just a centered Lock icon overlay
-// so the player can see the upcoming grid layout (and any already-solved
-// image slices) before unlocking. The grid container's layout, aspect ratio,
-// gap, and border are unchanged from the unlocked branch so the carousel
-// doesn't reflow when swiping between locked and unlocked pages.
-
+import { useEffect, useRef } from 'react';
 import { Lock } from 'lucide-react';
+import gsap from 'gsap';
 import { eventImageUrl, onEventImageError } from '../utils/eventImage.js';
+import { hasSeenDissolve, markSeenDissolve } from '../db/eventDissolveSeen.js';
 
-// Accent color for the selected-tile outline. Falls back to the modal's
-// foreground color so it stays visible against any theme.
 const SELECTED_OUTLINE = 'var(--ui-accent, var(--ui-modal-fg))';
+
+function SolvedTile({ deal, imageUrl, gridSize, posX, posY, isSelected, disabled, onSelectDeal, locked }) {
+  const ref = useRef(null);
+  const shouldDissolve = deal.solved && !hasSeenDissolve(deal.id);
+
+  useEffect(() => {
+    if (!shouldDissolve || !ref.current) return;
+    gsap.fromTo(
+      ref.current,
+      { opacity: 0, filter: 'blur(6px)' },
+      { opacity: 1, filter: 'blur(0px)', duration: 0.7, ease: 'power2.out' }
+    );
+    markSeenDissolve(deal.id);
+  }, [shouldDissolve, deal.id]);
+
+  const pillFontSize = gridSize >= 5 ? 14 : gridSize >= 4 ? 16 : gridSize >= 3 ? 18 : 20;
+
+  if (locked) {
+    return (
+      <div
+        key={deal.id}
+        aria-hidden="true"
+        ref={shouldDissolve ? ref : null}
+        style={{
+          position: 'relative',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'var(--ui-modal-btn-bg)',
+          backgroundImage: deal.solved ? `url(${imageUrl})` : undefined,
+          backgroundSize: deal.solved ? `${gridSize * 100}% ${gridSize * 100}%` : undefined,
+          backgroundPosition: deal.solved ? `${posX}% ${posY}%` : undefined,
+          opacity: 0.6,
+          pointerEvents: 'none',
+        }}
+      >
+        {deal.solved && (
+          <span
+            style={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              pointerEvents: 'none',
+            }}
+          >
+            <span
+              style={{
+                background: 'rgba(0,0,0,0.45)',
+                color: '#fff',
+                borderRadius: 999,
+                padding: '2px 8px',
+                fontWeight: 700,
+                fontSize: pillFontSize,
+                lineHeight: 1,
+              }}
+            >
+              {deal.position}
+            </span>
+          </span>
+        )}
+        <Lock size={28} style={{ color: 'var(--ui-modal-fg)', opacity: 0.85 }} />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      key={deal.id}
+      role="button"
+      tabIndex={disabled ? -1 : 0}
+      aria-label={`Deal ${deal.position} — solved`}
+      aria-pressed={isSelected}
+      onClick={() => { if (!disabled) onSelectDeal(deal); }}
+      onKeyDown={(e) => {
+        if (disabled) return;
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelectDeal(deal);
+        }
+      }}
+      ref={shouldDissolve ? ref : null}
+      style={{
+        position: 'relative',
+        backgroundImage: `url(${imageUrl})`,
+        backgroundSize: `${gridSize * 100}% ${gridSize * 100}%`,
+        backgroundPosition: `${posX}% ${posY}%`,
+        cursor: disabled ? 'default' : 'pointer',
+        outline: isSelected ? `3px solid ${SELECTED_OUTLINE}` : 'none',
+        outlineOffset: isSelected ? '-3px' : 0,
+      }}
+    >
+      <span
+        style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          pointerEvents: 'none',
+        }}
+      >
+        <span
+          style={{
+            background: 'rgba(0,0,0,0.45)',
+            color: '#fff',
+            borderRadius: 999,
+            padding: '2px 8px',
+            fontWeight: 700,
+            fontSize: pillFontSize,
+            lineHeight: 1,
+          }}
+        >
+          {deal.position}
+        </span>
+      </span>
+      <img src={imageUrl} onError={onEventImageError} alt="" style={{ display: 'none' }} />
+    </div>
+  );
+}
 
 export default function EventDealGrid({ page, onSelectDeal, selectedDealId, disabled, locked }) {
   const { gridSize, imagePath, deals } = page;
@@ -61,6 +155,9 @@ export default function EventDealGrid({ page, onSelectDeal, selectedDealId, disa
         const posY = gridSize === 1 ? 0 : (row / (gridSize - 1)) * 100;
 
         if (locked) {
+          if (deal.solved) {
+            return <SolvedTile key={deal.id} deal={deal} imageUrl={imageUrl} gridSize={gridSize} posX={posX} posY={posY} locked />;
+          }
           return (
             <div
               key={deal.id}
@@ -71,9 +168,6 @@ export default function EventDealGrid({ page, onSelectDeal, selectedDealId, disa
                 alignItems: 'center',
                 justifyContent: 'center',
                 background: 'var(--ui-modal-btn-bg)',
-                backgroundImage: deal.solved ? `url(${imageUrl})` : undefined,
-                backgroundSize: deal.solved ? `${gridSize * 100}% ${gridSize * 100}%` : undefined,
-                backgroundPosition: deal.solved ? `${posX}% ${posY}%` : undefined,
                 opacity: 0.6,
                 pointerEvents: 'none',
               }}
@@ -86,35 +180,7 @@ export default function EventDealGrid({ page, onSelectDeal, selectedDealId, disa
         const isSelected = deal.id === selectedDealId;
 
         if (deal.solved) {
-          return (
-            <div
-              key={deal.id}
-              role="button"
-              tabIndex={disabled ? -1 : 0}
-              aria-label={`Deal ${deal.position} — solved`}
-              aria-pressed={isSelected}
-              onClick={() => { if (!disabled) onSelectDeal(deal); }}
-              onKeyDown={(e) => {
-                if (disabled) return;
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  onSelectDeal(deal);
-                }
-              }}
-              style={{
-                position: 'relative',
-                backgroundImage: `url(${imageUrl})`,
-                backgroundSize: `${gridSize * 100}% ${gridSize * 100}%`,
-                backgroundPosition: `${posX}% ${posY}%`,
-                cursor: disabled ? 'default' : 'pointer',
-                outline: isSelected ? `3px solid ${SELECTED_OUTLINE}` : 'none',
-                outlineOffset: isSelected ? '-3px' : 0,
-              }}
-            >
-              {/* Hidden img just to trigger onEventImageError's placeholder swap consistently with the rest of the app */}
-              <img src={imageUrl} onError={onEventImageError} alt="" style={{ display: 'none' }} />
-            </div>
-          );
+          return <SolvedTile key={deal.id} deal={deal} imageUrl={imageUrl} gridSize={gridSize} posX={posX} posY={posY} isSelected={isSelected} disabled={disabled} onSelectDeal={onSelectDeal} />;
         }
 
         return (
