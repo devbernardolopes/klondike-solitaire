@@ -162,7 +162,7 @@ function preDealFromDeck(deck, seed) {
 // animation tweens. Used by every new-game entry point (dealNewGame,
 // replayGame, and the initial app-load deal) so the deal animation is identical
 // regardless of mode.
-function runAnimatedDeal(get, set, { seed, order, deck, kind, date, eventDealId } = {}) {
+function runAnimatedDeal(get, set, { seed, order, deck, kind, date, eventDealId, eventId, eventTitle } = {}) {
   const usedDeck = deck ? deck.slice() : order ? order.slice() : shuffle(buildStandardDeck(), seed);
   const preDeal = preDealFromDeck(usedDeck, seed);
   // Replay preserves the originating game kind (date for Daily, deal id for
@@ -174,6 +174,8 @@ function runAnimatedDeal(get, set, { seed, order, deck, kind, date, eventDealId 
     kind,
     date,
     eventDealId,
+    eventId,
+    eventTitle,
   };
   set({ state: preDeal, autoMoveState: {}, replaySpec, lastActionMeta: { type: 'draw' } });
   requestAnimationFrame(() => {
@@ -584,8 +586,10 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
    *
    * @param {number} seed
    * @param {number} eventDealId  special_event_deals.id
+   * @param {string} [eventId]  special_events.id (for reload survival of the win-ribbon / Return button)
+   * @param {string} [eventTitle]  human title (same)
    */
-  dealSpecialEventDeal: (seed, eventDealId) => {
+  dealSpecialEventDeal: (seed, eventDealId, eventId = null, eventTitle = null) => {
     cancelAutoComplete(set);
     useStatisticsStore.getState().finalizeGame();
     useUiStore.getState().setNoMovesDialogOpen(false);
@@ -595,7 +599,8 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     useUiStore.getState().setLastNewGameMode('winning');
     useStatsStore.getState().resetStats();
     useUiStore.getState().setCurrentGame('event', null, eventDealId);
-    runAnimatedDeal(get, set, { seed, kind: 'event', eventDealId });
+    if (eventId) useUiStore.getState().setCurrentEventMeta(eventId, eventTitle);
+    runAnimatedDeal(get, set, { seed, kind: 'event', eventDealId, eventId, eventTitle });
   },
 
   /**
@@ -623,12 +628,15 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     if (!spec || (spec.seed === undefined && !Array.isArray(spec.order))) return false;
     const kind = spec.kind ?? (Array.isArray(spec.order) ? 'random' : 'winning');
     const date = kind === 'daily' ? (spec.date ?? null) : null;
+    const eventDealId = kind === 'event' ? (spec.eventDealId ?? null) : null;
+    const eventId = kind === 'event' ? (spec.eventId ?? null) : null;
+    const eventTitle = kind === 'event' ? (spec.eventTitle ?? null) : null;
     runAnimatedDeal(
       get,
       set,
       spec.seed !== undefined
-        ? { seed: spec.seed, kind, date }
-        : { order: spec.order, kind, date },
+        ? { seed: spec.seed, kind, date, eventDealId, eventId, eventTitle }
+        : { order: spec.order, kind, date, eventDealId, eventId, eventTitle },
     );
     return true;
   },
@@ -661,11 +669,12 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     const date = spec.date || null;
     useUiStore.getState().setLastNewGameMode(kind === 'random' ? 'random' : 'winning');
     useUiStore.getState().setCurrentGame(kind, date, spec.eventDealId);
+    if (kind === 'event' && spec.eventId) useUiStore.getState().setCurrentEventMeta(spec.eventId, spec.eventTitle);
     useStatsStore.getState().resetStats();
     runAnimatedDeal(
       get,
       set,
-      spec.seed !== undefined ? { seed: spec.seed, kind, date } : { order: spec.order, kind, date },
+      spec.seed !== undefined ? { seed: spec.seed, kind, date, eventDealId: spec.eventDealId, eventId: spec.eventId, eventTitle: spec.eventTitle } : { order: spec.order, kind, date, eventDealId: spec.eventDealId, eventId: spec.eventId, eventTitle: spec.eventTitle },
     );
   },
 

@@ -184,6 +184,8 @@ function applyRestore(row, savedAtMs) {
       : replaySpec?.seed !== undefined ? 'winning' : null);
   const restoredDate = restoredKind === 'daily' ? (replaySpec?.date ?? null) : null;
   const restoredEventDealId = restoredKind === 'event' ? (replaySpec?.eventDealId ?? null) : null;
+  const restoredEventId = restoredKind === 'event' ? (replaySpec?.eventId ?? null) : null;
+  const restoredEventTitle = restoredKind === 'event' ? (replaySpec?.eventTitle ?? null) : null;
   const moves = row.moves ?? 0;
   const score = row.score ?? 0;
   const undos = row.undos ?? 0;
@@ -209,6 +211,9 @@ function applyRestore(row, savedAtMs) {
 
   useGameStore.setState({ state: boardState, replaySpec });
   useUiStore.getState().setCurrentGame(restoredKind, restoredDate, restoredEventDealId);
+  if (restoredKind === 'event' && restoredEventId) {
+    useUiStore.getState().setCurrentEventMeta(restoredEventId, restoredEventTitle);
+  }
   useStatsStore.setState({
     moves,
     score,

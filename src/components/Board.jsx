@@ -236,9 +236,13 @@ export default function Board() {
       // the daily banner and a "Return to Daily Challenge" affordance, and so we
       // can persist the day's best result below.
       const uiState = useUiStore.getState();
+      const replaySpec = useGameStore.getState().replaySpec;
       const gameKind = uiState.currentGameKind;
       const dailyDate = uiState.currentDailyDate;
       const gameState = useGameStore.getState().state;
+      const effectiveEventDealId = uiState.currentEventDealId ?? replaySpec?.eventDealId ?? null;
+      const effectiveEventId = uiState.currentEventId ?? replaySpec?.eventId ?? null;
+      const effectiveEventTitle = uiState.currentEventTitle ?? replaySpec?.eventTitle ?? null;
       useUiStore.getState().setWinDialog({
         score,
         timeMs: durationMs,
@@ -253,8 +257,9 @@ export default function Board() {
         bestMoves: prev.lowestMoves,
         bestUndos: prev.lowestUndos,
         dailyDate: gameKind === 'daily' ? dailyDate : null,
-        eventDealId: gameKind === 'event' ? uiState.currentEventDealId : null,
-        eventTitle: gameKind === 'event' ? uiState.currentEventTitle : null,
+        eventDealId: gameKind === 'event' ? effectiveEventDealId : null,
+        eventId: gameKind === 'event' ? effectiveEventId : null,
+        eventTitle: gameKind === 'event' ? effectiveEventTitle : null,
         seed: gameState.seed,
       });
       const nextStreak = (prev.currentStreak || 0) + 1;
@@ -288,7 +293,7 @@ export default function Board() {
         seed: gameState.seed,
         gameKind,
         dailyDate: gameKind === 'daily' ? dailyDate : null,
-        eventDealId: gameKind === 'event' ? uiState.currentEventDealId : null,
+        eventDealId: gameKind === 'event' ? effectiveEventDealId : null,
         achievementTelemetry,
       });
       // If this was a Winning Deal (it carries a pool seed), remember the seed
@@ -308,9 +313,9 @@ export default function Board() {
       // event, leave the persisted selection alone (per the per-event "if
       // none found don't change selection" rule). Fire-and-forget so the win
       // cascade / WinModal isn't blocked.
-      if (gameKind === 'event' && uiState.currentEventId && uiState.currentEventDealId) {
-        const winEvtId = uiState.currentEventId;
-        const wonDealId = uiState.currentEventDealId;
+      if (gameKind === 'event' && effectiveEventId && effectiveEventDealId) {
+        const winEvtId = effectiveEventId;
+        const wonDealId = effectiveEventDealId;
         fetchEventDetail(winEvtId)
           .then((d) => {
             if (!d || !d.pages || d.pages.length === 0) return;

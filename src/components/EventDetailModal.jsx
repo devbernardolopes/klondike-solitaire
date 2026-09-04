@@ -146,15 +146,7 @@ export default function EventDetailModal() {
     const deal = currentPage.deals.find((d) => d.id === dealId);
     if (!deal) return;
     const run = () => {
-      dealSpecialEventDeal(deal.seed, deal.id);
-      // Cache the event id + title AFTER dealSpecialEventDeal, which internally
-      // calls setCurrentGame('event', null, eventDealId) — that setter clears
-      // currentEventId and currentEventTitle. Setting the meta afterwards
-      // ensures currentEventId survives the deal session and is available to
-      // WinModal's "Return to Special Event" handler.
-      if (detail) {
-        useUiStore.getState().setCurrentEventMeta(detail.id, detail.title);
-      }
+      dealSpecialEventDeal(deal.seed, deal.id, detail.id, detail.title);
       setEventDetailOpen(null);
       setSpecialEventsOpen(false);
     };

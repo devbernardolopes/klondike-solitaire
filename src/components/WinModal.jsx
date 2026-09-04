@@ -56,7 +56,7 @@ export default function WinModal() {
 
   if (!winDialogOpen || !summary) return null;
 
-  const { score, timeMs, moves, newScore, newTime, newMoves, bestScore, bestTimeMs, bestMoves, dailyDate, eventDealId, eventTitle, seed } = summary;
+  const { score, timeMs, moves, newScore, newTime, newMoves, bestScore, bestTimeMs, bestMoves, dailyDate, eventDealId, eventId, eventTitle, seed } = summary;
 
   const onNewGame = () => {
     closeWinDialog();
@@ -91,14 +91,8 @@ export default function WinModal() {
   };
   const onReturnEvent = () => {
     closeWinDialog();
-    // Open the events list modal first (so it sits underneath the detail
-    // modal at z=CHILD). Then open the detail modal directly to this event —
-    // EventDetailModal's own useEffect (EventDetailModal.jsx:76-95) lands on
-    // the first unlocked-but-not-yet-completed page, which after a fresh win
-    // is the page containing the just-won deal. Closing the detail modal then
-    // naturally reveals the list, mirroring the daily-return flow.
     setSpecialEventsOpen(true);
-    setEventDetailOpen(useUiStore.getState().currentEventId);
+    setEventDetailOpen(eventId ?? useUiStore.getState().currentEventId);
   };
 
   const btn = {
