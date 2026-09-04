@@ -24,9 +24,11 @@ export async function warmImageCache() {
   } catch {}
 }
 
+const failedPaths = new Set();
+
 export async function ensureImageCached(imagePath) {
   if (!imagePath) return;
-  if (memoryCache.has(imagePath)) return;
+  if (memoryCache.has(imagePath) || failedPaths.has(imagePath)) return;
   try {
     const row = await db.eventImageCache.get(imagePath);
     if (row?.blob) {
@@ -40,11 +42,16 @@ export async function ensureImageCached(imagePath) {
   try {
     const publicUrl = supabase.storage.from('event-images').getPublicUrl(imagePath).data.publicUrl;
     const res = await fetch(publicUrl);
-    if (!res.ok) return;
+    if (!res.ok) {
+      failedPaths.add(imagePath);
+      return;
+    }
     const blob = await res.blob();
     await db.eventImageCache.put({ imagePath, blob, updatedAt: Date.now() });
     if (!memoryCache.has(imagePath)) {
       memoryCache.set(imagePath, URL.createObjectURL(blob));
     }
-  } catch {}
+  } catch {
+    failedPaths.add(imagePath);
+  }
 }
