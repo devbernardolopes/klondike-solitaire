@@ -81,5 +81,19 @@
         "coinReward": 50
       }
     ]
+  },
+  {
+    "id": "juneteenth-2026",
+    "title": "Juneteenth 2026",
+    "startsAt": "2026-06-19T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 12,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "juneteenth-2026/page1.jpg",
+        "coinReward": 50
+      }
+    ]
   }
 ]
