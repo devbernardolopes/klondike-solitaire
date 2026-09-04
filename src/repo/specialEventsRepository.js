@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabaseClient.js';
 import { db } from '../db/schema.js';
-import { saveCatalogDetail, getCatalogDetail } from '../db/eventCache.js';
+import { saveCatalogDetail, getCatalogDetail, deleteCatalogDetail, deleteImageBlob } from '../db/eventCache.js';
 import { ensureImageCached, warmImageCache } from '../utils/eventImageCache.js';
 
 const catalogMemory = new Map();
@@ -80,6 +80,17 @@ async function buildSummaryFromCache() {
   }
 }
 
+async function evictEvent(eventId) {
+  const stale = catalogMemory.get(eventId);
+  catalogMemory.delete(eventId);
+  await deleteCatalogDetail(eventId).catch(() => {});
+  if (stale?.pages) {
+    for (const p of stale.pages) {
+      if (p.imagePath) await deleteImageBlob(p.imagePath).catch(() => {});
+    }
+  }
+}
+
 function kickOffCatalogSync(eventIds) {
   if (!eventIds || eventIds.length === 0) return;
   const concurrency = 3;
@@ -117,7 +128,12 @@ export async function fetchSpecialEvents() {
       supabase.from('event_page_progress').select('page_id'),
     ]);
     if (eventsErr) throw eventsErr;
-    if (!events || events.length === 0) return [];
+    if (!events || events.length === 0) {
+      for (const staleId of Array.from(catalogMemory.keys())) {
+        await evictEvent(staleId);
+      }
+      return [];
+    }
 
     const pageRows = pagesErr ? [] : pages || [];
     const completedPageIds = new Set((progressErr ? [] : progress || []).map((r) => r.page_id));
@@ -137,6 +153,10 @@ export async function fetchSpecialEvents() {
       };
     });
 
+    const liveIds = new Set(result.map((r) => r.id));
+    for (const staleId of Array.from(catalogMemory.keys())) {
+      if (!liveIds.has(staleId)) await evictEvent(staleId);
+    }
     kickOffCatalogSync(result.map((r) => r.id));
     return result;
   } catch {
@@ -187,7 +207,11 @@ export async function fetchEventDetail(eventId) {
         supabase.from('special_events').select('id, title, description, game_kind').eq('id', eventId).maybeSingle(),
         supabase.from('special_event_pages').select('id, page_number, grid_size, image_path, coin_reward').eq('event_id', eventId).order('page_number'),
       ]);
-      if (eventErr || !event) throw eventErr || new Error('no event');
+      if (eventErr) throw eventErr;
+      if (!event) {
+        await evictEvent(eventId);
+        return null;
+      }
 
       const sortedPages = pagesErr ? [] : (pages || []).slice().sort((a, b) => a.page_number - b.page_number);
 
