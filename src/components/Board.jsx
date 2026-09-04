@@ -25,7 +25,7 @@ import { solveAsync, STALE } from '../core/solverClient.js';
 import { getAutoFireSolveOptions } from '../core/solver.js';
 import { useTranslation } from 'react-i18next';
 import Pile from './Pile.jsx';
-import { CardFace } from './CardView.jsx';
+import { CardFace, cardAriaString } from './CardView.jsx';
 
 // Resolve a batch of CSS length expressions (clamp()/calc()/var()) to pixel
 // numbers in a single DOM probe pass. Custom-property tokens are NOT pre-resolved
@@ -76,6 +76,7 @@ function clearFanMetrics() {
  * @param {{ cardH:number, fanUp:number, fanDown:number, fanDownMin:number, fanUpEmergencyMin:number, avail:number }} [props.metrics]
  */
 function RunPreview({ cards, metrics }) {
+  const { t } = useTranslation();
   const { cardH, fanUp, avail } = metrics || {};
   // The lifted run is always face-up; compute a fit scale the same way Pile does
   // so the floating stack matches the source column's compressed spacing.
@@ -108,7 +109,7 @@ function RunPreview({ cards, metrics }) {
             zIndex: i,
           }}
         >
-          <CardFace card={card} zIndex={i} />
+          <CardFace card={card} zIndex={i} ariaLabel={cardAriaString(t, card)} faceDownLabel={t('cards.faceDown')} />
         </div>
       ))}
     </div>
@@ -181,6 +182,8 @@ export default function Board() {
   const autoCompleting = useGameStore((s) => s.autoCompleting);
   const autoCompletingToWin = useGameStore((s) => s.autoCompletingToWin);
   const won = isWon(state);
+  const highlightCard = useSettingsStore((s) => s.highlightCard);
+  const hardBlockBase = won || isOver || autoCompleting;
   // `anyAnimating` = some card is still in flight (used to block global actions
   // like new-game/undo/auto-complete). `stockWasteBusy` only blocks
   // draw/recycle. Card/pile-level interaction is gated per-card / per-pile by
@@ -531,9 +534,9 @@ export default function Board() {
   const pilesGrid = (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, var(--card-width))', gap: 'clamp(6px, 1.2vw, 14px)', justifyContent: 'center', padding: 'clamp(8px, 2vw, 20px)', maxWidth: '100%' }}>
       {handedness === 'right'
-        ? [...state.foundations.map((pile, i) => { const h = hintDataFor(`foundation:${i}`); return <Pile key={`f${i}`} loc={`foundation:${i}`} cards={pile} hiddenIds={hiddenIds} onAutoMove={autoMove} moveCard={moveCard} sourceCardIds={h.sourceIds} isHintTarget={h.isTarget} animatingIds={animatingIds} />; }), <div key="spacer" />, (() => { const h = hintDataFor('waste'); return <Pile key="waste" loc="waste" cards={state.waste} hiddenIds={hiddenIds} onAutoMove={autoMove} moveCard={moveCard} sourceCardIds={h.sourceIds} isHintTarget={h.isTarget} animatingIds={animatingIds} />; })(), (() => { const h = hintDataFor('stock'); return <Pile key="stock" loc="stock" cards={state.stock} onClick={onStockClick} label={state.stock.length === 0 ? '↻' : ''} hiddenIds={hiddenIds} moveCard={moveCard} sourceCardIds={h.sourceIds} isHintTarget={h.isTarget} animatingIds={animatingIds} />; })()]
-        : [(() => { const h = hintDataFor('stock'); return <Pile key="stock" loc="stock" cards={state.stock} onClick={onStockClick} label={state.stock.length === 0 ? '↻' : ''} hiddenIds={hiddenIds} moveCard={moveCard} sourceCardIds={h.sourceIds} isHintTarget={h.isTarget} animatingIds={animatingIds} />; })(), (() => { const h = hintDataFor('waste'); return <Pile key="waste" loc="waste" cards={state.waste} hiddenIds={hiddenIds} onAutoMove={autoMove} moveCard={moveCard} sourceCardIds={h.sourceIds} isHintTarget={h.isTarget} animatingIds={animatingIds} />; })(), <div key="spacer" />, ...state.foundations.map((pile, i) => { const h = hintDataFor(`foundation:${i}`); return <Pile key={`f${i}`} loc={`foundation:${i}`} cards={pile} hiddenIds={hiddenIds} onAutoMove={autoMove} moveCard={moveCard} sourceCardIds={h.sourceIds} isHintTarget={h.isTarget} animatingIds={animatingIds} />; })]}
-      {state.tableau.map((pile, i) => { const h = hintDataFor(`tableau:${i}`); return <Pile key={`t${i}`} loc={`tableau:${i}`} cards={pile} fanned metrics={metrics} hiddenIds={hiddenIds} onAutoMove={autoMove} moveCard={moveCard} sourceCardIds={h.sourceIds} isHintTarget={h.isTarget} animatingIds={animatingIds} />; })}
+        ? [...state.foundations.map((pile, i) => { const h = hintDataFor(`foundation:${i}`); return <Pile key={`f${i}`} loc={`foundation:${i}`} cards={pile} hiddenIds={hiddenIds} onAutoMove={autoMove} moveCard={moveCard} sourceCardIds={h.sourceIds} isHintTarget={h.isTarget} animatingIds={animatingIds} won={won} hardBlockBase={hardBlockBase} highlightCard={highlightCard} />; }), <div key="spacer" />, (() => { const h = hintDataFor('waste'); return <Pile key="waste" loc="waste" cards={state.waste} hiddenIds={hiddenIds} onAutoMove={autoMove} moveCard={moveCard} sourceCardIds={h.sourceIds} isHintTarget={h.isTarget} animatingIds={animatingIds} won={won} hardBlockBase={hardBlockBase} highlightCard={highlightCard} />; })(), (() => { const h = hintDataFor('stock'); return <Pile key="stock" loc="stock" cards={state.stock} onClick={onStockClick} label={state.stock.length === 0 ? '↻' : ''} hiddenIds={hiddenIds} moveCard={moveCard} sourceCardIds={h.sourceIds} isHintTarget={h.isTarget} animatingIds={animatingIds} won={won} hardBlockBase={hardBlockBase} highlightCard={highlightCard} />; })()]
+        : [(() => { const h = hintDataFor('stock'); return <Pile key="stock" loc="stock" cards={state.stock} onClick={onStockClick} label={state.stock.length === 0 ? '↻' : ''} hiddenIds={hiddenIds} moveCard={moveCard} sourceCardIds={h.sourceIds} isHintTarget={h.isTarget} animatingIds={animatingIds} won={won} hardBlockBase={hardBlockBase} highlightCard={highlightCard} />; })(), (() => { const h = hintDataFor('waste'); return <Pile key="waste" loc="waste" cards={state.waste} hiddenIds={hiddenIds} onAutoMove={autoMove} moveCard={moveCard} sourceCardIds={h.sourceIds} isHintTarget={h.isTarget} animatingIds={animatingIds} won={won} hardBlockBase={hardBlockBase} highlightCard={highlightCard} />; })(), <div key="spacer" />, ...state.foundations.map((pile, i) => { const h = hintDataFor(`foundation:${i}`); return <Pile key={`f${i}`} loc={`foundation:${i}`} cards={pile} hiddenIds={hiddenIds} onAutoMove={autoMove} moveCard={moveCard} sourceCardIds={h.sourceIds} isHintTarget={h.isTarget} animatingIds={animatingIds} won={won} hardBlockBase={hardBlockBase} highlightCard={highlightCard} />; })]}
+      {state.tableau.map((pile, i) => { const h = hintDataFor(`tableau:${i}`); return <Pile key={`t${i}`} loc={`tableau:${i}`} cards={pile} fanned metrics={metrics} hiddenIds={hiddenIds} onAutoMove={autoMove} moveCard={moveCard} sourceCardIds={h.sourceIds} isHintTarget={h.isTarget} animatingIds={animatingIds} won={won} hardBlockBase={hardBlockBase} highlightCard={highlightCard} />; })}
     </div>
   );
 

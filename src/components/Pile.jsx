@@ -8,11 +8,9 @@ import { useDroppable } from '@dnd-kit/core';
 import { useTranslation } from 'react-i18next';
 import CardView from './CardView.jsx';
 import { useGameStore } from '../hooks/useGameStore.js';
-import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useUiStore, findCardLocator } from '../hooks/useUiStore.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { MOTION } from '../render/animation/motion.js';
-import { isWon } from '../core/winDetection.js';
 import { shouldRenderPileHoverOverlay } from './pileHoverOverlay.js';
 
 /**
@@ -29,23 +27,16 @@ import { shouldRenderPileHoverOverlay } from './pileHoverOverlay.js';
  * @param {boolean} [props.isHintTarget] whether this pile is a destination of at least one move hint (computed in Board)
  * @param {Set<string>} [props.animatingIds] set of card ids currently in flight (passed from Board to filter moving cards from the pile's resting render)
  */
-export default function Pile({ loc, cards, fanned = false, onClick, label, hiddenIds, onAutoMove, metrics, sourceCardIds, isHintTarget, animatingIds }) {
+export default function Pile({ loc, cards, fanned = false, onClick, label, hiddenIds, onAutoMove, metrics, sourceCardIds, isHintTarget, animatingIds, won = false, hardBlockBase = false, highlightCard = true }) {
   const { t } = useTranslation();
   const { setNodeRef, isOver } = useDroppable({ id: loc, data: { loc } });
   const selectedCardId = useUiStore((s) => s.selectedCardId);
   const clearSelection = useUiStore((s) => s.clearSelection);
   const setAnnounce = useUiStore((s) => s.setAnnounce);
-  const won = useGameStore((s) => isWon(s.state));
-  const sessionOver = useStatsStore((s) => s.isOver);
   const draggingFrom = useUiStore((s) => s.draggingFrom);
   const draggingCard = useUiStore((s) => s.draggingCard);
-  // While an auto-complete (toward the win) is animating, the whole board is
-  // locked — the player must not interact with piles mid-sequence.
-  const autoCompleting = useGameStore((s) => s.autoCompleting);
-  // Block this pile only when it is the busy destination of an in-flight move.
-  // Source piles and all other piles stay fully interactive.
   const isAnimating = useUiStore((s) => s.animatingLocs.has(loc));
-  const locked = won || sessionOver || isAnimating || autoCompleting;
+  const locked = (hardBlockBase || won) || isAnimating;
 
   const kind = loc.split(':')[0];
 
@@ -363,6 +354,9 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
             zIndex={i}
             hidden={hiddenIds ? hiddenIds.has(card.id) : false}
             onAutoMove={onAutoMove}
+            hardBlockBase={hardBlockBase}
+            highlightCard={highlightCard}
+            won={won}
           />
         </div>
       ))}
