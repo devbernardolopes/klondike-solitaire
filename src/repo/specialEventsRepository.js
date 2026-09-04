@@ -9,10 +9,15 @@ export function getCachedEventDetailSync(eventId) {
   return catalogMemory.get(eventId) ?? null;
 }
 
+export function compareEventSummaries(a, b) {
+  const order = (a.sortOrder ?? Infinity) - (b.sortOrder ?? Infinity);
+  return order !== 0 ? order : a.id.localeCompare(b.id);
+}
+
 export function getCachedEventsSummarySync() {
   if (catalogMemory.size === 0) return null;
   const list = Array.from(catalogMemory.values()).map(summaryFromDetail);
-  return list.length ? list.sort((a, b) => a.id.localeCompare(b.id)) : null;
+  return list.length ? list.sort(compareEventSummaries) : null;
 }
 
 export async function hydrateEventCachesFromDexie() {
@@ -60,6 +65,7 @@ function summaryFromDetail(detail) {
     title: detail.title,
     description: detail.description,
     gameKind: detail.gameKind,
+    sortOrder: detail.sortOrder ?? null,
     totalPages,
     completedPages,
     fullyCompleted: totalPages > 0 && completedPages >= totalPages,
@@ -74,7 +80,7 @@ async function buildSummaryFromCache() {
       .map((r) => r.detail)
       .filter(Boolean)
       .map(summaryFromDetail)
-      .sort((a, b) => a.id.localeCompare(b.id));
+      .sort(compareEventSummaries);
   } catch {
     return [];
   }
@@ -113,8 +119,8 @@ function kickOffCatalogSync(eventIds) {
  * needs page counts. Returns [] on any failure (offline, RLS denial, etc.)
  * rather than throwing, so the modal can always render its empty state.
  * @returns {Promise<Array<{id:string, title:string, description:string|null,
- *   gameKind:string, totalPages:number, completedPages:number,
- *   fullyCompleted:boolean}>>}
+ *   gameKind:string, sortOrder:number|null, totalPages:number,
+ *   completedPages:number, fullyCompleted:boolean}>>}
  */
 export async function fetchSpecialEvents() {
   if (!supabase) {
@@ -138,20 +144,23 @@ export async function fetchSpecialEvents() {
     const pageRows = pagesErr ? [] : pages || [];
     const completedPageIds = new Set((progressErr ? [] : progress || []).map((r) => r.page_id));
 
-    const result = events.map((e) => {
-      const eventPages = pageRows.filter((p) => p.event_id === e.id);
-      const totalPages = eventPages.length;
-      const completedPages = eventPages.filter((p) => completedPageIds.has(p.id)).length;
-      return {
-        id: e.id,
-        title: e.title,
-        description: e.description,
-        gameKind: e.game_kind,
-        totalPages,
-        completedPages,
-        fullyCompleted: totalPages > 0 && completedPages >= totalPages,
-      };
-    });
+    const result = events
+      .map((e) => {
+        const eventPages = pageRows.filter((p) => p.event_id === e.id);
+        const totalPages = eventPages.length;
+        const completedPages = eventPages.filter((p) => completedPageIds.has(p.id)).length;
+        return {
+          id: e.id,
+          title: e.title,
+          description: e.description,
+          gameKind: e.game_kind,
+          sortOrder: e.sort_order ?? null,
+          totalPages,
+          completedPages,
+          fullyCompleted: totalPages > 0 && completedPages >= totalPages,
+        };
+      })
+      .sort(compareEventSummaries);
 
     const liveIds = new Set(result.map((r) => r.id));
     for (const staleId of Array.from(catalogMemory.keys())) {
@@ -193,7 +202,7 @@ export async function fetchAllEventSeeds() {
  * the fetch fails.
  * @param {string} eventId
  * @returns {Promise<{id:string, title:string, description:string|null,
- *   gameKind:string, pages:Array<{id:number, pageNumber:number,
+ *   gameKind:string, sortOrder:number|null, pages:Array<{id:number, pageNumber:number,
  *   gridSize:number, imagePath:string, coinReward:number, completed:boolean,
  *   unlocked:boolean, deals:Array<{id:number, position:number, seed:number,
  *   solved:boolean}>}>}|null>}
@@ -204,7 +213,7 @@ export async function fetchEventDetail(eventId) {
   if (supabase) {
     try {
       const [{ data: event, error: eventErr }, { data: pages, error: pagesErr }] = await Promise.all([
-        supabase.from('special_events').select('id, title, description, game_kind').eq('id', eventId).maybeSingle(),
+        supabase.from('special_events').select('id, title, description, game_kind, sort_order').eq('id', eventId).maybeSingle(),
         supabase.from('special_event_pages').select('id, page_number, grid_size, image_path, coin_reward').eq('event_id', eventId).order('page_number'),
       ]);
       if (eventErr) throw eventErr;
@@ -264,6 +273,7 @@ export async function fetchEventDetail(eventId) {
         title: event.title,
         description: event.description,
         gameKind: event.game_kind,
+        sortOrder: event.sort_order ?? null,
         pages: pagesWithState,
       };
 
