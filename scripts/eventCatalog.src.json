@@ -7,9 +7,21 @@
     "gameKind": "draw-1",
     "sortOrder": 10,
     "pages": [
-      { "gridSize": 2, "imagePath": "christmas-2026/page1.png", "coinReward": 50 },
-      { "gridSize": 3, "imagePath": "christmas-2026/page2.png", "coinReward": 100 },
-      { "gridSize": 4, "imagePath": "christmas-2026/page3.png", "coinReward": 200 }
+      {
+        "gridSize": 2,
+        "imagePath": "christmas-2026/page1.png",
+        "coinReward": 50
+      },
+      {
+        "gridSize": 3,
+        "imagePath": "christmas-2026/page2.png",
+        "coinReward": 100
+      },
+      {
+        "gridSize": 4,
+        "imagePath": "christmas-2026/page3.png",
+        "coinReward": 200
+      }
     ]
   },
   {
@@ -20,9 +32,21 @@
     "gameKind": "draw-1",
     "sortOrder": 5,
     "pages": [
-      { "gridSize": 2, "imagePath": "tribute-in-light/page1.png", "coinReward": 50 },
-      { "gridSize": 3, "imagePath": "tribute-in-light/page2.png", "coinReward": 100 },
-      { "gridSize": 4, "imagePath": "tribute-in-light/page3.png", "coinReward": 200 }
+      {
+        "gridSize": 2,
+        "imagePath": "tribute-in-light/page1.png",
+        "coinReward": 50
+      },
+      {
+        "gridSize": 3,
+        "imagePath": "tribute-in-light/page2.png",
+        "coinReward": 100
+      },
+      {
+        "gridSize": 4,
+        "imagePath": "tribute-in-light/page3.png",
+        "coinReward": 200
+      }
     ]
   },
   {
@@ -32,7 +56,30 @@
     "gameKind": "draw-1",
     "sortOrder": 7,
     "pages": [
-      { "gridSize": 2, "imagePath": "valentines-day-2026/page1.jpg", "coinReward": 50 }
+      {
+        "gridSize": 2,
+        "imagePath": "valentines-day-2026/page1.jpg",
+        "coinReward": 50
+      }
+    ]
+  },
+  {
+    "id": "independence-day-2026",
+    "title": "Independence Day 2026",
+    "startsAt": "2026-07-04T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 11,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "independence-day-2026/page1.jpg",
+        "coinReward": 50
+      },
+      {
+        "gridSize": 2,
+        "imagePath": "independence-day-2026/page2.jpg",
+        "coinReward": 50
+      }
     ]
   }
 ]
