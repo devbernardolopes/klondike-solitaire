@@ -37,6 +37,22 @@ export function cancelDrawSlide(cardId) {
   useUiStore.getState().endTransition(rec.tid);
 }
 
+export function cancelAllDrawSlides() {
+  if (drawTweens.size === 0) return;
+  const ui = useUiStore.getState();
+  drawTweens.forEach((rec, cardId) => {
+    try { rec.tl.kill(); } catch {}
+    try {
+      if (rec.cardNode) gsap.set(rec.cardNode, { clearProps: 'x,y,zIndex' });
+      if (rec.inner) gsap.set(rec.inner, { clearProps: 'rotateY' });
+      if (rec.wrap) rec.wrap.style.zIndex = rec.prevWrapZ;
+    } catch {}
+    drawTweens.delete(cardId);
+    try { ui.endDrawSlide(cardId); } catch {}
+    try { ui.endTransition(rec.tid); } catch {}
+  });
+}
+
 /**
  * Stock → waste draw animation: the revealed card flips face-up in place at the
  * stock pile and THEN glides horizontally to the waste pile. The horizontal
@@ -169,8 +185,7 @@ export function useStockDrawSlide() {
   // Kill the draw tween only when the board unmounts.
   useEffect(() => {
     return () => {
-      drawTweens.forEach((t) => t.tl.kill());
-      drawTweens.clear();
+      cancelAllDrawSlides();
     };
   }, []);
 }

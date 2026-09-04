@@ -39,6 +39,26 @@ function fireTransitionDone(tid) {
   }
 }
 
+export function lockSnapshot() {
+  const s = useUiStore.getState();
+  return {
+    animatingCards: s.animatingCards.size,
+    slidingCards: [...s.slidingCards],
+    animatingLocs: [...s.animatingLocs],
+    activeTransitions: Object.keys(s.activeTransitions),
+    fullLock: s.fullLock,
+  };
+}
+
+export function warnDealBlocked(action) {
+  console.warn(`Deal blocked (${action}): animation locks still held`, lockSnapshot());
+}
+
+const viteEnv = (typeof import.meta !== 'undefined' && import.meta.env) || {};
+if (typeof window !== 'undefined' && viteEnv.DEV) {
+  window.__klondikeLocks = lockSnapshot;
+}
+
 export const useUiStore = create((set, get) => ({
   selectedCardId: null,
   announce: '',
@@ -200,7 +220,7 @@ export const useUiStore = create((set, get) => ({
     // a transition never hang forever (e.g. on unmount / hard reset).
     transitionDone.forEach((resolve) => { try { resolve(); } catch {} });
     transitionDone.clear();
-    set({ animatingCards: new Set(), animatingLocs: new Set(), activeTransitions: {} });
+    set({ animatingCards: new Set(), animatingLocs: new Set(), slidingCards: new Set(), activeTransitions: {} });
   },
 
   /** Set the all-encompassing lock used by the win cascade / deal reset. */

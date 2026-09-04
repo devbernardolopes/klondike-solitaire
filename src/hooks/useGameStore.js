@@ -29,7 +29,7 @@ import { triggerUncoverSparkle } from '../render/animation/useUncoverSparkle.js'
 import { shouldFireUncoverSparkle } from '../render/animation/shouldFireUncoverSparkle.js';
 import { MOTION } from '../render/animation/motion.js';
 import i18n from '../i18n/index.js';
-import { useUiStore, whenTransitionDone } from './useUiStore.js';
+import { useUiStore, whenTransitionDone, warnDealBlocked } from './useUiStore.js';
 import { useStatsStore } from './useStatsStore.js';
 import { useStatisticsStore } from './useStatisticsStore.js';
 import { useSeedStore } from './useSeedStore.js';
@@ -506,7 +506,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     useUiStore.getState().clearHints();
     useStatisticsStore.getState().finalizeGame();
     cancelWinCascade();
-    if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) return;
+    if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) { warnDealBlocked('dealNewGame'); return; }
     useUiStore.getState().setLastNewGameMode(mode);
     useStatsStore.getState().resetStats();
     let seed;
@@ -544,7 +544,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     useUiStore.getState().setNoMovesDialogOpen(false);
     useUiStore.getState().clearHints();
     cancelWinCascade();
-    if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) return;
+    if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) { warnDealBlocked('dealWithSeed'); return; }
     useUiStore.getState().setLastNewGameMode('winning');
     useStatsStore.getState().resetStats();
     useUiStore.getState().setCurrentGame('winning');
@@ -568,7 +568,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     useUiStore.getState().setNoMovesDialogOpen(false);
     useUiStore.getState().clearHints();
     cancelWinCascade();
-    if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) return false;
+    if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) { warnDealBlocked('dealDaily'); return false; }
     useUiStore.getState().setLastNewGameMode('winning');
     useStatsStore.getState().resetStats();
     useUiStore.getState().setCurrentGame('daily', date);
@@ -595,7 +595,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     useUiStore.getState().setNoMovesDialogOpen(false);
     useUiStore.getState().clearHints();
     cancelWinCascade();
-    if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) return;
+    if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) { warnDealBlocked('dealSpecialEventDeal'); return; }
     useUiStore.getState().setLastNewGameMode('winning');
     useStatsStore.getState().resetStats();
     useUiStore.getState().setCurrentGame('event', null, eventDealId);
@@ -616,7 +616,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     useUiStore.getState().setNoMovesDialogOpen(false);
     useUiStore.getState().clearHints();
     cancelWinCascade();
-    if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) return;
+    if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) { warnDealBlocked('initialDeal'); return; }
     useUiStore.getState().setLastNewGameMode('winning');
     useStatsStore.getState().resetStats();
     useUiStore.getState().setCurrentGame('winning');
@@ -661,7 +661,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     // Finalize the game we're replacing: a non-win ends the streak (best kept).
     useStatisticsStore.getState().finalizeGame();
     cancelWinCascade();
-    if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) return;
+    if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) { warnDealBlocked('replayGame'); return; }
     // Preserve the originating kind (and date for Daily) captured at deal time,
     // rather than inferring it from seed presence — a Random deal now carries a
     // seed too, so seed-presence would wrongly label it a Winning Deal.
@@ -979,7 +979,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     // (no interaction during animation). The automatic trigger from an
     // obvious-win state passes force:true because that state is reached BY an
     // animating move, and the running sequence keeps the lock held itself.
-    if (!force && useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) return false;
+    if (!force && useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) { warnDealBlocked('autoComplete'); return false; }
 
     const state = get().state;
 

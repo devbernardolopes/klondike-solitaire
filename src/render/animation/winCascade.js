@@ -2,6 +2,7 @@ import { gsap } from './gsapSetup.js';
 import { MOTION } from './motion.js';
 import { useUiStore } from '../../hooks/useUiStore.js';
 import { useSettingsStore } from '../../hooks/useSettingsStore.js';
+import { cancelAllDrawSlides } from './useStockDrawSlide.js';
 
 // Module-level handles so a new-game request can abort an in-flight cascade.
 let winTween = null;
@@ -73,6 +74,7 @@ export function playWinCascade() {
   if (cards.length === 0) return;
   foundationPiles = [];
   try { useUiStore.getState().setFullLock(true); } catch {}
+  try { cancelAllDrawSlides(); } catch {}
   try { useUiStore.getState().clearAllTransitions(); } catch {}
   gsap.killTweensOf(cards);
   gsap.set(cards, { clearProps: 'transform,position' });
