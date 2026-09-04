@@ -26,7 +26,12 @@ const drawTweens = new Map(); // cardId -> { tl, tid, cardNode, inner, wrap, pre
 export function cancelDrawSlide(cardId) {
   const rec = drawTweens.get(cardId);
   if (!rec) return;
-  rec.tl.kill();
+  try { rec.tl.kill(); } catch {}
+  try {
+    if (rec.cardNode) gsap.set(rec.cardNode, { clearProps: 'x,y,zIndex' });
+    if (rec.inner) gsap.set(rec.inner, { clearProps: 'rotateY' });
+    if (rec.wrap) rec.wrap.style.zIndex = rec.prevWrapZ;
+  } catch {}
   drawTweens.delete(cardId);
   useUiStore.getState().endDrawSlide(cardId);
   useUiStore.getState().endTransition(rec.tid);

@@ -845,8 +845,8 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     cancelAutoComplete(set);
     useUiStore.getState().setNoMovesDialogOpen(false);
     const { state } = get();
-    if (get().autoCompleting) return;
-    if (state.moveHistory.length === 0 || useStatsStore.getState().isOver) return;
+    if (get().autoCompleting) return null;
+    if (state.moveHistory.length === 0 || useStatsStore.getState().isOver) return null;
     // No longer a hard guard on animatingCards/slidingCards: the user can
     // undo a move while its slide tween is still in flight. We cancel the
     // specific tween(s) for the affected cards below, which kills the
@@ -896,8 +896,9 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
       } catch {}
     }
     const next = coreUndo(state);
+    let tid = null;
     if (undoIds.length > 0) {
-      const tid = captureFlip('undo', undoIds);
+      tid = captureFlip('undo', undoIds);
       useUiStore.getState().beginTransition(tid, undoIds, undoDest);
     }
     set({ state: next, autoMoveState: {}, lastActionMeta: { type: 'undo' } });
@@ -905,6 +906,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     useUiStore.getState().clearHints();
     useStatsStore.getState().addMoves(1);
     useStatsStore.getState().addUndos(1);
+    return tid;
   },
 
   /**

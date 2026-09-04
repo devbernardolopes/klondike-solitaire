@@ -100,6 +100,19 @@ export function cancelSlideTween(cardIds) {
     if (!seenTweens.has(rec.tl)) {
       seenTweens.add(rec.tl);
       try { rec.tl.kill(); } catch {}
+      try {
+        if (rec.moved) {
+          for (const el of rec.moved) {
+            try { gsap.set(el, { clearProps: 'x,y,scale,boxShadow,rotationZ' }); } catch {}
+          }
+        }
+        if (rec.movers) {
+          for (const { wrap, prevZ } of rec.movers) {
+            if (wrap) wrap.style.zIndex = prevZ;
+          }
+        }
+        if (rec.stockWrap) rec.stockWrap.style.zIndex = rec.prevStockZ;
+      } catch {}
     }
     if (!seenTids.has(rec.tid)) {
       seenTids.add(rec.tid);
@@ -381,12 +394,12 @@ export function useCardMoveSlide() {
     for (const step of bounceSteps) {
       tl.to(moved, { ...step.props, duration: step.duration, ease: step.ease, stagger: 0 }, step.position);
     }
-    // Register this tween against every card id it owns. cancelSlideTween
+     // Register this tween against every card id it owns. cancelSlideTween
     // looks up by card id; multi-card runs share one record so all the
     // affected ids map to the same tl/tid. Deregistration happens in the
     // tl's onComplete (or via cancelSlideTween, which removes its own
     // entries and skips endTransition in the onComplete branch).
-    const slideRec = { tl, tid, cardIds: new Set(cardIds) };
+     const slideRec = { tl, tid, cardIds: new Set(cardIds), moved: moved.slice(), movers: movers.slice(), stockWrap, prevStockZ };
     for (const id of cardIds) activeTweens.set(id, slideRec);
 
     // IMPORTANT: no cleanup that kills `tl` on effect re-run. A new transition

@@ -5,7 +5,7 @@ import { useEffect, useCallback, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, Undo2, Menu, Lightbulb, Coins as CoinsIcon } from 'lucide-react';
 import { useGameStore } from '../hooks/useGameStore.js';
-import { useUiStore, isAnyModalOpen } from '../hooks/useUiStore.js';
+import { useUiStore, isAnyModalOpen, whenTransitionDone } from '../hooks/useUiStore.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
@@ -146,19 +146,22 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const undoPointerId = useRef(null);
   const undoRepeating = useRef(false);
   const suppressUndoClick = useRef(false);
+  const undoHoldActive = useRef(false);
   const clearUndoHold = useCallback(() => {
+    undoHoldActive.current = false;
     if (undoHoldTimer.current !== null) {
       clearTimeout(undoHoldTimer.current);
       undoHoldTimer.current = null;
     }
     if (undoRepeatTimer.current !== null) {
-      clearInterval(undoRepeatTimer.current);
+      clearTimeout(undoRepeatTimer.current);
       undoRepeatTimer.current = null;
     }
     undoPointerId.current = null;
     undoRepeating.current = false;
   }, []);
-  const repeatUndo = useCallback(() => {
+  const repeatUndo = useCallback(async () => {
+    if (!undoHoldActive.current) return;
     const current = useGameStore.getState();
     const currentStats = useStatsStore.getState();
     if (current.autoCompleting || isWon(current.state) || !current.canUndo() || currentStats.isOver) {
@@ -166,24 +169,36 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
       return;
     }
     const { animatingCards, slidingCards, animatingLocs } = useUiStore.getState();
-    if (animatingCards.size > 0 || slidingCards.size > 0 || animatingLocs.size > 0) return;
-    undo();
+    if (animatingCards.size > 0 || slidingCards.size > 0 || animatingLocs.size > 0) {
+      undoRepeatTimer.current = setTimeout(repeatUndo, 50);
+      return;
+    }
+    const tid = undo();
+    if (tid == null) {
+      clearUndoHold();
+      return;
+    }
+    try { await whenTransitionDone(tid); } catch {}
+    if (!undoHoldActive.current) return;
+    if (!useGameStore.getState().canUndo() || useStatsStore.getState().isOver) {
+      clearUndoHold();
+      return;
+    }
+    undoRepeatTimer.current = setTimeout(repeatUndo, UNDO_REPEAT_INTERVAL_MS);
   }, [clearUndoHold, undo]);
   const onUndoPointerDown = useCallback((e) => {
     if (e.isPrimary === false || (e.pointerType === 'mouse' && e.button !== 0)) return;
     clearUndoHold();
+    undoHoldActive.current = true;
     undoPointerId.current = e.pointerId;
     undoRepeating.current = false;
     e.currentTarget.setPointerCapture?.(e.pointerId);
     undoHoldTimer.current = setTimeout(() => {
       undoHoldTimer.current = null;
-      if (undoPointerId.current !== e.pointerId) return;
+      if (!undoHoldActive.current || undoPointerId.current !== e.pointerId) return;
       undoRepeating.current = true;
       suppressUndoClick.current = true;
       repeatUndo();
-      if (undoPointerId.current === e.pointerId) {
-        undoRepeatTimer.current = setInterval(repeatUndo, UNDO_REPEAT_INTERVAL_MS);
-      }
     }, UNDO_HOLD_DELAY_MS);
   }, [clearUndoHold, repeatUndo]);
   const onUndoPointerEnd = useCallback((e) => {
