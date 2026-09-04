@@ -22,7 +22,7 @@ import { Z } from '../utils/modalStack.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
-import { fetchEventDetail, getCachedEventDetailSync, resolveInitialPageIndex, detailsDiffer } from '../repo/specialEventsRepository.js';
+import { fetchEventDetail, getCachedEventDetailSync, resolveInitialPageIndex, detailsDiffer, setCachedEventDetailSync } from '../repo/specialEventsRepository.js';
 import { applyOptimisticSolve, cloneDetail, findNextUnsolvedDeal } from '../repo/specialEventsProgress.js';
 import { loadEventSelectionSync, saveEventSelection, loadLastViewedPageSync, saveLastViewedPage } from '../db/eventSelection.js';
 import EventDealGrid from './EventDealGrid.jsx';
@@ -134,21 +134,24 @@ export default function EventDetailModal() {
         }
         return next;
       });
-      fetchEventDetail(eventId)
+      {
+        const optimisticId =
+          useUiStore.getState().winSummary?.eventDealId ??
+          useUiStore.getState().currentEventDealId ??
+          useGameStore.getState().replaySpec?.eventDealId ??
+          null;
+        const optimisticDealIds = optimisticId != null ? [optimisticId] : [];
+        fetchEventDetail(eventId, { optimisticDealIds })
         .then((fresh) => {
           if (!fresh) return;
           let patched = fresh;
-          if (fresh && fresh.pages) {
-            const optimisticId =
-              useUiStore.getState().winSummary?.eventDealId ??
-              useUiStore.getState().currentEventDealId ??
-              useGameStore.getState().replaySpec?.eventDealId ??
-              null;
-            if (optimisticId != null) {
-              patched = cloneDetail(fresh);
-              applyOptimisticSolve(patched, optimisticId);
-            }
+          if (fresh && fresh.pages && optimisticId != null) {
+            patched = cloneDetail(fresh);
+            applyOptimisticSolve(patched, optimisticId);
           }
+          try {
+            setCachedEventDetailSync(patched);
+          } catch {}
           if (!detailsDiffer(cached, patched)) return;
           setDetail(patched);
           setSelectedDealIdByPage((prev) => {
@@ -171,24 +174,28 @@ export default function EventDetailModal() {
           });
         })
         .catch(() => {});
+        }
       return;
     }
     setLoaded(false);
     setDetail(null);
-    fetchEventDetail(eventId)
+    {
+      const optimisticId =
+        useUiStore.getState().winSummary?.eventDealId ??
+        useUiStore.getState().currentEventDealId ??
+        useGameStore.getState().replaySpec?.eventDealId ??
+        null;
+      const optimisticDealIds = optimisticId != null ? [optimisticId] : [];
+      fetchEventDetail(eventId, { optimisticDealIds })
       .then((d) => {
         let patched = d;
-        if (d && d.pages) {
-          const optimisticId =
-            useUiStore.getState().winSummary?.eventDealId ??
-            useUiStore.getState().currentEventDealId ??
-            useGameStore.getState().replaySpec?.eventDealId ??
-            null;
-          if (optimisticId != null) {
-            patched = cloneDetail(d);
-            applyOptimisticSolve(patched, optimisticId);
-          }
+        if (d && d.pages && optimisticId != null) {
+          patched = cloneDetail(d);
+          applyOptimisticSolve(patched, optimisticId);
         }
+        try {
+          if (patched) setCachedEventDetailSync(patched);
+        } catch {}
         setDetail(patched);
         if (patched && patched.pages.length > 0) {
           const lastPage = loadLastViewedPageSync(eventId);
@@ -218,6 +225,7 @@ export default function EventDetailModal() {
       })
       .catch(() => setDetail(null))
       .finally(() => setLoaded(true));
+    }
   }, [open, eventId]);
 
   useEffect(() => {
@@ -242,6 +250,7 @@ export default function EventDetailModal() {
         if (!p.unlocked) continue;
         const key = String(p.pageNumber);
         const sel = next[key];
+        if (justWonDealId != null && sel === justWonDealId) continue;
         const selDeal = p.deals.find((d) => d.id === sel);
         if (selDeal && selDeal.solved) {
           const firstOpen = p.deals.find((d) => !d.solved);

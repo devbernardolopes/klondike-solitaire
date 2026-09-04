@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabaseClient.js';
 import { db } from '../db/schema.js';
 import { saveCatalogDetail, getCatalogDetail, deleteCatalogDetail, deleteImageBlob } from '../db/eventCache.js';
 import { ensureImageCached, warmImageCache } from '../utils/eventImageCache.js';
+import { collectSolvedIds, mergeSolvedIds } from './specialEventsProgress.js';
 
 const catalogMemory = new Map();
 
@@ -252,8 +253,11 @@ export async function fetchAllEventSeeds() {
  *   unlocked:boolean, deals:Array<{id:number, position:number, seed:number,
  *   solved:boolean}>}>}|null>}
  */
-export async function fetchEventDetail(eventId) {
+export async function fetchEventDetail(eventId, opts) {
   if (!eventId) return null;
+  const optimisticDealIds = Array.isArray(opts?.optimisticDealIds)
+    ? opts.optimisticDealIds.filter((id) => id != null)
+    : [];
 
   if (supabase) {
     try {
@@ -322,6 +326,20 @@ export async function fetchEventDetail(eventId) {
         pages: pagesWithState,
       };
 
+      try {
+        const knownSolved = new Set(optimisticDealIds);
+        const prev = catalogMemory.get(detail.id);
+        if (prev) {
+          for (const id of collectSolvedIds(prev)) knownSolved.add(id);
+        }
+        try {
+          const dexieRow = await getCatalogDetail(detail.id);
+          if (dexieRow?.detail) {
+            for (const id of collectSolvedIds(dexieRow.detail)) knownSolved.add(id);
+          }
+        } catch {}
+        mergeSolvedIds(detail, knownSolved);
+      } catch {}
       catalogMemory.set(detail.id, detail);
       saveCatalogDetail(detail).catch(() => {});
       for (const p of pagesWithState) {

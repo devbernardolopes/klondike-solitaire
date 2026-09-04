@@ -38,6 +38,32 @@ export function cloneDetail(detail) {
   };
 }
 
+export function collectSolvedIds(detail) {
+  const ids = new Set();
+  if (!detail || !Array.isArray(detail.pages)) return ids;
+  for (const p of detail.pages) {
+    for (const d of p.deals || []) {
+      if (d.solved) ids.add(d.id);
+    }
+  }
+  return ids;
+}
+
+export function mergeSolvedIds(detail, solvedIds) {
+  if (!detail || !solvedIds || solvedIds.size === 0) return detail;
+  let patched = false;
+  for (const p of detail.pages) {
+    for (const d of p.deals || []) {
+      if (!d.solved && solvedIds.has(d.id)) {
+        d.solved = true;
+        patched = true;
+      }
+    }
+  }
+  if (patched) recomputeUnlocks(detail);
+  return detail;
+}
+
 export function findNextUnsolvedDeal(detail, wonDealId) {
   if (!detail || !Array.isArray(detail.pages) || wonDealId == null) return null;
   const flat = [];
