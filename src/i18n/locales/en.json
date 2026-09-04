@@ -228,6 +228,8 @@
   },
   "specialEvents": {
     "title": "Special Events",
+    "scrollTop": "Scroll events to top",
+    "scrollBottom": "Scroll events to bottom",
     "noEvents": "No events available yet. Check back soon!",
     "completed": "Completed",
     "progress.comingSoon": "Coming soon",

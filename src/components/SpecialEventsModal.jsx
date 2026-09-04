@@ -11,7 +11,8 @@
 // tables are gone). So for now a click is a harmless no-op: nothing renders.
 // That's expected and gets replaced in Phase 3, not a bug in this phase.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useModalBackdrop } from './modalBackdrop.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
@@ -33,6 +34,9 @@ export default function SpecialEventsModal() {
 
   const [events, setEvents] = useState([]);
   const [loaded, setLoaded] = useState(false);
+  const scrollRef = useRef(null);
+  const contentRef = useRef(null);
+  const [scrollMetrics, setScrollMetrics] = useState({ scrollTop: 0, scrollHeight: 0, clientHeight: 0 });
 
   useEffect(() => {
     if (!open || eventDetailId != null) return;
@@ -91,7 +95,32 @@ export default function SpecialEventsModal() {
       .finally(() => setLoaded(true));
   }, [open, eventDetailId]);
 
+  useEffect(() => {
+    if (!open) {
+      setScrollMetrics({ scrollTop: 0, scrollHeight: 0, clientHeight: 0 });
+      return undefined;
+    }
+    const element = scrollRef.current;
+    if (!element) return undefined;
+    const update = () => setScrollMetrics({ scrollTop: element.scrollTop, scrollHeight: element.scrollHeight, clientHeight: element.clientHeight });
+    element.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    update();
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(update) : null;
+    observer?.observe(element);
+    if (contentRef.current) observer?.observe(contentRef.current);
+    return () => {
+      element.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+      observer?.disconnect();
+    };
+  }, [open]);
+
   if (!open) return null;
+
+  const showScrollUp = scrollMetrics.scrollTop > 0;
+  const showScrollDown = scrollMetrics.scrollTop + scrollMetrics.clientHeight < scrollMetrics.scrollHeight - 1;
+  const scrollButton = { position: 'absolute', left: '50%', transform: 'translateX(-50%)', width: 34, height: 28, display: 'grid', placeItems: 'center', padding: 0, border: '1px solid var(--ui-modal-panel-border)', borderRadius: 999, background: 'color-mix(in srgb, var(--ui-modal-panel-bg) 82%, transparent)', color: 'var(--ui-modal-panel-fg)', boxShadow: '0 2px 8px rgba(0,0,0,0.22)', backdropFilter: 'blur(4px)', cursor: 'pointer', zIndex: 1 };
 
   const btn = {
     padding: '8px 14px',
@@ -118,7 +147,9 @@ export default function SpecialEventsModal() {
     width: 'min(94vw, 480px)',
     maxWidth: '100%',
     maxHeight: '85vh',
-    overflowY: 'auto',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
     outline: 'none',
   };
 
@@ -149,6 +180,9 @@ export default function SpecialEventsModal() {
       <div style={panel}>
         <h2 style={{ margin: '0 0 14px', fontSize: 20, fontWeight: 800, textAlign: 'center', paddingRight: 36 }}>{t('specialEvents.title')}</h2>
         <ModalCloseButton onClick={() => setOpen(false)} />
+        <div style={{ position: 'relative', flex: '0 1 auto', minHeight: 0, overflow: 'hidden' }}>
+        <div ref={scrollRef} className="modal-body-scroll" style={{ height: 'auto', maxHeight: 'calc(85vh - 74px)', overflowY: 'auto', paddingBottom: 12, boxSizing: 'border-box' }}>
+        <div ref={contentRef}>
         {loaded && events.length === 0 ? (
           <p style={{ textAlign: 'center', opacity: 0.7, padding: '24px 0' }}>{t('specialEvents.noEvents')}</p>
         ) : (
@@ -167,6 +201,11 @@ export default function SpecialEventsModal() {
             ))}
           </div>
         )}
+        </div>
+        </div>
+        {showScrollUp && <button type="button" aria-label={t('specialEvents.scrollTop')} onClick={() => scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })} style={{ ...scrollButton, top: 8 }}><ChevronUp size={18} strokeWidth={2.5} aria-hidden="true" /></button>}
+        {showScrollDown && <button type="button" aria-label={t('specialEvents.scrollBottom')} onClick={() => { const element = scrollRef.current; element?.scrollTo({ top: element.scrollHeight, behavior: 'smooth' }); }} style={{ ...scrollButton, bottom: 8 }}><ChevronDown size={18} strokeWidth={2.5} aria-hidden="true" /></button>}
+        </div>
       </div>
     </div>
   );
