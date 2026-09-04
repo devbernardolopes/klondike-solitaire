@@ -134,7 +134,7 @@ export const MOTION = {
 
   // Card flip shimmer: specular sweep after flip lands. Keep glint brief
   // so it reads as highlight, not linger.
-  shimmer: { duration: 0.50, ease: 'power2.inOut' },
+  shimmer: { duration: 0.75, ease: 'power2.inOut' },
 
   // Pile hover glow: aura on valid drop targets (CSS keyframes pileGlow).
   // Consumed as inline animation duration in Pile.jsx; blur is shadow spread (px).
@@ -162,7 +162,7 @@ export const MOTION = {
   // Ghost echo left at the source position on every move/auto/undo. A single
   // cloned node parked at oldRect fades and shrinks in place. Capped to
   // maxConcurrent to avoid DOM flood during overlap auto.
-  ghostEcho: { duration: 0.25, ease: 'power2.out', alpha: 0.50, scale: 0.96, maxConcurrent: 8 },
+  ghostEcho: { duration: 0.35, ease: 'power2.out', alpha: 0.50, scale: 0.96, maxConcurrent: 8 },
 
   // Multi-segment ghost trail that follows the card along its path. Spawns N
   // clone nodes per moved card, each parked at a fraction along the oldRect
