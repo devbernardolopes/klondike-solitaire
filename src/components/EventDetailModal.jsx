@@ -576,11 +576,6 @@ function PageContent({ page, onSelectDeal, selectedDealId }) {
         selectedDealId={selectedDealId}
       />
 
-      {page.unlocked && !page.completed && (
-        <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.75 }}>
-          {page.coinReward > 0 ? `+${page.coinReward} coins on completion` : 'In progress'}
-        </div>
-      )}
       {page.unlocked && page.completed && (
         <button
           type="button"
