@@ -12,6 +12,7 @@ import { supabase } from '../lib/supabaseClient.js';
 export const ACHIEVEMENT_PLACEHOLDER = '/achievement_placeholder.jpg';
 
 const pendingImages = new Map();
+const completedImages = new Map();
 
 /**
  * Resolve an achievement's image URL, falling back to the local placeholder.
@@ -29,11 +30,18 @@ export function achievementImageUrl(imagePath) {
 /** Resolve once the current image is loadable; failures use the placeholder. */
 export function preloadAchievementImage(url) {
   if (!url || url === ACHIEVEMENT_PLACEHOLDER || typeof Image === 'undefined') return Promise.resolve(url || ACHIEVEMENT_PLACEHOLDER);
+  if (completedImages.has(url)) return Promise.resolve(completedImages.get(url));
   if (pendingImages.has(url)) return pendingImages.get(url);
   const promise = new Promise((resolve) => {
     const image = new Image();
-    image.onload = () => resolve(url);
-    image.onerror = () => resolve(ACHIEVEMENT_PLACEHOLDER);
+    image.onload = () => {
+      completedImages.set(url, url);
+      resolve(url);
+    };
+    image.onerror = () => {
+      completedImages.set(url, ACHIEVEMENT_PLACEHOLDER);
+      resolve(ACHIEVEMENT_PLACEHOLDER);
+    };
     image.src = url;
   }).finally(() => pendingImages.delete(url));
   pendingImages.set(url, promise);
@@ -42,6 +50,11 @@ export function preloadAchievementImage(url) {
 
 export function clearAchievementImagePreloads() {
   pendingImages.clear();
+  completedImages.clear();
+}
+
+export function getCachedAchievementImageUrl(url) {
+  return completedImages.get(url) ?? null;
 }
 
 /**
