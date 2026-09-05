@@ -27,6 +27,8 @@ import { fetchEventDetail, getCachedEventDetailSync, resolveInitialPageIndex, de
 import { findNextUnsolvedDeal } from '../repo/specialEventsProgress.js';
 import { loadEventSelectionSync, saveEventSelection, loadLastViewedPageSync, saveLastViewedPage } from '../db/eventSelection.js';
 import EventDealGrid from './EventDealGrid.jsx';
+import PostcardViewerModal from './PostcardViewerModal.jsx';
+import { eventImageUrl } from '../utils/eventImage.js';
 
 const SWIPE_THRESHOLD_RATIO = 0.2; // fraction of viewport width to trigger a page change
 
@@ -69,6 +71,14 @@ export default function EventDetailModal() {
   // modal and optimistic fetch rely on it), so without this every reopen would
   // re-apply the advance and clobber a manual replay selection.
   const advancedForWonRef = useRef(null);
+  // Open postcard viewer for a completed page: { imageUrl, title, fileName }.
+  const [postcard, setPostcard] = useState(null);
+
+  const onShowPostcard = (page) => {
+    if (!detail || !page?.imagePath) return;
+    const base = String(page.imagePath).split('/').pop() || 'postcard.jpg';
+    setPostcard({ imageUrl: eventImageUrl(page.imagePath), title: detail.title, fileName: base });
+  };
 
   // Move the page track without animating: the suppression flag commits in the
   // same render as the index change (after-change `transition:none` means no
@@ -518,6 +528,7 @@ export default function EventDetailModal() {
   });
 
   return (
+    <>
     <div role="dialog" aria-modal="true" aria-label={detail?.title || 'Event'} {...backdrop} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3100, padding: 16 }}>
       <div ref={panelRef} tabIndex={-1} onKeyDown={onKeyDown} style={panel}>
         <ModalCloseButton onClick={close} />
@@ -559,6 +570,7 @@ export default function EventDetailModal() {
                       <PageContent
                         page={p}
                         onSelectDeal={onSelectDeal}
+                        onShowPostcard={onShowPostcard}
                         selectedDealId={selectedDealIdByPage[String(p.pageNumber)] ?? null}
                       />
                     </div>
@@ -610,10 +622,20 @@ export default function EventDetailModal() {
         )}
       </div>
     </div>
+      {postcard && (
+        <PostcardViewerModal
+          imageUrl={postcard.imageUrl}
+          title={postcard.title}
+          fileName={postcard.fileName}
+          onClose={() => setPostcard(null)}
+        />
+      )}
+    </>
   );
 }
 
-function PageContent({ page, onSelectDeal, selectedDealId }) {
+function PageContent({ page, onSelectDeal, onShowPostcard, selectedDealId }) {
+  const { t } = useTranslation();
   if (page.deals.length === 0) {
     return (
       <div style={placeholderStyle(false)}>
@@ -634,7 +656,7 @@ function PageContent({ page, onSelectDeal, selectedDealId }) {
       {page.unlocked && page.completed && (
         <button
           type="button"
-          onClick={() => {}}
+          onClick={() => onShowPostcard(page)}
           style={{
             padding: '6px 14px',
             borderRadius: 6,
@@ -646,7 +668,7 @@ function PageContent({ page, onSelectDeal, selectedDealId }) {
             fontWeight: 600,
           }}
         >
-          Show Postcard
+          {t('eventDetail.showPostcard')}
         </button>
       )}
     </div>

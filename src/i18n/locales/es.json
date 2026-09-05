@@ -254,7 +254,10 @@
     "coinReward": "+{{coins}} coins on completion",
     "dealsSoon": "Deals coming soon",
     "play": "Play",
-    "dealBlocked": "No se pudo iniciar ese reparto. Inténtalo de nuevo."
+    "dealBlocked": "No se pudo iniciar ese reparto. Inténtalo de nuevo.",
+    "showPostcard": "Ver postal",
+    "downloadPostcard": "Descargar postal",
+    "postcardViewerLabel": "Postal de {{title}}"
   },
   "achievements": {
     "title": "Achievements",

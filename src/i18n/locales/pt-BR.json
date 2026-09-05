@@ -254,7 +254,10 @@
     "coinReward": "+{{coins}} coins on completion",
     "dealsSoon": "Deals coming soon",
     "play": "Play",
-    "dealBlocked": "Não foi possível iniciar essa partida. Tente novamente."
+    "dealBlocked": "Não foi possível iniciar essa partida. Tente novamente.",
+    "showPostcard": "Ver cartão-postal",
+    "downloadPostcard": "Baixar cartão-postal",
+    "postcardViewerLabel": "Cartão-postal {{title}}"
   },
   "achievements": {
     "title": "Achievements",

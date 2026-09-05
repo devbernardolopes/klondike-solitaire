@@ -254,7 +254,10 @@
     "coinReward": "+{{coins}} coins on completion",
     "dealsSoon": "Deals coming soon",
     "play": "Play",
-    "dealBlocked": "Impossible de démarrer cette donne. Réessaie."
+    "dealBlocked": "Impossible de démarrer cette donne. Réessaie.",
+    "showPostcard": "Voir la carte postale",
+    "downloadPostcard": "Télécharger la carte postale",
+    "postcardViewerLabel": "Carte postale {{title}}"
   },
   "achievements": {
     "title": "Achievements",

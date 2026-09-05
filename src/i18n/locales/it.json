@@ -254,7 +254,10 @@
     "coinReward": "+{{coins}} coins on completion",
     "dealsSoon": "Deals coming soon",
     "play": "Play",
-    "dealBlocked": "Impossibile avviare questa mano. Riprova."
+    "dealBlocked": "Impossibile avviare questa mano. Riprova.",
+    "showPostcard": "Mostra cartolina",
+    "downloadPostcard": "Scarica cartolina",
+    "postcardViewerLabel": "Cartolina {{title}}"
   },
   "achievements": {
     "title": "Achievements",
