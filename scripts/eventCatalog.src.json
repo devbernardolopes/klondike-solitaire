@@ -48,5 +48,20 @@
         "coinReward": 50
       }
     ]
+  },
+  {
+    "id": "festivus-2025",
+    "title": "Festivus 2025",
+    "description": "Festivus is the secular, anti-commercial holiday popularized by the television series Seinfeld, featuring the aluminum Festivus pole, the airing of grievances, and feats of strength, observed on 23 December.",
+    "startsAt": "2025-12-23T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "festivus-2025/page1.jpg",
+        "coinReward": 50
+      }
+    ]
   }
 ]
