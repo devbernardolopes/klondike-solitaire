@@ -130,6 +130,26 @@ db.version(10).stores({
   eventCatalogCache: 'eventId',
   eventImageCache: 'imagePath',
 });
+// v11 drops the dead `eventProgress` table: per-event win tracking for the old
+// flat event model (special_event_seeds / event_results, removed by Supabase
+// migration 022). It was write-only dead — the only writer was the removed
+// pullProfile event_results block, with zero readers. Event progress now lives
+// in Supabase event_deal/page/event_progress via specialEventsRepository.
+// Setting the table to null deletes it on upgrade; other tables unchanged.
+db.version(11).stores({
+  games: '++id, startedAt, finishedAt, won, durationMs',
+  settings: 'key',
+  stats: 'key',
+  playedSeeds: 'key',
+  dailyResults: 'date',
+  syncQueue: '++id, type, createdAt, dedupeKey',
+  activeSession: 'key',
+  usedRandomSeeds: 'seed',
+  seedCache: 'key',
+  eventProgress: null,
+  eventCatalogCache: 'eventId',
+  eventImageCache: 'imagePath',
+});
 
 /**
  * Insert a finished/abandoned game record.

@@ -8,7 +8,6 @@ const TTL_MS = 24 * 60 * 60 * 1000;
 let memoryCache = {
   winning: null,
   daily: null,
-  events: null,
   fetchedAt: {},
 };
 
@@ -39,26 +38,6 @@ async function fetchDailySupabase() {
   const map = {};
   for (const r of data || []) map[r.date] = r.seed;
   return map;
-}
-
-async function fetchEventsSupabase() {
-  if (!supabase) return null;
-  const { data: evRows, error: evErr } = await supabase.from('special_events').select('id,title,description,image_paths,sort_order').eq('enabled', true).order('sort_order');
-  if (evErr) return null;
-  const { data: seedRows, error: seedErr } = await supabase.from('special_event_seeds').select('event_id,seed,sort_order').order('sort_order');
-  if (seedErr) return null;
-  const seedsById = new Map();
-  for (const r of seedRows || []) {
-    if (!seedsById.has(r.event_id)) seedsById.set(r.event_id, []);
-    seedsById.get(r.event_id).push(r.seed);
-  }
-  return (evRows || []).map((e) => ({
-    id: e.id,
-    title: e.title,
-    description: e.description,
-    images: e.image_paths || [],
-    seeds: seedsById.get(e.id) || [],
-  }));
 }
 
 export async function getWinningPool() {
@@ -129,38 +108,12 @@ export async function getDailyMeta() {
   return { anchor: fallbackDaily?.anchor || null, windowYears: fallbackDaily?.windowYears || 0 };
 }
 
-export async function getEvents() {
-  if (memoryCache.events && !isStale('events')) return memoryCache.events;
-  const cached = await getCachedValue('events');
-  if (cached && !isStale('events')) {
-    memoryCache.events = cached;
-    return cached;
-  }
-  const remote = await fetchEventsSupabase();
-  if (remote !== null) {
-    memoryCache.events = remote;
-    memoryCache.fetchedAt.events = Date.now();
-    setSeedCache('events', remote).catch(() => {});
-    return remote;
-  }
-  if (cached) {
-    memoryCache.events = cached;
-    return cached;
-  }
-  const catalog = fallbackCatalog?.events || [];
-  const seedsById = new Map((fallbackEvents?.events || []).map((e) => [e.id, e.seeds || []]));
-  const fallback = catalog.map((e) => ({ id: e.id, title: e.title || e.id, description: e.description || '', images: e.images || [], seeds: seedsById.get(e.id) || [] }));
-  memoryCache.events = fallback;
-  memoryCache.fetchedAt.events = Date.now();
-  return fallback;
-}
-
 export async function prefetch() {
   await Promise.all([getWinningPool(), getDailyMap()].map((p) => p.catch(() => null)));
 }
 
 export function clearMemoryCache() {
-  memoryCache = { winning: null, daily: null, events: null, fetchedAt: {} };
+  memoryCache = { winning: null, daily: null, fetchedAt: {} };
 }
 
 export function _setMemoryCacheForTest(cache) {
