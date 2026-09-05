@@ -33,5 +33,20 @@
         "coinReward": 50
       }
     ]
+  },
+  {
+    "id": "dragon-boat-festival-2026",
+    "title": "Dragon Boat Festival 2026",
+    "description": "The Dragon Boat Festival commemorates the poet Qu Yuan with competitive dragon boat races, sticky rice dumplings (zongzi), and traditional rituals across China and East Asian communities.",
+    "startsAt": "2026-06-19T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "dragon-boat-festival-2026/page1.jpg",
+        "coinReward": 50
+      }
+    ]
   }
 ]
