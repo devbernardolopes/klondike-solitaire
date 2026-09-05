@@ -149,12 +149,26 @@ export const useStatisticsStore = create((set, get) => ({
     set({ stats, gameWon: false });
     const session = useStatsStore.getState();
     const telemetry = session.achievementTelemetry;
+    // Full win parity for the abandoned/limit-ended game: same seed, kind,
+    // daily date, and event deal Board.jsx captures for recordWin, so the
+    // loss row in game_results is a complete record, not a generic stub.
+    // Lazy import: useGameStore pulls a JSON/i18n chain that plain node --test
+    // cannot load, and it closes a static useGameStore <-> useStatisticsStore
+    // cycle. recordLoss callers stub this out in tests, so the import only
+    // resolves on real loss paths (browser/Vite handles the JSON fine).
+    const { useGameStore } = await import('./useGameStore.js');
+    const gameStore = useGameStore.getState();
+    const ui = useUiStore.getState();
+    const gameKind = ui.currentGameKind ?? gameStore.replaySpec?.kind ?? null;
     enqueue('submit_game_result', {
       p_won: false,
       p_moves: session.moves,
       p_duration_ms: session.getElapsedMs(),
       p_score: session.score,
       p_undos: session.undos,
+      p_seed: gameStore.state?.seed ?? gameStore.replaySpec?.seed ?? null,
+      p_game_kind: gameKind,
+      p_daily_date: gameKind === 'daily' ? (ui.currentDailyDate ?? gameStore.replaySpec?.date ?? null) : null,
       p_game_id: telemetry.gameId,
       p_hint_used: telemetry.hintUsed,
       p_undo_used: telemetry.undoUsed || session.undos > 0,
@@ -165,6 +179,8 @@ export const useStatisticsStore = create((set, get) => ({
       p_foundation_first_eligible: telemetry.foundationFirstEligible,
       p_ace_collector_eligible: telemetry.aceCollectorEligible,
       p_aces_to_foundation: telemetry.aceIdsToFoundation.length,
+      p_ace_ids_to_foundation: telemetry.aceIdsToFoundation ?? [],
+      p_event_deal_id: gameKind === 'event' ? (ui.currentEventDealId ?? gameStore.replaySpec?.eventDealId ?? null) : null,
     });
   },
 

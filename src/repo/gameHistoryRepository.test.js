@@ -54,6 +54,31 @@ test('queuedOpToHistoryEntry tolerates loss payloads without seed/kind', () => {
   assert.equal(entry.pending, true);
 });
 
+test('queuedOpToHistoryEntry maps a loss payload with full win-parity context', () => {
+  const entry = queuedOpToHistoryEntry({
+    id: 9,
+    type: 'submit_game_result',
+    payload: {
+      p_won: false,
+      p_moves: 45,
+      p_duration_ms: 90000,
+      p_score: 0,
+      p_undos: 1,
+      p_seed: 777,
+      p_game_kind: 'daily',
+      p_daily_date: '2026-02-01',
+      p_game_id: 'loss-1',
+    },
+    createdAt: 1700000000000,
+  });
+  assert.equal(entry.won, false);
+  assert.equal(entry.moves, 45);
+  assert.equal(entry.seed, 777);
+  assert.equal(entry.gameKind, 'daily');
+  assert.equal(entry.gameId, 'loss-1');
+  assert.equal(entry.pending, true);
+});
+
 test('serverRowToHistoryEntry maps a game_results row', () => {
   const entry = serverRowToHistoryEntry({
     id: 'row-uuid',

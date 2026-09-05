@@ -42,7 +42,8 @@ const HISTORY_COLUMNS = [
 
 /**
  * Map a queued submit_game_result op payload to a pending history entry.
- * Losses enqueue without seed/kind, so those stay null (rendered generic).
+ * Wins and losses both enqueue full context (seed/kind/daily/event), so
+ * entries render with their specific deal identity.
  * @param {object} op  queued op row ({ id, payload, createdAt })
  * @returns {object} pending history entry
  */
