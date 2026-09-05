@@ -234,8 +234,7 @@ an `aria-live` region announces actions. Dialogs are in `components/`.
 
 ## Modal dismissal rule
 
-Every dialog is built from the shared primitives `useModalBackdrop` + `ModalCloseButton`
-+ `useModalEscape` (see `modalStack.js` for the `Z` stacking levels). This contract
+Every dialog is built from the shared primitives `useModalBackdrop` + `ModalCloseButton` + `useModalEscape` (see `modalStack.js` for the `Z` stacking levels). This contract
 enforces outside-tap and Escape dismissal **automatically**:
 
 - A modal is dismissed by tapping/clicking **outside** its panel (the backdrop) **or**
@@ -261,8 +260,7 @@ enforces outside-tap and Escape dismissal **automatically**:
 - `deck/` — `deckRegistry.js`, `drawCard.js` (shared canvas primitives), the two renderers.
 - `animation/` — GSAP-wired layer: `gsapSetup.js` (exposes `Flip`), `flipBridge.js` (shared
   snapshot ref), `useCardMoveSlide.js` (reparent tween — formerly `useCardMoveFlip`),
-  `useCardFaceFlip.js` (3D flip), `useStockDrawSlide.js` (stock→waste slide), `useFoundationParticles.js`
-  + `particleBridge.js` (suit-burst effect, settings-toggleable), `winCascade.js`, `playCardShake.js`,
+  `useCardFaceFlip.js` (3D flip), `useStockDrawSlide.js` (stock→waste slide), `useFoundationParticles.js` + `particleBridge.js` (suit-burst effect, settings-toggleable), `winCascade.js`, `playCardShake.js`,
   `motion.js`, `MotionDebugPanel.jsx` (dev-only, gated by `import.meta.env.DEV`).
 - `themes/` — `classic.css` and `dark.css` (selected via `theme-<name>` class on root).
 

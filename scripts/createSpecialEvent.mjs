@@ -523,7 +523,10 @@ async function main() {
     }
 
     console.log(`Done. Event "${id}" (${title}): ${pages.length} page(s), ${totalDeals} deals, version ${pkg.version}.`);
-    console.log(`Suggested commit: feat(events): add "${title}" special event with ${totalDeals} deals across ${pages.length} page(s)`);
+    console.log(`Suggested commit:`);
+    console.log(``);
+    console.log(`feat(events): add "${title}" special event with ${totalDeals} deals across ${pages.length} page(s)`);
+    console.log(``);
   } finally {
     rl.close();
   }
