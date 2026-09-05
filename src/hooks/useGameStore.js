@@ -521,7 +521,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     useUiStore.getState().setNoMovesDialogOpen(false);
     useUiStore.getState().closeWinDialog();
     useUiStore.getState().clearHints();
-    useStatisticsStore.getState().finalizeGame();
+    await useStatisticsStore.getState().finalizeGame();
     cancelWinCascade();
     dropStaleDealLocks(get);
     if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) { warnDealBlocked('dealNewGame'); return false; }
@@ -555,12 +555,12 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
    * exact requested deal is reproduced.
    *
    * @param {number} seed
-   * @returns {boolean} whether the game was dealt
+   * @returns {Promise<boolean>} whether the game was dealt
    */
-  dealWithSeed: (seed) => {
+  dealWithSeed: async (seed) => {
     cancelAutoComplete(set);
     // Finalize the game we're replacing: a non-win in progress ends the streak.
-    useStatisticsStore.getState().finalizeGame();
+    await useStatisticsStore.getState().finalizeGame();
     useUiStore.getState().setNoMovesDialogOpen(false);
     useUiStore.getState().clearHints();
     cancelWinCascade();
@@ -586,7 +586,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     const seed = seedForDate(date, dailyMap);
     if (seed == null) return false;
     cancelAutoComplete(set);
-    useStatisticsStore.getState().finalizeGame();
+    await useStatisticsStore.getState().finalizeGame();
     useUiStore.getState().setNoMovesDialogOpen(false);
     useUiStore.getState().clearHints();
     cancelWinCascade();
@@ -612,11 +612,11 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
    * @param {string} [eventId]  special_events.id (for reload survival of the win-ribbon / Return button)
    * @param {string} [eventTitle]  human title (same)
    * @param {number|null} [eventDealNumber]  event-sequential Deal N shown in the mode label
-   * @returns {boolean} whether the game was dealt
+   * @returns {Promise<boolean>} whether the game was dealt
    */
-  dealSpecialEventDeal: (seed, eventDealId, eventId = null, eventTitle = null, eventDealNumber = null) => {
+  dealSpecialEventDeal: async (seed, eventDealId, eventId = null, eventTitle = null, eventDealNumber = null) => {
     cancelAutoComplete(set);
-    useStatisticsStore.getState().finalizeGame();
+    await useStatisticsStore.getState().finalizeGame();
     useUiStore.getState().setNoMovesDialogOpen(false);
     useUiStore.getState().clearHints();
     cancelWinCascade();
@@ -681,19 +681,18 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
    *
    * @returns {boolean|Promise<boolean>} whether the game was dealt
    */
-  replayGame: () => {
+  replayGame: async () => {
     useUiStore.getState().dismissNoHintsBanner();
     const spec = get().replaySpec;
     if (!spec) {
-      get().dealNewGame(useUiStore.getState().lastNewGameMode);
-      return true;
+      return get().dealNewGame(useUiStore.getState().lastNewGameMode);
     }
     cancelAutoComplete(set);
     useUiStore.getState().setNoMovesDialogOpen(false);
     useUiStore.getState().closeWinDialog();
     useUiStore.getState().clearHints();
     // Finalize the game we're replacing: a non-win ends the streak (best kept).
-    useStatisticsStore.getState().finalizeGame();
+    await useStatisticsStore.getState().finalizeGame();
     cancelWinCascade();
     dropStaleDealLocks(get);
     if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) { warnDealBlocked('replayGame'); return false; }
