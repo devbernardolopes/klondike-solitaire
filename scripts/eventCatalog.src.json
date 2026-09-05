@@ -239,5 +239,30 @@
         "coinReward": 90
       }
     ]
+  },
+  {
+    "id": "diwali-2026",
+    "title": "Diwali 2026",
+    "description": "Diwali 2026, the Festival of Lights, celebrates the victory of light over darkness with oil lamps, rangoli patterns, family gatherings, and fireworks across India and the global diaspora.",
+    "startsAt": "2026-11-08T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 3,
+        "imagePath": "diwali-2026/page1.jpg",
+        "coinReward": 90
+      },
+      {
+        "gridSize": 2,
+        "imagePath": "diwali-2026/page2.jpg",
+        "coinReward": 40
+      },
+      {
+        "gridSize": 2,
+        "imagePath": "diwali-2026/page3.jpg",
+        "coinReward": 40
+      }
+    ]
   }
 ]
