@@ -4,20 +4,25 @@ import assert from 'node:assert/strict';
 import { compareEventSummaries } from './specialEventsRepository.js';
 import { collectSolvedIds, mergeSolvedIds, findNextUnsolvedDeal, getEventDealProgress } from './specialEventsProgress.js';
 
-const summary = (id, sortOrder) => ({ id, sortOrder });
+const summary = (id, startsAt, title) => ({ id, startsAt, title: title ?? id });
 
-test('compareEventSummaries orders by sortOrder ascending', () => {
-  const list = [summary('c', 10), summary('a', 5), summary('b', 7)];
+test('compareEventSummaries orders by startsAt ascending', () => {
+  const list = [summary('c', '2026-03-01T00:00:00Z'), summary('a', '2026-01-01T00:00:00Z'), summary('b', '2026-02-01T00:00:00Z')];
   assert.deepEqual(list.sort(compareEventSummaries).map((s) => s.id), ['a', 'b', 'c']);
 });
 
-test('compareEventSummaries breaks sortOrder ties by id', () => {
-  const list = [summary('b', 5), summary('a', 5)];
+test('compareEventSummaries breaks same-date ties alphabetically by title', () => {
+  const list = [summary('b', '2026-01-01T00:00:00Z', 'Banana'), summary('a', '2026-01-01T00:00:00Z', 'Apple')];
   assert.deepEqual(list.sort(compareEventSummaries).map((s) => s.id), ['a', 'b']);
 });
 
-test('compareEventSummaries sorts missing sortOrder last (legacy cache rows)', () => {
-  const list = [summary('legacy', null), summary('known', 3), summary('missing', undefined)];
+test('compareEventSummaries breaks title ties by id', () => {
+  const list = [summary('b', '2026-01-01T00:00:00Z', 'Same'), summary('a', '2026-01-01T00:00:00Z', 'Same')];
+  assert.deepEqual(list.sort(compareEventSummaries).map((s) => s.id), ['a', 'b']);
+});
+
+test('compareEventSummaries sorts missing startsAt last (legacy cache rows)', () => {
+  const list = [summary('legacy', null), summary('known', '2026-01-01T00:00:00Z'), summary('missing', undefined)];
   assert.deepEqual(list.sort(compareEventSummaries).map((s) => s.id), ['known', 'legacy', 'missing']);
 });
 

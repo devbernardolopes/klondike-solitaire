@@ -56,9 +56,19 @@ export function patchCachedEventDealSolved(dealId) {
   return patchedId;
 }
 
+// List order: earliest `startsAt` first (sort_order stays in the DB but no
+// longer drives display). Same-date ties resolve alphabetically by title,
+// then by id for full determinism. Missing/unparseable dates sink last
+// (legacy cache rows predate the field).
 export function compareEventSummaries(a, b) {
-  const order = (a.sortOrder ?? Infinity) - (b.sortOrder ?? Infinity);
-  return order !== 0 ? order : a.id.localeCompare(b.id);
+  const aTime = a.startsAt ? Date.parse(a.startsAt) : NaN;
+  const bTime = b.startsAt ? Date.parse(b.startsAt) : NaN;
+  const aKnown = Number.isFinite(aTime);
+  const bKnown = Number.isFinite(bTime);
+  if (aKnown && bKnown && aTime !== bTime) return aTime - bTime;
+  if (aKnown !== bKnown) return aKnown ? -1 : 1;
+  const byTitle = String(a.title ?? '').localeCompare(String(b.title ?? ''));
+  return byTitle !== 0 ? byTitle : String(a.id).localeCompare(String(b.id));
 }
 
 export function getCachedEventsSummarySync() {
@@ -185,7 +195,7 @@ export async function fetchSpecialEvents() {
 
   try {
     const [{ data: events, error: eventsErr }, { data: pages, error: pagesErr }, { data: progress, error: progressErr }] = await Promise.all([
-      supabase.from('special_events').select('id, title, description, game_kind, sort_order, starts_at').order('sort_order'),
+      supabase.from('special_events').select('id, title, description, game_kind, sort_order, starts_at').order('starts_at').order('title'),
       supabase.from('special_event_pages').select('id, event_id').order('page_number'),
       supabase.from('event_page_progress').select('page_id'),
     ]);
