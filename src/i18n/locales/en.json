@@ -95,7 +95,7 @@
     "seedHint": "Double-click to enter a specific seed",
     "dailyChallenge": "Daily Challenge: {{date}} ({{seed}})",
     "random": "Random ({{seed}})",
-    "specialEvent": "Special Event ({{seed}})",
+    "specialEvent": "Special Event, Deal {{dealNumber}} ({{seed}})",
     "winningDeal": "Winning Deal ({{seed}})",
     "mainMenu": "Main Menu",
     "newGame": "New Game — start a new deal",

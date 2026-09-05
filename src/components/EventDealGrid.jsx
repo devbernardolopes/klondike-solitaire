@@ -9,6 +9,10 @@ const SELECTED_OUTLINE = 'var(--ui-accent, var(--ui-modal-fg))';
 function SolvedTile({ deal, imageUrl, gridSize, posX, posY, isSelected, disabled, onSelectDeal, locked }) {
   const ref = useRef(null);
   const shouldDissolve = deal.solved && !hasSeenDissolve(deal.id);
+  // Global Deal N across the event's pages (1-4 on page 1, 5-8 on page 2, …).
+  // Falls back to the per-page position for details cached before dealNumber
+  // existed. `position` still drives posX/posY layout + postcard slicing.
+  const dealLabel = deal.dealNumber ?? deal.position;
 
   useEffect(() => {
     if (!shouldDissolve || !ref.current) return;
@@ -63,7 +67,7 @@ function SolvedTile({ deal, imageUrl, gridSize, posX, posY, isSelected, disabled
                 lineHeight: 1,
               }}
             >
-              {deal.position}
+              {dealLabel}
             </span>
           </span>
         )}
@@ -77,7 +81,7 @@ function SolvedTile({ deal, imageUrl, gridSize, posX, posY, isSelected, disabled
       key={deal.id}
       role="button"
       tabIndex={disabled ? -1 : 0}
-      aria-label={`Deal ${deal.position} — solved`}
+      aria-label={`Deal ${dealLabel} — solved`}
       aria-pressed={isSelected}
       onClick={() => { if (!disabled) onSelectDeal(deal); }}
       onKeyDown={(e) => {
@@ -119,7 +123,7 @@ function SolvedTile({ deal, imageUrl, gridSize, posX, posY, isSelected, disabled
             lineHeight: 1,
           }}
         >
-          {deal.position}
+          {dealLabel}
         </span>
       </span>
       <img src={imageUrl} onError={onEventImageError} alt="" style={{ display: 'none' }} />
@@ -178,6 +182,9 @@ export default function EventDealGrid({ page, onSelectDeal, selectedDealId, disa
         }
 
         const isSelected = deal.id === selectedDealId;
+        // Same global N as SolvedTile above; layout math below stays on
+        // `position` (per-page grid cell) by design.
+        const dealLabel = deal.dealNumber ?? deal.position;
 
         if (deal.solved) {
           return <SolvedTile key={deal.id} deal={deal} imageUrl={imageUrl} gridSize={gridSize} posX={posX} posY={posY} isSelected={isSelected} disabled={disabled} onSelectDeal={onSelectDeal} />;
@@ -187,7 +194,7 @@ export default function EventDealGrid({ page, onSelectDeal, selectedDealId, disa
           <button
             key={deal.id}
             type="button"
-            aria-label={`Play deal ${deal.position}`}
+            aria-label={`Play deal ${dealLabel}`}
             aria-pressed={isSelected}
             disabled={disabled}
             onClick={() => onSelectDeal(deal)}
@@ -206,7 +213,7 @@ export default function EventDealGrid({ page, onSelectDeal, selectedDealId, disa
               outlineOffset: isSelected ? '-3px' : 0,
             }}
           >
-            {deal.position}
+            {dealLabel}
           </button>
         );
       })}

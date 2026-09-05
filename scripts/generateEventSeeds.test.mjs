@@ -45,18 +45,21 @@ const page1PosArr = pos2x2Match[1];
 const page1DealCount = page1PosArr.split(',').length;
 if (page1DealCount !== 4) throw new Error(`SMOKE FAIL: page 1 (2×2) expected 4 deals, got ${page1DealCount}`);
 
-// For page 2, we need to find the second unnest pattern
-// The SQL has two UNNEST blocks: one for positions, one for seeds::bigint[].
-// Let's find both and verify the second page's positions.
+// For page 2, we need to find the second page's position array.
+// Each deal section now emits positions + deal_numbers matching
+// /unnest\(array\[...\]\)/ (the seed array carries a ::bigint[] suffix so it
+// never matches): [pos_p1, num_p1, pos_p2, num_p2].
 const allPosMatches = smokeSql.matchAll(/unnest\(array\[([^\]]+)\]\)/g);
 const posArrays = [];
 for (const m of allPosMatches) {
   posArrays.push(m[1]);
 }
-// Page 1 uses posArrays[0] (2×2 = 4 deals)
-// Page 2 uses posArrays[1] (3×3 = 9 deals)
-if (posArrays.length < 2) throw new Error('SMOKE FAIL: expected 2 position arrays (one per page)');
-const page2PosArr = posArrays[1].split(',').map(Number);
+// Page 1 positions = posArrays[0] (2×2 = 4 deals)
+// Page 1 deal numbers = posArrays[1] (event-sequential 1-4)
+// Page 2 positions = posArrays[2] (3×3 = 9 deals)
+// Page 2 deal numbers = posArrays[3] (event-sequential 5-13)
+if (posArrays.length !== 4) throw new Error(`SMOKE FAIL: expected 4 arrays (positions + deal_numbers per page), got ${posArrays.length}`);
+const page2PosArr = posArrays[2].split(',').map(Number);
 const page2DealCount = page2PosArr.length;
 if (page2DealCount !== 9) throw new Error(`SMOKE FAIL: page 2 (3×3) expected 9 deals, got ${page2DealCount}`);
 
@@ -64,6 +67,17 @@ if (page2DealCount !== 9) throw new Error(`SMOKE FAIL: page 2 (3×3) expected 9 
 if (JSON.stringify(page2PosArr) !== JSON.stringify([1, 2, 3, 4, 5, 6, 7, 8, 9])) {
   throw new Error(`SMOKE FAIL: 3×3 positions not row-major: ${JSON.stringify(page2PosArr)}`);
 }
+
+// Validate event-sequential deal numbers: page 1 owns 1-4, page 2 owns 5-13.
+const page1NumArr = posArrays[1].split(',').map(Number);
+if (JSON.stringify(page1NumArr) !== JSON.stringify([1, 2, 3, 4])) {
+  throw new Error(`SMOKE FAIL: page 1 deal numbers not 1-4: ${JSON.stringify(page1NumArr)}`);
+}
+const page2NumArr = posArrays[3].split(',').map(Number);
+if (JSON.stringify(page2NumArr) !== JSON.stringify([5, 6, 7, 8, 9, 10, 11, 12, 13])) {
+  throw new Error(`SMOKE FAIL: page 2 deal numbers not 5-13: ${JSON.stringify(page2NumArr)}`);
+}
+if (!smokeSql.includes('deal_number')) throw new Error('SMOKE FAIL: missing deal_number column in INSERT');
 
 // Validate all seeds are "solvable" (stub: divisible by 3)
 const seedRegex = /unnest\(array\[([^\]]+)\]::bigint\[\]\)/g;
@@ -138,7 +152,8 @@ while ((mm = sr2.exec(multiSql)) !== null) {
 }
 
 for (let i = 0; i < multiCatalog.length; i++) {
-  const eventPosArr = multiPosMatches[i].split(',').map(Number);
+  // Each single-page event emits positions + deal_numbers; positions lead.
+  const eventPosArr = multiPosMatches[i * 2].split(',').map(Number);
   const expectedDeals = multiCatalog[i].pages.reduce((sum, p) => sum + p.gridSize * p.gridSize, 0);
   if (eventPosArr.length !== expectedDeals) {
     throw new Error(`MULTI FAIL: event ${multiCatalog[i].id} expected ${expectedDeals} deals, got ${eventPosArr.length}`);
@@ -147,10 +162,9 @@ for (let i = 0; i < multiCatalog.length; i++) {
 
 // Validate row-major positions for each event
 for (let i = 0; i < multiCatalog.length; i++) {
-  const expectedStart = i === 0 ? 1 : (multiPosMatches.slice(0, i).reduce((a, b) => a + b.split(',').length, 0)) + 1;
   // Simpler: just check the positions are 1..N row-major
   const expected = Array.from({ length: multiCatalog[i].pages.reduce((s, p) => s + p.gridSize * p.gridSize, 0) }, (_, k) => k + 1);
-  const actual = multiPosMatches[i].split(',').map(Number);
+  const actual = multiPosMatches[i * 2].split(',').map(Number);
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
     throw new Error(`MULTI FAIL: event ${multiCatalog[i].id} positions not row-major: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
   }

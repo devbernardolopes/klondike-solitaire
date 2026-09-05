@@ -21,14 +21,18 @@
 //     ]
 //   }]
 //
-// Output SQL follows the authoring template in migration_022.sql exactly:
+// Output SQL follows the authoring template in migration_022.sql exactly,
+// extended by migration_029.sql with the event-sequential `deal_number`:
 //   - special_events INSERT (one per event) — idempotent via on-conflict
 //   - special_event_pages INSERT (one VALUES list per event)
 //   - special_event_deals INSERT per page, using unnest(array[position...],
-//     array[seed...]) resolved via subquery on special_event_pages
+//     array[seed...], array[deal_number...]) resolved via subquery on
+//     special_event_pages
 //
 // Positions are row-major: position 1 = top-left, gridSize*gridSize = bottom-right.
 // This is the authoring convention EventDealGrid.jsx relies on for postcard slicing.
+// Deal numbers are event-sequential: page 1 of a 2x2+3x3 event owns 1-4, page 2
+// owns 5-13. EventDealGrid.jsx displays deal_number; position still drives layout.
 //
 // Env: SOLVER_PATH (or KlondikeSolver on PATH) for the fast binary path;
 //      otherwise the embedded pure-JS solver is used.
@@ -85,16 +89,18 @@ function parseExistingDeals(sqlText) {
 
 // ---- SQL generation ----
 
-function generateDealSection(eventId, pageNumber, gridSize, seeds) {
+function generateDealSection(eventId, pageNumber, gridSize, seeds, dealOffset = 0) {
   const count = seeds.length;
   const positions = Array.from({ length: count }, (_, i) => i + 1);
+  const dealNumbers = Array.from({ length: count }, (_, i) => dealOffset + i + 1);
   const posArr = `array[${positions.join(',')}]`;
   const seedArr = `array[${seeds.join(',')}]::bigint[]`;
+  const numArr = `array[${dealNumbers.join(',')}]`;
 
   return [
-    `-- Page ${pageNumber} (${gridSize}×${gridSize} = ${count} deals), positions 1..${count} row-major:`,
-    `insert into special_event_deals (page_id, "position", seed)`,
-    `select id, unnest(${posArr}), unnest(${seedArr})`,
+    `-- Page ${pageNumber} (${gridSize}×${gridSize} = ${count} deals), positions 1..${count} row-major, deals ${dealNumbers[0]}..${dealNumbers[count - 1]} event-sequential:`,
+    `insert into special_event_deals (page_id, "position", seed, deal_number)`,
+    `select id, unnest(${posArr}), unnest(${seedArr}), unnest(${numArr})`,
     `  from special_event_pages`,
     `  where event_id = '${sqlEscape(eventId)}' and page_number = ${pageNumber};`,
     '',
@@ -125,6 +131,11 @@ function generateEventSql(event, used, solveFn, seenPages, preservedBlocks) {
   lines.push('');
 
   // --- special_event_deals rows (per page) ---
+  // dealOffset tracks the event-sequential Deal N across pages (page 1 with 4
+  // deals occupies 1-4, so page 2 starts at 5). It advances even for
+  // --resume-skipped pages: their preserved blocks already own those numbers
+  // in the DB (backfilled by migration 029), so new pages must not reuse them.
+  let dealOffset = 0;
   for (let i = 0; i < pages.length; i++) {
     const page = pages[i];
     const pageNumber = i + 1;
@@ -140,12 +151,14 @@ function generateEventSql(event, used, solveFn, seenPages, preservedBlocks) {
         lines.push(`-- Page ${pageNumber} (${gridSize}×${gridSize} = ${dealCount} deals) — already authored, skipping.`);
         lines.push('');
       }
+      dealOffset += dealCount;
       continue;
     }
 
     const base = cyrb53(`${id}:page${pageNumber}`);
     const seeds = fillSeeds(base, dealCount, used, solveFn);
-    lines.push(generateDealSection(id, pageNumber, gridSize, seeds));
+    lines.push(generateDealSection(id, pageNumber, gridSize, seeds, dealOffset));
+    dealOffset += dealCount;
   }
 
   return lines.join('\n');
@@ -218,6 +231,23 @@ function main() {
       throw new Error(`SMOKE FAIL: 2×2 positions not row-major: ${JSON.stringify(pos2x2)}`);
     }
 
+    // --- Validate event-sequential deal numbers (page 1: 1-4, page 2: 5-13) ---
+    // Each deal section emits positions + deal_numbers matching
+    // /unnest\(array\[...\]\)/ (the seed array carries a ::bigint[] suffix so
+    // it never matches). Order per page: positions, then deal numbers.
+    const numArrays = [...sql.matchAll(/unnest\(array\[([^\]]+)\]\)/g)].map((m) => m[1].split(',').map(Number));
+    if (numArrays.length !== 4) throw new Error(`SMOKE FAIL: expected 4 unnest arrays (positions + deal_numbers per page), got ${numArrays.length}`);
+    if (JSON.stringify(numArrays[1]) !== JSON.stringify([1, 2, 3, 4])) {
+      throw new Error(`SMOKE FAIL: page 1 deal numbers not 1-4: ${JSON.stringify(numArrays[1])}`);
+    }
+    if (JSON.stringify(numArrays[2]) !== JSON.stringify([1, 2, 3, 4, 5, 6, 7, 8, 9])) {
+      throw new Error(`SMOKE FAIL: page 2 positions not row-major 1-9: ${JSON.stringify(numArrays[2])}`);
+    }
+    if (JSON.stringify(numArrays[3]) !== JSON.stringify([5, 6, 7, 8, 9, 10, 11, 12, 13])) {
+      throw new Error(`SMOKE FAIL: page 2 deal numbers not 5-13: ${JSON.stringify(numArrays[3])}`);
+    }
+    if (!sql.includes('deal_number')) throw new Error('SMOKE FAIL: missing deal_number column in INSERT');
+
     // --- Validate all seeds are "solvable" (stub: divisible by 3) ---
     const seedRegex = /unnest\(array\[([^\]]+)\]::bigint\[\]\)/g;
     let s;
@@ -277,6 +307,7 @@ function main() {
     `-- Generated: ${new Date().toISOString()}`,
     `-- Solver: ${binary ? `KlondikeSolver binary (${binary})` : 'embedded JS fallback'}`,
     `-- Positions are row-major: position 1 = top-left, gridSize² = bottom-right.`,
+    `-- Deal numbers are event-sequential across pages: page 1 (2x2) owns 1-4, page 2 starts at 5.`,
     `-- Paste into: Supabase Dashboard > SQL Editor > Run`,
     `-- ============================================================`,
     '',

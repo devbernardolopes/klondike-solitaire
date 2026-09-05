@@ -16,6 +16,7 @@ import SettingsModal from './SettingsModal.jsx';
 import SeedInputModal from './SeedInputModal.jsx';
 import DailyChallengeModal from './DailyChallengeModal.jsx';
 import { formatTimeClock } from '../utils/formatTime.js';
+import { getCachedEventDetailSync } from '../repo/specialEventsRepository.js';
 
 const UNDO_HOLD_DELAY_MS = 400;
 const UNDO_REPEAT_INTERVAL_MS = 200;
@@ -83,6 +84,30 @@ function useElapsed() {
 }
 
 /**
+ * Resolve the event-sequential Deal N for the top-left mode label. Prefers the
+ * number carried on the deal itself; falls back to the in-memory cached event
+ * detail (covers sessions restored from a pre-number replaySpec, where the
+ * deal id survived but the number did not). Returns '…' when unknown so the
+ * localized "Special Event, Deal N (seed)" shape still renders.
+ * @param {string|null} eventId
+ * @param {number|null} dealId
+ * @param {number|null} dealNumber
+ */
+function resolveEventDealNumber(eventId, dealId, dealNumber) {
+  if (dealNumber != null) return dealNumber;
+  try {
+    if (eventId && dealId != null) {
+      const detail = getCachedEventDetailSync(eventId);
+      for (const p of detail?.pages || []) {
+        const found = (p.deals || []).find((d) => d.id === dealId);
+        if (found && found.dealNumber != null) return found.dealNumber;
+      }
+    }
+  } catch {}
+  return '…';
+}
+
+/**
  * @param {object} props
  * @param {string} props.theme    active theme name
  * @param {(t: string) => void} props.onThemeChange
@@ -114,6 +139,9 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const setNewGameDialogOpen = useUiStore((s) => s.setNewGameDialogOpen);
   const currentGameKind = useUiStore((s) => s.currentGameKind);
   const currentDailyDate = useUiStore((s) => s.currentDailyDate);
+  const currentEventDealId = useUiStore((s) => s.currentEventDealId);
+  const currentEventDealNumber = useUiStore((s) => s.currentEventDealNumber);
+  const currentEventId = useUiStore((s) => s.currentEventId);
   const setDailyChallengeDialogOpen = useUiStore((s) => s.setDailyChallengeDialogOpen);
   const setDailyChallengeOrigin = useUiStore((s) => s.setDailyChallengeOrigin);
   const settingsDialogOpen = useUiStore((s) => s.settingsDialogOpen);
@@ -424,7 +452,7 @@ function ElapsedClock() {
               : currentGameKind === 'random'
                 ? t('toolbar.random', { seed: gameState.seed })
                 : currentGameKind === 'event'
-                  ? t('toolbar.specialEvent', { seed: gameState.seed })
+                  ? t('toolbar.specialEvent', { dealNumber: resolveEventDealNumber(currentEventId, currentEventDealId, currentEventDealNumber), seed: gameState.seed })
                 : t('toolbar.winningDeal', { seed: gameState.seed })}
             </span>
           </span>

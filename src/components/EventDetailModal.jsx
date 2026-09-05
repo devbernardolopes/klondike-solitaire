@@ -375,7 +375,7 @@ export default function EventDetailModal() {
       // board with nothing dealt.
       let dealt = false;
       try {
-        dealt = dealSpecialEventDeal(deal.seed, deal.id, detail.id, detail.title) !== false;
+        dealt = dealSpecialEventDeal(deal.seed, deal.id, detail.id, detail.title, deal.dealNumber ?? null) !== false;
       } catch {
         dealt = false;
       }

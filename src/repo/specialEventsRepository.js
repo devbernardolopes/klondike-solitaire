@@ -87,7 +87,10 @@ export async function hydrateEventCachesFromDexie() {
   try {
     const rows = await db.eventCatalogCache.toArray();
     for (const r of rows) {
-      if (r.detail && r.eventId) catalogMemory.set(r.eventId, r.detail);
+      if (r.detail && r.eventId) {
+        if (Array.isArray(r.detail.pages)) assignDealNumbers(r.detail.pages);
+        catalogMemory.set(r.eventId, r.detail);
+      }
     }
   } catch {}
   try {
@@ -115,9 +118,36 @@ export function detailsDiffer(a, b) {
     if (pa.id !== pb.id || pa.completed !== pb.completed || pa.unlocked !== pb.unlocked || pa.deals.length !== pb.deals.length) return true;
     for (let j = 0; j < pa.deals.length; j++) {
       if (pa.deals[j].id !== pb.deals[j].id || pa.deals[j].solved !== pb.deals[j].solved) return true;
+      if ((pa.deals[j].dealNumber ?? null) !== (pb.deals[j].dealNumber ?? null)) return true;
     }
   }
   return false;
+}
+
+/**
+ * Fill in event-sequential Deal N for pages whose deals lack it (rows written
+ * before migration 029, or Dexie-cached details saved before this release).
+ * Pages are already page_number-ordered; within a page, position order is the
+ * grid order. Page 1 with 4 deals owns 1-4, so page 2 starts at 5.
+ * Existing deal_number values are never overwritten — only nulls are derived.
+ * @param {Array} pagesWithState
+ */
+export function assignDealNumbers(pagesWithState) {
+  if (!Array.isArray(pagesWithState)) return pagesWithState;
+  let n = 0;
+  for (const p of pagesWithState) {
+    const deals = (p.deals || []).slice().sort((a, b) => a.position - b.position);
+    for (const d of deals) {
+      n += 1;
+      if (d.dealNumber == null) d.dealNumber = n;
+    }
+    // Reconcile the counter with stored numbers (a page's stored numbers win
+    // if they run ahead, e.g. a partially-backfilled event).
+    const maxStored = deals.reduce((m, d) => Math.max(m, Number(d.dealNumber) || 0), 0);
+    if (maxStored > n) n = maxStored;
+    p.deals = deals;
+  }
+  return pagesWithState;
 }
 
 function summaryFromDetail(detail) {
@@ -322,8 +352,8 @@ export async function fetchAllEventSeeds() {
  *   gameKind:string, sortOrder:number|null, startsAt:string|null,
  *   pages:Array<{id:number, pageNumber:number,
  *   gridSize:number, imagePath:string, coinReward:number, completed:boolean,
- *   unlocked:boolean, deals:Array<{id:number, position:number, seed:number,
- *   solved:boolean}>}>}|null>}
+ *   unlocked:boolean, deals:Array<{id:number, position:number, dealNumber:number|null,
+ *   seed:number, solved:boolean}>}>}|null>}
  */
 export async function fetchEventDetail(eventId, opts) {
   if (!eventId) return null;
@@ -353,13 +383,21 @@ export async function fetchEventDetail(eventId, opts) {
       const dealsByPage = new Map();
       if (sortedPages.length > 0) {
         const pageIds = sortedPages.map((p) => p.id);
-        const [{ data: progress, error: progressErr }, { data: deals, error: dealsErr }] = await Promise.all([
+        const [{ data: progress, error: progressErr }, dealsRes] = await Promise.all([
           supabase.from('event_page_progress').select('page_id').in('page_id', pageIds),
-          supabase.from('special_event_deals').select('id, page_id, position, seed').in('page_id', pageIds).order('position'),
+          // deal_number exists post-migration 029; fall back to the legacy
+          // column list on a DB that hasn't been migrated yet.
+          supabase.from('special_event_deals').select('id, page_id, position, seed, deal_number').in('page_id', pageIds).order('position'),
         ]);
         completedIds = new Set((progressErr ? [] : progress || []).map((r) => r.page_id));
 
-        const dealRows = dealsErr ? [] : deals || [];
+        let dealRows = [];
+        if (dealsRes.error && /deal_number/i.test(dealsRes.error.message || '')) {
+          const legacy = await supabase.from('special_event_deals').select('id, page_id, position, seed').in('page_id', pageIds).order('position');
+          dealRows = legacy.error ? [] : legacy.data || [];
+        } else {
+          dealRows = dealsRes.error ? [] : dealsRes.data || [];
+        }
         let solvedDealIds = new Set();
         if (dealRows.length > 0) {
           const { data: dealProgress, error: dealProgressErr } = await supabase
@@ -370,13 +408,13 @@ export async function fetchEventDetail(eventId, opts) {
         }
         for (const d of dealRows) {
           const list = dealsByPage.get(d.page_id) || [];
-          list.push({ id: d.id, position: d.position, seed: d.seed, solved: solvedDealIds.has(d.id) });
+          list.push({ id: d.id, position: d.position, dealNumber: d.deal_number ?? null, seed: d.seed, solved: solvedDealIds.has(d.id) });
           dealsByPage.set(d.page_id, list);
         }
       }
 
       let previousCompleted = true;
-      const pagesWithState = sortedPages.map((p) => {
+      const pagesWithState = assignDealNumbers(sortedPages.map((p) => {
         const completed = completedIds.has(p.id);
         const unlocked = previousCompleted;
         previousCompleted = completed;
@@ -391,7 +429,7 @@ export async function fetchEventDetail(eventId, opts) {
           unlocked,
           deals,
         };
-      });
+      }));
 
       const detail = {
         id: event.id,
@@ -434,6 +472,11 @@ export async function fetchEventDetail(eventId, opts) {
   }
 
   const cached = await getCatalogDetail(eventId);
-  if (cached) catalogMemory.set(eventId, cached);
+  if (cached) {
+    // Dexie rows cached before this release lack dealNumber — derive it so
+    // the grid + label still show global N while offline.
+    if (Array.isArray(cached.pages)) assignDealNumbers(cached.pages);
+    catalogMemory.set(eventId, cached);
+  }
   return cached;
 }

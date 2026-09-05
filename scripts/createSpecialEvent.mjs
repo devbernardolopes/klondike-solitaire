@@ -426,6 +426,7 @@ async function main() {
       `-- Generated: ${new Date().toISOString()}`,
       `-- Solver: ${binary ? `KlondikeSolver binary (${binary})` : 'embedded JS fallback'}`,
       `-- Positions are row-major: position 1 = top-left, gridSize² = bottom-right.`,
+      `-- Deal numbers are event-sequential across pages (page 1 with 4 deals owns 1-4, page 2 starts at 5).`,
       `-- Paste into: Supabase Dashboard > SQL Editor > Run`,
       `-- ============================================================`,
       '',
@@ -490,10 +491,14 @@ async function main() {
       const pageIdByNumber = new Map((pageData || []).map((r) => [r.page_number, r.id]));
 
       const dealRows = [];
+      // Event-sequential Deal N across pages (page 1 with 4 deals owns 1-4,
+      // so page 2 starts at 5). newSeeds is page-sorted by extractEventSeeds.
+      let dealNumber = 0;
       for (const pg of newSeeds) {
         const pageId = pageIdByNumber.get(pg.pageNumber);
         if (!pageId) throw new Error(`No page id returned for page ${pg.pageNumber}`);
-        pg.seeds.forEach((seed, i) => dealRows.push({ page_id: pageId, position: i + 1, seed }));
+        pg.seeds.forEach((seed, i) => dealRows.push({ page_id: pageId, position: i + 1, seed, deal_number: dealNumber + i + 1 }));
+        dealNumber += pg.seeds.length;
       }
       for (let i = 0; i < dealRows.length; i += 500) {
         const { error: dErr } = await supabase
