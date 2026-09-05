@@ -194,5 +194,30 @@
         "coinReward": 50
       }
     ]
+  },
+  {
+    "id": "festival-of-san-fermin-2026",
+    "title": "Festival of San Fermín 2026",
+    "description": "The 2026 Festival of San Fermín in Pamplona, Spain, features the famous running of the bulls, traditional processions, and festive gatherings from 6 to 14 July.",
+    "startsAt": "2026-07-06T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "festival-of-san-fermin-2026/page1.jpg",
+        "coinReward": 40
+      },
+      {
+        "gridSize": 3,
+        "imagePath": "festival-of-san-fermin-2026/page2.jpg",
+        "coinReward": 90
+      },
+      {
+        "gridSize": 2,
+        "imagePath": "festival-of-san-fermin-2026/page3.jpg",
+        "coinReward": 40
+      }
+    ]
   }
 ]
