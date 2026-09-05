@@ -16,6 +16,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useModalBackdrop } from './modalBackdrop.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
+import { OVERHANG_BADGE_CLEARANCE, OVERHANG_BADGE_LIFT, OVERHANG_BADGE_RIGHT } from './modalBadge.js';
 import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
 import { useUiStore } from '../hooks/useUiStore.js';
@@ -155,8 +156,8 @@ export default function SpecialEventsModal() {
 
   const COMPLETED_BADGE = {
     position: 'absolute',
-    top: -6,
-    right: 8,
+    top: -OVERHANG_BADGE_LIFT,
+    right: OVERHANG_BADGE_RIGHT,
     fontSize: 11,
     fontWeight: 700,
     lineHeight: 1,
@@ -181,7 +182,7 @@ export default function SpecialEventsModal() {
         <h2 style={{ margin: '0 0 14px', fontSize: 20, fontWeight: 800, textAlign: 'center', paddingRight: 36 }}>{t('specialEvents.title')}</h2>
         <ModalCloseButton onClick={() => setOpen(false)} />
         <div style={{ position: 'relative', flex: '0 1 auto', minHeight: 0, overflow: 'hidden' }}>
-        <div ref={scrollRef} className="modal-body-scroll" style={{ height: 'auto', maxHeight: 'calc(85vh - 74px)', overflowY: 'auto', paddingBottom: 12, boxSizing: 'border-box' }}>
+        <div ref={scrollRef} className="modal-body-scroll" style={{ height: 'auto', maxHeight: 'calc(85vh - 74px)', overflowY: 'auto', paddingTop: OVERHANG_BADGE_LIFT + OVERHANG_BADGE_CLEARANCE, paddingBottom: 12, boxSizing: 'border-box' }}>
         <div ref={contentRef}>
         {loaded && events.length === 0 ? (
           <p style={{ textAlign: 'center', opacity: 0.7, padding: '24px 0' }}>{t('specialEvents.noEvents')}</p>

@@ -18,6 +18,7 @@ import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
 import { useSeedStore } from '../hooks/useSeedStore.js';
 import ToggleSwitch from './ToggleSwitch.jsx';
 import ModalCloseButton from './ModalCloseButton.jsx';
+import { OVERHANG_BADGE_LIFT, OVERHANG_BADGE_RIGHT } from './modalBadge.js';
 import SyncStatus from './SyncStatus.jsx';
 import HelpModal from './HelpModal.jsx';
 import { useModalEscape } from '../hooks/useModalEscape.js';
@@ -202,8 +203,8 @@ export default function SettingsModal({
 
   const NEW_BADGE_R = {
     position: 'absolute',
-    top: -6,
-    right: 8,
+    top: -OVERHANG_BADGE_LIFT,
+    right: OVERHANG_BADGE_RIGHT,
     fontSize: 11,
     fontWeight: 700,
     lineHeight: 1,
