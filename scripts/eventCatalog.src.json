@@ -1,75 +1,5 @@
 [
   {
-    "id": "festival-of-san-fermin-2026",
-    "title": "Festival of San Fermín 2026",
-    "description": "The 2026 Festival of San Fermín in Pamplona, Spain, features the famous running of the bulls, traditional processions, and festive gatherings from 6 to 14 July.",
-    "startsAt": "2026-07-06T00:00:00Z",
-    "gameKind": "draw-1",
-    "sortOrder": 1,
-    "pages": [
-      {
-        "gridSize": 2,
-        "imagePath": "festival-of-san-fermin-2026/page1.jpg",
-        "coinReward": 40
-      },
-      {
-        "gridSize": 3,
-        "imagePath": "festival-of-san-fermin-2026/page2.jpg",
-        "coinReward": 90
-      },
-      {
-        "gridSize": 2,
-        "imagePath": "festival-of-san-fermin-2026/page3.jpg",
-        "coinReward": 40
-      }
-    ]
-  },
-  {
-    "id": "holi-2026",
-    "title": "Holi 2026",
-    "description": "Holi 2026, the Festival of Colors, marks the arrival of spring in India and beyond with joyful gatherings, vibrant powdered dyes, music, and the triumph of good over evil.",
-    "startsAt": "2026-03-04T00:00:00Z",
-    "gameKind": "draw-1",
-    "sortOrder": 1,
-    "pages": [
-      {
-        "gridSize": 4,
-        "imagePath": "holi-2026/page1.jpg",
-        "coinReward": 160
-      },
-      {
-        "gridSize": 3,
-        "imagePath": "holi-2026/page2.jpg",
-        "coinReward": 90
-      }
-    ]
-  },
-  {
-    "id": "diwali-2026",
-    "title": "Diwali 2026",
-    "description": "Diwali 2026, the Festival of Lights, celebrates the victory of light over darkness with oil lamps, rangoli patterns, family gatherings, and fireworks across India and the global diaspora.",
-    "startsAt": "2026-11-08T00:00:00Z",
-    "gameKind": "draw-1",
-    "sortOrder": 1,
-    "pages": [
-      {
-        "gridSize": 3,
-        "imagePath": "diwali-2026/page1.jpg",
-        "coinReward": 90
-      },
-      {
-        "gridSize": 2,
-        "imagePath": "diwali-2026/page2.jpg",
-        "coinReward": 40
-      },
-      {
-        "gridSize": 2,
-        "imagePath": "diwali-2026/page3.jpg",
-        "coinReward": 40
-      }
-    ]
-  },
-  {
     "id": "swedish-midsommar-2026",
     "title": "Swedish Midsommar 2026",
     "description": "Swedish Midsommar 2026 marks the traditional Midsummer celebration with maypoles, floral crowns, outdoor dances, and gatherings under the long Nordic summer light around the solstice.",
@@ -78,54 +8,14 @@
     "sortOrder": 1,
     "pages": [
       {
-        "gridSize": 4,
+        "gridSize": 2,
         "imagePath": "swedish-midsommar-2026/page1.jpg",
-        "coinReward": 160
+        "coinReward": 50
       },
       {
         "gridSize": 3,
         "imagePath": "swedish-midsommar-2026/page2.jpg",
-        "coinReward": 90
-      }
-    ]
-  },
-  {
-    "id": "world-goth-day-2026",
-    "title": "World Goth Day 2026",
-    "description": "World Goth Day 2026 is an international celebration of goth subculture, encompassing its distinctive music, fashion, art, and community expression observed each year on 22 May.",
-    "startsAt": "2026-05-22T00:00:00Z",
-    "gameKind": "draw-1",
-    "sortOrder": 1,
-    "pages": [
-      {
-        "gridSize": 2,
-        "imagePath": "world-goth-day-2026/page1.jpg",
-        "coinReward": 50
-      },
-      {
-        "gridSize": 3,
-        "imagePath": "world-goth-day-2026/page2.jpg",
         "coinReward": 100
-      },
-      {
-        "gridSize": 4,
-        "imagePath": "world-goth-day-2026/page3.jpg",
-        "coinReward": 200
-      }
-    ]
-  },
-  {
-    "id": "world-goth-day-2026-2",
-    "title": "World Goth Day 2026",
-    "description": "World Goth Day 2026 is an international celebration of goth subculture, encompassing its distinctive music, fashion, art, and community expression observed each year on 22 May.",
-    "startsAt": "2026-05-22T00:00:00Z",
-    "gameKind": "draw-1",
-    "sortOrder": 1,
-    "pages": [
-      {
-        "gridSize": 2,
-        "imagePath": "world-goth-day-2026-2/page1.jpg",
-        "coinReward": 50
       }
     ]
   }
