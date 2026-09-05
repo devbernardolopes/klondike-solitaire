@@ -76,6 +76,11 @@
 
   /* Distinct border marking the signed-in user's own row on the leaderboard */
   --ui-leaderboard-me-border: #5aa9ff;
+
+  /* Progress badge on the Special Events list: theme-aware blue, distinct
+     from the Completed green and the NEW red. Future themes define both. */
+  --ui-badge-progress-bg: #5aa9ff;
+  --ui-badge-progress-fg: #0a0d12;
 }
 
 .ui-dark .new-game-attention {

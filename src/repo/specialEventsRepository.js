@@ -2,7 +2,7 @@ import { supabase } from '../lib/supabaseClient.js';
 import { db } from '../db/schema.js';
 import { saveCatalogDetail, getCatalogDetail, deleteCatalogDetail, deleteImageBlob } from '../db/eventCache.js';
 import { ensureImageCached, warmImageCache } from '../utils/eventImageCache.js';
-import { collectSolvedIds, mergeSolvedIds } from './specialEventsProgress.js';
+import { collectSolvedIds, mergeSolvedIds, getEventDealProgress } from './specialEventsProgress.js';
 import { listQueuedOps } from '../db/syncQueue.js';
 
 const catalogMemory = new Map();
@@ -107,15 +107,19 @@ export function detailsDiffer(a, b) {
 function summaryFromDetail(detail) {
   const totalPages = detail.pages.length;
   const completedPages = detail.pages.filter((p) => p.completed).length;
+  const { totalDeals, solvedDeals } = getEventDealProgress(detail);
   return {
     id: detail.id,
     title: detail.title,
     description: detail.description,
     gameKind: detail.gameKind,
     sortOrder: detail.sortOrder ?? null,
+    startsAt: detail.startsAt ?? null,
     totalPages,
     completedPages,
     fullyCompleted: totalPages > 0 && completedPages >= totalPages,
+    totalDeals,
+    solvedDeals,
   };
 }
 
@@ -162,12 +166,17 @@ function kickOffCatalogSync(eventIds) {
 
 /**
  * All currently-visible events with page-level progress folded in.
- * Deal-level progress is intentionally NOT fetched here — the list only
- * needs page counts. Returns [] on any failure (offline, RLS denial, etc.)
+ * Deal-level progress (total/solved deal counts for the list's percentage
+ * badge) IS fetched here — two extra scoped queries — so the percentage
+ * syncs across devices through the same server read as the Completed badge.
+ * Queued-but-unflushed local wins are merged in as solved so this device
+ * shows the new percentage instantly, before the sync flush lands.
+ * Returns [] on any failure (offline, RLS denial, etc.)
  * rather than throwing, so the modal can always render its empty state.
  * @returns {Promise<Array<{id:string, title:string, description:string|null,
- *   gameKind:string, sortOrder:number|null, totalPages:number,
- *   completedPages:number, fullyCompleted:boolean}>>}
+ *   gameKind:string, sortOrder:number|null, startsAt:string|null,
+ *   totalPages:number, completedPages:number, fullyCompleted:boolean,
+ *   totalDeals:number, solvedDeals:number}>>}
  */
 export async function fetchSpecialEvents() {
   if (!supabase) {
@@ -176,7 +185,7 @@ export async function fetchSpecialEvents() {
 
   try {
     const [{ data: events, error: eventsErr }, { data: pages, error: pagesErr }, { data: progress, error: progressErr }] = await Promise.all([
-      supabase.from('special_events').select('id, title, description, game_kind, sort_order').order('sort_order'),
+      supabase.from('special_events').select('id, title, description, game_kind, sort_order, starts_at').order('sort_order'),
       supabase.from('special_event_pages').select('id, event_id').order('page_number'),
       supabase.from('event_page_progress').select('page_id'),
     ]);
@@ -191,20 +200,62 @@ export async function fetchSpecialEvents() {
     const pageRows = pagesErr ? [] : pages || [];
     const completedPageIds = new Set((progressErr ? [] : progress || []).map((r) => r.page_id));
 
+    // Deal-level progress for the percentage badge. Scoped to the visible
+    // events' pages; missing/denied rows degrade to zero counts (no badge).
+    const dealsByPage = new Map(); // page_id -> deal id[]
+    const solvedDealIds = new Set();
+    if (pageRows.length > 0) {
+      try {
+        const allPageIds = pageRows.map((p) => p.id);
+        const { data: deals, error: dealsErr } = await supabase
+          .from('special_event_deals')
+          .select('id, page_id')
+          .in('page_id', allPageIds);
+        const dealRows = dealsErr ? [] : deals || [];
+        for (const d of dealRows) {
+          const list = dealsByPage.get(d.page_id) || [];
+          list.push(d.id);
+          dealsByPage.set(d.page_id, list);
+        }
+        if (dealRows.length > 0) {
+          const { data: dealProgress, error: dealProgressErr } = await supabase
+            .from('event_deal_progress')
+            .select('deal_id')
+            .in('deal_id', dealRows.map((d) => d.id));
+          for (const r of dealProgressErr ? [] : dealProgress || []) solvedDealIds.add(r.deal_id);
+        }
+        // Wins queued on this device but not yet flushed still count as solved
+        // here, so the badge updates instantly instead of waiting for sync.
+        try {
+          const queued = await listQueuedOps();
+          for (const op of queued) {
+            const dealId = op?.type === 'submit_game_result' ? op?.payload?.p_event_deal_id : null;
+            if (dealId != null) solvedDealIds.add(dealId);
+          }
+        } catch {}
+      } catch {}
+    }
+
     const result = events
       .map((e) => {
         const eventPages = pageRows.filter((p) => p.event_id === e.id);
         const totalPages = eventPages.length;
         const completedPages = eventPages.filter((p) => completedPageIds.has(p.id)).length;
+        const eventDealIds = eventPages.flatMap((p) => dealsByPage.get(p.id) || []);
+        const totalDeals = eventDealIds.length;
+        const solvedDeals = eventDealIds.filter((id) => solvedDealIds.has(id)).length;
         return {
           id: e.id,
           title: e.title,
           description: e.description,
           gameKind: e.game_kind,
           sortOrder: e.sort_order ?? null,
+          startsAt: e.starts_at ?? null,
           totalPages,
           completedPages,
           fullyCompleted: totalPages > 0 && completedPages >= totalPages,
+          totalDeals,
+          solvedDeals,
         };
       })
       .sort(compareEventSummaries);
@@ -249,7 +300,8 @@ export async function fetchAllEventSeeds() {
  * the fetch fails.
  * @param {string} eventId
  * @returns {Promise<{id:string, title:string, description:string|null,
- *   gameKind:string, sortOrder:number|null, pages:Array<{id:number, pageNumber:number,
+ *   gameKind:string, sortOrder:number|null, startsAt:string|null,
+ *   pages:Array<{id:number, pageNumber:number,
  *   gridSize:number, imagePath:string, coinReward:number, completed:boolean,
  *   unlocked:boolean, deals:Array<{id:number, position:number, seed:number,
  *   solved:boolean}>}>}|null>}
@@ -263,7 +315,7 @@ export async function fetchEventDetail(eventId, opts) {
   if (supabase) {
     try {
       const [{ data: event, error: eventErr }, { data: pages, error: pagesErr }] = await Promise.all([
-        supabase.from('special_events').select('id, title, description, game_kind, sort_order').eq('id', eventId).maybeSingle(),
+        supabase.from('special_events').select('id, title, description, game_kind, sort_order, starts_at').eq('id', eventId).maybeSingle(),
         supabase.from('special_event_pages').select('id, page_number, grid_size, image_path, coin_reward').eq('event_id', eventId).order('page_number'),
       ]);
       if (eventErr) throw eventErr;
@@ -324,6 +376,7 @@ export async function fetchEventDetail(eventId, opts) {
         description: event.description,
         gameKind: event.game_kind,
         sortOrder: event.sort_order ?? null,
+        startsAt: event.starts_at ?? null,
         pages: pagesWithState,
       };
 

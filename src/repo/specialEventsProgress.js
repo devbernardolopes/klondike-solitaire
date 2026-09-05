@@ -80,3 +80,27 @@ export function findNextUnsolvedDeal(detail, wonDealId) {
   }
   return null;
 }
+
+/**
+ * Deal-level progress for an event detail: total deals across all pages and
+ * how many are solved, plus the solved share as a whole percent (rounded).
+ * `percent` is null when the event has no deals (avoids division by zero;
+ * callers show no badge in that case).
+ */
+export function getEventDealProgress(detail) {
+  let totalDeals = 0;
+  let solvedDeals = 0;
+  if (detail && Array.isArray(detail.pages)) {
+    for (const p of detail.pages) {
+      for (const d of p.deals || []) {
+        totalDeals += 1;
+        if (d.solved) solvedDeals += 1;
+      }
+    }
+  }
+  return {
+    totalDeals,
+    solvedDeals,
+    percent: totalDeals > 0 ? Math.round((solvedDeals / totalDeals) * 100) : null,
+  };
+}

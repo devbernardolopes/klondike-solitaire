@@ -81,6 +81,11 @@
 
   /* Distinct border marking the signed-in user's own row on the leaderboard */
   --ui-leaderboard-me-border: #1d6fe0;
+
+  /* Progress badge on the Special Events list: theme-aware blue, distinct
+     from the Completed green and the NEW red. Future themes define both. */
+  --ui-badge-progress-bg: #1d6fe0;
+  --ui-badge-progress-fg: #ffffff;
 }
 
 .board-frame {

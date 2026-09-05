@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { compareEventSummaries } from './specialEventsRepository.js';
-import { collectSolvedIds, mergeSolvedIds, findNextUnsolvedDeal } from './specialEventsProgress.js';
+import { collectSolvedIds, mergeSolvedIds, findNextUnsolvedDeal, getEventDealProgress } from './specialEventsProgress.js';
 
 const summary = (id, sortOrder) => ({ id, sortOrder });
 
@@ -46,4 +46,22 @@ test('out-of-order wins converge: solve 4 then 3 keeps all solved', () => {
 
 test('collectSolvedIds returns only solved deal ids', () => {
   assert.deepEqual([...collectSolvedIds(detailWith(new Set([2, 4])))].sort(), [2, 4]);
+});
+
+test('getEventDealProgress counts deals and rounds the percent', () => {
+  assert.deepEqual(getEventDealProgress(detailWith(new Set([1]))), { totalDeals: 4, solvedDeals: 1, percent: 25 });
+  assert.deepEqual(getEventDealProgress(detailWith(new Set([1, 2]))), { totalDeals: 4, solvedDeals: 2, percent: 50 });
+  assert.deepEqual(getEventDealProgress(detailWith(new Set([1, 2, 3, 4]))), { totalDeals: 4, solvedDeals: 4, percent: 100 });
+});
+
+test('getEventDealProgress rounds whole percent (1/3 -> 33, 2/3 -> 67)', () => {
+  const three = { id: 'evt', pages: [{ id: 1, pageNumber: 1, deals: [1, 2, 3].map((id) => ({ id, solved: id <= 1 })) }] };
+  assert.equal(getEventDealProgress(three).percent, 33);
+  const twoThirds = { id: 'evt', pages: [{ id: 1, pageNumber: 1, deals: [1, 2, 3].map((id) => ({ id, solved: id <= 2 })) }] };
+  assert.equal(getEventDealProgress(twoThirds).percent, 67);
+});
+
+test('getEventDealProgress returns null percent when there are no deals', () => {
+  assert.deepEqual(getEventDealProgress({ id: 'evt', pages: [] }), { totalDeals: 0, solvedDeals: 0, percent: null });
+  assert.deepEqual(getEventDealProgress({ id: 'evt', pages: [{ id: 1, pageNumber: 1, deals: [] }] }), { totalDeals: 0, solvedDeals: 0, percent: null });
 });

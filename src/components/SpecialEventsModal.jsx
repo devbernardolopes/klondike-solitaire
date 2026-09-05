@@ -24,7 +24,7 @@ import { fetchSpecialEvents, getCachedEventsSummarySync } from '../repo/specialE
 import { translateSpecialEvent } from '../i18n/db.js';
 
 export default function SpecialEventsModal() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const open = useUiStore((s) => s.specialEventsOpen);
   const setOpen = useUiStore((s) => s.setSpecialEventsOpen);
   const setDetail = useUiStore((s) => s.setEventDetailOpen);
@@ -49,7 +49,7 @@ export default function SpecialEventsModal() {
             const prevIds = prev.map((e) => e.id).join('|');
             const differ = freshIds !== prevIds || fresh.some((f, i) => {
               const c = prev[i];
-              return !c || f.totalPages !== c.totalPages || f.completedPages !== c.completedPages || f.fullyCompleted !== c.fullyCompleted;
+              return !c || f.totalPages !== c.totalPages || f.completedPages !== c.completedPages || f.fullyCompleted !== c.fullyCompleted || f.totalDeals !== c.totalDeals || f.solvedDeals !== c.solvedDeals || f.startsAt !== c.startsAt;
             });
             return differ ? fresh.map(translateSpecialEvent) : prev;
           });
@@ -81,7 +81,7 @@ export default function SpecialEventsModal() {
           const cachedIds = cached.map((e) => e.id).join('|');
           const differ = freshIds !== cachedIds || fresh.some((f, i) => {
             const c = cached[i];
-            return !c || f.totalPages !== c.totalPages || f.completedPages !== c.completedPages || f.fullyCompleted !== c.fullyCompleted;
+            return !c || f.totalPages !== c.totalPages || f.completedPages !== c.completedPages || f.fullyCompleted !== c.fullyCompleted || f.totalDeals !== c.totalDeals || f.solvedDeals !== c.solvedDeals || f.startsAt !== c.startsAt;
           });
           if (differ) setEvents(fresh.map(translateSpecialEvent));
         })
@@ -168,12 +168,44 @@ export default function SpecialEventsModal() {
     pointerEvents: 'none',
   };
 
+  // Same overhang geometry as COMPLETED_BADGE (so the scrollport's top
+  // clearance covers it), but theme-aware and visually distinct from green.
+  const PROGRESS_BADGE = {
+    position: 'absolute',
+    top: -OVERHANG_BADGE_LIFT,
+    right: OVERHANG_BADGE_RIGHT,
+    fontSize: 11,
+    fontWeight: 700,
+    lineHeight: 1,
+    color: 'var(--ui-badge-progress-fg, #fff)',
+    background: 'var(--ui-badge-progress-bg, #1d6fe0)',
+    borderRadius: 4,
+    padding: '2px 5px',
+    pointerEvents: 'none',
+  };
+
   const subtitle = { fontWeight: 400, opacity: 0.8, fontSize: 12, display: 'block', marginTop: 2 };
 
-  const progressLabel = (ev) => {
-    if (ev.totalPages === 0) return t('specialEvents.progress.comingSoon');
-    if (ev.fullyCompleted) return t('specialEvents.progress.allSolved', { count: ev.totalPages });
-    return t('specialEvents.progress.solved', { completed: ev.completedPages, total: ev.totalPages, count: ev.totalPages });
+  // Unambiguous calendar date for the availability subtitle: day-first with
+  // the month spelled out ("2 February 2026"), in the player's language, so
+  // day/month can never be confused as in numeric formats like 2026-02-02.
+  const formatEventDate = (iso) => {
+    if (!iso) return null;
+    try {
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return null;
+      return d.toLocaleDateString(i18n.language || 'en', { day: 'numeric', month: 'long', year: 'numeric' });
+    } catch {
+      return null;
+    }
+  };
+
+  // Whole-percent share of solved deals (null when the total is unknown).
+  // Shown as a badge; hidden at 0% and at 100% (Completed takes its place).
+  const progressPercent = (ev) => {
+    const total = ev.totalDeals ?? 0;
+    if (total <= 0) return null;
+    return Math.round(((ev.solvedDeals ?? 0) / total) * 100);
   };
 
   return (
@@ -188,18 +220,32 @@ export default function SpecialEventsModal() {
           <p style={{ textAlign: 'center', opacity: 0.7, padding: '24px 0' }}>{t('specialEvents.noEvents')}</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {events.map((ev) => (
-              <button
-                key={ev.id}
-                type="button"
-                style={btn}
-                onClick={() => setDetail(ev.id)}
-              >
-                {ev.title}
-                {ev.fullyCompleted && <span style={COMPLETED_BADGE}>{t('specialEvents.completed')}</span>}
-                <span style={subtitle}>{progressLabel(ev)}</span>
-              </button>
-            ))}
+            {events.map((ev) => {
+              const pct = progressPercent(ev);
+              const done = ev.fullyCompleted || pct === 100;
+              const showProgress = !done && pct != null && pct > 0;
+              const availableDate = ev.totalPages === 0 ? formatEventDate(ev.startsAt) : null;
+              return (
+                <button
+                  key={ev.id}
+                  type="button"
+                  style={btn}
+                  onClick={() => setDetail(ev.id)}
+                >
+                  {ev.title}
+                  {done
+                    ? <span style={COMPLETED_BADGE}>{t('specialEvents.completed')}</span>
+                    : showProgress && <span style={PROGRESS_BADGE} aria-label={t('specialEvents.progress.percentAria', { percent: pct })}>{`${pct}%`}</span>}
+                  {ev.totalPages === 0 && (
+                    <span style={subtitle}>
+                      {availableDate
+                        ? t('specialEvents.availableFrom', { date: availableDate })
+                        : t('specialEvents.progress.comingSoon')}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         )}
         </div>
