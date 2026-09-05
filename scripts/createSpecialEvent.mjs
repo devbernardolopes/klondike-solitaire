@@ -514,8 +514,15 @@ async function main() {
           const { error: upErr } = await supabase.storage
             .from(BUCKET)
             .upload(p.imagePath, buf, { upsert: opts.force, contentType: contentTypeForExt(extname(p.imageFile)) });
-          if (upErr) throw new Error(`Image upload failed for ${p.imagePath}: ${upErr.message}`);
-          console.error(`Uploaded: ${BUCKET}/${p.imagePath}`);
+          if (upErr) {
+            if (upErr.message?.includes('already exists')) {
+              console.error(`Warning: image already exists at ${BUCKET}/${p.imagePath}`);
+            } else {
+              throw new Error(`Image upload failed for ${p.imagePath}: ${upErr.message}`);
+            }
+          } else {
+            console.error(`Uploaded: ${BUCKET}/${p.imagePath}`);
+          }
         }
       }
     }
