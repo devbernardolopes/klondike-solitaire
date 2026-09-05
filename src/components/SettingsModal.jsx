@@ -34,6 +34,7 @@ import LeaderboardModal from './LeaderboardModal.jsx';
 import StoreModal from './StoreModal.jsx';
 import SettingsOptionsModal from './SettingsOptionsModal.jsx';
 import StatisticsModal from './StatisticsModal.jsx';
+import AdvancedModal from './AdvancedModal.jsx';
 import pkg from '../../package.json';
 
 /**
@@ -74,6 +75,7 @@ export default function SettingsModal({
   const [themeOpen, setThemeOpen] = useState(false);
   const [settingsOptionsOpen, setSettingsOptionsOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [nameError, setNameError] = useState(null);
@@ -111,7 +113,8 @@ export default function SettingsModal({
   }, [open]);
 
   // SettingsModal stays mounted (returns null when closed) so its local sub-modal
-  // flags (Theme / Achievements / Leaderboard / Store) persist across open/close.
+  // flags (Theme / Achievements / Leaderboard / Store / Stats / Advanced)
+  // persist across open/close.
   // Clear them whenever the Main Menu is dismissed so reopening it never
   // resurfaces a stale child modal.
   useEffect(() => {
@@ -119,6 +122,7 @@ export default function SettingsModal({
       setThemeOpen(false);
       setSettingsOptionsOpen(false);
       setStatsOpen(false);
+      setAdvancedOpen(false);
       setAchievementsOpen(false);
       setLeaderboardOpen(false);
       setStoreOpen(false);
@@ -375,6 +379,13 @@ export default function SettingsModal({
             >
               {t('mainMenu.store')}
             </button>
+            <button
+              type="button"
+              style={{ ...btn, width: '100%' }}
+              onClick={() => setAdvancedOpen(true)}
+            >
+              {t('mainMenu.advanced')}
+            </button>
           </div>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
             <button
@@ -584,6 +595,11 @@ export default function SettingsModal({
       <StatisticsModal
         open={statsOpen}
         onClose={() => setStatsOpen(false)}
+      />
+
+      <AdvancedModal
+        open={advancedOpen}
+        onClose={() => setAdvancedOpen(false)}
       />
     </>
   );
