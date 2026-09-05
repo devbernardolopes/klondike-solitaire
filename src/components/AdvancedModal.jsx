@@ -103,8 +103,8 @@ async function refreshInMemoryState() {
   await useStatisticsStore.getState().init();
   await useSeedStore.getState().init();
   // Wallet + ownership reflect the wiped server state; identity (display
-  // name, lifetime earned audit) is preserved and stays as-is.
-  useAuthStore.setState({ coins: 0, coinsSpentTotal: 0, ownedItemIds: [] });
+  // name) is preserved and stays as-is.
+  useAuthStore.setState({ coins: 0, coinsEarnedTotal: 0, coinsSpentTotal: 0, ownedItemIds: [] });
   try {
     useSettingsStore.getState().clearAchievementsSeen();
   } catch {}
