@@ -9,7 +9,7 @@ import { Coins } from 'lucide-react';
 import { gsap } from '../render/animation/gsapSetup.js';
 import { MOTION } from '../render/animation/motion.js';
 import { useToastStore } from '../hooks/useToastStore.js';
-import { onAchievementImageError } from '../utils/achievementImage.js';
+import AchievementImage from './AchievementImage.jsx';
 
 export default function ToastHost() {
   const active = useToastStore((s) => s.active);
@@ -88,10 +88,8 @@ export default function ToastHost() {
     <div style={containerStyle}>
       <div ref={cardRef} style={cardStyle} onClick={() => dismiss()} role="status" aria-live="polite">
         {active.image ? (
-          <img
-            src={active.image}
-            alt=""
-            onError={onAchievementImageError}
+          <AchievementImage
+            achievement={{ id: active.id, image_path: active.image }}
             style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', flex: '0 0 auto' }}
           />
         ) : active.icon === 'coins' ? (

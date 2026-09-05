@@ -142,4 +142,12 @@ export const useToastStore = create((set, get) => ({
       set({ active: null, queue: [], phase: 'idle' });
     }
   },
+
+  clearAll: () => {
+    if (dwellTimer) {
+      clearTimeout(dwellTimer);
+      dwellTimer = null;
+    }
+    set({ active: null, queue: [], phase: 'idle' });
+  },
 }));

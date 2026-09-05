@@ -40,6 +40,7 @@ import {
 } from '../sync/sessionPersistence.js';
 import { prefetch as prefetchSeeds } from '../repo/seedRepository.js';
 import { hydrateEventCachesFromDexie } from '../repo/specialEventsRepository.js';
+import { hydrateAchievementCache } from '../repo/achievementRepository.js';
 
 export default function App() {
   const [bootstrapReady, setBootstrapReady] = useState(false);
@@ -83,6 +84,7 @@ export default function App() {
       await initUsedRandomSeeds();
       prefetchSeeds().catch(() => {});
       hydrateEventCachesFromDexie().catch(() => {});
+      hydrateAchievementCache().catch(() => {});
       // Resolve the per-device id, then restore any in-progress session from
       // local Dexie (or Supabase for a linked account). Skip the initial deal
       // when a session was restored — this is a resume, not a fresh game.

@@ -12,11 +12,12 @@
 import { supabase } from '../lib/supabaseClient.js';
 import { useAchievementEventsStore } from '../hooks/useAchievementEventsStore.js';
 import { useToastStore, TOAST_PRIORITY } from '../hooks/useToastStore.js';
-import { achievementImageUrl } from '../utils/achievementImage.js';
+import { achievementImageUrl, preloadAchievementImage, clearAchievementImagePreloads } from '../utils/achievementImage.js';
 import { translateAchievement } from '../i18n/db.js';
 
 // Session cache so the same id is never looked up twice.
 const cache = new Map();
+let generation = 0;
 
 /**
  * Resolve an achievement id to its display name + description + image URL.
@@ -36,7 +37,7 @@ async function resolve(id) {
         .eq('id', id)
         .single();
       if (data) {
-        const image = achievementImageUrl(data.image_path);
+          const image = achievementImageUrl(data.image_path);
         const translated = translateAchievement({ id, name: data.name || id, description: data.description || '' });
         result = { name: translated.name, description: translated.description, image };
       }
@@ -54,11 +55,20 @@ function process() {
   if (!batches.length) return;
   for (const batch of batches) {
     for (const id of batch.ids) {
-      resolve(id).then(({ name, description, image }) => {
-        useToastStore.getState().push({ name, description, image, priority: TOAST_PRIORITY.DEFAULT });
+      const activeGeneration = generation;
+      resolve(id).then(async ({ name, description, image }) => {
+        const readyImage = await preloadAchievementImage(image);
+        if (activeGeneration !== generation) return;
+        useToastStore.getState().push({ name, description, image: readyImage, priority: TOAST_PRIORITY.DEFAULT });
       });
     }
   }
+}
+
+export function clearAchievementToastCache() {
+  generation++;
+  cache.clear();
+  clearAchievementImagePreloads();
 }
 
 let started = false;

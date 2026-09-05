@@ -11,16 +11,37 @@ import { supabase } from '../lib/supabaseClient.js';
 
 export const ACHIEVEMENT_PLACEHOLDER = '/achievement_placeholder.jpg';
 
+const pendingImages = new Map();
+
 /**
  * Resolve an achievement's image URL, falling back to the local placeholder.
  * @param {string|null|undefined} imagePath
  * @returns {string}
  */
 export function achievementImageUrl(imagePath) {
+  if (typeof imagePath === 'string' && /^https?:\/\//i.test(imagePath)) return imagePath;
   if (imagePath && supabase) {
     return supabase.storage.from('achievement-images').getPublicUrl(imagePath).data.publicUrl;
   }
   return ACHIEVEMENT_PLACEHOLDER;
+}
+
+/** Resolve once the current image is loadable; failures use the placeholder. */
+export function preloadAchievementImage(url) {
+  if (!url || url === ACHIEVEMENT_PLACEHOLDER || typeof Image === 'undefined') return Promise.resolve(url || ACHIEVEMENT_PLACEHOLDER);
+  if (pendingImages.has(url)) return pendingImages.get(url);
+  const promise = new Promise((resolve) => {
+    const image = new Image();
+    image.onload = () => resolve(url);
+    image.onerror = () => resolve(ACHIEVEMENT_PLACEHOLDER);
+    image.src = url;
+  }).finally(() => pendingImages.delete(url));
+  pendingImages.set(url, promise);
+  return promise;
+}
+
+export function clearAchievementImagePreloads() {
+  pendingImages.clear();
 }
 
 /**

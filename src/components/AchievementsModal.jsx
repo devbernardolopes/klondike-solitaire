@@ -15,12 +15,13 @@ import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
 import { supabase } from '../lib/supabaseClient.js';
-import { achievementImageUrl, onAchievementImageError } from '../utils/achievementImage.js';
+import AchievementImage from './AchievementImage.jsx';
 import AchievementDetailModal from './AchievementDetailModal.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { translateAchievement } from '../i18n/db.js';
+import { fetchAchievements, getCachedAchievementsSync } from '../repo/achievementRepository.js';
 
 /**
  * A single achievement entry in the compact list. Unlocked entries are
@@ -85,10 +86,9 @@ function AchievementRow({ achievement, isNew, onOpen }) {
           }
         : { 'aria-disabled': true })}
     >
-      <img
-        src={achievementImageUrl(achievement.image_path)}
+      <AchievementImage
+        achievement={achievement}
         alt=""
-        onError={onAchievementImageError}
         style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover', flex: '0 0 auto' }}
       />
       {isNew && <span style={NEW_BADGE}>{t('common.new')}</span>}
@@ -186,9 +186,13 @@ export default function AchievementsModal({ open, onClose }) {
 
   const load = useCallback(async (cancelledRef) => {
     if (!open) return;
-    setLoading(true);
+    const cached = getCachedAchievementsSync();
+    if (cached?.length) {
+      setDefs(cached.map(translateAchievement));
+      setLoading(false);
+    }
+    setLoading(!cached?.length);
     setLoaded(false);
-    setDefs([]);
     setUnlocked({});
 
     if (!supabase) {
@@ -198,21 +202,17 @@ export default function AchievementsModal({ open, onClose }) {
       }
       return;
     }
-    const [defsRes, unlockedRes] = await Promise.all([
-      supabase
-        .from('achievements_definitions')
-        .select('id, name, description, image_path, sort_order')
-        .eq('enabled', true)
-        .order('sort_order'),
+    const [defsResult, unlockedRes] = await Promise.all([
+      fetchAchievements(),
       supabase
         .from('achievements_unlocked')
         .select('achievement_id, unlocked_at'),
     ]);
     if (cancelledRef.current) return;
-    const defsOk = !defsRes.error && defsRes.data;
+    const defsOk = Array.isArray(defsResult);
     const unlockedOk = !unlockedRes.error && unlockedRes.data;
     if (defsOk) {
-      setDefs(defsRes.data.map(translateAchievement));
+      setDefs(defsResult.map(translateAchievement));
     }
     let nextUnlocked = {};
     if (unlockedOk) {

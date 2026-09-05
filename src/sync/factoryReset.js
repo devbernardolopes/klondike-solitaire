@@ -26,6 +26,7 @@ import { clearQueuedOps } from '../db/syncQueue.js';
 import { clearAllSeenDissolve } from '../db/eventDissolveSeen.js';
 import { cancelAllSolves } from '../core/solverClient.js';
 import { clearEventCatalogMemory } from '../repo/specialEventsRepository.js';
+import { clearAchievementCache } from '../repo/achievementRepository.js';
 
 // The Zustand stores, win-cascade cancel, sync engine, and session device id
 // are imported lazily (inside the functions that need them): they pull a
@@ -95,9 +96,20 @@ export async function wipeLocalUserData() {
   await clearSeedCache();
   await db.eventCatalogCache.clear();
   await db.eventImageCache.clear();
+  await clearAchievementCache();
   await db.games.clear();
   try {
     clearEventCatalogMemory();
+  } catch {}
+  try {
+    const [{ clearAchievementToastCache }, { useAchievementEventsStore }, { useToastStore }] = await Promise.all([
+      import('../toast/achievementToastBridge.js'),
+      import('../hooks/useAchievementEventsStore.js'),
+      import('../hooks/useToastStore.js'),
+    ]);
+    clearAchievementToastCache();
+    useAchievementEventsStore.getState().clear();
+    useToastStore.getState().clearAll();
   } catch {}
   try {
     clearAllSeenDissolve();

@@ -39,5 +39,5 @@ export const useAchievementEventsStore = create((set, get) => ({
   },
 
   /** Clear the queue without consuming it. */
-  clear: () => set({ queue: [] }),
+  clear: () => set((s) => ({ queue: [], revision: s.revision + 1 })),
 }));

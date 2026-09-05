@@ -13,7 +13,7 @@ import { useModalBackdrop } from './modalBackdrop.js';
 import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
-import { achievementImageUrl, onAchievementImageError } from '../utils/achievementImage.js';
+import AchievementImage from './AchievementImage.jsx';
 
 /**
  * @param {object} props
@@ -80,10 +80,9 @@ export default function AchievementDetailModal({ achievement, open, onClose }) {
     >
       <div style={panel}>
         <ModalCloseButton onClick={onClose} />
-        <img
-          src={achievementImageUrl(achievement.image_path)}
+        <AchievementImage
+          achievement={achievement}
           alt=""
-          onError={onAchievementImageError}
           style={{
             width: 96,
             height: 96,

@@ -150,6 +150,24 @@ db.version(11).stores({
   eventCatalogCache: 'eventId',
   eventImageCache: 'imagePath',
 });
+// v12 adds the cache-first achievement catalog and image blobs. Achievement
+// ownership remains remote-only; these tables contain display data only.
+db.version(12).stores({
+  games: '++id, startedAt, finishedAt, won, durationMs',
+  settings: 'key',
+  stats: 'key',
+  playedSeeds: 'key',
+  dailyResults: 'date',
+  syncQueue: '++id, type, createdAt, dedupeKey',
+  activeSession: 'key',
+  usedRandomSeeds: 'seed',
+  seedCache: 'key',
+  eventProgress: null,
+  eventCatalogCache: 'eventId',
+  eventImageCache: 'imagePath',
+  achievementCatalogCache: 'id',
+  achievementImageCache: 'imagePath',
+});
 
 /**
  * Insert a finished/abandoned game record.
