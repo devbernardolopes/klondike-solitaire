@@ -58,6 +58,11 @@ export default function EventDetailModal() {
   const dragStateRef = useRef({ startX: 0, startY: 0, width: 1, active: false });
   const justSwipedRef = useRef(false);
   const justSwipedTimerRef = useRef(null);
+  // One-shot guard so the post-win auto-advance (findNextUnsolvedDeal) applies
+  // exactly once per won deal. winSummary.eventDealId is never cleared (the Win
+  // modal and optimistic fetch rely on it), so without this every reopen would
+  // re-apply the advance and clobber a manual replay selection.
+  const advancedForWonRef = useRef(null);
 
   useEffect(() => {
     if (!open) return;
@@ -148,7 +153,7 @@ export default function EventDetailModal() {
           const prevId = prev[String(p.pageNumber)];
           const prevStillValid = prevId != null && p.deals.some((dl) => dl.id === prevId);
           if (!prevStillValid) {
-            const first = p.deals[0];
+            const first = p.deals.find((dl) => !dl.solved) ?? p.deals[0];
             if (first) {
               next[String(p.pageNumber)] = first.id;
               saveEventSelection(cached.id, p.pageNumber, first.id).catch(() => {});
@@ -174,7 +179,7 @@ export default function EventDetailModal() {
               const prevId = prev[String(p.pageNumber)];
               const prevStillValid = prevId != null && p.deals.some((dl) => dl.id === prevId);
               if (!prevStillValid) {
-                const first = p.deals[0];
+                const first = p.deals.find((dl) => !dl.solved) ?? p.deals[0];
                 if (first && prevId !== first.id) {
                   next[String(p.pageNumber)] = first.id;
                   changed = true;
@@ -211,7 +216,7 @@ export default function EventDetailModal() {
               const prevId = prev[String(p.pageNumber)];
               const prevStillValid = prevId != null && p.deals.some((dl) => dl.id === prevId);
               if (!prevStillValid) {
-                const first = p.deals[0];
+                const first = p.deals.find((dl) => !dl.solved) ?? p.deals[0];
                 if (first) {
                   next[String(p.pageNumber)] = first.id;
                   saveEventSelection(patched.id, p.pageNumber, first.id).catch(() => {});
@@ -231,6 +236,35 @@ export default function EventDetailModal() {
 
   useEffect(() => {
     if (!open || !detail) return;
+    // Post-win auto-advance: exactly once per won deal. Solved selections are
+    // legitimate replay targets, so never force-correct them — only fill pages
+    // with a missing/invalid selection (e.g. a newly unlocked page).
+    if (justWonDealId == null) {
+      setSelectedDealIdByPage((prev) => {
+        const next = { ...prev };
+        let changed = false;
+        for (const p of detail.pages) {
+          if (!p.unlocked) continue;
+          const key = String(p.pageNumber);
+          const sel = prev[key];
+          const selDeal = p.deals.find((d) => d.id === sel);
+          if (sel == null || !selDeal) {
+            const first = p.deals.find((d) => !d.solved) ?? p.deals[0];
+            if (first && next[key] !== first.id) {
+              next[key] = first.id;
+              changed = true;
+              saveEventSelection(detail.id, p.pageNumber, first.id).catch(() => {});
+            }
+          }
+        }
+        return changed ? next : prev;
+      });
+      return;
+    }
+    const wonKey = `${detail.id}:${justWonDealId}`;
+    const alreadyAdvanced = advancedForWonRef.current === wonKey;
+    if (!alreadyAdvanced) advancedForWonRef.current = wonKey;
+    const target = alreadyAdvanced ? null : findNextUnsolvedDeal(detail, justWonDealId);
     setSelectedDealIdByPage((prev) => {
       const next = { ...prev };
       let changed = false;
@@ -243,19 +277,15 @@ export default function EventDetailModal() {
           saveLastViewedPage(evtId, pageNumber).catch(() => {});
         }
       };
-      if (justWonDealId != null) {
-        const target = findNextUnsolvedDeal(detail, justWonDealId);
-        if (target) apply(target.pageNumber, target.deal.id, detail.id);
-      }
+      if (target) apply(target.pageNumber, target.deal.id, detail.id);
       for (const p of detail.pages) {
         if (!p.unlocked) continue;
         const key = String(p.pageNumber);
         const sel = next[key];
-        if (justWonDealId != null && sel === justWonDealId) continue;
         const selDeal = p.deals.find((d) => d.id === sel);
-        if (selDeal && selDeal.solved) {
-          const firstOpen = p.deals.find((d) => !d.solved);
-          if (firstOpen && next[key] !== firstOpen.id) apply(p.pageNumber, firstOpen.id, detail.id);
+        if (sel == null || !selDeal) {
+          const first = p.deals.find((d) => !d.solved) ?? p.deals[0];
+          if (first && next[key] !== first.id) apply(p.pageNumber, first.id, detail.id);
         }
       }
       return changed ? next : prev;
