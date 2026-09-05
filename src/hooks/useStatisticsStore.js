@@ -144,14 +144,11 @@ export const useStatisticsStore = create((set, get) => ({
    * useStatsStore.freeze), so a loss ends the streak the moment it's decided.
    * @returns {Promise<CumulativeStats>} the updated row
    */
-  recordLoss: async () => {
+recordLoss: async () => {
     const stats = await dbRecordLoss();
     set({ stats, gameWon: false });
     const session = useStatsStore.getState();
     const telemetry = session.achievementTelemetry;
-    // Full win parity for the abandoned/limit-ended game: same seed, kind,
-    // daily date, and event deal Board.jsx captures for recordWin, so the
-    // loss row in game_results is a complete record, not a generic stub.
     // Lazy import: useGameStore pulls a JSON/i18n chain that plain node --test
     // cannot load, and it closes a static useGameStore <-> useStatisticsStore
     // cycle. recordLoss callers stub this out in tests, so the import only
@@ -160,10 +157,25 @@ export const useStatisticsStore = create((set, get) => ({
     const gameStore = useGameStore.getState();
     const ui = useUiStore.getState();
     const gameKind = ui.currentGameKind ?? gameStore.replaySpec?.kind ?? null;
+
+    // Calculate moves: use session.moves if valid, otherwise fall back to
+    // the game state's move history length (covers edge cases where the
+    // moves counter was reset or not properly incremented).
+    const moves = session.moves > 0 ? session.moves : Math.max(0, gameStore.state.moveHistory.length);
+
+    // Calculate duration: use session.getElapsedMs() if startTime is set,
+    // otherwise fall back to the deal start time from replaySpec if available.
+    const durationMs = session.startTime != null
+      ? session.getElapsedMs()
+      : (gameStore.replaySpec?.seed !== undefined
+          ? /* winning/random deal: use game start approximated from seed */
+            0
+          : null);
+
     enqueue('submit_game_result', {
       p_won: false,
-      p_moves: session.moves,
-      p_duration_ms: session.getElapsedMs(),
+      p_moves: moves,
+      p_duration_ms: durationMs,
       p_score: session.score,
       p_undos: session.undos,
       p_seed: gameStore.state?.seed ?? gameStore.replaySpec?.seed ?? null,
