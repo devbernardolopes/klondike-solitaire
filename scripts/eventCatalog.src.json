@@ -68,5 +68,25 @@
         "coinReward": 40
       }
     ]
+  },
+  {
+    "id": "swedish-midsommar-2026",
+    "title": "Swedish Midsommar 2026",
+    "description": "Swedish Midsommar 2026 marks the traditional Midsummer celebration with maypoles, floral crowns, outdoor dances, and gatherings under the long Nordic summer light around the solstice.",
+    "startsAt": "2026-06-19T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 4,
+        "imagePath": "swedish-midsommar-2026/page1.jpg",
+        "coinReward": 160
+      },
+      {
+        "gridSize": 3,
+        "imagePath": "swedish-midsommar-2026/page2.jpg",
+        "coinReward": 90
+      }
+    ]
   }
 ]
