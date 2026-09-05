@@ -252,30 +252,43 @@ export default function PostcardViewerModal({ imageUrl, title, fileName, onClose
           cursor: view.scale > 1 ? 'grab' : 'default',
         }}
       >
-        {fit && (
-          <img
-            src={imageUrl}
-            alt={title}
-            draggable={false}
-            onLoad={(e) => {
-              const el = e.currentTarget;
-              if (el.naturalWidth > 0 && el.naturalHeight > 0) {
-                setNatural({ w: el.naturalWidth, h: el.naturalHeight });
-              }
-            }}
-            style={{
-              width: fit.width,
-              height: fit.height,
-              maxWidth: 'none',
-              maxHeight: 'none',
-              transform: `translate(${view.tx}px, ${view.ty}px) scale(${view.scale})`,
-              transformOrigin: 'center',
-              userSelect: 'none',
-              WebkitUserSelect: 'none',
-              pointerEvents: 'none',
-            }}
-          />
-        )}
+        {/* Always mounted: `natural` (and therefore `fit`) is bootstrapped by
+            this image's own onLoad, so gating on `fit` would deadlock and show
+            nothing. Pre-load it stays hidden with CSS contain fallbacks, then
+            swaps to the explicit fit size — visually identical, no snap. */}
+        <img
+          src={imageUrl}
+          alt={title}
+          draggable={false}
+          onLoad={(e) => {
+            const el = e.currentTarget;
+            if (el.naturalWidth > 0 && el.naturalHeight > 0) {
+              setNatural({ w: el.naturalWidth, h: el.naturalHeight });
+            }
+          }}
+          style={{
+            ...(fit
+              ? {
+                  width: fit.width,
+                  height: fit.height,
+                  maxWidth: 'none',
+                  maxHeight: 'none',
+                  visibility: 'visible',
+                  transform: `translate(${view.tx}px, ${view.ty}px) scale(${view.scale})`,
+                  transformOrigin: 'center',
+                }
+              : {
+                  width: 'auto',
+                  height: 'auto',
+                  maxWidth: 'calc(100vw - 32px)',
+                  maxHeight: 'calc(100vh - 32px)',
+                  visibility: 'hidden',
+                }),
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            pointerEvents: 'none',
+          }}
+        />
       </div>
       <button
         type="button"

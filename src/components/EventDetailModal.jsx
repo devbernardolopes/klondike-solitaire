@@ -76,8 +76,14 @@ export default function EventDetailModal() {
 
   const onShowPostcard = (page) => {
     if (!detail || !page?.imagePath) return;
-    const base = String(page.imagePath).split('/').pop() || 'postcard.jpg';
-    setPostcard({ imageUrl: eventImageUrl(page.imagePath), title: detail.title, fileName: base });
+    // Download name: "<eventId>-page-<n>.<ext>", e.g. "holi-2026-page-2.jpg".
+    const base = String(page.imagePath).split('/').pop() || '';
+    const ext = /\.([a-z0-9]+)$/i.test(base) ? base.slice(base.lastIndexOf('.')) : '.jpg';
+    setPostcard({
+      imageUrl: eventImageUrl(page.imagePath),
+      title: detail.title,
+      fileName: `${detail.id}-page-${page.pageNumber}${ext.toLowerCase()}`,
+    });
   };
 
   // Move the page track without animating: the suppression flag commits in the
