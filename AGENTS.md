@@ -29,6 +29,20 @@ the environment. Copy `.env.example` to `.env` and fill them in (it errors loudl
 dev if missing). Supabase is offline-tolerant: a missing/empty config or a failed
 network sign-in degrades to a ready-but-unauthenticated app that remains fully playable.
 
+## Deployment + Manual QA
+
+Solo-dev, fast-paced project. Every commit pushed to GitHub auto-deploys to Vercel (free tier).
+
+Every deployment is manually tested on both devices below, always signed in with the
+same Supabase Google/OAuth account (not Brave sync):
+
+- Device A (desktop): Samsung Odyssey notebook, 1920x1080, Windows 10, Brave browser.
+- Device B (mobile): Samsung Galaxy A03 in portrait mode, 360x800, Android 13, Brave browser.
+
+Implications for agents: verify responsive layout at both 1920px desktop and 360px
+portrait-mobile widths, cover mouse-drag and touch input paths, watch for Brave-specific
+quirks, and consider cross-device behavior when touching auth-persisted state.
+
 ## CRITICAL architectural rule: `core/` is framework-agnostic
 
 Everything under `src/core/` is plain JS with **zero** imports from React, the DOM,
