@@ -11,7 +11,7 @@
 
 import { supabase } from '../lib/supabaseClient.js';
 import { useAchievementEventsStore } from '../hooks/useAchievementEventsStore.js';
-import { useToastStore } from '../hooks/useToastStore.js';
+import { useToastStore, TOAST_PRIORITY } from '../hooks/useToastStore.js';
 import { achievementImageUrl } from '../utils/achievementImage.js';
 import { translateAchievement } from '../i18n/db.js';
 
@@ -55,7 +55,7 @@ function process() {
   for (const batch of batches) {
     for (const id of batch.ids) {
       resolve(id).then(({ name, description, image }) => {
-        useToastStore.getState().push({ name, description, image });
+        useToastStore.getState().push({ name, description, image, priority: TOAST_PRIORITY.DEFAULT });
       });
     }
   }

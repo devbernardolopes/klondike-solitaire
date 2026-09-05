@@ -16,7 +16,8 @@ import { useCardMoveSlide } from '../render/animation/useCardMoveSlide.js';
 import { useStockDrawSlide } from '../render/animation/useStockDrawSlide.js';
 import { useFoundationParticles } from '../render/animation/useFoundationParticles.js';
 import { applyWoodFrame, removeWoodFrame } from '../render/themes/woodFrame.js';
-import { useToastStore } from '../hooks/useToastStore.js';
+import { useToastStore, TOAST_PRIORITY } from '../hooks/useToastStore.js';
+import { WIN_COIN_REWARD } from '../hooks/useAuthStore.js';
 import { playWinCascade } from '../render/animation/winCascade.js';
 import { isWon } from '../core/winDetection.js';
 import { solveAsync, STALE } from '../core/solverClient.js';
@@ -261,10 +262,17 @@ export default function Board() {
         seed: gameState.seed,
       });
       const nextStreak = (prev.currentStreak || 0) + 1;
+      useToastStore.getState().push({
+        name: t('toasts.coinsAwarded.title', { count: WIN_COIN_REWARD }),
+        description: t('toasts.coinsAwarded.desc', { count: WIN_COIN_REWARD }),
+        icon: 'coins',
+        priority: TOAST_PRIORITY.COINS,
+      });
       if (nextStreak > (prev.bestStreak || 0)) {
         useToastStore.getState().push({
           name: t('toasts.newBestStreak.title', {count: nextStreak}),
           description: t('toasts.newBestStreak.desc', {count: nextStreak}),
+          priority: TOAST_PRIORITY.PERSONAL_BEST,
         });
       }
       if (newTime) {
@@ -272,12 +280,14 @@ export default function Board() {
         useToastStore.getState().push({
           name: t('toasts.newBestTime.title'),
           description: t('toasts.newBestTime.desc', {secs}),
+          priority: TOAST_PRIORITY.PERSONAL_BEST,
         });
       }
       if (newMoves) {
         useToastStore.getState().push({
           name: t('toasts.newBestMoves.title'),
           description: t('toasts.newBestMoves.desc', {count: moves}),
+          priority: TOAST_PRIORITY.PERSONAL_BEST,
         });
       }
       // Persist the just-won game's stats cumulatively. The timer is frozen

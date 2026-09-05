@@ -379,7 +379,9 @@
     "newBestTime.title": "New Best Time!",
     "newBestTime.desc": "You beat your record — {{secs}}s",
     "newBestMoves.title": "New Best Moves!",
-    "newBestMoves.desc": "You won in just {{count}} moves — new fewest!"
+    "newBestMoves.desc": "You won in just {{count}} moves — new fewest!",
+    "coinsAwarded.title": "+{{count}} Coins!",
+    "coinsAwarded.desc": "Win reward added to your balance."
   },
   "db": {
     "achievements": {

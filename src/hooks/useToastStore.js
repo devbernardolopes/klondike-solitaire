@@ -1,9 +1,12 @@
 // hooks/useToastStore.js
-// Drives the single-toast, FIFO-queued achievement toast. One toast visible at a
-// time; additional pushes queue and show in order. Each toast dwells 5s once it
+// Drives the single-toast, priority-queued toast. One toast visible at a
+// time; additional pushes queue and show in priority order (coins first,
+// then personal bests, then everything else). Each toast dwells 5s once it
 // has slid into place, then fades out; the next queued toast (if any) then
 // slides in. The actual slide/fade tweens live in ToastHost.jsx (DOM/GSAP
 // concern); this store owns the phase machine and the 5s dwell timer.
+// Queue-front only: a push never preempts the active toast; it is inserted
+// into the waiting queue by priority.
 
 import { create } from 'zustand';
 import { supabase } from '../lib/supabaseClient.js';
@@ -16,12 +19,35 @@ let dwellTimer = null;
 
 let toastSeq = 0;
 
+/** Toast display order: coins -> personal bests -> all the rest. */
+export const TOAST_PRIORITY = {
+  COINS: 0,
+  PERSONAL_BEST: 1,
+  DEFAULT: 2,
+};
+
+/**
+ * Insert a toast into the waiting queue keeping priority order (stable
+ * within the same priority level).
+ * @param {Toast[]} queue
+ * @param {Toast} next
+ * @returns {Toast[]}
+ */
+function insertByPriority(queue, next) {
+  const level = next.priority ?? TOAST_PRIORITY.DEFAULT;
+  const idx = queue.findIndex((t) => (t.priority ?? TOAST_PRIORITY.DEFAULT) > level);
+  if (idx === -1) return [...queue, next];
+  return [...queue.slice(0, idx), next, ...queue.slice(idx)];
+}
+
 /**
  * @typedef {Object} Toast
  * @property {number} id
  * @property {string} name
  * @property {string} [description]
  * @property {string} [image]  resolved public URL
+ * @property {string} [icon]  named glyph (e.g. 'coins') rendered instead of image
+ * @property {number} [priority]  TOAST_PRIORITY level, defaults to DEFAULT
  */
 
 export const useToastStore = create((set, get) => ({
@@ -64,7 +90,9 @@ export const useToastStore = create((set, get) => ({
 
   /**
    * Queue a toast. Silent no-op when config.enabled is false. Promotes to active
-   * immediately when nothing is currently showing.
+   * immediately when nothing is currently showing; otherwise inserts into the
+   * waiting queue by priority (coins first, then personal bests, then the
+   * rest). Never preempts the active toast.
    * @param {Omit<Toast, 'id'>} toast
    */
   push: (toast) => {
@@ -72,7 +100,7 @@ export const useToastStore = create((set, get) => ({
     if (!config.enabled) return;
     const next = { ...toast, id: ++toastSeq };
     set((s) => {
-      const queue = [...s.queue, next];
+      const queue = insertByPriority(s.queue, next);
       if (s.active) return { queue };
       const [first, ...rest] = queue;
       return { queue: rest, active: first, phase: 'entering' };

@@ -5,6 +5,7 @@
 // in App.jsx above every modal (zIndex 5000).
 
 import { useEffect, useRef } from 'react';
+import { Coins } from 'lucide-react';
 import { gsap } from '../render/animation/gsapSetup.js';
 import { MOTION } from '../render/animation/motion.js';
 import { useToastStore } from '../hooks/useToastStore.js';
@@ -93,6 +94,8 @@ export default function ToastHost() {
             onError={onAchievementImageError}
             style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', flex: '0 0 auto' }}
           />
+        ) : active.icon === 'coins' ? (
+          <Coins size={48} aria-hidden="true" style={{ flex: '0 0 auto' }} />
         ) : null}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 15, fontWeight: 700, textAlign: 'center', lineHeight: 1.25 }}>{active.name}</div>
