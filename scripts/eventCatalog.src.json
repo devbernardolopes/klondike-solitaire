@@ -113,5 +113,20 @@
         "coinReward": 200
       }
     ]
+  },
+  {
+    "id": "world-goth-day-2026-2",
+    "title": "World Goth Day 2026",
+    "description": "World Goth Day 2026 is an international celebration of goth subculture, encompassing its distinctive music, fashion, art, and community expression observed each year on 22 May.",
+    "startsAt": "2026-05-22T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "world-goth-day-2026-2/page1.jpg",
+        "coinReward": 50
+      }
+    ]
   }
 ]
