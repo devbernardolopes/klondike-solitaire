@@ -4,6 +4,7 @@ import { saveCatalogDetail, getCatalogDetail, deleteCatalogDetail, deleteImageBl
 import { ensureImageCached, warmImageCache } from '../utils/eventImageCache.js';
 import { collectSolvedIds, mergeSolvedIds, getEventDealProgress } from './specialEventsProgress.js';
 import { listQueuedOps } from '../db/syncQueue.js';
+import { maybeApplyRemoteReset } from '../sync/factoryReset.js';
 
 const catalogMemory = new Map();
 
@@ -14,6 +15,11 @@ export function getCachedEventDetailSync(eventId) {
 export function setCachedEventDetailSync(detail) {
   if (!detail || !detail.id) return;
   catalogMemory.set(detail.id, detail);
+}
+
+/** Drop every in-memory cached event detail (factory-reset cross-device wipe). */
+export function clearEventCatalogMemory() {
+  catalogMemory.clear();
 }
 
 export function patchCachedEventDealSolved(dealId) {
@@ -194,6 +200,9 @@ export async function fetchSpecialEvents() {
   }
 
   try {
+    // A Factory Reset on another device of this account wipes the server;
+    // self-wipe first so stale local caches can't paint over remote truth.
+    await maybeApplyRemoteReset().catch(() => false);
     const [{ data: events, error: eventsErr }, { data: pages, error: pagesErr }, { data: progress, error: progressErr }] = await Promise.all([
       supabase.from('special_events').select('id, title, description, game_kind, sort_order, starts_at').order('starts_at').order('title'),
       supabase.from('special_event_pages').select('id, event_id').order('page_number'),
@@ -324,6 +333,10 @@ export async function fetchEventDetail(eventId, opts) {
 
   if (supabase) {
     try {
+      // See fetchSpecialEvents: converge to a remote Factory Reset before
+      // merging any local solved flags, so wiped progress can't resurrect
+      // from this device's caches.
+      await maybeApplyRemoteReset().catch(() => false);
       const [{ data: event, error: eventErr }, { data: pages, error: pagesErr }] = await Promise.all([
         supabase.from('special_events').select('id, title, description, game_kind, sort_order, starts_at').eq('id', eventId).maybeSingle(),
         supabase.from('special_event_pages').select('id, page_number, grid_size, image_path, coin_reward').eq('event_id', eventId).order('page_number'),

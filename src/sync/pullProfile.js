@@ -18,6 +18,7 @@ import { db } from '../db/schema.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
 import { useSeedStore } from '../hooks/useSeedStore.js';
+import { applyResetMarker } from './factoryReset.js';
 
 export async function pullRemoteProfile() {
   const { data: profile, error: profileError } = await supabase
@@ -26,10 +27,18 @@ export async function pullRemoteProfile() {
       'games_played, games_won, current_streak, best_streak, ' +
         'highest_score, lowest_time_ms, lowest_moves, lowest_undos, ' +
         'total_time_ms_won, total_moves_won, coins, ' +
-        'coins_earned_total, coins_spent_total, display_name, display_name_updated_at',
+        'coins_earned_total, coins_spent_total, display_name, display_name_updated_at, ' +
+        'factory_reset_at',
     )
     .single();
   if (profileError) throw profileError;
+
+  // A Factory Reset on another device wipes the server; self-wipe first so
+  // the rows pulled below (already the wiped truth) land on clean caches.
+  // Best-effort — a failure here just falls through to the normal pull.
+  try {
+    await applyResetMarker(profile.factory_reset_at);
+  } catch {}
 
   await db.stats.put({
     key: 'cumulative',

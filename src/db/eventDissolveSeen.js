@@ -38,3 +38,8 @@ export function clearSeenDissolve(dealId) {
   memory.delete(key);
   saveSet(memory);
 }
+
+export function clearAllSeenDissolve() {
+  memory.clear();
+  saveSet(memory);
+}

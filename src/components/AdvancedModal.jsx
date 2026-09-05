@@ -17,114 +17,23 @@ import { Z } from '../utils/modalStack.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
 import { useGameStore } from '../hooks/useGameStore.js';
+import { useUiStore } from '../hooks/useUiStore.js';
 import { deal } from '../core/dealer.js';
 import { buildSolvitaireText } from '../core/solvitaire.js';
 import { buildSnapshotText, snapshotModeToken } from '../core/snapshot.js';
 import { supabase } from '../lib/supabaseClient.js';
-import { db, setSetting } from '../db/schema.js';
-import { resetStats } from '../db/stats.js';
-import { savePlayedSeeds } from '../db/playedSeeds.js';
-import { clearUsedRandomSeeds } from '../db/usedRandomSeeds.js';
-import { clearSeedCache } from '../db/seedCache.js';
-import { clearActiveSession } from '../db/activeSession.js';
-import { clearQueuedOps } from '../db/syncQueue.js';
-import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
-import { useSeedStore } from '../hooks/useSeedStore.js';
-import { useAuthStore } from '../hooks/useAuthStore.js';
-import { useSettingsStore } from '../hooks/useSettingsStore.js';
-import { useUiStore } from '../hooks/useUiStore.js';
-import { cancelWinCascade } from '../render/animation/winCascade.js';
-import { cancelAllSolves } from '../core/solverClient.js';
-import { enqueue } from '../sync/syncEngine.js';
-import { getDeviceId } from '../sync/sessionPersistence.js';
+import { setSetting } from '../db/schema.js';
+import {
+  cancelOngoingDeal,
+  fetchRemoteResetAt,
+  refreshInMemoryState,
+  wipeLocalUserData,
+  LAST_APPLIED_RESET_KEY,
+} from '../sync/factoryReset.js';
 
 // Upper bound for the remote leg. The local wipe is fast; the RPC decides how
 // long the spinner can run before we surface a timeout error with a Retry.
 const FACTORY_RESET_TIMEOUT_MS = 15000;
-
-// localStorage keys that hold user progress (not display settings). Settings
-// mirrors (klondike:theme, klondike:language, …) are deliberately preserved.
-const LS_PROGRESS_PREFIXES = [
-  'klondike:eventLastSelection:',
-  'klondike:eventLastViewedPage:',
-];
-const LS_PROGRESS_KEYS = [
-  'klondike:dailyLastSelection',
-  'klondike:dissolveSeen',
-];
-
-function clearProgressLocalStorage() {
-  try {
-    if (typeof localStorage === 'undefined') return;
-    for (const key of LS_PROGRESS_KEYS) localStorage.removeItem(key);
-    const doomed = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && LS_PROGRESS_PREFIXES.some((p) => k.startsWith(p))) doomed.push(k);
-    }
-    for (const k of doomed) localStorage.removeItem(k);
-  } catch {
-    /* storage may be unavailable; Dexie remains the source of truth */
-  }
-}
-
-function cancelOngoingDeal() {
-  try {
-    cancelAllSolves();
-  } catch {}
-  try {
-    cancelWinCascade();
-  } catch {}
-  try {
-    const ui = useUiStore.getState();
-    ui.clearAllTransitions();
-    ui.closeWinDialog();
-    ui.setNoMovesDialogOpen(false);
-    ui.setGameOverDialogOpen(false);
-    ui.clearHints();
-    ui.dismissNoHintsBanner();
-  } catch {}
-}
-
-async function wipeLocalUserData() {
-  // Drop the offline outbox first so stale ops can't re-push wiped state.
-  await clearQueuedOps();
-  await resetStats();
-  await savePlayedSeeds([]);
-  await db.dailyResults.clear();
-  await clearUsedRandomSeeds();
-  await clearSeedCache();
-  await db.eventCatalogCache.clear();
-  await db.eventImageCache.clear();
-  await db.games.clear();
-  // Seen badges reference wiped owned items / achievements; prefs stay.
-  await setSetting('seenThemeItemIds', []);
-  await setSetting('seenAchievementIds', []);
-  clearProgressLocalStorage();
-}
-
-async function refreshInMemoryState() {
-  await useStatisticsStore.getState().init();
-  await useSeedStore.getState().init();
-  // Wallet + ownership reflect the wiped server state; identity (display
-  // name) is preserved and stays as-is.
-  useAuthStore.setState({ coins: 0, coinsEarnedTotal: 0, coinsSpentTotal: 0, ownedItemIds: [] });
-  try {
-    useSettingsStore.getState().clearAchievementsSeen();
-  } catch {}
-  try {
-    useSettingsStore.setState({ seenThemeItemIds: new Set() });
-  } catch {}
-  // Clear the saved session last (store inits above can re-save it via the
-  // session-persistence subscriber) and mirror the delete remotely. The
-  // shared dedupe key collapses any still-queued save behind this clear.
-  await clearActiveSession();
-  try {
-    await enqueue('clear_game_session', { device_id: getDeviceId() }, 'game_session');
-  } catch {
-    /* deviceId not ready — local row already cleared */
-  }
-}
 
 function withTimeout(promise, ms) {
   let timer = null;
@@ -228,13 +137,19 @@ export default function AdvancedModal({ open, onClose }) {
     setErrorMsg(null);
     setPhase('working');
     try {
-      cancelOngoingDeal();
       const work = (async () => {
+        await cancelOngoingDeal();
         await wipeLocalUserData();
         if (!supabase) throw new Error(t('advanced.errors.offline'));
         const { error } = await supabase.rpc('factory_reset');
         if (error) throw error;
         await refreshInMemoryState();
+        // Remember the marker this reset stamped so this device doesn't
+        // self-wipe again on the next pull (other devices pick it up there).
+        try {
+          const marker = await fetchRemoteResetAt();
+          await setSetting(LAST_APPLIED_RESET_KEY, marker ?? new Date().toISOString());
+        } catch {}
       })();
       await withTimeout(work, FACTORY_RESET_TIMEOUT_MS);
       setPhase('done');
