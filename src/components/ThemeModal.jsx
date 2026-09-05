@@ -21,6 +21,7 @@ import { getCardBack } from '../render/deck/cardBackRegistry.js';
 import { fetchStoreCatalog } from '../data/storeCatalog.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { previewBackgroundOf } from '../render/themes/backgroundRegistry.js';
+import { OVERHANG_BADGE_LIFT, OVERHANG_BADGE_RIGHT } from './modalBadge.js';
 
 const TABS = [
   { id: 'interface', labelKey: 'theme.tabs.interface' },
@@ -42,6 +43,31 @@ const NEW_BADGE = {
   position: 'absolute',
   top: 4,
   left: 4,
+  fontSize: 11,
+  fontWeight: 700,
+  lineHeight: 1,
+  color: '#fff',
+  background: 'var(--card-text-red, #d12b3b)',
+  borderRadius: 4,
+  padding: '2px 5px',
+  pointerEvents: 'none',
+};
+
+// Store-catalog kind → Theme-modal tab id. Mirrors TAB_LABEL_BY_KIND in
+// data/storeCatalog.js (kept as ids here for badge lookup).
+const KIND_TO_TAB = {
+  table_felt: 'background',
+  card_back: 'cardsBack',
+  deck: 'cardsFace',
+};
+
+// Overhanging tab badge: same pill as the Main Menu Theme button
+// (SettingsModal NEW_BADGE_R), so a tab containing a new item is badged under
+// exactly the same conditions as the item tile itself.
+const NEW_BADGE_TAB = {
+  position: 'absolute',
+  top: -OVERHANG_BADGE_LIFT,
+  right: OVERHANG_BADGE_RIGHT,
   fontSize: 11,
   fontWeight: 700,
   lineHeight: 1,
@@ -170,6 +196,15 @@ export default function ThemeModal({ open, onClose }) {
     display: 'flex',
     flexDirection: 'column',
   };
+  // Tabs containing at least one still-new item tile. Derived from the same
+  // newIds that drive the tile badges, so tab and item share identical
+  // conditions and the tab badge clears as its last item is tapped.
+  const tabByItemId = new Map(catalogItems.map((it) => [it.id, KIND_TO_TAB[it.kind]]));
+  const newTabIds = new Set();
+  for (const id of newIds) {
+    const tabId = tabByItemId.get(id);
+    if (tabId) newTabIds.add(tabId);
+  }
   const showScrollUp = scrollMetrics.scrollTop > 0;
   const showScrollDown =
     scrollMetrics.scrollTop + scrollMetrics.clientHeight < scrollMetrics.scrollHeight - 1;
@@ -441,18 +476,21 @@ export default function ThemeModal({ open, onClose }) {
         >
           {TABS.map((tab) => {
             const active = activeTab === tab.id;
+            const isNew = newTabIds.has(tab.id);
             return (
               <button
                 key={tab.id}
                 type="button"
                 role="tab"
                 aria-selected={active}
+                aria-label={`${t(tab.labelKey)}${isNew ? ` (${t('common.new')})` : ''}`}
                 onClick={() => {
                   setActiveTab(tab.id);
                   setThemeModalTab(tab.id);
                 }}
                 style={{
                   ...btn,
+                  position: 'relative',
                   background: active ? 'var(--ui-modal-btn-bg-strong)' : 'var(--ui-modal-btn-bg)',
                   border: active
                     ? '1px solid var(--ui-modal-btn-border)'
@@ -460,6 +498,7 @@ export default function ThemeModal({ open, onClose }) {
                 }}
               >
                 {t(tab.labelKey)}
+                {isNew && <span style={NEW_BADGE_TAB}>{t('common.new')}</span>}
               </button>
             );
           })}
