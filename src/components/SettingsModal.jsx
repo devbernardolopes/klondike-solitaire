@@ -8,10 +8,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { HelpCircle } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
-import { useGameStore } from '../hooks/useGameStore.js';
-import { deal } from '../core/dealer.js';
-import { buildSolvitaireText } from '../core/solvitaire.js';
-import { buildSnapshotText, snapshotModeToken } from '../core/snapshot.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
@@ -237,15 +233,6 @@ export default function SettingsModal({
     marginBottom: 14,
   };
 
-  // Local timestamp as YYYYMMDD-HHMMSS (no separators, sortable).
-  const formatTimestamp = (d) => {
-    const p = (n) => String(n).padStart(2, '0');
-    return (
-      `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}` +
-      `-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`
-    );
-  };
-
   // 3-20 chars: letters, numbers, underscores only. Mirrors the server-side
   // format check in rename_display_name so obviously-invalid input is rejected
   // client-side without a network round-trip.
@@ -257,42 +244,6 @@ export default function SettingsModal({
     ? new Date(new Date(displayNameUpdatedAt).getTime() + 14 * 24 * 60 * 60 * 1000)
     : null;
   const onCooldown = cooldownUntil && cooldownUntil > new Date();
-
-  const handleTakeSnapshot = () => {
-    const state = useGameStore.getState().state;
-    const text = buildSnapshotText(state);
-    const filename = `${formatTimestamp(new Date())}_${snapshotModeToken(state)}.txt`;
-    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    useUiStore.getState().setAnnounce(t('mainMenu.announce.snapshotExported'));
-  };
-
-  // Export the START configuration of the current deal as a Solvitaire-format
-  // file. Unlike "Take Snapshot" this always uses the initial deal (rebuilt from
-  // the store's replaySpec) and exposes every card (no face-down placeholders).
-  const handleExportSolvitaire = () => {
-    const { replaySpec, state } = useGameStore.getState();
-    const initial = deal({ ...replaySpec, drawCount: state.drawCount });
-    const text = buildSolvitaireText(initial);
-    const filename = `solvitaire_${snapshotModeToken(state)}_${formatTimestamp(new Date())}.txt`;
-    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    useUiStore.getState().setAnnounce(t('mainMenu.announce.solvitaireExported'));
-  };
 
   return (
     <>
@@ -402,20 +353,6 @@ export default function SettingsModal({
               onClick={() => useUiStore.getState().setHelpDialogOpen(true)}
             >
               <HelpCircle size={18} aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              style={{ ...btn }}
-              onClick={handleTakeSnapshot}
-            >
-              {t('mainMenu.takeSnapshot')}
-            </button>
-            <button
-              type="button"
-              style={{ ...btn }}
-              onClick={handleExportSolvitaire}
-            >
-              {t('mainMenu.export')}
             </button>
           </div>
 

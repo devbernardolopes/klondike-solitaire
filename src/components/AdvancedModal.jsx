@@ -16,6 +16,10 @@ import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
+import { useGameStore } from '../hooks/useGameStore.js';
+import { deal } from '../core/dealer.js';
+import { buildSolvitaireText } from '../core/solvitaire.js';
+import { buildSnapshotText, snapshotModeToken } from '../core/snapshot.js';
 import { supabase } from '../lib/supabaseClient.js';
 import { db, setSetting } from '../db/schema.js';
 import { resetStats } from '../db/stats.js';
@@ -174,6 +178,51 @@ export default function AdvancedModal({ open, onClose }) {
 
   if (!open) return null;
 
+  // Local timestamp as YYYYMMDD-HHMMSS (no separators, sortable).
+  const formatTimestamp = (d) => {
+    const p = (n) => String(n).padStart(2, '0');
+    return (
+      `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}` +
+      `-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`
+    );
+  };
+
+  const handleTakeSnapshot = () => {
+    const state = useGameStore.getState().state;
+    const text = buildSnapshotText(state);
+    const filename = `${formatTimestamp(new Date())}_${snapshotModeToken(state)}.txt`;
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    useUiStore.getState().setAnnounce(t('mainMenu.announce.snapshotExported'));
+  };
+
+  // Export the START configuration of the current deal as a Solvitaire-format
+  // file. Unlike "Take Snapshot" this always uses the initial deal (rebuilt from
+  // the store's replaySpec) and exposes every card (no face-down placeholders).
+  const handleExportSolvitaire = () => {
+    const { replaySpec, state } = useGameStore.getState();
+    const initial = deal({ ...replaySpec, drawCount: state.drawCount });
+    const text = buildSolvitaireText(initial);
+    const filename = `solvitaire_${snapshotModeToken(state)}_${formatTimestamp(new Date())}.txt`;
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    useUiStore.getState().setAnnounce(t('mainMenu.announce.solvitaireExported'));
+  };
+
   const runFactoryReset = async () => {
     setConfirmOpen(false);
     setErrorMsg(null);
@@ -229,6 +278,16 @@ export default function AdvancedModal({ open, onClose }) {
     padding: '20px 22px',
     width: 'min(90vw, 420px)',
     maxWidth: '100%',
+  };
+
+  const fullWidthBtn = {
+    ...btn,
+    width: '100%',
+    padding: '10px 14px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
   };
 
   return (
@@ -307,6 +366,23 @@ export default function AdvancedModal({ open, onClose }) {
               <p style={{ margin: '0 0 18px', fontSize: 14, lineHeight: 1.45 }}>
                 {t('advanced.description')}
               </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button
+                type="button"
+                style={fullWidthBtn}
+                disabled={blocked}
+                onClick={handleTakeSnapshot}
+              >
+                {t('mainMenu.takeSnapshot')}
+              </button>
+              <button
+                type="button"
+                style={fullWidthBtn}
+                disabled={blocked}
+                onClick={handleExportSolvitaire}
+              >
+                {t('mainMenu.export')}
+              </button>
               <button
                 type="button"
                 style={{
@@ -339,6 +415,7 @@ export default function AdvancedModal({ open, onClose }) {
                 )}
                 {blocked ? t('advanced.working') : t('advanced.factoryReset')}
               </button>
+              </div>
             </>
           )}
         </div>
