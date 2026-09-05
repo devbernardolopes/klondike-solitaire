@@ -4,6 +4,18 @@ import { useUiStore } from '../../hooks/useUiStore.js';
 import { useSettingsStore } from '../../hooks/useSettingsStore.js';
 import { cancelAllDrawSlides } from './useStockDrawSlide.js';
 
+/**
+ * Drop every in-flight card-transition lock. A won board is about to be
+ * celebrated (or already was) — no in-flight move animation is worth
+ * preserving, and a stranded lock would otherwise jam every future deal
+ * (all deal entry points bail while animatingCards/slidingCards are held).
+ * Safe no-op when nothing is in flight.
+ */
+function releaseStaleDealLocks() {
+  try { cancelAllDrawSlides(); } catch {}
+  try { useUiStore.getState().clearAllTransitions(); } catch {}
+}
+
 // Module-level handles so a new-game request can abort an in-flight cascade.
 let winTween = null;
 let foundationPiles = [];
@@ -46,11 +58,19 @@ export function playWinCascade() {
     // Both effects are disabled (e.g. user toggled winCascade + winEnhanced off
     // since the previous win). Abort any in-flight cascade so its onComplete
     // doesn't later fire and drop the global lock, and so a leftover tween
-    // doesn't keep animating cards against the user's preference.
+    // doesn't keep animating cards against the user's preference. Still release
+    // transition locks: with no cascade to bulk-clear them, a stranded lock
+    // from play would otherwise jam every future deal until a page refresh.
     cancelWinCascade();
+    releaseStaleDealLocks();
     return;
   }
-  if (typeof document !== 'undefined' && document.hidden) return;
+  if (typeof document !== 'undefined' && document.hidden) {
+    // Background-tab win: no visible DOM to animate against, but the game is
+    // still won — release locks so a later deal can never be blocked by them.
+    releaseStaleDealLocks();
+    return;
+  }
 
   // Kill any in-flight cascade from a previous win (e.g. rapid new-game)
   // so the old tween doesn't keep running and its onComplete corrupts state.
@@ -64,6 +84,10 @@ export function playWinCascade() {
     try { playConfetti(); } catch {}
   }
   if (!doFall) {
+    // Cascade disabled but confetti on (a supported settings combo): no tween
+    // runs to bulk-clear transition locks, so release them explicitly — a
+    // stranded lock from play would otherwise jam every future deal.
+    releaseStaleDealLocks();
     if (doConfetti) {
       try { useUiStore.getState().setFullLock(true); } catch {}
       setTimeout(() => { try { useUiStore.getState().setFullLock(false); } catch {} }, 2400);

@@ -37,3 +37,31 @@ test('lockSnapshot reports lock state and warnDealBlocked never throws', () => {
   assert.ok(Array.isArray(snap.activeTransitions));
   assert.equal(warnDealBlocked('test'), undefined);
 });
+
+test('endTransition on an unknown tid is a safe no-op preserving live locks', () => {
+  // The stale-entry release path may end a tid that already resolved (double
+  // release). It must never corrupt or drop unrelated in-flight locks.
+  const ui = useUiStore.getState();
+  ui.clearAllTransitions();
+  ui.beginTransition(101, ['live1'], ['tableau:0']);
+  ui.endTransition(999);
+  const s = useUiStore.getState();
+  assert.ok(s.animatingCards.has('live1'));
+  assert.ok(s.animatingLocs.has('tableau:0'));
+  ui.clearAllTransitions();
+  assert.equal(useUiStore.getState().animatingCards.size, 0);
+});
+
+test('ending one transition keeps concurrent transitions locked', () => {
+  const ui = useUiStore.getState();
+  ui.clearAllTransitions();
+  ui.beginTransition(201, ['a1'], ['foundation:0']);
+  ui.beginTransition(202, ['b1'], ['tableau:1']);
+  ui.endTransition(201);
+  const s = useUiStore.getState();
+  assert.ok(!s.animatingCards.has('a1'));
+  assert.ok(s.animatingCards.has('b1'));
+  assert.ok(s.animatingLocs.has('tableau:1'));
+  ui.clearAllTransitions();
+  assert.equal(lockSizes(), 0);
+});

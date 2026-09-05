@@ -21,7 +21,7 @@ import { getWinningPool, getDailyMap } from '../repo/seedRepository.js';
 import { fetchAllEventSeeds } from '../repo/specialEventsRepository.js';
 import { enqueueFlip } from '../render/animation/flipBridge.js';
 import { enqueueParticle } from '../render/animation/particleBridge.js';
-import { cancelDrawSlide } from '../render/animation/useStockDrawSlide.js';
+import { cancelDrawSlide, cancelAllDrawSlides } from '../render/animation/useStockDrawSlide.js';
 import { cancelSlideTween } from '../render/animation/useCardMoveSlide.js';
 import { cancelShake } from '../render/animation/playCardShake.js';
 import { cancelWinCascade } from '../render/animation/winCascade.js';
@@ -427,6 +427,21 @@ function cancelAutoComplete(set) {
   set({ autoCompleting: false, autoCompletingToWin: false });
 }
 
+// A new deal replaces the whole board (runAnimatedDeal sets a fresh pre-deal
+// instantly), so when the outgoing game is already finished (won or over) no
+// in-flight card animation is worth preserving — and a stranded transition
+// lock must never veto the deal. Call before the animating/sliding guard in
+// every deal entry point. Deliberately scoped to finished games: mid-game the
+// guard stays strict so a deal can't corrupt a live animation.
+function dropStaleDealLocks(get) {
+  try {
+    if (isWon(get().state) || useStatsStore.getState().isOver) {
+      try { cancelAllDrawSlides(); } catch {}
+      useUiStore.getState().clearAllTransitions();
+    }
+  } catch {}
+}
+
 /**
  * Read a pile array from state by locator.
  * @param {import('../core/GameState.js').GameState} s
@@ -497,6 +512,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
    * deal stagger flows through the same Flip pipeline as every other transition.
    *
    * @param {'winning'|'random'} [mode]
+   * @returns {Promise<boolean>} whether the game was dealt
    */
   dealNewGame: async (mode = 'random') => {
     useUiStore.getState().dismissNoHintsBanner();
@@ -506,7 +522,8 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     useUiStore.getState().clearHints();
     useStatisticsStore.getState().finalizeGame();
     cancelWinCascade();
-    if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) { warnDealBlocked('dealNewGame'); return; }
+    dropStaleDealLocks(get);
+    if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) { warnDealBlocked('dealNewGame'); return false; }
     useUiStore.getState().setLastNewGameMode(mode);
     useStatsStore.getState().resetStats();
     let seed;
@@ -526,6 +543,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     }
     useUiStore.getState().setCurrentGame(mode);
     runAnimatedDeal(get, set, { seed, kind: mode });
+    return true;
   },
 
   /**
@@ -536,6 +554,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
    * exact requested deal is reproduced.
    *
    * @param {number} seed
+   * @returns {boolean} whether the game was dealt
    */
   dealWithSeed: (seed) => {
     cancelAutoComplete(set);
@@ -544,11 +563,13 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     useUiStore.getState().setNoMovesDialogOpen(false);
     useUiStore.getState().clearHints();
     cancelWinCascade();
+    dropStaleDealLocks(get);
     if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) { warnDealBlocked('dealWithSeed'); return; }
     useUiStore.getState().setLastNewGameMode('winning');
     useStatsStore.getState().resetStats();
     useUiStore.getState().setCurrentGame('winning');
     runAnimatedDeal(get, set, { seed, kind: 'winning' });
+    return true;
   },
 
   /**
@@ -568,6 +589,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     useUiStore.getState().setNoMovesDialogOpen(false);
     useUiStore.getState().clearHints();
     cancelWinCascade();
+    dropStaleDealLocks(get);
     if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) { warnDealBlocked('dealDaily'); return false; }
     useUiStore.getState().setLastNewGameMode('winning');
     useStatsStore.getState().resetStats();
@@ -588,6 +610,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
    * @param {number} eventDealId  special_event_deals.id
    * @param {string} [eventId]  special_events.id (for reload survival of the win-ribbon / Return button)
    * @param {string} [eventTitle]  human title (same)
+   * @returns {boolean} whether the game was dealt
    */
   dealSpecialEventDeal: (seed, eventDealId, eventId = null, eventTitle = null) => {
     cancelAutoComplete(set);
@@ -595,12 +618,14 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     useUiStore.getState().setNoMovesDialogOpen(false);
     useUiStore.getState().clearHints();
     cancelWinCascade();
+    dropStaleDealLocks(get);
     if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) { warnDealBlocked('dealSpecialEventDeal'); return; }
     useUiStore.getState().setLastNewGameMode('winning');
     useStatsStore.getState().resetStats();
     useUiStore.getState().setCurrentGame('event', null, eventDealId);
     if (eventId) useUiStore.getState().setCurrentEventMeta(eventId, eventTitle);
     runAnimatedDeal(get, set, { seed, kind: 'event', eventDealId, eventId, eventTitle });
+    return true;
   },
 
   /**
@@ -608,19 +633,23 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
    * first Winning Deal (a fixed, pre-determined seed) plays the same deal
    * animation as a user-initiated new game instead of appearing instantly.
    * Guarded so React StrictMode's double-invoked mount effect deals only once.
+   *
+   * @returns {boolean} whether the game was dealt
    */
   initialDeal: () => {
-    if (initialDealDone) return;
+    if (initialDealDone) return false;
     initialDealDone = true;
     cancelAutoComplete(set);
     useUiStore.getState().setNoMovesDialogOpen(false);
     useUiStore.getState().clearHints();
     cancelWinCascade();
-    if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) { warnDealBlocked('initialDeal'); return; }
+    dropStaleDealLocks(get);
+    if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) { warnDealBlocked('initialDeal'); return false; }
     useUiStore.getState().setLastNewGameMode('winning');
     useStatsStore.getState().resetStats();
     useUiStore.getState().setCurrentGame('winning');
     runAnimatedDeal(get, set, { seed: INITIAL_SEED, deck: INITIAL_DECK, kind: 'winning' });
+    return true;
   },
 
   /** Replay a persisted deal that had not started before the page closed. */
@@ -646,13 +675,15 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
    *  - Winning Deal (seed)   → re-deal with the same seed.
    *  - Random Shuffle (order)→ re-deal with the exact same card order.
    * Falls back to dealNewGame(lastNewGameMode) if no spec is recorded.
+   *
+   * @returns {boolean|Promise<boolean>} whether the game was dealt
    */
   replayGame: () => {
     useUiStore.getState().dismissNoHintsBanner();
     const spec = get().replaySpec;
     if (!spec) {
       get().dealNewGame(useUiStore.getState().lastNewGameMode);
-      return;
+      return true;
     }
     cancelAutoComplete(set);
     useUiStore.getState().setNoMovesDialogOpen(false);
@@ -661,7 +692,8 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     // Finalize the game we're replacing: a non-win ends the streak (best kept).
     useStatisticsStore.getState().finalizeGame();
     cancelWinCascade();
-    if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) { warnDealBlocked('replayGame'); return; }
+    dropStaleDealLocks(get);
+    if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) { warnDealBlocked('replayGame'); return false; }
     // Preserve the originating kind (and date for Daily) captured at deal time,
     // rather than inferring it from seed presence — a Random deal now carries a
     // seed too, so seed-presence would wrongly label it a Winning Deal.
@@ -676,6 +708,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
       set,
       spec.seed !== undefined ? { seed: spec.seed, kind, date, eventDealId: spec.eventDealId, eventId: spec.eventId, eventTitle: spec.eventTitle } : { order: spec.order, kind, date, eventDealId: spec.eventDealId, eventId: spec.eventId, eventTitle: spec.eventTitle },
     );
+    return true;
   },
 
   /**

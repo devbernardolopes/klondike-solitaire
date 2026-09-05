@@ -69,7 +69,18 @@ export function useStockDrawSlide() {
   const lastActionMeta = useGameStore((s) => s.lastActionMeta);
 
   useLayoutEffect(() => {
-    if (lastActionMeta.type !== 'draw') return;
+    // A 'draw' entry is only animated when this commit IS the draw. If the
+    // draw's commit was superseded before this effect ran (e.g. a rapid
+    // draw→undo landing in one batch), the entry would otherwise sit in the
+    // queue with its lock held forever — release such stale entries without
+    // animating, since the board has already moved on past them.
+    if (lastActionMeta.type !== 'draw') {
+      let stale;
+      while ((stale = dequeueFlip('draw'))) {
+        try { useUiStore.getState().endTransition(stale.tid); } catch {}
+      }
+      return;
+    }
     // Drain THIS draw's snapshot. If none is queued, a different transition is
     // re-running the effect (e.g. a concurrent tableau move) — leave the
     // in-flight draw alone.
@@ -80,9 +91,11 @@ export function useStockDrawSlide() {
     const wastePile = document.querySelector('[data-loc="waste"]');
     const stockPile = document.querySelector('[data-loc="stock"]');
     // drawFromStock already acquired the lock; release it if we can't animate.
+    // `continue` (not `return`) so one undrainable entry can never strand the
+    // entries queued behind it with their locks held.
     if (!wastePile || !stockPile) {
       useUiStore.getState().endTransition(tid);
-      return;
+      continue;
     }
 
     // The freshly drawn card is the last [data-card] child of the waste pile
@@ -91,12 +104,12 @@ export function useStockDrawSlide() {
     const cardNode = cards[cards.length - 1];
     if (!cardNode) {
       useUiStore.getState().endTransition(tid);
-      return;
+      continue;
     }
     const inner = cardNode.querySelector('.card-flip-inner');
     if (!inner) {
       useUiStore.getState().endTransition(tid);
-      return;
+      continue;
     }
 
     // The freshly drawn card is parked (via a transform) at the stock pile's

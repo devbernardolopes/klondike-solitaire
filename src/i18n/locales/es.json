@@ -253,7 +253,8 @@
     "gridInfo_other": "{{grid}}×{{grid}} grid — {{count}} deals",
     "coinReward": "+{{coins}} coins on completion",
     "dealsSoon": "Deals coming soon",
-    "play": "Play"
+    "play": "Play",
+    "dealBlocked": "No se pudo iniciar ese reparto. Inténtalo de nuevo."
   },
   "achievements": {
     "title": "Achievements",

@@ -144,7 +144,7 @@ export function useCardMoveSlide() {
     const cfg = CONFIG_BY_TYPE[type];
     if (!cfg) {
       useUiStore.getState().endTransition(tid);
-      return;
+      continue;
     }
 
     // Park every card that moved at its OLD position (via a transform offset),

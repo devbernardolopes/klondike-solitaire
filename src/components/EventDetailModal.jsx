@@ -15,6 +15,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useToastStore } from '../hooks/useToastStore.js';
 import { useModalBackdrop } from './modalBackdrop.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
 import { useModalEscape } from '../hooks/useModalEscape.js';
@@ -314,7 +315,20 @@ export default function EventDetailModal() {
     const deal = currentPage.deals.find((d) => d.id === dealId);
     if (!deal) return;
     const run = () => {
-      dealSpecialEventDeal(deal.seed, deal.id, detail.id, detail.title);
+      // dealSpecialEventDeal reports success: only leave the modals when the
+      // deal actually started. A blocked deal (stale animation lock) keeps the
+      // modal open with feedback instead of stranding the player on the old
+      // board with nothing dealt.
+      let dealt = false;
+      try {
+        dealt = dealSpecialEventDeal(deal.seed, deal.id, detail.id, detail.title) !== false;
+      } catch {
+        dealt = false;
+      }
+      if (!dealt) {
+        try { useToastStore.getState().push({ name: t('eventDetail.dealBlocked') }); } catch {}
+        return;
+      }
       setEventDetailOpen(null);
       setSpecialEventsOpen(false);
     };
