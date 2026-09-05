@@ -12,7 +12,7 @@
 // "discard current game?" confirmation DailyChallengeModal.jsx uses when a
 // game is already in progress.
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToastStore } from '../hooks/useToastStore.js';
@@ -48,6 +48,11 @@ export default function EventDetailModal() {
   const [index, setIndex] = useState(0);
   const [dragPx, setDragPx] = useState(0);
   const [dragging, setDragging] = useState(false);
+  // While true the page track renders with `transition:none` so open-time
+  // positioning lands instantly instead of sliding. Set in the same commit as
+  // every programmatic (non-user) index change; user navigation clears it.
+  const [suppressTrackAnim, setSuppressTrackAnim] = useState(false);
+  const suppressTimerRef = useRef(null);
   // Per-page selected deal id, persisted in db/eventSelection.js. Keys are
   // stringified pageNumbers. Hydrated from the sync mirror on open so a
   // returning player sees the same selection immediately.
@@ -65,6 +70,16 @@ export default function EventDetailModal() {
   // re-apply the advance and clobber a manual replay selection.
   const advancedForWonRef = useRef(null);
 
+  // Move the page track without animating: the suppression flag commits in the
+  // same render as the index change (after-change `transition:none` means no
+  // animation), then re-enables on a short timer for user navigation.
+  const positionWithoutAnim = (idx) => {
+    if (suppressTimerRef.current) clearTimeout(suppressTimerRef.current);
+    setSuppressTrackAnim(true);
+    setIndex(idx);
+    suppressTimerRef.current = setTimeout(() => setSuppressTrackAnim(false), 60);
+  };
+
   useEffect(() => {
     if (!open) return;
     const id = setTimeout(() => panelRef.current?.focus(), 0);
@@ -73,6 +88,7 @@ export default function EventDetailModal() {
 
   useEffect(() => () => {
     if (justSwipedTimerRef.current) clearTimeout(justSwipedTimerRef.current);
+    if (suppressTimerRef.current) clearTimeout(suppressTimerRef.current);
   }, []);
 
   useEffect(() => {
@@ -135,8 +151,18 @@ export default function EventDetailModal() {
     };
   }, [open, eventId]);
 
-  useEffect(() => {
+  // Open-time positioning runs in a layout effect — before first paint — so the
+  // modal opens exactly on the saved page instead of flashing page 1 and
+  // sliding across (the track animates every index change). All sources read
+  // here are synchronous in-memory mirrors. Async server refresh lives in the
+  // passive effect below and never moves the page, except through
+  // positionWithoutAnim for uncached events.
+  useLayoutEffect(() => {
     if (!open || !eventId) return;
+    if (suppressTimerRef.current) clearTimeout(suppressTimerRef.current);
+    setSuppressTrackAnim(true);
+    setDragPx(0);
+    setDragging(false);
     const cached = getCachedEventDetailSync(eventId);
     setSelectedDealIdByPage(loadEventSelectionSync(eventId) || {});
     if (cached) {
@@ -163,6 +189,20 @@ export default function EventDetailModal() {
         }
         return next;
       });
+    } else {
+      setLoaded(false);
+      setDetail(null);
+      setIndex(0);
+    }
+    suppressTimerRef.current = setTimeout(() => setSuppressTrackAnim(false), 60);
+  }, [open, eventId]);
+
+  // Passive server refresh + uncached-event load. Never moves the visible page
+  // except through positionWithoutAnim (track transition suppressed).
+  useEffect(() => {
+    if (!open || !eventId) return;
+    const cached = getCachedEventDetailSync(eventId);
+    if (cached) {
       {
         const optimisticId = useUiStore.getState().winSummary?.eventDealId ?? null;
         const optimisticDealIds = optimisticId != null ? [optimisticId] : [];
@@ -195,8 +235,6 @@ export default function EventDetailModal() {
         }
       return;
     }
-    setLoaded(false);
-    setDetail(null);
     {
       const optimisticId = useUiStore.getState().winSummary?.eventDealId ?? null;
       const optimisticDealIds = optimisticId != null ? [optimisticId] : [];
@@ -207,7 +245,7 @@ export default function EventDetailModal() {
         if (patched && patched.pages.length > 0) {
           const lastPage = loadLastViewedPageSync(eventId);
           const initialIdx = resolveInitialPageIndex(patched, lastPage);
-          setIndex(initialIdx);
+          positionWithoutAnim(initialIdx);
           const initialPage = patched.pages[initialIdx];
           if (initialPage) saveLastViewedPage(patched.id, initialPage.pageNumber).catch(() => {});
           setSelectedDealIdByPage((prev) => {
@@ -227,7 +265,7 @@ export default function EventDetailModal() {
             return next;
           });
         } else {
-          setIndex(0);
+          positionWithoutAnim(0);
         }
       })
       .catch(() => setDetail(null))
@@ -349,6 +387,9 @@ export default function EventDetailModal() {
   // landing heuristic via the open-time effect.
   const goTo = (i) => {
     const clamped = Math.min(Math.max(i, 0), Math.max(0, pages.length - 1));
+    // User navigation always animates: drop any open-time suppression first.
+    if (suppressTimerRef.current) clearTimeout(suppressTimerRef.current);
+    setSuppressTrackAnim(false);
     setIndex(clamped);
     const target = pages[clamped];
     if (target && eventId) saveLastViewedPage(eventId, target.pageNumber).catch(() => {});
@@ -512,7 +553,7 @@ export default function EventDetailModal() {
                 onClickCapture={handleViewportClickCapture}
                 style={{ overflow: 'hidden', touchAction: 'pan-y', minHeight: 400 }}
               >
-                <div style={{ display: 'flex', transform: trackTransform, transition: dragging ? 'none' : 'transform 0.3s ease' }}>
+                <div style={{ display: 'flex', transform: trackTransform, transition: dragging || suppressTrackAnim ? 'none' : 'transform 0.3s ease' }}>
                   {pages.map((p) => (
                     <div key={p.id} style={{ flex: '0 0 100%', padding: '0 8px', boxSizing: 'border-box' }}>
                       <PageContent
