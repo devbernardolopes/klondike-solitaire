@@ -35,7 +35,18 @@ const DRAG_START_PX = 4;
 
 export default function PostcardViewerModal({ imageUrl, title, fileName, onClose }) {
   const { t } = useTranslation();
-  const backdrop = useModalBackdrop(onClose);
+  // A pinch may end with one finger lifting off the image (down+up both on
+  // the backdrop), which the shared primitive would read as an outside tap.
+  // Guard the backdrop close: never dismiss mid-gesture, nor within a short
+  // window after a multi-touch gesture ends.
+  const gestureRef = useRef({ active: 0, maxSeen: 0, multiTouchEndAt: 0 });
+  const backdropClose = () => {
+    const g = gestureRef.current;
+    if (g.active > 0) return;
+    if (Date.now() - g.multiTouchEndAt < 400) return;
+    onClose();
+  };
+  const backdrop = useModalBackdrop(backdropClose);
   useModalEscape({ open: true, onClose, id: 'postcard-viewer', z: Z.GRANDCHILD });
 
   const [view, setView] = useState({ scale: 1, tx: 0, ty: 0 });
@@ -44,7 +55,7 @@ export default function PostcardViewerModal({ imageUrl, title, fileName, onClose
     w: typeof window !== 'undefined' ? window.innerWidth : 0,
     h: typeof window !== 'undefined' ? window.innerHeight : 0,
   }));
-  const layerRef = useRef(null);
+  const imgRef = useRef(null);
   const pointersRef = useRef(new Map());
   const pinchRef = useRef(null);
   const downRef = useRef(null);
@@ -79,10 +90,12 @@ export default function PostcardViewerModal({ imageUrl, title, fileName, onClose
     setView({ scale: 1, tx: 0, ty: 0 });
   };
 
-  // Non-passive wheel listener: zoom must preventDefault or the page scrolls.
+  // Non-passive wheel listener on the image itself: zoom must preventDefault
+  // or the page scrolls. (Outside the image, wheel hits the backdrop and the
+  // shared primitive ignores it — no accidental zoom, no scroll: body locked.)
   useEffect(() => {
-    const layer = layerRef.current;
-    if (!layer) return undefined;
+    const img = imgRef.current;
+    if (!img) return undefined;
     const onWheel = (e) => {
       e.preventDefault();
       setView((v) => {
@@ -91,14 +104,16 @@ export default function PostcardViewerModal({ imageUrl, title, fileName, onClose
         return { scale: next.scale, ...p };
       });
     };
-    layer.addEventListener('wheel', onWheel, { passive: false });
-    return () => layer.removeEventListener('wheel', onWheel);
+    img.addEventListener('wheel', onWheel, { passive: false });
+    return () => img.removeEventListener('wheel', onWheel);
   }, [fit, viewport.w, viewport.h]);
 
   const onPointerDown = (e) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
-    try { layerRef.current?.setPointerCapture(e.pointerId); } catch {}
+    try { e.currentTarget?.setPointerCapture(e.pointerId); } catch {}
     pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    gestureRef.current.active += 1;
+    gestureRef.current.maxSeen = Math.max(gestureRef.current.maxSeen, pointersRef.current.size);
     if (pointersRef.current.size === 1) {
       downRef.current = { x: e.clientX, y: e.clientY };
       panLastRef.current = { x: e.clientX, y: e.clientY };
@@ -148,6 +163,11 @@ export default function PostcardViewerModal({ imageUrl, title, fileName, onClose
   const endPointer = (e) => {
     const wasSingle = pointersRef.current.size === 1 && pointersRef.current.has(e.pointerId);
     pointersRef.current.delete(e.pointerId);
+    gestureRef.current.active = Math.max(0, gestureRef.current.active - 1);
+    if (pointersRef.current.size === 0) {
+      if (gestureRef.current.maxSeen >= 2) gestureRef.current.multiTouchEndAt = Date.now();
+      gestureRef.current.maxSeen = 0;
+    }
     if (pointersRef.current.size < 2) pinchRef.current = null;
     if (!wasSingle) {
       if (pointersRef.current.size === 0) downRef.current = null;
@@ -171,13 +191,11 @@ export default function PostcardViewerModal({ imageUrl, title, fileName, onClose
     }
   };
 
-  // A drag that ends on the image must not fall through to backdrop dismissal;
-  // the backdrop primitive already requires down+up both on itself, but the
-  // capture-phase guard below makes it doubly safe. Clicks (no drag) on the
-  // image are swallowed here so they never reach the backdrop.
-  const onLayerClickCapture = (e) => {
-    e.stopPropagation();
-  };
+  // The gesture layer is layout-only (pointer-events:none): taps outside the
+  // image hit the backdrop container itself, which is what the shared backdrop
+  // primitive requires for outside-tap dismissal (down+up both on the
+  // backdrop). The image is the sole gesture surface, so drags starting on it
+  // keep pointer capture and can never dismiss, even released off-image.
 
   const onDownload = async () => {
     const name = fileName || 'postcard.jpg';
@@ -236,20 +254,13 @@ export default function PostcardViewerModal({ imageUrl, title, fileName, onClose
     >
       <ModalCloseButton onClick={onClose} />
       <div
-        ref={layerRef}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={endPointer}
-        onPointerCancel={endPointer}
-        onClickCapture={onLayerClickCapture}
         style={{
           position: 'absolute',
           inset: 0,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          touchAction: 'none',
-          cursor: view.scale > 1 ? 'grab' : 'default',
+          pointerEvents: 'none',
         }}
       >
         {/* Always mounted: `natural` (and therefore `fit`) is bootstrapped by
@@ -257,9 +268,14 @@ export default function PostcardViewerModal({ imageUrl, title, fileName, onClose
             nothing. Pre-load it stays hidden with CSS contain fallbacks, then
             swaps to the explicit fit size — visually identical, no snap. */}
         <img
+          ref={imgRef}
           src={imageUrl}
           alt={title}
           draggable={false}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={endPointer}
+          onPointerCancel={endPointer}
           onLoad={(e) => {
             const el = e.currentTarget;
             if (el.naturalWidth > 0 && el.naturalHeight > 0) {
@@ -286,7 +302,9 @@ export default function PostcardViewerModal({ imageUrl, title, fileName, onClose
                 }),
             userSelect: 'none',
             WebkitUserSelect: 'none',
-            pointerEvents: 'none',
+            pointerEvents: 'auto',
+            touchAction: 'none',
+            cursor: view.scale > 1 ? 'grab' : 'default',
           }}
         />
       </div>
