@@ -363,9 +363,6 @@ export default function AdvancedModal({ open, onClose }) {
             </>
           ) : (
             <>
-              <p style={{ margin: '0 0 18px', fontSize: 14, lineHeight: 1.45 }}>
-                {t('advanced.description')}
-              </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <button
                 type="button"
