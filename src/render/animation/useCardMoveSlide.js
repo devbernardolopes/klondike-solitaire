@@ -161,6 +161,13 @@ export function useCardMoveSlide() {
     // for the duration of the tween, preserving the run's own relative order via
     // `+base`, then restore the original z-index on completion.
     const movers = [];
+    // Each moved card's REAL landing rect, captured here before the parking
+    // transform below is applied. Ghost Trail's cascade spawn needs this as
+    // its target rect — re-deriving it later via getBoundingClientRect()
+    // would read the element's PARKED (old) position instead, since by then
+    // the transform has already been set, making the trail think the card
+    // never moved.
+    const landingRects = new Map(); // cardId -> DOMRect (final position)
     for (const [id, oldRect] of snapshot) {
       const el = document.querySelector(`[data-flip-id="${CSS.escape(id)}"]`);
       if (!el) continue;
@@ -168,6 +175,7 @@ export function useCardMoveSlide() {
       const dx = oldRect.left - newRect.left;
       const dy = oldRect.top - newRect.top;
       if (dx === 0 && dy === 0) continue;
+      landingRects.set(id, newRect);
       gsap.set(el, { x: dx, y: dy });
       const wrap = el.parentElement;
       const prevZ = wrap ? wrap.style.zIndex : '';
@@ -326,8 +334,12 @@ export function useCardMoveSlide() {
         const el = moved[i];
         const cardId = el.getAttribute('data-flip-id') || el.getAttribute('data-card');
         const sourceRect = snapshot.get(cardId);
-        if (!sourceRect) continue;
-        const targetRect = el.getBoundingClientRect();
+        // Use the landing rect captured BEFORE the parking transform was
+        // applied — re-deriving via getBoundingClientRect() here would read
+        // the element's current (parked/old) position and produce a
+        // zero-displacement rect, silently suppressing the trail.
+        const targetRect = landingRects.get(cardId);
+        if (!sourceRect || !targetRect) continue;
         spawnTrailCascade({ sourceEl: el, sourceRect, targetRect });
       }
     };
