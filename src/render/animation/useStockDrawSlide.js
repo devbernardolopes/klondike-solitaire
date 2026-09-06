@@ -161,9 +161,13 @@ export function useStockDrawSlide() {
     const tl = gsap.timeline({
       onComplete: () => {
         // Reset the card to its resting state so a torn-down effect never leaves
-        // it parked at the stock pile or face-down.
-        gsap.set(cardNode, { x: 0, y: 0, clearProps: 'zIndex' });
-        gsap.set(inner, { rotateY: 0 });
+        // it parked at the stock pile or face-down. The timeline already lands
+        // at x:0/y:0 + rotateY:0, so CLEAR the inline transform rather than
+        // re-setting zeros: a translate(0,0) residue would sit inline and beat
+        // the :hover lift rule in the stylesheet (fixed only by a later shake,
+        // whose onComplete clears it).
+        gsap.set(cardNode, { clearProps: 'transform,zIndex' });
+        gsap.set(inner, { clearProps: 'transform' });
         if (wrap) wrap.style.zIndex = prevWrapZ;
         drawTweens.delete(drawnId);
         useUiStore.getState().endDrawSlide(drawnId);

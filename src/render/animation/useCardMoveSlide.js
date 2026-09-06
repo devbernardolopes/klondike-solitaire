@@ -351,7 +351,7 @@ export function useCardMoveSlide() {
      const tl = gsap.timeline({
        onComplete: () => {
          completed = true;
-         moved.forEach((el) => gsap.set(el, { clearProps: 'scale,boxShadow,rotationZ' }));
+          moved.forEach((el) => gsap.set(el, { clearProps: 'x,y,scale,boxShadow,rotationZ' }));
          ghosts.forEach((g) => { try { g.remove(); } catch {} ghostEls.delete(g); });
          movers.forEach(({ wrap, prevZ }) => {
            if (wrap) wrap.style.zIndex = prevZ;
