@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { compareEventSummaries } from './specialEventsRepository.js';
+import { compareEventSummaries, wonEventDealIdFromQueuedOp } from './specialEventsRepository.js';
 import { collectSolvedIds, mergeSolvedIds, findNextUnsolvedDeal, getEventDealProgress } from './specialEventsProgress.js';
 
 const summary = (id, startsAt, title) => ({ id, startsAt, title: title ?? id });
@@ -69,4 +69,20 @@ test('getEventDealProgress rounds whole percent (1/3 -> 33, 2/3 -> 67)', () => {
 test('getEventDealProgress returns null percent when there are no deals', () => {
   assert.deepEqual(getEventDealProgress({ id: 'evt', pages: [] }), { totalDeals: 0, solvedDeals: 0, percent: null });
   assert.deepEqual(getEventDealProgress({ id: 'evt', pages: [{ id: 1, pageNumber: 1, deals: [] }] }), { totalDeals: 0, solvedDeals: 0, percent: null });
+});
+
+test('wonEventDealIdFromQueuedOp ignores losses so Game Over never solves a deal', () => {
+  assert.equal(
+    wonEventDealIdFromQueuedOp({ type: 'submit_game_result', payload: { p_won: false, p_event_deal_id: 42 } }),
+    null,
+  );
+  assert.equal(
+    wonEventDealIdFromQueuedOp({ type: 'submit_game_result', payload: { p_won: true, p_event_deal_id: 42 } }),
+    42,
+  );
+  assert.equal(
+    wonEventDealIdFromQueuedOp({ type: 'submit_game_result', payload: { p_won: true } }),
+    null,
+  );
+  assert.equal(wonEventDealIdFromQueuedOp({ type: 'reset_statistics', payload: {} }), null);
 });

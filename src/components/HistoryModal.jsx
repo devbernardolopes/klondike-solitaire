@@ -200,6 +200,22 @@ export default function HistoryModal({ open, onClose }) {
     };
   }, [open, userId, loadFirstPage]);
 
+  // A loss/win enqueues submit_game_result and flushes async — the entry
+  // reads "pending" until the flush lands. Re-resolve the list when the
+  // outbox drains so an online Game Over stops showing "pending" without
+  // requiring the modal to be closed and reopened. Offline rows stay
+  // pending until a later flush fires this same event.
+  useEffect(() => {
+    if (!open) return;
+    const cancelledRef = { current: false };
+    const onFlushed = () => loadFirstPage(cancelledRef);
+    window.addEventListener('sync-flushed', onFlushed);
+    return () => {
+      cancelledRef.current = true;
+      window.removeEventListener('sync-flushed', onFlushed);
+    };
+  }, [open, loadFirstPage]);
+
   const loadMore = useCallback(async () => {
     if (!nextCursor || loadingMore) return;
     setLoadingMore(true);

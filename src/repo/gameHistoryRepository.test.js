@@ -140,6 +140,16 @@ test('mergeHistoryEntries drops pending rows already flushed to the server', () 
   assert.deepEqual(merged.map((e) => e.key), ['pending-2', 'server-1']);
 });
 
+test('mergeHistoryEntries drops a flushed loss so no stale pending Lost row lingers', () => {
+  const server = [{ key: 'server-9', gameId: 'loss-9', won: false, createdAt: '2026-01-02T00:00:00Z' }];
+  const ops = [
+    { id: 9, type: 'submit_game_result', payload: { p_won: false, p_game_id: 'loss-9' }, createdAt: 5000 },
+  ];
+  const merged = mergeHistoryEntries(server, ops);
+  assert.deepEqual(merged.map((e) => e.key), ['server-9']);
+  assert.equal(merged[0].pending, undefined);
+});
+
 test('mergeHistoryEntries handles empty inputs', () => {
   assert.deepEqual(mergeHistoryEntries([], []), []);
   assert.deepEqual(mergeHistoryEntries(null, null), []);

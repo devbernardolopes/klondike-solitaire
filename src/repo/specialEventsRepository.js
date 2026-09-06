@@ -8,6 +8,20 @@ import { maybeApplyRemoteReset } from '../sync/factoryReset.js';
 
 const catalogMemory = new Map();
 
+/**
+ * Extract an event deal id from a queued sync op only when it represents a
+ * WIN. Losses also enqueue submit_game_result with p_event_deal_id (for
+ * analytics) but must never count as solved — a Game Over freeze is not a
+ * solve and must not expose the image slice.
+ * @param {object} op queued syncQueue row
+ * @returns {number|null} the won deal id, or null
+ */
+export function wonEventDealIdFromQueuedOp(op) {
+  if (op?.type !== 'submit_game_result' || op?.payload?.p_won !== true) return null;
+  const dealId = op?.payload?.p_event_deal_id;
+  return dealId ?? null;
+}
+
 export function getCachedEventDetailSync(eventId) {
   return catalogMemory.get(eventId) ?? null;
 }
@@ -275,10 +289,12 @@ export async function fetchSpecialEvents() {
         }
         // Wins queued on this device but not yet flushed still count as solved
         // here, so the badge updates instantly instead of waiting for sync.
+        // Losses also enqueue submit_game_result (p_won:false, with event id
+        // for analytics) but must never count as solved.
         try {
           const queued = await listQueuedOps();
           for (const op of queued) {
-            const dealId = op?.type === 'submit_game_result' ? op?.payload?.p_event_deal_id : null;
+            const dealId = wonEventDealIdFromQueuedOp(op);
             if (dealId != null) solvedDealIds.add(dealId);
           }
         } catch {}
@@ -443,21 +459,33 @@ export async function fetchEventDetail(eventId, opts) {
 
       try {
         const knownSolved = new Set(optimisticDealIds);
+        const wonQueuedIds = new Set();
+        try {
+          const queued = await listQueuedOps();
+          for (const op of queued) {
+            const dealId = wonEventDealIdFromQueuedOp(op);
+            if (dealId != null) wonQueuedIds.add(dealId);
+          }
+        } catch {}
+        for (const id of wonQueuedIds) knownSolved.add(id);
+        // Local caches may hold solved=true written before losses stopped
+        // counting as solved (Game Over freeze path). Only trust cached ids
+        // that are verifiable — present on the server, in the won queue, or
+        // in the explicit optimistic list — so a flushed/queued loss can
+        // never resurrect as an exposed image slice.
+        const verifiable = new Set([...solvedDealIds, ...wonQueuedIds, ...optimisticDealIds]);
         const prev = catalogMemory.get(detail.id);
         if (prev) {
-          for (const id of collectSolvedIds(prev)) knownSolved.add(id);
+          for (const id of collectSolvedIds(prev)) {
+            if (verifiable.has(id)) knownSolved.add(id);
+          }
         }
         try {
           const dexieDetail = await getCatalogDetail(detail.id);
           if (dexieDetail) {
-            for (const id of collectSolvedIds(dexieDetail)) knownSolved.add(id);
-          }
-        } catch {}
-        try {
-          const queued = await listQueuedOps();
-          for (const op of queued) {
-            const dealId = op?.type === 'submit_game_result' ? op?.payload?.p_event_deal_id : null;
-            if (dealId != null) knownSolved.add(dealId);
+            for (const id of collectSolvedIds(dexieDetail)) {
+              if (verifiable.has(id)) knownSolved.add(id);
+            }
           }
         } catch {}
         mergeSolvedIds(detail, knownSolved);
