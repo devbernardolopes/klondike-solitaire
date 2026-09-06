@@ -54,10 +54,16 @@ export function useModalEnter({ panelRef, open, onEnterDone } = {}) {
   useLayoutEffect(() => {
     if (!open) return undefined;
     const el = panelRef?.current;
+    // TEMP-DEBUG coinFly: remove once the never-firing onEnterDone is diagnosed.
+    // eslint-disable-next-line no-console
+    console.debug('[coinFly] modalEnter effect', { open, hasEl: !!el });
     if (!el) return undefined;
     setEntering(true);
     playModalEnter(el, {
       onComplete: () => {
+        // TEMP-DEBUG coinFly: remove once the never-firing onEnterDone is diagnosed.
+        // eslint-disable-next-line no-console
+        console.debug('[coinFly] modalEnter done');
         setEntering(false);
         onEnterDone?.();
       },

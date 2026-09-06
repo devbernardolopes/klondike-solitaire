@@ -15,6 +15,7 @@ import { Z } from '../utils/modalStack.js';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useModalBackdrop } from './modalBackdrop.js';
 import { useModalEnter } from '../render/animation/useModalEnter.js';
+import { MOTION } from '../render/animation/motion.js';
 import { dateToUTC, toDateStr, withinSupported, isAfter } from '../core/dailyChallenge.js';
 import { utcToYMD, getCachedServerNow, getFallbackUTC } from '../utils/serverTime.js';
 import { formatTime } from '../utils/formatTime.js';
@@ -41,6 +42,9 @@ export default function WinModal() {
   // below; cleared on close/unmount so a mid-flight exit snaps the display
   // to the true, fully-credited balance).
   const flightCancelRef = useRef(null);
+  // Launch-once guard shared by the entrance-done path and the failsafe
+  // timeout below — whichever fires first wins, the other no-ops.
+  const flightLaunchedRef = useRef(false);
 
   // Win coin flight launcher. Runs from the entrance's own onEnterDone —
   // exactly once, when the panel has landed — never from an `entering`-gated
@@ -51,13 +55,20 @@ export default function WinModal() {
   // full award underneath).
   const launchCoinFlight = () => {
     panelRef.current?.focus();
-    if (!useUiStore.getState().coinFlight.active) return;
+    const active = useUiStore.getState().coinFlight.active;
+    const hasPanel = !!panelRef.current;
+    const hasTarget = !!document.querySelector('[data-coin-balance]');
+    // TEMP-DEBUG coinFly: entry/bail logging (remove with the other TEMP-DEBUG logs).
+    // eslint-disable-next-line no-console
+    console.debug('[coinFly] launcher entry', { active, hasPanel, hasTarget });
+    if (!active) return;
     const panel = panelRef.current;
     const target = document.querySelector('[data-coin-balance]');
     if (!panel || !target) {
       useUiStore.getState().endCoinFlight();
       return;
     }
+    flightLaunchedRef.current = true;
     const pr = panel.getBoundingClientRect();
     const tr = target.getBoundingClientRect();
     // TEMP-DEBUG coinFly: remove once the fix is confirmed on Device A.
@@ -97,8 +108,40 @@ export default function WinModal() {
         flightCancelRef.current?.();
       } catch {}
       flightCancelRef.current = null;
+      flightLaunchedRef.current = false;
       useUiStore.getState().endCoinFlight();
     };
+  }, [winDialogOpen]);
+
+  // Failsafe: if the entrance onEnterDone path ever fails to launch (broken
+  // tween, skipped entrance, hook regression), launch shortly after the
+  // entrance should have finished instead of leaving the mask armed forever.
+  // Guarded by flightLaunchedRef so it can never double-launch.
+  useEffect(() => {
+    if (!winDialogOpen) return undefined;
+    flightLaunchedRef.current = false;
+    let ms = 1550;
+    try {
+      ms = (MOTION.modalEnter.duration ?? 0.75) * 1000 + 800;
+    } catch {}
+    const t = setTimeout(() => {
+      try {
+        if (flightLaunchedRef.current) return;
+        if (!useUiStore.getState().coinFlight.active) return;
+        // TEMP-DEBUG coinFly: remove with the other TEMP-DEBUG logs (keep the timeout).
+        // eslint-disable-next-line no-console
+        console.debug('[coinFly] failsafe launch');
+        launchCoinFlight();
+      } catch {}
+    }, ms);
+    return () => {
+      try {
+        clearTimeout(t);
+      } catch {}
+    };
+    // launchCoinFlight is intentionally uncaptured: the mount instance only
+    // touches refs + getState + document, so it stays valid. Refs below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [winDialogOpen]);
 
   // Focus the panel on open; Escape closes only when this is the topmost modal
