@@ -224,7 +224,7 @@ export const MOTION = {
   coinFly: {
     count: 32,
     size: 44,
-    firstDuration: 2.9,
+    firstDuration: 0.9,
     accelFactor: 0.88,
     stagger: 0.24,
     ease: 'power2.in',
