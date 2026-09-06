@@ -193,5 +193,25 @@
         "coinReward": 50
       }
     ]
+  },
+  {
+    "id": "st-patricks-day-2026",
+    "title": "St. Patrick's Day",
+    "description": "St. Patrick's Day commemorates Ireland's patron saint with parades, green attire, traditional music, and festive gatherings that celebrate Irish heritage and culture worldwide.",
+    "startsAt": "2026-03-17T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "st-patricks-day-2026/page1.jpg",
+        "coinReward": 50
+      },
+      {
+        "gridSize": 3,
+        "imagePath": "st-patricks-day-2026/page2.jpg",
+        "coinReward": 100
+      }
+    ]
   }
 ]

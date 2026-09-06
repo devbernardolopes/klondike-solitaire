@@ -669,6 +669,10 @@
       "test-event-2026": {
         "title": "Test Event 2026",
         "description": "Tolkien Day honors the life and works of J. R. R. Tolkien, inviting readers to explore the rich landscapes, languages, and epic tales of Middle-earth through literature and shared appreciation."
+      },
+      "st-patricks-day-2026": {
+        "title": "St. Patrick's Day",
+        "description": "St. Patrick's Day commemorates Ireland's patron saint with parades, green attire, traditional music, and festive gatherings that celebrate Irish heritage and culture worldwide."
       }
     }
   }
