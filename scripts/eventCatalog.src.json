@@ -133,5 +133,25 @@
         "coinReward": 200
       }
     ]
+  },
+  {
+    "id": "talk-like-a-pirate-day-2025",
+    "title": "Talk Like a Pirate Day 2025",
+    "description": "Talk Like a Pirate Day is a light-hearted annual observance that encourages playful pirate speech, nautical costumes, and spirited fun in celebration of pirate lore and adventure.",
+    "startsAt": "2025-09-19T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "talk-like-a-pirate-day-2025/page1.jpg",
+        "coinReward": 50
+      },
+      {
+        "gridSize": 3,
+        "imagePath": "talk-like-a-pirate-day-2025/page2.jpg",
+        "coinReward": 100
+      }
+    ]
   }
 ]
