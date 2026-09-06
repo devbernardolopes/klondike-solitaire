@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { compareEventSummaries, isUpcomingEvent, wonEventDealIdFromQueuedOp } from './specialEventsRepository.js';
+import { compareEventSummaries, eventStartYear, isUpcomingEvent, wonEventDealIdFromQueuedOp } from './specialEventsRepository.js';
 import { collectSolvedIds, mergeSolvedIds, findNextUnsolvedDeal, getEventDealProgress } from './specialEventsProgress.js';
 
 const summary = (id, startsAt, title) => ({ id, startsAt, title: title ?? id });
@@ -32,6 +32,13 @@ test('isUpcomingEvent flags future startsAt as a disabled teaser', () => {
   assert.equal(isUpcomingEvent('2026-09-06T11:59:59Z', now), false);
   assert.equal(isUpcomingEvent(null, now), false);
   assert.equal(isUpcomingEvent('not-a-date', now), false);
+});
+
+test('eventStartYear reads the UTC calendar year for year filters', () => {
+  assert.equal(eventStartYear('2025-12-31T23:00:00-02:00'), 2026);
+  assert.equal(eventStartYear('2026-06-15T00:00:00Z'), 2026);
+  assert.equal(eventStartYear(null), null);
+  assert.equal(eventStartYear('not-a-date'), null);
 });
 
 const detailWith = (solvedIds) => ({

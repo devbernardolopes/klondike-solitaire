@@ -76,6 +76,15 @@ export function patchCachedEventDealSolved(dealId) {
   return patchedId;
 }
 
+// UTC calendar year of an event's start date (null when missing or
+// unparseable). Drives the Special Events list's year filter toggles;
+// rows with unknown year always pass the year filter.
+export function eventStartYear(startsAt) {
+  const t = startsAt ? Date.parse(startsAt) : NaN;
+  if (!Number.isFinite(t)) return null;
+  return new Date(t).getUTCFullYear();
+}
+
 // A teaser is an event whose start date is still in the future. RLS only
 // ever exposes teasers starting within 7 days (migration 031), while pages
 // and deals stay hidden until `starts_at` passes — so this flag doubles as
@@ -177,6 +186,7 @@ function summaryFromDetail(detail) {
   const totalPages = detail.pages.length;
   const completedPages = detail.pages.filter((p) => p.completed).length;
   const { totalDeals, solvedDeals } = getEventDealProgress(detail);
+  const totalCoins = detail.pages.reduce((sum, p) => sum + (Number(p.coinReward) || 0), 0);
   return {
     id: detail.id,
     title: detail.title,
@@ -190,6 +200,7 @@ function summaryFromDetail(detail) {
     fullyCompleted: totalPages > 0 && completedPages >= totalPages,
     totalDeals,
     solvedDeals,
+    totalCoins,
   };
 }
 
@@ -247,7 +258,7 @@ function kickOffCatalogSync(eventIds) {
  *   gameKind:string, sortOrder:number|null, startsAt:string|null,
  *   isUpcoming:boolean,
  *   totalPages:number, completedPages:number, fullyCompleted:boolean,
- *   totalDeals:number, solvedDeals:number}>>}
+ *   totalDeals:number, solvedDeals:number, totalCoins:number}>>}
  */
 export async function fetchSpecialEvents() {
   if (!supabase) {
@@ -260,7 +271,7 @@ export async function fetchSpecialEvents() {
     await maybeApplyRemoteReset().catch(() => false);
     const [{ data: events, error: eventsErr }, { data: pages, error: pagesErr }, { data: progress, error: progressErr }] = await Promise.all([
       supabase.from('special_events').select('id, title, description, game_kind, sort_order, starts_at').order('starts_at').order('title'),
-      supabase.from('special_event_pages').select('id, event_id').order('page_number'),
+      supabase.from('special_event_pages').select('id, event_id, coin_reward').order('page_number'),
       supabase.from('event_page_progress').select('page_id'),
     ]);
     if (eventsErr) throw eventsErr;
@@ -320,6 +331,7 @@ export async function fetchSpecialEvents() {
         const eventDealIds = eventPages.flatMap((p) => dealsByPage.get(p.id) || []);
         const totalDeals = eventDealIds.length;
         const solvedDeals = eventDealIds.filter((id) => solvedDealIds.has(id)).length;
+        const totalCoins = eventPages.reduce((sum, p) => sum + (Number(p.coin_reward) || 0), 0);
         return {
           id: e.id,
           title: e.title,
@@ -333,6 +345,7 @@ export async function fetchSpecialEvents() {
           fullyCompleted: totalPages > 0 && completedPages >= totalPages,
           totalDeals,
           solvedDeals,
+          totalCoins,
         };
       })
       .sort(compareEventSummaries);

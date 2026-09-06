@@ -20,8 +20,13 @@ import { OVERHANG_BADGE_CLEARANCE, OVERHANG_BADGE_LIFT, OVERHANG_BADGE_RIGHT } f
 import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
 import { useUiStore } from '../hooks/useUiStore.js';
-import { fetchSpecialEvents, getCachedEventsSummarySync } from '../repo/specialEventsRepository.js';
+import { fetchSpecialEvents, getCachedEventsSummarySync, eventStartYear } from '../repo/specialEventsRepository.js';
 import { translateSpecialEvent } from '../i18n/db.js';
+
+// Year toggles for the list filter row. Active years combine as OR; an
+// empty selection means "all years". Rows with an unknown start year
+// always pass the year filter.
+const YEAR_FILTERS = [2025, 2026, 2027];
 
 export default function SpecialEventsModal() {
   const { t, i18n } = useTranslation();
@@ -35,6 +40,8 @@ export default function SpecialEventsModal() {
 
   const [events, setEvents] = useState([]);
   const [loaded, setLoaded] = useState(false);
+  const [activeYears, setActiveYears] = useState(() => new Set());
+  const [notCompletedOnly, setNotCompletedOnly] = useState(false);
   const scrollRef = useRef(null);
   const contentRef = useRef(null);
   const [scrollMetrics, setScrollMetrics] = useState({ scrollTop: 0, scrollHeight: 0, clientHeight: 0 });
@@ -49,7 +56,7 @@ export default function SpecialEventsModal() {
             const prevIds = prev.map((e) => e.id).join('|');
             const differ = freshIds !== prevIds || fresh.some((f, i) => {
               const c = prev[i];
-              return !c || f.totalPages !== c.totalPages || f.completedPages !== c.completedPages || f.fullyCompleted !== c.fullyCompleted || f.totalDeals !== c.totalDeals || f.solvedDeals !== c.solvedDeals || f.startsAt !== c.startsAt || (f.isUpcoming ?? null) !== (c.isUpcoming ?? null);
+              return !c || f.totalPages !== c.totalPages || f.completedPages !== c.completedPages || f.fullyCompleted !== c.fullyCompleted || f.totalDeals !== c.totalDeals || f.solvedDeals !== c.solvedDeals || (f.totalCoins ?? null) !== (c.totalCoins ?? null) || f.startsAt !== c.startsAt || (f.isUpcoming ?? null) !== (c.isUpcoming ?? null);
             });
             return differ ? fresh.map(translateSpecialEvent) : prev;
           });
@@ -81,7 +88,7 @@ export default function SpecialEventsModal() {
           const cachedIds = cached.map((e) => e.id).join('|');
           const differ = freshIds !== cachedIds || fresh.some((f, i) => {
             const c = cached[i];
-            return !c || f.totalPages !== c.totalPages || f.completedPages !== c.completedPages || f.fullyCompleted !== c.fullyCompleted || f.totalDeals !== c.totalDeals || f.solvedDeals !== c.solvedDeals || f.startsAt !== c.startsAt || (f.isUpcoming ?? null) !== (c.isUpcoming ?? null);
+            return !c || f.totalPages !== c.totalPages || f.completedPages !== c.completedPages || f.fullyCompleted !== c.fullyCompleted || f.totalDeals !== c.totalDeals || f.solvedDeals !== c.solvedDeals || (f.totalCoins ?? null) !== (c.totalCoins ?? null) || f.startsAt !== c.startsAt || (f.isUpcoming ?? null) !== (c.isUpcoming ?? null);
           });
           if (differ) setEvents(fresh.map(translateSpecialEvent));
         })
@@ -208,27 +215,90 @@ export default function SpecialEventsModal() {
     return Math.round(((ev.solvedDeals ?? 0) / total) * 100);
   };
 
+  const isDone = (ev) => ev.fullyCompleted || progressPercent(ev) === 100;
+
+  // Active year toggles combine as OR (empty = all years); Not Completed
+  // combines as AND on top.
+  const visibleEvents = events.filter((ev) => {
+    if (activeYears.size > 0) {
+      const year = eventStartYear(ev.startsAt);
+      if (year != null && !activeYears.has(year)) return false;
+    }
+    if (notCompletedOnly && isDone(ev)) return false;
+    return true;
+  });
+
+  const toggleYear = (year) => {
+    setActiveYears((prev) => {
+      const next = new Set(prev);
+      if (next.has(year)) next.delete(year);
+      else next.add(year);
+      return next;
+    });
+  };
+
+  // Leaderboard-style toggle chips (LeaderboardModal.jsx's `tabBtn` shape):
+  // toggled-on uses the strong background at full opacity.
+  const filterBtn = (active) => ({
+    padding: '6px 10px',
+    borderRadius: 6,
+    border: '1px solid var(--ui-modal-btn-border)',
+    background: active ? 'var(--ui-modal-btn-bg-strong)' : 'var(--ui-modal-btn-bg)',
+    color: 'var(--ui-modal-fg)',
+    cursor: 'pointer',
+    fontSize: 13,
+    fontWeight: 600,
+    opacity: active ? 1 : 0.85,
+  });
+
   return (
     <div role="dialog" aria-modal="true" aria-label={t('specialEvents.title')} {...backdrop} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3100, padding: 16 }}>
       <div style={panel}>
         <h2 style={{ margin: '0 0 14px', fontSize: 20, fontWeight: 800, textAlign: 'center', paddingRight: 36 }}>{t('specialEvents.title')}</h2>
         <ModalCloseButton onClick={() => setOpen(false)} />
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+          {YEAR_FILTERS.map((year) => (
+            <button
+              key={year}
+              type="button"
+              style={filterBtn(activeYears.has(year))}
+              aria-pressed={activeYears.has(year)}
+              onClick={() => toggleYear(year)}
+            >
+              {year}
+            </button>
+          ))}
+          <button
+            type="button"
+            style={filterBtn(notCompletedOnly)}
+            aria-pressed={notCompletedOnly}
+            onClick={() => setNotCompletedOnly((v) => !v)}
+          >
+            {t('specialEvents.filters.notCompleted')}
+          </button>
+        </div>
         <div style={{ position: 'relative', flex: '0 1 auto', minHeight: 0, overflow: 'hidden' }}>
         <div ref={scrollRef} className="modal-body-scroll" style={{ height: 'auto', maxHeight: 'calc(85vh - 74px)', overflowY: 'auto', paddingTop: OVERHANG_BADGE_LIFT + OVERHANG_BADGE_CLEARANCE, paddingBottom: 12, boxSizing: 'border-box' }}>
         <div ref={contentRef}>
-        {loaded && events.length === 0 ? (
+        {loaded && visibleEvents.length === 0 ? (
           <p style={{ textAlign: 'center', opacity: 0.7, padding: '24px 0' }}>{t('specialEvents.noEvents')}</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {events.map((ev) => {
+            {visibleEvents.map((ev) => {
               const pct = progressPercent(ev);
-              const done = ev.fullyCompleted || pct === 100;
+              const done = isDone(ev);
               const showProgress = !done && pct != null && pct > 0;
               // RLS only exposes teasers starting within 7 days, so any
               // future-dated row is an upcoming teaser: shown but disabled.
               // The flag fallback covers legacy cached rows predating it.
               const upcoming = ev.isUpcoming ?? (ev.startsAt ? Date.parse(ev.startsAt) > Date.now() : false);
               const availableDate = ev.totalPages === 0 ? formatEventDate(ev.startsAt) : null;
+              // Started events show the same subtitle line as teasers, but
+              // with the "Started on" wording; the totals line below it is
+              // hidden for teasers (their pages/deals stay RLS-hidden, so
+              // the counts would misleadingly read zero).
+              const startedDate = !upcoming ? formatEventDate(ev.startsAt) : null;
+              const showTotals = !upcoming && (ev.totalPages ?? 0) > 0;
               return (
                 <button
                   key={ev.id}
@@ -244,12 +314,25 @@ export default function SpecialEventsModal() {
                     : done
                     ? <span style={COMPLETED_BADGE}>{t('specialEvents.completed')}</span>
                     : showProgress && <span style={PROGRESS_BADGE} aria-label={t('specialEvents.progress.percentAria', { percent: pct })}>{`${pct}%`}</span>}
-                  {ev.totalPages === 0 && (
+                  {upcoming ? (
                     <span style={subtitle}>
                       {availableDate
                         ? t('specialEvents.availableFrom', { date: availableDate })
                         : t('specialEvents.progress.comingSoon')}
                     </span>
+                  ) : (
+                    <>
+                      {startedDate && (
+                        <span style={subtitle}>
+                          {t('specialEvents.startedOn', { date: startedDate })}
+                        </span>
+                      )}
+                      {showTotals && (
+                        <span style={subtitle}>
+                          {t('specialEvents.dealsAndPrize', { count: ev.totalDeals ?? 0, coins: ev.totalCoins ?? 0 })}
+                        </span>
+                      )}
+                    </>
                   )}
                 </button>
               );
