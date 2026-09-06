@@ -30,6 +30,20 @@ export function whenTransitionDone(tid) {
   });
 }
 
+// Last armed coin-flight snapshot ({ base, total, key }), kept at module scope
+// so the Win modal launcher can re-arm the display mask if it was ended
+// prematurely between arming and launch (e.g. a dialog remount running the
+// close cleanup). The snapshot is the exact pre-win balance captured
+// synchronously before recordWin's async bump — never recomputed. `key` is
+// the win summary object identity: the launcher heals only when it matches
+// the currently open win, so a stale snapshot can never mask a later win.
+let lastArmedFlight = null;
+
+/** @returns {{base:number, total:number, key:object} | null} */
+export function getLastArmedFlight() {
+  return lastArmedFlight;
+}
+
 /** @internal fire any registered completion callback for a finished transition. */
 function fireTransitionDone(tid) {
   const cb = transitionDone.get(tid);
@@ -180,8 +194,10 @@ export const useUiStore = create((set, get) => ({
   // the display never flashes the full amount early.
   coinFlight: { active: false, base: 0, landed: 0, total: 0 },
   /** Arm the display mask at win time (base = pre-win balance). */
-  startCoinFlight: ({ base, total }) =>
-    set({ coinFlight: { active: true, base, landed: 0, total } }),
+  startCoinFlight: ({ base, total, key }) => {
+    lastArmedFlight = { base, total, key };
+    set({ coinFlight: { active: true, base, landed: 0, total } });
+  },
   /** Tick the displayed count up by one (called per coin landing). */
   landCoin: () =>
     set((s) => {
@@ -380,12 +396,18 @@ export const useUiStore = create((set, get) => ({
 
   /** Show the win summary modal with the given summary payload. */
   setWinDialog: (summary) => {
+    // TEMP-DEBUG coinFly: remove once the premature mask-end is diagnosed.
+    // eslint-disable-next-line no-console
+    console.debug('[coinFly] setWinDialog');
     get().dismissNoHintsBanner();
     set({ winDialogOpen: true, winSummary: summary });
   },
 
   /** Dismiss the win summary modal. */
   closeWinDialog: () => {
+    // TEMP-DEBUG coinFly: remove once the premature mask-end is diagnosed.
+    // eslint-disable-next-line no-console
+    console.debug('[coinFly] closeWinDialog');
     get().dismissNoHintsBanner();
     set({ winDialogOpen: false });
   },

@@ -242,7 +242,7 @@ export default function Board() {
       const effectiveEventDealId = uiState.currentEventDealId ?? replaySpec?.eventDealId ?? null;
       const effectiveEventId = uiState.currentEventId ?? replaySpec?.eventId ?? null;
       const effectiveEventTitle = uiState.currentEventTitle ?? replaySpec?.eventTitle ?? null;
-      useUiStore.getState().setWinDialog({
+      const winSummary = {
         score,
         timeMs: durationMs,
         moves,
@@ -260,7 +260,8 @@ export default function Board() {
         eventId: gameKind === 'event' ? effectiveEventId : null,
         eventTitle: gameKind === 'event' ? effectiveEventTitle : null,
         seed: gameState.seed,
-      });
+      };
+      useUiStore.getState().setWinDialog(winSummary);
       const nextStreak = (prev.currentStreak || 0) + 1;
       // Arm the win coin-flight display mask BEFORE recordWin's optimistic
       // +10 lands, capturing the pre-win balance so the Toolbar can count up
@@ -278,6 +279,10 @@ export default function Board() {
           useUiStore.getState().startCoinFlight({
             base: useAuthStore.getState().coins,
             total: WIN_COIN_REWARD,
+            // Identity key so the launcher self-heals only for THIS win —
+            // never from a previous win's stale snapshot (toggle-off wins
+            // must keep the instant +10, not resurrect an old base).
+            key: winSummary,
           });
           // eslint-disable-next-line no-console
           console.debug('[coinFly] armed', useUiStore.getState().coinFlight);

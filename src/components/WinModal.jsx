@@ -9,6 +9,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useUiStore } from '../hooks/useUiStore.js';
+import { getLastArmedFlight } from '../hooks/useUiStore.js';
 import { flyCoins } from '../render/animation/coinFly.js';
 import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
@@ -61,7 +62,26 @@ export default function WinModal() {
     // TEMP-DEBUG coinFly: entry/bail logging (remove with the other TEMP-DEBUG logs).
     // eslint-disable-next-line no-console
     console.debug('[coinFly] launcher entry', { active, hasPanel, hasTarget });
-    if (!active) return;
+    if (!active) {
+      // Self-heal: the mask was armed at win time but ended prematurely
+      // before launch (e.g. a dialog remount ran the close cleanup). Re-arm
+      // from the exact pre-win snapshot instead of bailing — the store/DB
+      // already hold the full award underneath, so counting up to it stays
+      // exact. Permanent (not debug): immune to present + future killers.
+      // The key guard ties the snapshot to THIS open win: a stale snapshot
+      // from an earlier win can never mask a later (e.g. toggle-off) win.
+      const snap = getLastArmedFlight();
+      const current = useUiStore.getState().winSummary;
+      if (snap && current && snap.key === current) {
+        // eslint-disable-next-line no-console
+        console.debug('[coinFly] self-heal re-arm', { base: snap.base, total: snap.total });
+        useUiStore.getState().startCoinFlight(snap);
+      } else {
+        // eslint-disable-next-line no-console
+        console.debug('[coinFly] launcher bail (stale or missing snapshot)');
+        return;
+      }
+    }
     const panel = panelRef.current;
     const target = document.querySelector('[data-coin-balance]');
     if (!panel || !target) {
@@ -104,6 +124,9 @@ export default function WinModal() {
   // onEnterDone closure above must stick to refs + getState (it does).
   useEffect(() => {
     return () => {
+      // TEMP-DEBUG coinFly: remove once the premature mask-end is diagnosed.
+      // eslint-disable-next-line no-console
+      console.debug('[coinFly] cleanup end', { winDialogOpen });
       try {
         flightCancelRef.current?.();
       } catch {}
