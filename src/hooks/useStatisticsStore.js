@@ -11,7 +11,7 @@ import { useStatsStore } from './useStatsStore.js';
 import { enqueue } from '../sync/syncEngine.js';
 import { useAuthStore, WIN_COIN_REWARD } from '../hooks/useAuthStore.js';
 import { db } from '../db/schema.js';
-import { applyOptimisticSolve, cloneDetail, findNextUnsolvedDeal } from '../repo/specialEventsProgress.js';
+import { applyOptimisticSolve, cloneDetail, findNextUnsolvedDealOnPage } from '../repo/specialEventsProgress.js';
 import { getCachedEventDetailSync, patchCachedEventDealSolved } from '../repo/specialEventsRepository.js';
 import { saveEventSelection, saveLastViewedPage } from '../db/eventSelection.js';
 import { useUiStore } from './useUiStore.js';
@@ -50,12 +50,14 @@ export const useStatisticsStore = create((set, get) => ({
    */
   /**
    * Fold a won game into the aggregates. Persists and refreshes state so the
-   * Statistics modal updates live.
+   * Statistics modal updates live. eventDealReplayed is true when the won
+   * event deal was already solved (a replay) — the deal selector then stays
+   * in place instead of advancing to the next unsolved deal on the page.
    * @param {{score:number, timeMs:number, moves:number, undos:number,
    *   seed?:number, gameKind?:'winning'|'random'|'daily'|'event', dailyDate?:string|null,
-   *   eventDealId?:number|null, eventId?:string|null}} win
+   *   eventDealId?:number|null, eventId?:string|null, eventDealReplayed?:boolean}} win
    */
-  recordWin: async ({ score, timeMs, moves, undos, seed, gameKind, dailyDate, eventDealId, eventId, achievementTelemetry }) => {
+  recordWin: async ({ score, timeMs, moves, undos, seed, gameKind, dailyDate, eventDealId, eventId, eventDealReplayed, achievementTelemetry }) => {
     const stats = await addWin({ score, timeMs, moves, undos });
     set({ stats, gameWon: true });
     // Parallel remote-sync path: one RPC folds the win into game_results, coins,
@@ -92,7 +94,9 @@ export const useStatisticsStore = create((set, get) => ({
       } catch {}
       try {
         const cached = eventId ? getCachedEventDetailSync(eventId) : null;
-        const target = cached ? findNextUnsolvedDeal(cached, eventDealId) : null;
+        // Same-page-only target (never another page), and no advance at all
+        // when replaying an already-solved deal.
+        const target = cached && !eventDealReplayed ? findNextUnsolvedDealOnPage(cached, eventDealId) : null;
         if (cached && target) {
           saveEventSelection(cached.id, target.pageNumber, target.deal.id).catch(() => {});
           saveLastViewedPage(cached.id, target.pageNumber).catch(() => {});
@@ -116,7 +120,7 @@ export const useStatisticsStore = create((set, get) => ({
             } catch {}
             if (!eventId) {
               try {
-                const target = findNextUnsolvedDeal(cloned, eventDealId);
+                const target = eventDealReplayed ? null : findNextUnsolvedDealOnPage(cloned, eventDealId);
                 if (target) {
                   saveEventSelection(cloned.id, target.pageNumber, target.deal.id).catch(() => {});
                   saveLastViewedPage(cloned.id, target.pageNumber).catch(() => {});

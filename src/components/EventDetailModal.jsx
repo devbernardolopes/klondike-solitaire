@@ -24,7 +24,7 @@ import { useUiStore } from '../hooks/useUiStore.js';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
 import { fetchEventDetail, getCachedEventDetailSync, resolveInitialPageIndex, detailsDiffer } from '../repo/specialEventsRepository.js';
-import { findNextUnsolvedDeal } from '../repo/specialEventsProgress.js';
+import { findNextUnsolvedDealOnPage } from '../repo/specialEventsProgress.js';
 import { loadEventSelectionSync, saveEventSelection, loadLastViewedPageSync, saveLastViewedPage } from '../db/eventSelection.js';
 import EventDealGrid from './EventDealGrid.jsx';
 import PostcardViewerModal from './PostcardViewerModal.jsx';
@@ -60,13 +60,16 @@ export default function EventDetailModal() {
   // returning player sees the same selection immediately.
   const [selectedDealIdByPage, setSelectedDealIdByPage] = useState({});
   const justWonDealId = useUiStore((s) => s.winSummary?.eventDealId ?? null);
+  // True when the just-won event deal was already solved before this win (a
+  // replay) — the selector then stays on it instead of advancing.
+  const justWonReplayed = useUiStore((s) => s.winSummary?.eventDealReplayed ?? false);
 
   const viewportRef = useRef(null);
   const panelRef = useRef(null);
   const dragStateRef = useRef({ startX: 0, startY: 0, width: 1, active: false });
   const justSwipedRef = useRef(false);
   const justSwipedTimerRef = useRef(null);
-  // One-shot guard so the post-win auto-advance (findNextUnsolvedDeal) applies
+  // One-shot guard so the post-win auto-advance (findNextUnsolvedDealOnPage) applies
   // exactly once per won deal. winSummary.eventDealId is never cleared (the Win
   // modal and optimistic fetch rely on it), so without this every reopen would
   // re-apply the advance and clobber a manual replay selection.
@@ -291,9 +294,13 @@ export default function EventDetailModal() {
 
   useEffect(() => {
     if (!open || !detail) return;
-    // Post-win auto-advance: exactly once per won deal. Solved selections are
-    // legitimate replay targets, so never force-correct them — only fill pages
-    // with a missing/invalid selection (e.g. a newly unlocked page).
+  // Post-win auto-advance: exactly once per won deal, staying on the won
+  // deal's page (same-page forward scan with wrap-around; never another
+  // page), and never when replaying an already-solved deal. Solved
+  // selections are legitimate replay targets, so never force-correct them —
+  // only fill pages with a missing/invalid selection (e.g. a newly unlocked
+  // page). The fill-in persists the selection but never the viewed page, so
+  // the modal can never change pages by itself.
     if (justWonDealId == null) {
       setSelectedDealIdByPage((prev) => {
         const next = { ...prev };
@@ -319,7 +326,7 @@ export default function EventDetailModal() {
     const wonKey = `${detail.id}:${justWonDealId}`;
     const alreadyAdvanced = advancedForWonRef.current === wonKey;
     if (!alreadyAdvanced) advancedForWonRef.current = wonKey;
-    const target = alreadyAdvanced ? null : findNextUnsolvedDeal(detail, justWonDealId);
+    const target = alreadyAdvanced || justWonReplayed ? null : findNextUnsolvedDealOnPage(detail, justWonDealId);
     setSelectedDealIdByPage((prev) => {
       const next = { ...prev };
       let changed = false;
@@ -329,7 +336,6 @@ export default function EventDetailModal() {
           next[key] = dealId;
           changed = true;
           saveEventSelection(evtId, pageNumber, dealId).catch(() => {});
-          saveLastViewedPage(evtId, pageNumber).catch(() => {});
         }
       };
       if (target) apply(target.pageNumber, target.deal.id, detail.id);

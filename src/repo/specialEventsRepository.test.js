@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { compareEventSummaries, eventStartYear, isUpcomingEvent, wonEventDealIdFromQueuedOp } from './specialEventsRepository.js';
-import { collectSolvedIds, mergeSolvedIds, findNextUnsolvedDeal, getEventDealProgress } from './specialEventsProgress.js';
+import { collectSolvedIds, mergeSolvedIds, findNextUnsolvedDealOnPage, getEventDealProgress } from './specialEventsProgress.js';
 
 const summary = (id, startsAt, title) => ({ id, startsAt, title: title ?? id });
 
@@ -61,7 +61,31 @@ test('out-of-order wins converge: solve 4 then 3 keeps all solved', () => {
   mergeSolvedIds(server, new Set([1, 2, 4]));
   mergeSolvedIds(server, new Set([3]));
   assert.deepEqual(server.pages[0].deals.map((d) => d.solved), [true, true, true, true]);
-  assert.equal(findNextUnsolvedDeal(server, 3), null);
+  assert.equal(findNextUnsolvedDealOnPage(server, 3), null);
+});
+
+test('findNextUnsolvedDealOnPage advances forward within the same page', () => {
+  const target = findNextUnsolvedDealOnPage(detailWith(new Set([1])), 1);
+  assert.equal(target?.deal.id, 2);
+  assert.equal(target?.pageNumber, 1);
+});
+
+test('findNextUnsolvedDealOnPage wraps to the page start when nothing is ahead', () => {
+  const target = findNextUnsolvedDealOnPage(detailWith(new Set([1, 3, 4])), 4);
+  assert.equal(target?.deal.id, 2);
+  assert.equal(target?.pageNumber, 1);
+});
+
+test('findNextUnsolvedDealOnPage never leaves the page', () => {
+  const twoPages = {
+    id: 'evt',
+    pages: [
+      { id: 1, pageNumber: 1, deals: [1, 2].map((id) => ({ id, position: id, dealNumber: id, solved: true })) },
+      { id: 2, pageNumber: 2, deals: [3, 4].map((id) => ({ id, position: id - 2, dealNumber: id, solved: false })) },
+    ],
+  };
+  assert.equal(findNextUnsolvedDealOnPage(twoPages, 2), null);
+  assert.equal(findNextUnsolvedDealOnPage(twoPages, 99), null);
 });
 
 test('collectSolvedIds returns only solved deal ids', () => {

@@ -19,7 +19,7 @@ function SolvedTile({ deal, imageUrl, gridSize, posX, posY, isSelected, disabled
     gsap.fromTo(
       ref.current,
       { opacity: 0, filter: 'blur(6px)' },
-      { opacity: 1, filter: 'blur(0px)', duration: 0.7, ease: 'power2.out' }
+      { opacity: 1, filter: 'blur(0px)', duration: 1.2, ease: 'power2.out' }
     );
     markSeenDissolve(deal.id);
   }, [shouldDissolve, deal.id]);

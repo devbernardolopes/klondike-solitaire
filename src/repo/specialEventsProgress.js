@@ -64,19 +64,26 @@ export function mergeSolvedIds(detail, solvedIds) {
   return detail;
 }
 
-export function findNextUnsolvedDeal(detail, wonDealId) {
+/**
+ * Next unsolved deal for the post-win selector, staying on the won deal's
+ * page: scan forward (increasing deal number) from the won deal, then wrap
+ * around to the page's first deal and keep seeking. Returns null when the
+ * page has no other unsolved deal (fully solved, or the won deal is
+ * unknown) — callers then leave the selector on the just-won deal. Never
+ * crosses pages, so the event modal can never change pages by itself.
+ */
+export function findNextUnsolvedDealOnPage(detail, wonDealId) {
   if (!detail || !Array.isArray(detail.pages) || wonDealId == null) return null;
-  const flat = [];
-  for (const p of detail.pages) {
-    for (const deal of p.deals || []) {
-      flat.push({ deal, pageNumber: p.pageNumber });
-    }
-  }
-  const wonIdx = flat.findIndex((f) => f.deal.id === wonDealId);
+  const page = detail.pages.find((p) => (p.deals || []).some((d) => d.id === wonDealId));
+  if (!page) return null;
+  const ordered = (page.deals || []).slice().sort(
+    (a, b) => (a.dealNumber ?? a.position ?? 0) - (b.dealNumber ?? b.position ?? 0),
+  );
+  const wonIdx = ordered.findIndex((d) => d.id === wonDealId);
   if (wonIdx < 0) return null;
-  for (let i = wonIdx + 1; i < flat.length; i++) {
-    if (flat[i].deal.id === wonDealId) continue;
-    if (!flat[i].deal.solved) return flat[i];
+  for (let k = 1; k < ordered.length; k++) {
+    const deal = ordered[(wonIdx + k) % ordered.length];
+    if (!deal.solved) return { deal, pageNumber: page.pageNumber };
   }
   return null;
 }

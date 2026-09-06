@@ -23,6 +23,7 @@ import { isWon } from '../core/winDetection.js';
 import { solveAsync, STALE } from '../core/solverClient.js';
 import { getAutoFireSolveOptions } from '../core/solver.js';
 import { useTranslation } from 'react-i18next';
+import { getCachedEventDetailSync } from '../repo/specialEventsRepository.js';
 import Pile from './Pile.jsx';
 import { CardFace, cardAriaString } from './CardView.jsx';
 
@@ -242,6 +243,13 @@ export default function Board() {
       const effectiveEventDealId = uiState.currentEventDealId ?? replaySpec?.eventDealId ?? null;
       const effectiveEventId = uiState.currentEventId ?? replaySpec?.eventId ?? null;
       const effectiveEventTitle = uiState.currentEventTitle ?? replaySpec?.eventTitle ?? null;
+      // Replay detection for the post-win deal selector: read BEFORE recordWin
+      // patches the cache below, so "already solved" means this win replays a
+      // deal solved at least once (selector then stays in place).
+      const wonEventDetail = gameKind === 'event' && effectiveEventId ? getCachedEventDetailSync(effectiveEventId) : null;
+      const eventDealReplayed = wonEventDetail
+        ? (wonEventDetail.pages || []).some((p) => (p.deals || []).some((d) => d.id === effectiveEventDealId && d.solved))
+        : false;
       const winSummary = {
         score,
         timeMs: durationMs,
@@ -259,6 +267,7 @@ export default function Board() {
         eventDealId: gameKind === 'event' ? effectiveEventDealId : null,
         eventId: gameKind === 'event' ? effectiveEventId : null,
         eventTitle: gameKind === 'event' ? effectiveEventTitle : null,
+        eventDealReplayed: gameKind === 'event' ? eventDealReplayed : false,
         seed: gameState.seed,
       };
       useUiStore.getState().setWinDialog(winSummary);
@@ -326,6 +335,7 @@ export default function Board() {
         dailyDate: gameKind === 'daily' ? dailyDate : null,
         eventDealId: gameKind === 'event' ? effectiveEventDealId : null,
         eventId: gameKind === 'event' ? effectiveEventId : null,
+        eventDealReplayed: gameKind === 'event' ? eventDealReplayed : false,
         achievementTelemetry,
       });
       // If this was a Winning Deal (it carries a pool seed), remember the seed
