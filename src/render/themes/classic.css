@@ -148,10 +148,13 @@
     transition: transform 0.12s ease, filter 0.12s ease;
   }
   @media (hover: hover) and (pointer: fine) {
-    html[data-hover-lift="on"] [data-card]:hover {
+    html[data-hover-lift="on"] [data-card][data-face-up="on"]:hover:not([data-shaking]) {
       transform: translateY(-2px);
       filter: brightness(1.05);
     }
+  }
+  html[data-hover-lift="on"] [data-card][data-shaking] {
+    transition: none !important;
   }
   html[data-hover-lift="on"] [data-card]:active {
     transform: translateY(0) scale(0.99);

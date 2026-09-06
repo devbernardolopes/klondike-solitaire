@@ -211,6 +211,8 @@ function CardViewBase({ card, from, zIndex = 0, hidden = false, onAutoMove, hard
       tabIndex={card.faceUp && !locked ? 0 : -1}
       role="button"
       data-card={card.id}
+      data-face-up={card.faceUp ? 'on' : undefined}
+      data-shaking={isShaking ? 'on' : undefined}
       data-flip-id={card.id}
       style={{
         visibility: hidden ? 'hidden' : 'visible',

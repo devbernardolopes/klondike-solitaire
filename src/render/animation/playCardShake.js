@@ -21,6 +21,10 @@ export function cancelShake(cardId) {
   const rec = shakeTweens.get(cardId);
   if (!rec) return;
   rec.tl.kill();
+  try {
+    if (rec.node) delete rec.node.dataset.shaking;
+    else document.querySelector(`[data-card="${cardId}"]`)?.removeAttribute('data-shaking');
+  } catch {}
   shakeTweens.delete(cardId);
   useUiStore.getState().removeShaking(cardId);
 }
@@ -40,10 +44,22 @@ export function playCardShake(node) {
   }
   const ui = useUiStore.getState();
   ui.addShaking(cardId);
+  // Synchronous hover-lift kill for the first frame: the declarative
+  // `data-shaking` in CardView (driven by the same shakingCards flag) arrives
+  // after the React commit, so set the attribute now — the CSS
+  // `:not([data-shaking])` + `transition:none` guard applies before GSAP's
+  // first tick. Cleared in onComplete, so restore tracks the timeline exactly
+  // (no timer) even if MOTION.shake.duration changes.
+  try {
+    node.dataset.shaking = 'on';
+  } catch {}
   const { duration, distance } = MOTION.shake;
   const tl = gsap.timeline({
     onComplete: () => {
       gsap.set(node, { clearProps: 'transform' });
+      try {
+        delete node.dataset.shaking;
+      } catch {}
       shakeTweens.delete(cardId);
       useUiStore.getState().removeShaking(cardId);
     },
@@ -53,5 +69,5 @@ export function playCardShake(node) {
     .to(node, { x: -distance * 0.6, duration: duration * 0.2 })
     .to(node, { x: distance * 0.6, duration: duration * 0.2 })
     .to(node, { x: 0, duration: duration * 0.25, ease: 'power2.inOut' });
-  shakeTweens.set(cardId, { tl });
+  shakeTweens.set(cardId, { tl, node });
 }
