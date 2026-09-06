@@ -601,6 +601,10 @@
       "tolkien-day-2026": {
         "title": "Tolkien Day 2026",
         "description": "Tolkien Day honors the life and works of J. R. R. Tolkien, inviting readers to explore the rich landscapes, languages, and epic tales of Middle-earth through literature and shared appreciation."
+      },
+      "test-event-2026": {
+        "title": "Test Event 2026",
+        "description": "Tolkien Day honors the life and works of J. R. R. Tolkien, inviting readers to explore the rich landscapes, languages, and epic tales of Middle-earth through literature and shared appreciation."
       }
     }
   }
