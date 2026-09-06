@@ -233,13 +233,14 @@ export function useCardMoveSlide() {
       } catch {}
       if (type === 'deal') return false;
       if (type === 'recycle') return false;
+      if (type === 'undo') return false; // explicit: undo never trails (diverges from Ghost Echo)
       // No explicit `if (type === 'drag') return false` here — trail fires on drag.
       try {
         const s = useSettingsStore.getState();
         if (!s.cardEffects) return false;
         if (!s.ghostTrail) return false;
       } catch {}
-      return type === 'move' || type === 'auto' || type === 'undo';
+      return type === 'move' || type === 'auto';
     })();
     const shouldBounce = (() => {
       try {

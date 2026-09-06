@@ -3,9 +3,12 @@
 // ("segments") at intervals during a move or drag; each segment fades to
 // 0 opacity and is disposed on its own. **Segments are NEVER cancelled by
 // re-drags or new moves** — they always fade organically up to their
-// natural disposal. The DOM is capped at MOTION.ghostTrail.maxConcurrent
-// to prevent runaway growth; when the cap is hit, new spawns are dropped
-// (newest wins — the cap protects performance, not visual continuity).
+// natural disposal. The DOM is capped separately per spawn mode — MOTION.ghostTrail.maxConcurrentCascade
+// for post-move cascades and MOTION.ghostTrail.maxConcurrentDrag for continuous
+// drag spawns — so a burst of one kind can never starve the other. When a
+// mode's cap is hit, new spawns of that kind are dropped until older segments
+// in the same mode age out (the cap protects performance, not visual
+// continuity).
 //
 // Two spawn modes:
 //
@@ -29,9 +32,13 @@ import { gsap } from './gsapSetup.js';
 import { MOTION } from './motion.js';
 import { useSettingsStore } from '../../hooks/useSettingsStore.js';
 
-// Module-level registry of all live trail segments. Cleaned up on app
-// unmount via clearAllGhostTrails().
-const trailEls = new Set();
+// Module-level registries of live trail segments, split by spawn kind so
+// each kind gets its own DOM budget (MOTION.ghostTrail.maxConcurrentCascade /
+// maxConcurrentDrag). This means a busy autocomplete chain (cascade spawns)
+// can no longer starve an in-progress drag's continuous trail, and vice
+// versa. Cleaned up on app unmount via clearAllGhostTrails().
+const cascadeEls = new Set();
+const dragEls = new Set();
 
 // Per-dragId throttling state for continuous spawns. The map is keyed by
 // dnd-kit active.id (a stable string per drag) and tracks the last
@@ -73,7 +80,7 @@ function shouldShowTrail() {
  * @param {number} scale
  * @returns {HTMLElement}
  */
-function cloneAt(sourceEl, left, top, sourceRect, opacity, z, scale) {
+function cloneAt(sourceEl, left, top, sourceRect, opacity, z, scale, kind = 'cascade') {
   const g = sourceEl.cloneNode(true);
   g.style.position = 'fixed';
   g.style.left = `${left}px`;
@@ -87,10 +94,18 @@ function cloneAt(sourceEl, left, top, sourceRect, opacity, z, scale) {
   g.style.transform = 'none';
   g.style.removeProperty('translate');
   g.style.scale = String(scale);
+  // The source card node may be visibility:hidden (e.g. the real DOM node
+  // behind an active DragOverlay). cloneNode(true) copies that inline style
+  // verbatim, so without this the clone would silently render invisible.
+  // Trail segments must always be visible regardless of the source's own
+  // visibility state.
+  g.style.visibility = 'visible';
+  g.style.display = '';
   g.removeAttribute('data-card');
   g.removeAttribute('data-flip-id');
   document.body.appendChild(g);
-  trailEls.add(g);
+  const set = kind === 'drag' ? dragEls : cascadeEls;
+  set.add(g);
   return g;
 }
 
@@ -116,25 +131,25 @@ export function spawnTrailCascade({ sourceEl, sourceRect, targetRect }) {
   const alpha = cfg.alpha ?? 0.25;
   const scaleStart = cfg.scale?.start ?? 1.0;
   const scaleEnd = cfg.scale?.end ?? 0.94;
-  const maxConcurrent = cfg.maxConcurrent ?? 48;
+  const maxConcurrentCascade = cfg.maxConcurrentCascade ?? 30;
   const dx = targetRect.left - sourceRect.left;
   const dy = targetRect.top - sourceRect.top;
   if (dx === 0 && dy === 0) return; // no displacement → no trail needed
   for (let s = 0; s < segments; s++) {
-    if (trailEls.size >= maxConcurrent) break;
+    if (cascadeEls.size >= maxConcurrentCascade) break;
     const fraction = (s + 1) / segments;
     const left = sourceRect.left + dx * fraction;
     const top = sourceRect.top + dy * fraction;
     const opacity = alpha * (1 - fraction * 0.8);
     const scale = scaleStart - (scaleStart - scaleEnd) * fraction;
-    const seg = cloneAt(sourceEl, left, top, sourceRect, opacity, '1400', scale);
+    const seg = cloneAt(sourceEl, left, top, sourceRect, opacity, '1400', scale, 'cascade');
     gsap.to(seg, {
       opacity: 0,
       scale: scale * 0.92,
       duration: segmentDuration,
       ease: cfg.ease ?? 'power2.out',
       delay: s * segmentInterval,
-      onComplete: () => { try { seg.remove(); } catch {} trailEls.delete(seg); },
+      onComplete: () => { try { seg.remove(); } catch {} cascadeEls.delete(seg); },
     });
   }
 }
@@ -166,17 +181,17 @@ export function spawnDragSegment({ sourceEl, targetRect, dragId, z = '1450' }) {
   const last = lastDragSpawn.get(dragId) ?? 0;
   if (now - last < interval) return;
   lastDragSpawn.set(dragId, now);
-  const maxConcurrent = cfg.maxConcurrent ?? 48;
-  if (trailEls.size >= maxConcurrent) return;
+  const maxConcurrentDrag = cfg.maxConcurrentDrag ?? 24;
+  if (dragEls.size >= maxConcurrentDrag) return;
   const alpha = cfg.alpha ?? 0.25;
   const scaleStart = cfg.scale?.start ?? 1.0;
-  const seg = cloneAt(sourceEl, targetRect.left, targetRect.top, targetRect, alpha, z, scaleStart);
+  const seg = cloneAt(sourceEl, targetRect.left, targetRect.top, targetRect, alpha, z, scaleStart, 'drag');
   gsap.to(seg, {
     opacity: 0,
     scale: scaleStart * 0.92,
     duration: cfg.dragDuration ?? 0.8,
     ease: cfg.ease ?? 'power2.out',
-    onComplete: () => { try { seg.remove(); } catch {} trailEls.delete(seg); },
+    onComplete: () => { try { seg.remove(); } catch {} dragEls.delete(seg); },
   });
 }
 
@@ -192,7 +207,9 @@ export function endDrag(dragId) {
 
 /** Remove every live trail segment and clear throttle state. Called on app unmount. */
 export function clearAllGhostTrails() {
-  trailEls.forEach((el) => { try { el.remove(); } catch {} });
-  trailEls.clear();
+  cascadeEls.forEach((el) => { try { el.remove(); } catch {} });
+  cascadeEls.clear();
+  dragEls.forEach((el) => { try { el.remove(); } catch {} });
+  dragEls.clear();
   lastDragSpawn.clear();
 }
