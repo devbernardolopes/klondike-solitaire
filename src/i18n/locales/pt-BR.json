@@ -586,6 +586,10 @@
       "world-rock-day-2026": {
         "title": "World Rock Day 2026",
         "description": "The World Rock Day honors the enduring legacy of rock music, its pioneering artists, and the cultural impact of the genre celebrated around the anniversary of the historic Live Aid concerts."
+      },
+      "day-of-the-dead-2026": {
+        "title": "Day of the Dead",
+        "description": "Día de los Muertos is a vibrant Mexican tradition that honors deceased loved ones with colorful ofrendas, marigolds, sugar skulls, and festive gatherings that celebrate life and memory."
       }
     }
   }
