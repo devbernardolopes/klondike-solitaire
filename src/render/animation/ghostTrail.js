@@ -136,20 +136,26 @@ export function spawnTrailCascade({ sourceEl, sourceRect, targetRect }) {
   const dy = targetRect.top - sourceRect.top;
   if (dx === 0 && dy === 0) return; // no displacement → no trail needed
   for (let s = 0; s < segments; s++) {
-    if (cascadeEls.size >= maxConcurrentCascade) break;
     const fraction = (s + 1) / segments;
     const left = sourceRect.left + dx * fraction;
     const top = sourceRect.top + dy * fraction;
     const opacity = alpha * (1 - fraction * 0.8);
     const scale = scaleStart - (scaleStart - scaleEnd) * fraction;
-    const seg = cloneAt(sourceEl, left, top, sourceRect, opacity, '1400', scale, 'cascade');
-    gsap.to(seg, {
-      opacity: 0,
-      scale: scale * 0.92,
-      duration: segmentDuration,
-      ease: cfg.ease ?? 'power2.out',
-      delay: s * segmentInterval,
-      onComplete: () => { try { seg.remove(); } catch {} cascadeEls.delete(seg); },
+    // Defer creation itself (not just the fade) so segments pop in one at a
+    // time as the card would be passing through that point — matching the
+    // real-time, organic cadence of the drag trail instead of stamping the
+    // whole path into the DOM at once. The concurrency check moves in here
+    // too, since it now must reflect DOM state at actual spawn time.
+    gsap.delayedCall(s * segmentInterval, () => {
+      if (cascadeEls.size >= maxConcurrentCascade) return;
+      const seg = cloneAt(sourceEl, left, top, sourceRect, opacity, '1400', scale, 'cascade');
+      gsap.to(seg, {
+        opacity: 0,
+        scale: scale * 0.92,
+        duration: segmentDuration,
+        ease: cfg.ease ?? 'power2.out',
+        onComplete: () => { try { seg.remove(); } catch {} cascadeEls.delete(seg); },
+      });
     });
   }
 }
