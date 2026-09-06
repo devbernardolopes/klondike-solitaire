@@ -3,12 +3,15 @@
 // ("segments") at intervals during a move or drag; each segment fades to
 // 0 opacity and is disposed on its own. **Segments are NEVER cancelled by
 // re-drags or new moves** — they always fade organically up to their
-// natural disposal. The DOM is capped separately per spawn mode — MOTION.ghostTrail.maxConcurrentCascade
-// for post-move cascades and MOTION.ghostTrail.maxConcurrentDrag for continuous
-// drag spawns — so a burst of one kind can never starve the other. When a
-// mode's cap is hit, new spawns of that kind are dropped until older segments
-// in the same mode age out (the cap protects performance, not visual
-// continuity).
+// natural disposal, UNLESS evicted early to make room under the cap (see
+// below). The DOM is capped separately per spawn mode — MOTION.ghostTrail.
+// maxConcurrentCascade for post-move cascades and MOTION.ghostTrail.
+// maxConcurrentDrag for continuous drag spawns — so a burst of one kind can
+// never starve the other. Emission NEVER stops while the card is moving: when
+// a mode's cap is hit, the single oldest live segment of that mode is
+// disposed immediately (evictOldest()) to make room for the new spawn, rather
+// than dropping the new spawn. The cap protects DOM/perf headroom, not
+// emission continuity.
 //
 // Two spawn modes:
 //
@@ -110,6 +113,22 @@ function cloneAt(sourceEl, left, top, sourceRect, opacity, z, scale, kind = 'cas
 }
 
 /**
+ * Evict the single oldest live segment from the given tracking Set to make
+ * room for a new one. Set iteration order is insertion order, so the first
+ * value is always the oldest still-live segment. Kills its fade tween early
+ * (skipping its own onComplete cleanup, which we do manually here) and
+ * removes the DOM node immediately. No-op if the set is empty.
+ * @param {Set<HTMLElement>} set
+ */
+function evictOldest(set) {
+  const oldest = set.values().next().value;
+  if (!oldest) return;
+  try { oldest._ghostTween?.kill(); } catch {}
+  try { oldest.remove(); } catch {}
+  set.delete(oldest);
+}
+
+/**
  * Cascade spawn — one call per non-drag move. Spawns N segments at
  * fractions along the oldRect → newRect path with a staggered delay.
  * Newer segments (closer to the card) have higher opacity and a larger
@@ -147,9 +166,11 @@ export function spawnTrailCascade({ sourceEl, sourceRect, targetRect }) {
     // whole path into the DOM at once. The concurrency check moves in here
     // too, since it now must reflect DOM state at actual spawn time.
     gsap.delayedCall(s * segmentInterval, () => {
-      if (cascadeEls.size >= maxConcurrentCascade) return;
+      // Never stop emitting: if we're at the cap, dispose the oldest live
+      // segment to make room instead of dropping this new spawn.
+      if (cascadeEls.size >= maxConcurrentCascade) evictOldest(cascadeEls);
       const seg = cloneAt(sourceEl, left, top, sourceRect, opacity, '1400', scale, 'cascade');
-      gsap.to(seg, {
+      seg._ghostTween = gsap.to(seg, {
         opacity: 0,
         scale: scale * 0.92,
         duration: segmentDuration,
@@ -188,11 +209,13 @@ export function spawnDragSegment({ sourceEl, targetRect, dragId, z = '1450' }) {
   if (now - last < interval) return;
   lastDragSpawn.set(dragId, now);
   const maxConcurrentDrag = cfg.maxConcurrentDrag ?? 24;
-  if (dragEls.size >= maxConcurrentDrag) return;
+  // Never stop emitting: if we're at the cap, dispose the oldest live
+  // segment to make room instead of dropping this new spawn.
+  if (dragEls.size >= maxConcurrentDrag) evictOldest(dragEls);
   const alpha = cfg.alpha ?? 0.25;
   const scaleStart = cfg.scale?.start ?? 1.0;
   const seg = cloneAt(sourceEl, targetRect.left, targetRect.top, targetRect, alpha, z, scaleStart, 'drag');
-  gsap.to(seg, {
+  seg._ghostTween = gsap.to(seg, {
     opacity: 0,
     scale: scaleStart * 0.92,
     duration: cfg.dragDuration ?? 0.8,
