@@ -213,5 +213,30 @@
         "coinReward": 100
       }
     ]
+  },
+  {
+    "id": "la-tomatina-2026",
+    "title": "La Tomatina",
+    "description": "La Tomatina is the famous Spanish tomato-throwing festival held in Buñol, where participants engage in a massive, joyful food fight that fills the streets with red pulp and laughter.",
+    "startsAt": "2026-08-26T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "la-tomatina-2026/page1.jpg",
+        "coinReward": 50
+      },
+      {
+        "gridSize": 3,
+        "imagePath": "la-tomatina-2026/page2.jpg",
+        "coinReward": 100
+      },
+      {
+        "gridSize": 4,
+        "imagePath": "la-tomatina-2026/page3.jpg",
+        "coinReward": 200
+      }
+    ]
   }
 ]
