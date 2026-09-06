@@ -20,7 +20,7 @@ import {
 import { useGameStore } from './useGameStore.js';
 import { useUiStore } from './useUiStore.js';
 import { getTableauRun } from '../core/rules.js';
-import { spawnDragSegment, endDrag } from '../render/animation/ghostTrail.js';
+import { spawnDragRunSegments, endDrag } from '../render/animation/ghostTrail.js';
 
 // Tableau fan offset per card in a multi-card run. Mirrors the CSS variable
 // used by Pile.jsx for the resting state; the DragOverlay uses the same
@@ -156,11 +156,13 @@ export function useDragEngine() {
   /**
    * Per-move handler wired to dnd-kit's <DndContext onDragMove>. Spawns one
    * continuous Ghost Trail segment per card in the active run at the live
-   * cursor position, throttled internally to dragSpawnIntervalMs per dragId.
-   * For single-card drags (waste/foundation source), only the lead card's
-   * segment is spawned. For multi-card tableau run drags, one segment is
-   * spawned per card in the run, each offset by the run's fan spacing so
-   * the trail mirrors the floating run's actual layout.
+   * cursor position via a single batched call — the batch API throttles once
+   * per pointermove for the whole run (per-card calls would let the leader
+   * consume the throttle window and starve the rest). For single-card drags
+   * (waste/foundation source), only the lead card's segment is spawned. For
+   * multi-card tableau run drags, one segment is spawned per card in the run,
+   * each offset by the run's fan spacing so the trail mirrors the floating
+   * run's actual layout.
    */
   function onDragMove(event) {
     const { active } = event;
@@ -171,6 +173,7 @@ export function useDragEngine() {
     const run = activeRunRef.current;
     if (!run || run.length === 0) return;
     const fanUp = dragFanUpPxRef.current;
+    const segments = [];
     for (let i = 0; i < run.length; i++) {
       const cardId = run[i].id;
       const sourceEl = document.querySelector(`[data-flip-id="${CSS.escape(cardId)}"]`);
@@ -179,18 +182,17 @@ export function useDragEngine() {
       // the run extends downward by the fan spacing. The trail matches that
       // exact layout so the visual stays consistent.
       const offsetY = i * fanUp;
-      const targetRect = {
-        left: translated.left,
-        top: translated.top + offsetY,
-        width: translated.width,
-        height: translated.height,
-      };
-      spawnDragSegment({
+      segments.push({
         sourceEl,
-        targetRect,
-        dragId: leadId,
+        targetRect: {
+          left: translated.left,
+          top: translated.top + offsetY,
+          width: translated.width,
+          height: translated.height,
+        },
       });
     }
+    if (segments.length > 0) spawnDragRunSegments({ segments, dragId: leadId });
   }
 
   function onDragEnd(event) {

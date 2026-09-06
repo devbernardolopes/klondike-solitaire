@@ -50,6 +50,21 @@ const dragEls = new Set();
 const lastDragSpawn = new Map();
 
 /**
+ * Resolve the trail segment parent: the in-board `[data-trail-layer]` when
+ * mounted (shares the board's stacking context, so segments paint below
+ * in-flight sources but above resting cards — see App.jsx), falling back to
+ * document.body (tests / unmounted tree).
+ * @returns {HTMLElement}
+ */
+function trailParent() {
+  try {
+    return document.querySelector('[data-trail-layer]') ?? document.body;
+  } catch {
+    return document.body;
+  }
+}
+
+/**
  * Read the live settings and short-circuit the pipeline if the user has
  * turned the trail off or is in reduced-motion mode.
  * @returns {boolean}
@@ -106,7 +121,7 @@ function cloneAt(sourceEl, left, top, sourceRect, opacity, z, scale, kind = 'cas
   g.style.display = '';
   g.removeAttribute('data-card');
   g.removeAttribute('data-flip-id');
-  document.body.appendChild(g);
+  trailParent().appendChild(g);
   const set = kind === 'drag' ? dragEls : cascadeEls;
   set.add(g);
   return g;
@@ -197,7 +212,7 @@ export function spawnTrailCascade({ sourceEl, sourceRect, targetRect }) {
  * @param {HTMLElement} opts.sourceEl   card DOM node to clone from
  * @param {{left:number, top:number, width:number, height:number}} opts.targetRect
  * @param {string} opts.dragId         dnd-kit active.id (used as throttle key)
- * @param {string|number} [opts.z]      z-index; default 15 (above cascade, below all cards)
+  * @param {string|number} [opts.z]      layer-local z-index (source-vs-trail order comes from the trail layer itself)
  */
 export function spawnDragSegment({ sourceEl, targetRect, dragId, z = '15' }) {
   if (!shouldShowTrail() || !sourceEl || !targetRect) return;
@@ -208,6 +223,42 @@ export function spawnDragSegment({ sourceEl, targetRect, dragId, z = '15' }) {
   const last = lastDragSpawn.get(dragId) ?? 0;
   if (now - last < interval) return;
   lastDragSpawn.set(dragId, now);
+  emitDragSegment(cfg, sourceEl, targetRect, z);
+}
+
+/**
+ * Batch continuous-drag spawn — one call per pointermove for the whole
+ * lifted run. Throttles ONCE per dragId (unlike N per-card
+ * `spawnDragSegment` calls, where card 0 consumed the throttle window and
+ * cards 1..n always bailed — the "only the leader trails" bug), then emits
+ * one segment per card so a dragged run leaves a wake mirroring its layout.
+ * Same MOTION.ghostTrail preset for every card — no per-card config split;
+ * the shared drag cap + eviction bounds DOM churn for large runs.
+ *
+ * @param {object} opts
+ * @param {Array<{sourceEl: HTMLElement, targetRect: {left:number, top:number, width:number, height:number}, z?: string|number}>} opts.segments
+ * @param {string} opts.dragId           dnd-kit active.id (throttle key)
+ */
+export function spawnDragRunSegments({ segments, dragId }) {
+  if (!shouldShowTrail() || !segments || segments.length === 0) return;
+  const cfg = MOTION.ghostTrail;
+  if (!cfg) return;
+  const interval = cfg.dragSpawnIntervalMs ?? 30;
+  const now = performance.now();
+  const last = lastDragSpawn.get(dragId) ?? 0;
+  if (now - last < interval) return;
+  lastDragSpawn.set(dragId, now);
+  for (const { sourceEl, targetRect, z = '15' } of segments) {
+    if (!sourceEl || !targetRect) continue;
+    emitDragSegment(cfg, sourceEl, targetRect, z);
+  }
+}
+
+/**
+ * Emit one continuous-drag segment: cap-evicted clone + fade tween.
+ * Assumes the caller already passed the throttle gate.
+ */
+function emitDragSegment(cfg, sourceEl, targetRect, z) {
   const maxConcurrentDrag = cfg.maxConcurrentDrag ?? 24;
   // Never stop emitting: if we're at the cap, dispose the oldest live
   // segment to make room instead of dropping this new spawn.

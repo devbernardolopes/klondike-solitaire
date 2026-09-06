@@ -282,6 +282,15 @@ export default function App() {
         }}
       />
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', minHeight: '100%', flex: 1 }}>
+        {/* Ghost-trail layer: trail segments parent here (not document.body)
+            so they share the board's stacking context — below in-flight
+            sources (movers 2000+, draw wrapper 10000, DragOverlay portal)
+            but above resting cards/overlays. See ghostTrail.js cloneAt. */}
+        <div
+          data-trail-layer
+          aria-hidden="true"
+          style={{ position: 'absolute', inset: 0, zIndex: 1900, pointerEvents: 'none' }}
+        />
         <Toolbar
           theme={theme}
           onThemeChange={setTheme}
