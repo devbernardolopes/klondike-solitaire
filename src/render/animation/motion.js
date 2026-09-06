@@ -228,8 +228,8 @@ export const MOTION = {
     accelFactor: 0.88,
     stagger: 0.24,
     ease: 'power2.in',
-    arcHeight: 60,
-    balancePop: 0.25,
+    arcHeight: 25,
+    balancePop: 0.75,
   },
 
   // Achievement toast. slide: off-screen entrance; fade: dismiss/timeout.
