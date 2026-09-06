@@ -41,6 +41,7 @@ import {
 import { prefetch as prefetchSeeds } from '../repo/seedRepository.js';
 import { hydrateEventCachesFromDexie } from '../repo/specialEventsRepository.js';
 import { hydrateAchievementCache } from '../repo/achievementRepository.js';
+import { hydrateRewardRules, refreshRewardRules } from '../repo/rewardRulesRepository.js';
 
 export default function App() {
   const [bootstrapReady, setBootstrapReady] = useState(false);
@@ -85,6 +86,11 @@ export default function App() {
       prefetchSeeds().catch(() => {});
       hydrateEventCachesFromDexie().catch(() => {});
       hydrateAchievementCache().catch(() => {});
+      // Reward config for the optimistic coin display (toast/flight/bump).
+      // Best-effort: failures keep the bundled fallback; the server stays
+      // authoritative on sync flush.
+      hydrateRewardRules().catch(() => {});
+      refreshRewardRules().catch(() => {});
       // Resolve the per-device id, then restore any in-progress session from
       // local Dexie (or Supabase for a linked account). Skip the initial deal
       // when a session was restored — this is a resume, not a fresh game.

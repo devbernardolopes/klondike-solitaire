@@ -57,7 +57,7 @@ export const useStatisticsStore = create((set, get) => ({
    *   seed?:number, gameKind?:'winning'|'random'|'daily'|'event', dailyDate?:string|null,
    *   eventDealId?:number|null, eventId?:string|null, eventDealReplayed?:boolean}} win
    */
-  recordWin: async ({ score, timeMs, moves, undos, seed, gameKind, dailyDate, eventDealId, eventId, eventDealReplayed, achievementTelemetry }) => {
+  recordWin: async ({ score, timeMs, moves, undos, seed, gameKind, dailyDate, eventDealId, eventId, eventDealReplayed, coinTotal, achievementTelemetry }) => {
     const stats = await addWin({ score, timeMs, moves, undos });
     set({ stats, gameWon: true });
     // Parallel remote-sync path: one RPC folds the win into game_results, coins,
@@ -85,9 +85,15 @@ export const useStatisticsStore = create((set, get) => ({
       p_ace_collector_eligible: achievementTelemetry?.aceCollectorEligible ?? true,
       p_aces_to_foundation: achievementTelemetry?.aceIdsToFoundation?.length ?? 0,
     });
-    // Optimistic local coin bump for instant UI feedback; the authoritative
-    // balance is re-synced from Supabase on the next boot via hydrateProfile().
-    useAuthStore.getState().addCoinsOptimistic(WIN_COIN_REWARD);
+    // Optimistic local coin bump for instant UI feedback, using the
+    // prospective total computed from the cached reward config (Board passes
+    // it in; falls back to the legacy flat constant). The authoritative
+    // balance is computed server-side on flush and reconciled via the
+    // coins_* breakdown (see sync/operations.js), with hydrateProfile() as
+    // the backstop on next boot.
+    useAuthStore.getState().addCoinsOptimistic(
+      Number.isFinite(coinTotal) ? coinTotal : WIN_COIN_REWARD,
+    );
     if (gameKind === 'event' && eventDealId != null) {
       try {
         patchCachedEventDealSolved(eventDealId);

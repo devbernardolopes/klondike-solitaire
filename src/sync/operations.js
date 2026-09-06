@@ -10,6 +10,8 @@
 import { supabase } from '../lib/supabaseClient.js';
 import { useAchievementEventsStore } from '../hooks/useAchievementEventsStore.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
+import { computeReward } from '../core/coinRewards.js';
+import { getRewardConfigSync } from '../repo/rewardRulesRepository.js';
 
 /**
  * @typedef {Object} OperationHandler
@@ -50,6 +52,30 @@ export const operations = {
     if (Array.isArray(ids) && ids.length > 0) {
       useAchievementEventsStore.getState().announce(ids);
     }
+    // Reconcile the optimistic coin display with the authoritative server
+    // breakdown. The win-time UI already bumped the prospective total
+    // (computed from the cached reward config); the server recomputed from
+    // its live tables, so any drift — config retuned while offline,
+    // rate-capped, or implausible submission paying 0 — is corrected here by
+    // the exact delta (usually 0, i.e. a no-op). Duplicate-delivery acks
+    // carry no coins_* keys by design and are skipped: adjusting twice would
+    // corrupt the balance. hydrateProfile()/pull remains the backstop.
+    try {
+      const serverTotal = data?.coins_awarded;
+      if (!Number.isFinite(serverTotal)) return;
+      const expected = computeReward(
+        {
+          gameKind: payload?.p_game_kind ?? null,
+          durationMs: payload?.p_duration_ms,
+          moves: payload?.p_moves,
+        },
+        getRewardConfigSync(),
+      ).total;
+      const delta = serverTotal - expected;
+      if (delta !== 0) {
+        useAuthStore.getState().addCoinsOptimistic(delta);
+      }
+    } catch {}
   },
 
   // Upsert the in-progress session for this (user, device). Keyed by

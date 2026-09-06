@@ -1,30 +1,107 @@
--- Canonical submit_game_result definition. The schema changes and reset RPC
--- are applied by klondike_supabase_migration_018.sql. This revision (paired
--- with migration_022.sql) adds p_event_deal_id: when a win comes from a
--- Special Events grid cell, the client passes that deal's id and this
--- function atomically (1) marks the deal solved, (2) if that was the deal
--- that completed its page, awards the page's coin bonus exactly once, and
--- (3) if that was the page that completed the event, flags the event as
--- fully solved exactly once (for the deferred prize feature). All three
--- steps are idempotent via on-conflict-do-nothing, on top of the existing
--- game_id dedup guard at the top of the function.
+-- ============================================================
+-- Klondike Solitaire — Supabase migration 032 (configurable coin rewards)
+-- Paste into: Supabase Dashboard > SQL Editor > New query > Run
+-- ============================================================
+-- Moves the win coin reward out of the hardcoded `v_coins_awarded := 10`
+-- literal into two admin-settable tables that the client NEVER writes:
 --
--- Revision paired with migration_032.sql: the per-win coin reward is no
--- longer the `v_coins_awarded := 10` literal. Coins are derived server-side
--- from the admin-settable coin_reward_rules / coin_reward_settings tables
--- (per-kind base + speed/move bonuses, daily rate cap, plausibility floors
--- that pay 0 + flag instead of raising). The RPC accepts FACTS only
--- (kind/moves/duration) — never an amount — and returns a coins_* breakdown
--- the client uses to reconcile its optimistic display. Signature unchanged.
+--   coin_reward_rules     per-game_kind base reward + speed/move bonuses
+--   coin_reward_settings  global knobs (fallback base, daily rate cap,
+--                         plausibility floors)
+--   coin_reward_flags     append-only anomaly log (rate-capped or
+--                         implausible submissions) for review — no client
+--                         access, written only by submit_game_result.
 --
--- The event page bonus (coin_reward on special_event_pages) still applies to
--- event deals same as any other win — on top of the computed base+bonuses.
+-- Anti-tamper model (see header of submit_game_result.sql):
+--   1. The RPC accepts FACTS only (kind/moves/duration) — never an amount.
+--      Coins are derived server-side from the tables above.
+--   2. (user_id, game_id) uniqueness already makes every game pay at most
+--      once; retries are harmless no-ops.
+--   3. Implausible submissions (below the sanity floors) still record the
+--      win/stats but pay 0 and are flagged — never raise, so a tampered
+--      client cannot poison its own sync queue with a permanent error.
+--   4. Daily rate cap bounds farming upside; capped wins still record.
+-- Client impact: NONE on the RPC signature (same 20 args). The response
+-- JSON gains coins_* breakdown keys the client uses to reconcile its
+-- optimistic display. Offline flow unchanged: the outbox submits facts on
+-- reconnect; the server computes + credits then.
+--
+-- To retune rewards, edit the tables directly, e.g.:
+--   update coin_reward_rules set base_reward = 20 where game_kind = 'daily';
+--   update coin_reward_settings set value_int = 100
+--     where key = 'max_rewarded_wins_per_day';
+-- ============================================================
 
-drop function if exists public.submit_game_result(
-  boolean, integer, integer, integer, integer, bigint, text, date, uuid,
-  boolean, boolean, integer, integer, integer, integer, boolean, boolean,
-  integer, jsonb
+-- ------------------------------------------------------------
+-- 1. Reward tables (admin-settable; client gets SELECT only)
+-- ------------------------------------------------------------
+
+create table if not exists public.coin_reward_rules (
+  game_kind text primary key,
+  base_reward integer not null default 0 check (base_reward >= 0),
+  fast_ms_threshold integer check (fast_ms_threshold is null or fast_ms_threshold > 0),
+  fast_bonus integer not null default 0 check (fast_bonus >= 0),
+  few_moves_threshold integer check (few_moves_threshold is null or few_moves_threshold > 0),
+  few_moves_bonus integer not null default 0 check (few_moves_bonus >= 0)
 );
+
+create table if not exists public.coin_reward_settings (
+  key text primary key,
+  value_int integer not null
+);
+
+-- Anomaly log: written by the RPC only. No client policies are created on
+-- purpose — with RLS enabled and zero policies, all client roles are denied
+-- while SECURITY DEFINER functions still write.
+create table if not exists public.coin_reward_flags (
+  id bigint generated always as identity primary key,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  game_id uuid,
+  reason text not null,
+  detail jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+alter table public.coin_reward_rules enable row level security;
+alter table public.coin_reward_settings enable row level security;
+alter table public.coin_reward_flags enable row level security;
+
+drop policy if exists "coin_reward_rules_public_read" on public.coin_reward_rules;
+create policy "coin_reward_rules_public_read"
+  on public.coin_reward_rules for select
+  to anon, authenticated
+  using (true);
+
+drop policy if exists "coin_reward_settings_public_read" on public.coin_reward_settings;
+create policy "coin_reward_settings_public_read"
+  on public.coin_reward_settings for select
+  to anon, authenticated
+  using (true);
+
+-- ------------------------------------------------------------
+-- 2. Seed defaults (insert-only — re-running never overwrites admin edits)
+-- ------------------------------------------------------------
+
+insert into public.coin_reward_rules
+  (game_kind, base_reward, fast_ms_threshold, fast_bonus, few_moves_threshold, few_moves_bonus)
+values
+  ('winning', 10, 300000, 3, 100, 2),
+  ('daily',   15, 300000, 3, 100, 2),
+  ('random',   5, 300000, 3, 100, 2),
+  ('event',   10, 300000, 3, 100, 2)
+on conflict (game_kind) do nothing;
+
+insert into public.coin_reward_settings (key, value_int)
+values
+  ('fallback_base_reward', 5),
+  ('max_rewarded_wins_per_day', 50),
+  ('min_win_duration_ms', 5000),
+  ('min_win_moves', 1)
+on conflict (key) do nothing;
+
+-- ------------------------------------------------------------
+-- 3. Reward computation inside submit_game_result (same 20-arg signature)
+-- ------------------------------------------------------------
 
 create or replace function public.submit_game_result(
   p_won boolean,
@@ -103,6 +180,9 @@ begin
     select 1 from public.game_results
     where user_id = v_user_id and game_id = v_game_id
   ) then
+    -- Duplicate delivery (offline retry / double submit): success WITHOUT
+    -- re-crediting. No coins_* breakdown here by design — the client already
+    -- applied its optimistic display on first win and must not adjust twice.
     return jsonb_build_object('newly_unlocked_achievement_ids', '{}'::text[], 'event_progress', '{}'::jsonb);
   end if;
 
@@ -142,8 +222,9 @@ begin
       and v_recovery_streak > 0
       and v_profile.loss_recovery_baseline_best_streak >= 1
       and v_new_streak > v_profile.loss_recovery_baseline_best_streak;
+
     -- Configurable reward: facts in (kind/moves/duration), coins out.
-    -- No amount is ever accepted from the client. See migration_032.sql.
+    -- No amount is ever accepted from the client.
     select * into v_rule
       from public.coin_reward_rules
       where game_kind = p_game_kind;
@@ -377,3 +458,18 @@ grant execute on function public.submit_game_result(
   boolean, boolean, integer, integer, integer, integer, boolean, boolean,
   integer, jsonb, bigint
 ) to authenticated;
+
+-- ============================================================
+-- Testing note (run as the table owner / service role):
+--   -- breakdown for a normal win:
+--   select public.submit_game_result(true, 120, 240000, 0, 0, 1, 'winning');
+--   -- expect coins_awarded = 10+3+0 = 13 (fast bonus, moves >= 100).
+--   -- unknown kind falls back to base 5, no bonuses:
+--   select public.submit_game_result(true, 50, 60000, 0, 0, 2, 'nope');
+--   -- duplicate game_id pays once:
+--   select public.submit_game_result(true, 50, 60000, 0, 0, 2, 'nope',
+--     null, '00000000-0000-0000-0000-000000000001');
+--   select public.submit_game_result(true, 50, 60000, 0, 0, 2, 'nope',
+--     null, '00000000-0000-0000-0000-000000000001');
+--   -- second call returns no coins_* keys (no double adjustment client-side).
+-- ============================================================

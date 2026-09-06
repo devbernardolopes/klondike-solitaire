@@ -18,11 +18,11 @@ import { useAchievementEventsStore } from './useAchievementEventsStore.js';
 // share a single in-flight init rather than racing two signInAnonymously calls.
 let initPromise = null;
 
-/** Flat coin reward for a win. Must match the amount hardcoded in the
- *  submit_game_result Postgres function (klondike_supabase_migration_002.sql,
- *  section 8). If that ever changes to a variable reward, this becomes
- *  purely an optimistic estimate reconciled on next boot — not a problem
- *  today since both sides use the same flat constant. */
+/** Legacy flat coin reward, now only a last-resort optimistic fallback when
+ *  no cached reward config is available (first boot ever, offline). The live
+ *  rewards come from the server-side coin_reward_rules table (migration_032);
+ *  the client mirrors them for display via core/coinRewards.js and the server
+ *  recomputes authoritatively on every sync flush. */
 export const WIN_COIN_REWARD = 10;
 
 /**

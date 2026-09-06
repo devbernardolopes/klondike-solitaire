@@ -18,6 +18,8 @@ import { useFoundationParticles } from '../render/animation/useFoundationParticl
 import { applyWoodFrame, removeWoodFrame } from '../render/themes/woodFrame.js';
 import { useToastStore, TOAST_PRIORITY } from '../hooks/useToastStore.js';
 import { WIN_COIN_REWARD, useAuthStore } from '../hooks/useAuthStore.js';
+import { computeReward } from '../core/coinRewards.js';
+import { getRewardConfigSync } from '../repo/rewardRulesRepository.js';
 import { playWinCascade } from '../render/animation/winCascade.js';
 import { isWon } from '../core/winDetection.js';
 import { solveAsync, STALE } from '../core/solverClient.js';
@@ -272,6 +274,21 @@ export default function Board() {
       };
       useUiStore.getState().setWinDialog(winSummary);
       const nextStreak = (prev.currentStreak || 0) + 1;
+      // Prospective coin award for the OPTIMISTIC display only (toast, coin
+      // flight, pre-sync bump). Computed from the cached reward config with
+      // the bundled fallback; the server recomputes authoritatively on flush
+      // and any difference is reconciled then (see sync/operations.js).
+      // Falls back to the legacy flat constant when no config is cached.
+      let coinReward = null;
+      try {
+        coinReward = computeReward(
+          { gameKind, durationMs, moves },
+          getRewardConfigSync(),
+        );
+      } catch {
+        coinReward = null;
+      }
+      const coinTotal = coinReward ? coinReward.total : WIN_COIN_REWARD;
       // Arm the win coin-flight display mask BEFORE recordWin's optimistic
       // +10 lands, capturing the pre-win balance so the Toolbar can count up
       // +1 per coin landing instead of flashing the full amount early.
@@ -284,7 +301,7 @@ export default function Board() {
         if (settings.coinFly && !reduced) {
           useUiStore.getState().startCoinFlight({
             base: useAuthStore.getState().coins,
-            total: WIN_COIN_REWARD,
+            total: coinTotal,
             // Identity key so the launcher self-heals only for THIS win —
             // never from a previous win's stale snapshot (toggle-off wins
             // must keep the instant +10, not resurrect an old base).
@@ -295,8 +312,8 @@ export default function Board() {
         /* arming is best-effort; a failure just means the instant +10 shows */
       }
       useToastStore.getState().push({
-        name: t('toasts.coinsAwarded.title', { count: WIN_COIN_REWARD }),
-        description: t('toasts.coinsAwarded.desc', { count: WIN_COIN_REWARD }),
+        name: t('toasts.coinsAwarded.title', { count: coinTotal }),
+        description: t('toasts.coinsAwarded.desc', { count: coinTotal }),
         icon: 'coins',
         priority: TOAST_PRIORITY.COINS,
       });
@@ -336,6 +353,7 @@ export default function Board() {
         eventDealId: gameKind === 'event' ? effectiveEventDealId : null,
         eventId: gameKind === 'event' ? effectiveEventId : null,
         eventDealReplayed: gameKind === 'event' ? eventDealReplayed : false,
+        coinTotal,
         achievementTelemetry,
       });
       // If this was a Winning Deal (it carries a pool seed), remember the seed

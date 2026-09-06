@@ -168,6 +168,26 @@ db.version(12).stores({
   achievementCatalogCache: 'id',
   achievementImageCache: 'imagePath',
 });
+// v13 adds the `rewardRules` cache: the server-side coin_reward_rules +
+// coin_reward_settings snapshot used for the optimistic (pre-sync) reward
+// display. Single keyed row; the server remains authoritative on flush.
+db.version(13).stores({
+  games: '++id, startedAt, finishedAt, won, durationMs',
+  settings: 'key',
+  stats: 'key',
+  playedSeeds: 'key',
+  dailyResults: 'date',
+  syncQueue: '++id, type, createdAt, dedupeKey',
+  activeSession: 'key',
+  usedRandomSeeds: 'seed',
+  seedCache: 'key',
+  eventProgress: null,
+  eventCatalogCache: 'eventId',
+  eventImageCache: 'imagePath',
+  achievementCatalogCache: 'id',
+  achievementImageCache: 'imagePath',
+  rewardRules: 'key',
+});
 
 /**
  * Insert a finished/abandoned game record.
