@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { compareEventSummaries, wonEventDealIdFromQueuedOp } from './specialEventsRepository.js';
+import { compareEventSummaries, isUpcomingEvent, wonEventDealIdFromQueuedOp } from './specialEventsRepository.js';
 import { collectSolvedIds, mergeSolvedIds, findNextUnsolvedDeal, getEventDealProgress } from './specialEventsProgress.js';
 
 const summary = (id, startsAt, title) => ({ id, startsAt, title: title ?? id });
@@ -24,6 +24,14 @@ test('compareEventSummaries breaks title ties by id', () => {
 test('compareEventSummaries sorts missing startsAt last (legacy cache rows)', () => {
   const list = [summary('legacy', null), summary('known', '2026-01-01T00:00:00Z'), summary('missing', undefined)];
   assert.deepEqual(list.sort(compareEventSummaries).map((s) => s.id), ['known', 'legacy', 'missing']);
+});
+
+test('isUpcomingEvent flags future startsAt as a disabled teaser', () => {
+  const now = Date.parse('2026-09-06T12:00:00Z');
+  assert.equal(isUpcomingEvent('2026-09-09T12:00:00Z', now), true);
+  assert.equal(isUpcomingEvent('2026-09-06T11:59:59Z', now), false);
+  assert.equal(isUpcomingEvent(null, now), false);
+  assert.equal(isUpcomingEvent('not-a-date', now), false);
 });
 
 const detailWith = (solvedIds) => ({

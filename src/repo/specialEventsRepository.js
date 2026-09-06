@@ -76,6 +76,15 @@ export function patchCachedEventDealSolved(dealId) {
   return patchedId;
 }
 
+// A teaser is an event whose start date is still in the future. RLS only
+// ever exposes teasers starting within 7 days (migration 031), while pages
+// and deals stay hidden until `starts_at` passes — so this flag doubles as
+// the list's disabled state.
+export function isUpcomingEvent(startsAt, nowMs = Date.now()) {
+  const t = startsAt ? Date.parse(startsAt) : NaN;
+  return Number.isFinite(t) && t > nowMs;
+}
+
 // List order: earliest `startsAt` first (sort_order stays in the DB but no
 // longer drives display). Same-date ties resolve alphabetically by title,
 // then by id for full determinism. Missing/unparseable dates sink last
@@ -175,6 +184,7 @@ function summaryFromDetail(detail) {
     gameKind: detail.gameKind,
     sortOrder: detail.sortOrder ?? null,
     startsAt: detail.startsAt ?? null,
+    isUpcoming: isUpcomingEvent(detail.startsAt),
     totalPages,
     completedPages,
     fullyCompleted: totalPages > 0 && completedPages >= totalPages,
@@ -235,6 +245,7 @@ function kickOffCatalogSync(eventIds) {
  * rather than throwing, so the modal can always render its empty state.
  * @returns {Promise<Array<{id:string, title:string, description:string|null,
  *   gameKind:string, sortOrder:number|null, startsAt:string|null,
+ *   isUpcoming:boolean,
  *   totalPages:number, completedPages:number, fullyCompleted:boolean,
  *   totalDeals:number, solvedDeals:number}>>}
  */
@@ -316,6 +327,7 @@ export async function fetchSpecialEvents() {
           gameKind: e.game_kind,
           sortOrder: e.sort_order ?? null,
           startsAt: e.starts_at ?? null,
+          isUpcoming: isUpcomingEvent(e.starts_at),
           totalPages,
           completedPages,
           fullyCompleted: totalPages > 0 && completedPages >= totalPages,

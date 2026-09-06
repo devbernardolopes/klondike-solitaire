@@ -49,7 +49,7 @@ export default function SpecialEventsModal() {
             const prevIds = prev.map((e) => e.id).join('|');
             const differ = freshIds !== prevIds || fresh.some((f, i) => {
               const c = prev[i];
-              return !c || f.totalPages !== c.totalPages || f.completedPages !== c.completedPages || f.fullyCompleted !== c.fullyCompleted || f.totalDeals !== c.totalDeals || f.solvedDeals !== c.solvedDeals || f.startsAt !== c.startsAt;
+              return !c || f.totalPages !== c.totalPages || f.completedPages !== c.completedPages || f.fullyCompleted !== c.fullyCompleted || f.totalDeals !== c.totalDeals || f.solvedDeals !== c.solvedDeals || f.startsAt !== c.startsAt || (f.isUpcoming ?? null) !== (c.isUpcoming ?? null);
             });
             return differ ? fresh.map(translateSpecialEvent) : prev;
           });
@@ -81,7 +81,7 @@ export default function SpecialEventsModal() {
           const cachedIds = cached.map((e) => e.id).join('|');
           const differ = freshIds !== cachedIds || fresh.some((f, i) => {
             const c = cached[i];
-            return !c || f.totalPages !== c.totalPages || f.completedPages !== c.completedPages || f.fullyCompleted !== c.fullyCompleted || f.totalDeals !== c.totalDeals || f.solvedDeals !== c.solvedDeals || f.startsAt !== c.startsAt;
+            return !c || f.totalPages !== c.totalPages || f.completedPages !== c.completedPages || f.fullyCompleted !== c.fullyCompleted || f.totalDeals !== c.totalDeals || f.solvedDeals !== c.solvedDeals || f.startsAt !== c.startsAt || (f.isUpcoming ?? null) !== (c.isUpcoming ?? null);
           });
           if (differ) setEvents(fresh.map(translateSpecialEvent));
         })
@@ -224,16 +224,24 @@ export default function SpecialEventsModal() {
               const pct = progressPercent(ev);
               const done = ev.fullyCompleted || pct === 100;
               const showProgress = !done && pct != null && pct > 0;
+              // RLS only exposes teasers starting within 7 days, so any
+              // future-dated row is an upcoming teaser: shown but disabled.
+              // The flag fallback covers legacy cached rows predating it.
+              const upcoming = ev.isUpcoming ?? (ev.startsAt ? Date.parse(ev.startsAt) > Date.now() : false);
               const availableDate = ev.totalPages === 0 ? formatEventDate(ev.startsAt) : null;
               return (
                 <button
                   key={ev.id}
                   type="button"
-                  style={btn}
-                  onClick={() => setDetail(ev.id)}
+                  style={upcoming ? { ...btn, opacity: 0.6, cursor: 'not-allowed' } : btn}
+                  disabled={upcoming}
+                  aria-disabled={upcoming || undefined}
+                  onClick={upcoming ? undefined : () => setDetail(ev.id)}
                 >
                   {ev.title}
-                  {done
+                  {upcoming
+                    ? null
+                    : done
                     ? <span style={COMPLETED_BADGE}>{t('specialEvents.completed')}</span>
                     : showProgress && <span style={PROGRESS_BADGE} aria-label={t('specialEvents.progress.percentAria', { percent: pct })}>{`${pct}%`}</span>}
                   {ev.totalPages === 0 && (
