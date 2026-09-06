@@ -37,6 +37,41 @@ export default function WinModal() {
   const replayGame = useGameStore((s) => s.replayGame);
 
   const panelRef = useRef(null);
+  // Live coin-flight cancel handle (owned by the entrance-done launcher
+  // below; cleared on close/unmount so a mid-flight exit snaps the display
+  // to the true, fully-credited balance).
+  const flightCancelRef = useRef(null);
+
+  // Win coin flight launcher. Runs from the entrance's own onEnterDone —
+  // exactly once, when the panel has landed — never from an `entering`-gated
+  // passive effect: on mount the passive effect still sees the first commit's
+  // `entering:false` before the layout update flushes, which used to launch
+  // the flight early and then immediately cancel it via effect cleanup.
+  // Each landing ticks the displayed balance +1 (store/DB already hold the
+  // full award underneath).
+  const launchCoinFlight = () => {
+    panelRef.current?.focus();
+    if (!useUiStore.getState().coinFlight.active) return;
+    const panel = panelRef.current;
+    const target = document.querySelector('[data-coin-balance]');
+    if (!panel || !target) {
+      useUiStore.getState().endCoinFlight();
+      return;
+    }
+    const pr = panel.getBoundingClientRect();
+    const tr = target.getBoundingClientRect();
+    // TEMP-DEBUG coinFly: remove once the fix is confirmed on Device A.
+    // eslint-disable-next-line no-console
+    console.debug('[coinFly] flight started', { total: useUiStore.getState().coinFlight.total });
+    const { cancel } = flyCoins({
+      from: { x: pr.left + pr.width / 2, y: pr.top + pr.height / 2 },
+      to: { x: tr.left + tr.width / 2, y: tr.top + tr.height / 2 },
+      count: useUiStore.getState().coinFlight.total,
+      targetEl: target,
+      onArrive: () => useUiStore.getState().landCoin(),
+    });
+    flightCancelRef.current = cancel;
+  };
 
   // Entrance animation: the panel grows from a tiny centered size to full size.
   // While it is still animating (`entering`), the modal must not be dismissable
@@ -46,44 +81,25 @@ export default function WinModal() {
   const entering = useModalEnter({
     panelRef,
     open: winDialogOpen,
-    onEnterDone: () => panelRef.current?.focus(),
+    onEnterDone: launchCoinFlight,
   });
 
   const backdrop = useModalBackdrop(entering ? () => {} : closeWinDialog);
 
-  // Win coin flight: once the entrance lands, fly one gold coin per reward
-  // unit from the panel center to the Toolbar balance; each landing ticks the
-  // displayed balance +1 (store/DB already hold the full award underneath).
-  // Closing early cancels the flight and drops the mask so the true balance
-  // shows — credits can never appear lost.
+  // Closing (or unmounting) mid-flight cancels the tweens without landings
+  // and drops the display mask so the true balance shows — credits can never
+  // appear lost. Idempotent: cancel/end are no-ops when nothing is live.
+  // NOTE: useModalEnter only depends on `open`, so the mount-captured
+  // onEnterDone closure above must stick to refs + getState (it does).
   useEffect(() => {
-    if (!winDialogOpen || !summary || entering) return undefined;
-    // TEMP-DEBUG coinFly: remove once the missing-flight issue is diagnosed.
-    // eslint-disable-next-line no-console
-    console.debug('[coinFly] modal effect', { entering, flight: useUiStore.getState().coinFlight });
-    if (!useUiStore.getState().coinFlight.active) return undefined;
-    const panel = panelRef.current;
-    const target = document.querySelector('[data-coin-balance]');
-    if (!panel || !target) {
-      // eslint-disable-next-line no-console
-      console.debug('[coinFly] missing els', { hasPanel: !!panel, hasTarget: !!target });
-      useUiStore.getState().endCoinFlight();
-      return undefined;
-    }
-    const pr = panel.getBoundingClientRect();
-    const tr = target.getBoundingClientRect();
-    const { cancel } = flyCoins({
-      from: { x: pr.left + pr.width / 2, y: pr.top + pr.height / 2 },
-      to: { x: tr.left + tr.width / 2, y: tr.top + tr.height / 2 },
-      count: useUiStore.getState().coinFlight.total,
-      targetEl: target,
-      onArrive: () => useUiStore.getState().landCoin(),
-    });
     return () => {
-      cancel();
+      try {
+        flightCancelRef.current?.();
+      } catch {}
+      flightCancelRef.current = null;
       useUiStore.getState().endCoinFlight();
     };
-  }, [winDialogOpen, summary, entering]);
+  }, [winDialogOpen]);
 
   // Focus the panel on open; Escape closes only when this is the topmost modal
   // and the entrance animation has finished.
