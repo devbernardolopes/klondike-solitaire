@@ -277,8 +277,8 @@ export default function SpecialEventsModal() {
             {t('specialEvents.filters.notCompleted')}
           </button>
         </div>
-        <div style={{ position: 'relative', flex: '0 1 auto', minHeight: 0, overflow: 'hidden' }}>
-        <div ref={scrollRef} className="modal-body-scroll" style={{ height: 'auto', maxHeight: 'calc(85vh - 74px)', overflowY: 'auto', paddingTop: OVERHANG_BADGE_LIFT + OVERHANG_BADGE_CLEARANCE, paddingBottom: 12, boxSizing: 'border-box' }}>
+        <div style={{ position: 'relative', flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div ref={scrollRef} className="modal-body-scroll" style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', paddingTop: OVERHANG_BADGE_LIFT + OVERHANG_BADGE_CLEARANCE, paddingBottom: 12, boxSizing: 'border-box' }}>
         <div ref={contentRef}>
         {loaded && visibleEvents.length === 0 ? (
           <p style={{ textAlign: 'center', opacity: 0.7, padding: '24px 0' }}>{t('specialEvents.noEvents')}</p>
