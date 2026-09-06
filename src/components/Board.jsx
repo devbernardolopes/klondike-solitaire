@@ -269,12 +269,9 @@ export default function Board() {
       // Skipped when the toggle is off or reduced-motion is requested — then
       // the balance simply jumps +10 as before. The DB/store award below is
       // untouched either way.
-      // TEMP-DEBUG coinFly: remove once the missing-flight issue is diagnosed.
       try {
         const settings = useSettingsStore.getState();
         const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        // eslint-disable-next-line no-console
-        console.debug('[coinFly] arm check', { coinFly: settings.coinFly, reduced, coins: useAuthStore.getState().coins });
         if (settings.coinFly && !reduced) {
           useUiStore.getState().startCoinFlight({
             base: useAuthStore.getState().coins,
@@ -284,12 +281,9 @@ export default function Board() {
             // must keep the instant +10, not resurrect an old base).
             key: winSummary,
           });
-          // eslint-disable-next-line no-console
-          console.debug('[coinFly] armed', useUiStore.getState().coinFlight);
         }
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.debug('[coinFly] arm threw', e);
+      } catch {
+        /* arming is best-effort; a failure just means the instant +10 shows */
       }
       useToastStore.getState().push({
         name: t('toasts.coinsAwarded.title', { count: WIN_COIN_REWARD }),

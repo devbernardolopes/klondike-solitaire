@@ -468,7 +468,7 @@ function ElapsedClock() {
               userSelect: 'none',
             }}
           >
-            <CoinsIcon size={14} /> <span data-coin-balance style={{ visibility: profileReady ? 'visible' : 'hidden', display: 'inline-block' }}>{visibleCoins({ coins, flight: coinFlight })}</span>
+            <span style={{ visibility: 'hidden' }} aria-hidden="true"><CoinsIcon size={14} /> 0</span>
           </span>
         </div>
 
@@ -476,7 +476,7 @@ function ElapsedClock() {
           style={{
             display: 'flex',
             justifyContent: 'center',
-            gap: 'clamp(24px, 6vw, 80px)',
+            gap: 'clamp(14px, 4vw, 80px)',
             alignItems: 'flex-start',
             pointerEvents: 'none',
           }}
@@ -489,6 +489,12 @@ function ElapsedClock() {
           <div style={hudColStyle}>
             <span style={hudLabelStyle}>{t('toolbar.moves')}</span>
             <span style={hudValueStyle}>{moves}</span>
+          </div>
+          <div style={hudColStyle}>
+            <span style={{ ...hudLabelStyle, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <CoinsIcon size={14} style={{ color: '#f0b429' }} />{t('toolbar.coins')}
+            </span>
+            <span data-coin-balance style={{ ...hudValueStyle, display: 'inline-block', visibility: profileReady ? 'visible' : 'hidden' }}>{visibleCoins({ coins, flight: coinFlight })}</span>
           </div>
         </div>
       </div>

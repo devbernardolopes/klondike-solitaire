@@ -39,6 +39,9 @@ export function whenTransitionDone(tid) {
 // the currently open win, so a stale snapshot can never mask a later win.
 let lastArmedFlight = null;
 
+/** Monotonic generation counter for coin flights (see landCoin epoch guard). */
+let coinFlightEpoch = 0;
+
 /** @returns {{base:number, total:number, key:object} | null} */
 export function getLastArmedFlight() {
   return lastArmedFlight;
@@ -192,18 +195,26 @@ export const useUiStore = create((set, get) => ({
   // already fully credited underneath) so the user sees +1 per coin landing.
   // Armed in Board's win effect before recordWin's optimistic bump lands, so
   // the display never flashes the full amount early.
-  coinFlight: { active: false, base: 0, landed: 0, total: 0 },
+  coinFlight: { active: false, base: 0, landed: 0, total: 0, epoch: 0 },
   /** Arm the display mask at win time (base = pre-win balance). */
   startCoinFlight: ({ base, total, key }) => {
     lastArmedFlight = { base, total, key };
-    set({ coinFlight: { active: true, base, landed: 0, total } });
+    coinFlightEpoch += 1;
+    set({ coinFlight: { active: true, base, landed: 0, total, epoch: coinFlightEpoch } });
   },
-  /** Tick the displayed count up by one (called per coin landing). */
-  landCoin: () =>
+  /**
+   * Tick the displayed count up by one (called per coin landing). Landings
+   * from a superseded flight (stale epoch) are ignored so overlapping wins
+   * can never over-count the display. Completing the count drops the mask —
+   * the display already equals the store value, so the handoff is seamless.
+   */
+  landCoin: (epoch) =>
     set((s) => {
       if (!s.coinFlight.active) return s;
+      if (epoch !== undefined && epoch !== s.coinFlight.epoch) return s;
       const landed = Math.min(s.coinFlight.landed + 1, s.coinFlight.total);
-      return { coinFlight: { ...s.coinFlight, landed } };
+      const active = landed < s.coinFlight.total;
+      return { coinFlight: { ...s.coinFlight, landed, active } };
     }),
   /** Drop the mask (flight done, skipped, or modal closed early). */
   endCoinFlight: () =>
@@ -396,18 +407,12 @@ export const useUiStore = create((set, get) => ({
 
   /** Show the win summary modal with the given summary payload. */
   setWinDialog: (summary) => {
-    // TEMP-DEBUG coinFly: remove once the premature mask-end is diagnosed.
-    // eslint-disable-next-line no-console
-    console.debug('[coinFly] setWinDialog');
     get().dismissNoHintsBanner();
     set({ winDialogOpen: true, winSummary: summary });
   },
 
   /** Dismiss the win summary modal. */
   closeWinDialog: () => {
-    // TEMP-DEBUG coinFly: remove once the premature mask-end is diagnosed.
-    // eslint-disable-next-line no-console
-    console.debug('[coinFly] closeWinDialog');
     get().dismissNoHintsBanner();
     set({ winDialogOpen: false });
   },

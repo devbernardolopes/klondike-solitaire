@@ -94,6 +94,7 @@
     "time": "Time",
     "score": "Score",
     "moves": "Moves",
+    "coins": "Coins",
     "seedHint": "Double-click to enter a specific seed",
     "dailyChallenge": "Daily Challenge: {{date}} ({{seed}})",
     "random": "Random ({{seed}})",

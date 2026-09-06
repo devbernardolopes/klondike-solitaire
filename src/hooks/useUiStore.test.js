@@ -65,3 +65,38 @@ test('ending one transition keeps concurrent transitions locked', () => {
   ui.clearAllTransitions();
   assert.equal(lockSizes(), 0);
 });
+
+test('coin flight counts up and auto-ends the mask at the final landing', () => {
+  const ui = useUiStore.getState();
+  ui.startCoinFlight({ base: 100, total: 3, key: {} });
+  let s = useUiStore.getState();
+  const epoch = s.coinFlight.epoch;
+  assert.equal(s.coinFlight.active, true);
+  ui.landCoin(epoch);
+  ui.landCoin(epoch);
+  s = useUiStore.getState();
+  assert.equal(s.coinFlight.active, true);
+  assert.equal(s.coinFlight.landed, 2);
+  ui.landCoin(epoch);
+  s = useUiStore.getState();
+  assert.equal(s.coinFlight.landed, 3);
+  assert.equal(s.coinFlight.active, false);
+});
+
+test('coin flight ignores landings from a superseded (stale-epoch) flight', () => {
+  const ui = useUiStore.getState();
+  ui.startCoinFlight({ base: 100, total: 10, key: {} });
+  const stale = useUiStore.getState().coinFlight.epoch;
+  ui.startCoinFlight({ base: 110, total: 10, key: {} });
+  const current = useUiStore.getState().coinFlight.epoch;
+  assert.notEqual(stale, current);
+  ui.landCoin(stale);
+  let s = useUiStore.getState();
+  assert.equal(s.coinFlight.landed, 0);
+  assert.equal(s.coinFlight.base, 110);
+  ui.landCoin(current);
+  s = useUiStore.getState();
+  assert.equal(s.coinFlight.landed, 1);
+  ui.endCoinFlight();
+  assert.equal(useUiStore.getState().coinFlight.active, false);
+});

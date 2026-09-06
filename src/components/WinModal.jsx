@@ -39,9 +39,9 @@ export default function WinModal() {
   const replayGame = useGameStore((s) => s.replayGame);
 
   const panelRef = useRef(null);
-  // Live coin-flight cancel handle (owned by the entrance-done launcher
-  // below; cleared on close/unmount so a mid-flight exit snaps the display
-  // to the true, fully-credited balance).
+  // Live coin-flight cancel handle, used only to supersede an older flight
+  // when a newer win launches (a live flight otherwise always runs to
+  // completion, even past modal dismissal).
   const flightCancelRef = useRef(null);
   // Launch-once guard shared by the entrance-done path and the failsafe
   // timeout below — whichever fires first wins, the other no-ops.
@@ -59,9 +59,6 @@ export default function WinModal() {
     const active = useUiStore.getState().coinFlight.active;
     const hasPanel = !!panelRef.current;
     const hasTarget = !!document.querySelector('[data-coin-balance]');
-    // TEMP-DEBUG coinFly: entry/bail logging (remove with the other TEMP-DEBUG logs).
-    // eslint-disable-next-line no-console
-    console.debug('[coinFly] launcher entry', { active, hasPanel, hasTarget });
     if (!active) {
       // Self-heal: the mask was armed at win time but ended prematurely
       // before launch (e.g. a dialog remount ran the close cleanup). Re-arm
@@ -73,33 +70,53 @@ export default function WinModal() {
       const snap = getLastArmedFlight();
       const current = useUiStore.getState().winSummary;
       if (snap && current && snap.key === current) {
-        // eslint-disable-next-line no-console
-        console.debug('[coinFly] self-heal re-arm', { base: snap.base, total: snap.total });
         useUiStore.getState().startCoinFlight(snap);
       } else {
-        // eslint-disable-next-line no-console
-        console.debug('[coinFly] launcher bail (stale or missing snapshot)');
         return;
       }
     }
+    // The flight outlives this modal by design: closing early (or navigating
+    // elsewhere) must NOT stop the coins — they finish on their own and the
+    // mask auto-ends at the final landing. So from here on there is no
+    // endCoinFlight on close; only a missing destination aborts (nothing to
+    // fly to).
     const panel = panelRef.current;
     const target = document.querySelector('[data-coin-balance]');
-    if (!panel || !target) {
+    let from;
+    if (panel) {
+      const pr = panel.getBoundingClientRect();
+      from = { x: pr.left + pr.width / 2, y: pr.top + pr.height / 2 };
+    } else {
+      // Modal already closed before launch (fast dismiss + failsafe path):
+      // lob from mid-screen instead of bailing.
+      let vw = 0;
+      let vh = 0;
+      try {
+        vw = window.innerWidth || 0;
+        vh = window.innerHeight || 0;
+      } catch {}
+      from = { x: vw / 2, y: vh * 0.35 };
+    }
+    if (!target) {
       useUiStore.getState().endCoinFlight();
       return;
     }
     flightLaunchedRef.current = true;
-    const pr = panel.getBoundingClientRect();
+    // Supersede any still-flying older flight (fast re-win): its sprites are
+    // removed and its late landings are ignored via the epoch guard.
+    try {
+      flightCancelRef.current?.();
+    } catch {}
     const tr = target.getBoundingClientRect();
-    // TEMP-DEBUG coinFly: remove once the fix is confirmed on Device A.
-    // eslint-disable-next-line no-console
-    console.debug('[coinFly] flight started', { total: useUiStore.getState().coinFlight.total });
+    // Capture this flight's epoch so its landings keep counting even if a
+    // newer win re-arms the mask underneath (stale landings are ignored).
+    const epoch = useUiStore.getState().coinFlight.epoch;
     const { cancel } = flyCoins({
-      from: { x: pr.left + pr.width / 2, y: pr.top + pr.height / 2 },
+      from,
       to: { x: tr.left + tr.width / 2, y: tr.top + tr.height / 2 },
       count: useUiStore.getState().coinFlight.total,
       targetEl: target,
-      onArrive: () => useUiStore.getState().landCoin(),
+      onArrive: () => useUiStore.getState().landCoin(epoch),
     });
     flightCancelRef.current = cancel;
   };
@@ -117,24 +134,13 @@ export default function WinModal() {
 
   const backdrop = useModalBackdrop(entering ? () => {} : closeWinDialog);
 
-  // Closing (or unmounting) mid-flight cancels the tweens without landings
-  // and drops the display mask so the true balance shows — credits can never
-  // appear lost. Idempotent: cancel/end are no-ops when nothing is live.
+  // NOTE: there is deliberately NO close/unmount cleanup that cancels the
+  // flight or ends the mask — a live flight survives modal dismissal and
+  // finishes on its own (mask auto-ends at the final landing). Superseded
+  // flights are cancelled by the next launcher run (see below), and tweens
+  // self-dispose, so nothing leaks.
   // NOTE: useModalEnter only depends on `open`, so the mount-captured
   // onEnterDone closure above must stick to refs + getState (it does).
-  useEffect(() => {
-    return () => {
-      // TEMP-DEBUG coinFly: remove once the premature mask-end is diagnosed.
-      // eslint-disable-next-line no-console
-      console.debug('[coinFly] cleanup end', { winDialogOpen });
-      try {
-        flightCancelRef.current?.();
-      } catch {}
-      flightCancelRef.current = null;
-      flightLaunchedRef.current = false;
-      useUiStore.getState().endCoinFlight();
-    };
-  }, [winDialogOpen]);
 
   // Failsafe: if the entrance onEnterDone path ever fails to launch (broken
   // tween, skipped entrance, hook regression), launch shortly after the
@@ -151,9 +157,6 @@ export default function WinModal() {
       try {
         if (flightLaunchedRef.current) return;
         if (!useUiStore.getState().coinFlight.active) return;
-        // TEMP-DEBUG coinFly: remove with the other TEMP-DEBUG logs (keep the timeout).
-        // eslint-disable-next-line no-console
-        console.debug('[coinFly] failsafe launch');
         launchCoinFlight();
       } catch {}
     }, ms);

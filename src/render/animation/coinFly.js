@@ -112,9 +112,6 @@ export function flyCoins({ from, to, count, targetEl, onArrive }) {
   }
 
   const layer = getLayer();
-  // TEMP-DEBUG coinFly: remove once the missing-flight issue is diagnosed.
-  // eslint-disable-next-line no-console
-  console.debug('[coinFly] flyCoins', { total, from, to, hasLayer: !!layer });
   if (!layer) {
     // No DOM to fly through (tests / fault isolation): report zero landings
     // so the caller falls back to the unmasked balance.
@@ -129,8 +126,36 @@ export function flyCoins({ from, to, count, targetEl, onArrive }) {
   const ease = cfg?.ease ?? 'power2.in';
   const arcHeight = cfg?.arcHeight ?? 60;
   const pop = cfg?.balancePop ?? 0.25;
-  // Lobbed path: rise to a midpoint above the straight line, then home in.
-  const mid = { x: (from.x + to.x) / 2, y: Math.min(from.y, to.y) - arcHeight };
+  // Viewport margin: waypoints are clamped inside the visible area so coins
+  // can never leave the screen, wherever the anchor sits (top edge, 360px
+  // widths, mid-flight resize). A 3-point lobbed path stays inside its
+  // endpoints' bbox, so clamping all three points contains the whole flight.
+  const margin = size / 2 + 8;
+  const clampPt = (p) => {
+    let vw = 0;
+    let vh = 0;
+    try {
+      vw = window.innerWidth || 0;
+      vh = window.innerHeight || 0;
+    } catch {}
+    if (!vw || !vh) return p;
+    return {
+      x: Math.min(Math.max(p.x, margin), Math.max(vw - margin, margin)),
+      y: Math.min(Math.max(p.y, margin), Math.max(vh - margin, margin)),
+    };
+  };
+  // Fresh destination per launch: the anchor may move mid-flight (modal
+  // closed, layout shift) and the flight outlives the Win modal by design.
+  const readTarget = () => {
+    try {
+      if (!targetEl || !document.body.contains(targetEl)) return null;
+      const r = targetEl.getBoundingClientRect();
+      if (!r.width && !r.height) return null;
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    } catch {
+      return null;
+    }
+  };
 
   const landOne = (coin, index) => {
     if (cancelled) return;
@@ -138,9 +163,6 @@ export function flyCoins({ from, to, count, targetEl, onArrive }) {
       coin.remove();
     } catch {}
     landed += 1;
-    // TEMP-DEBUG coinFly: remove once the missing-flight issue is diagnosed.
-    // eslint-disable-next-line no-console
-    console.debug('[coinFly] landed', index, { landed, total });
     try {
       onArrive?.(index);
     } catch {}
@@ -175,14 +197,16 @@ export function flyCoins({ from, to, count, targetEl, onArrive }) {
     const duration = firstDuration * Math.pow(accelFactor, i);
     const launch = () => {
       if (cancelled) return;
-      // TEMP-DEBUG coinFly: remove once the missing-flight issue is diagnosed.
-      // eslint-disable-next-line no-console
-      console.debug('[coinFly] launch coin', i, { duration });
+      // Re-resolve the destination at launch time (fresh per coin) and clamp
+      // every waypoint into the viewport.
+      const end = clampPt(readTarget() ?? to);
+      const start = clampPt(from);
+      const mid = clampPt({ x: (start.x + end.x) / 2, y: Math.min(start.y, end.y) - arcHeight });
       let coin = null;
       try {
         coin = makeCoin(size);
-        coin.style.left = `${from.x - size / 2}px`;
-        coin.style.top = `${from.y - size / 2}px`;
+        coin.style.left = `${start.x - size / 2}px`;
+        coin.style.top = `${start.y - size / 2}px`;
         layer.appendChild(coin);
       } catch {
         return;
@@ -192,13 +216,13 @@ export function flyCoins({ from, to, count, targetEl, onArrive }) {
           onComplete: () => landOne(coin, i),
         });
         tl.to(coin, {
-          x: mid.x - from.x,
-          y: mid.y - from.y,
+          x: mid.x - start.x,
+          y: mid.y - start.y,
           duration: duration * 0.45,
           ease: 'power2.out',
         }).to(coin, {
-          x: to.x - from.x,
-          y: to.y - from.y,
+          x: end.x - start.x,
+          y: end.y - start.y,
           duration: duration * 0.55,
           ease,
         });
