@@ -222,11 +222,11 @@ export const MOTION = {
   // arcHeight lifts the midpoint above the straight path for a lobbed feel.
   // balancePop is the Toolbar balance scale-pulse per landing.
   coinFly: {
-    count: 10,
-    size: 28,
-    firstDuration: 0.9,
+    count: 32,
+    size: 44,
+    firstDuration: 2.9,
     accelFactor: 0.88,
-    stagger: 0.12,
+    stagger: 0.24,
     ease: 'power2.in',
     arcHeight: 60,
     balancePop: 0.25,
