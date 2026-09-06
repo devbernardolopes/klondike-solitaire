@@ -22,6 +22,7 @@ function getLayer() {
     if (layerEl && document.body.contains(layerEl)) return layerEl;
     layerEl = document.createElement('div');
     layerEl.setAttribute('aria-hidden', 'true');
+    layerEl.setAttribute('data-coin-layer', '');
     // Above the Win modal (z 3000) so coins read as flying out of it;
     // pointer-events none so the flight never steals taps.
     layerEl.style.position = 'fixed';
@@ -111,6 +112,9 @@ export function flyCoins({ from, to, count, targetEl, onArrive }) {
   }
 
   const layer = getLayer();
+  // TEMP-DEBUG coinFly: remove once the missing-flight issue is diagnosed.
+  // eslint-disable-next-line no-console
+  console.debug('[coinFly] flyCoins', { total, from, to, hasLayer: !!layer });
   if (!layer) {
     // No DOM to fly through (tests / fault isolation): report zero landings
     // so the caller falls back to the unmasked balance.
@@ -134,6 +138,9 @@ export function flyCoins({ from, to, count, targetEl, onArrive }) {
       coin.remove();
     } catch {}
     landed += 1;
+    // TEMP-DEBUG coinFly: remove once the missing-flight issue is diagnosed.
+    // eslint-disable-next-line no-console
+    console.debug('[coinFly] landed', index, { landed, total });
     try {
       onArrive?.(index);
     } catch {}
@@ -168,6 +175,9 @@ export function flyCoins({ from, to, count, targetEl, onArrive }) {
     const duration = firstDuration * Math.pow(accelFactor, i);
     const launch = () => {
       if (cancelled) return;
+      // TEMP-DEBUG coinFly: remove once the missing-flight issue is diagnosed.
+      // eslint-disable-next-line no-console
+      console.debug('[coinFly] launch coin', i, { duration });
       let coin = null;
       try {
         coin = makeCoin(size);

@@ -58,10 +58,15 @@ export default function WinModal() {
   // shows — credits can never appear lost.
   useEffect(() => {
     if (!winDialogOpen || !summary || entering) return undefined;
+    // TEMP-DEBUG coinFly: remove once the missing-flight issue is diagnosed.
+    // eslint-disable-next-line no-console
+    console.debug('[coinFly] modal effect', { entering, flight: useUiStore.getState().coinFlight });
     if (!useUiStore.getState().coinFlight.active) return undefined;
     const panel = panelRef.current;
     const target = document.querySelector('[data-coin-balance]');
     if (!panel || !target) {
+      // eslint-disable-next-line no-console
+      console.debug('[coinFly] missing els', { hasPanel: !!panel, hasTarget: !!target });
       useUiStore.getState().endCoinFlight();
       return undefined;
     }
