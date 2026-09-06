@@ -17,6 +17,7 @@ import SeedInputModal from './SeedInputModal.jsx';
 import DailyChallengeModal from './DailyChallengeModal.jsx';
 import { formatTimeClock } from '../utils/formatTime.js';
 import { getCachedEventDetailSync } from '../repo/specialEventsRepository.js';
+import { visibleCoins } from './coinFlyDisplay.js';
 
 const UNDO_HOLD_DELAY_MS = 400;
 const UNDO_REPEAT_INTERVAL_MS = 200;
@@ -151,6 +152,7 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const setSeedInputDialogOpen = useUiStore((s) => s.setSeedInputDialogOpen);
   const setAnnounce = useUiStore((s) => s.setAnnounce);
   const coins = useAuthStore((s) => s.coins);
+  const coinFlight = useUiStore((s) => s.coinFlight);
   const profileReady = useAuthStore((s) => s.profileReady);
   const anyModalOpen = useUiStore(isAnyModalOpen);
   const newGameNeedsAttention = !anyModalOpen && !autoCompleting && (won || isOver);
@@ -466,7 +468,7 @@ function ElapsedClock() {
               userSelect: 'none',
             }}
           >
-            <CoinsIcon size={14} /> <span style={{ visibility: profileReady ? 'visible' : 'hidden' }}>{coins}</span>
+            <CoinsIcon size={14} /> <span data-coin-balance style={{ visibility: profileReady ? 'visible' : 'hidden', display: 'inline-block' }}>{visibleCoins({ coins, flight: coinFlight })}</span>
           </span>
         </div>
 

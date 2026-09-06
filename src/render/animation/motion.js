@@ -214,6 +214,24 @@ export const MOTION = {
     spin: 180,             // max rotation deg
   },
 
+  // Win coin flight: gold coins arc one by one from the Win modal center
+  // to the Toolbar coin balance, each landing ticking the displayed balance
+  // +1. Coins accelerate along the sequence: coin i flies for
+  // firstDuration * accelFactor^i seconds (accelFactor < 1) with an
+  // ease-in (power*.in) homing leg, launched every stagger seconds.
+  // arcHeight lifts the midpoint above the straight path for a lobbed feel.
+  // balancePop is the Toolbar balance scale-pulse per landing.
+  coinFly: {
+    count: 10,
+    size: 28,
+    firstDuration: 0.9,
+    accelFactor: 0.88,
+    stagger: 0.12,
+    ease: 'power2.in',
+    arcHeight: 60,
+    balancePop: 0.25,
+  },
+
   // Achievement toast. slide: off-screen entrance; fade: dismiss/timeout.
   toast: {
     slide: { duration: 0.3, ease: 'power2.out', distance: 44 },

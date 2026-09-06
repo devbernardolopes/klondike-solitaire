@@ -32,6 +32,8 @@
     "highlightCard": "Highlight Card",
     "foundationParticles": "Foundation Particles",
     "cardShake": "Invalid-Move Shake",
+    "coinFly": "Win Coin Flight",
+    "coinFly.desc": "Fly coins from the win modal to your balance, counting up one by one",
     "centiseconds": "Show Centiseconds",
     "centiseconds.desc": "Show hundredths of a second on the Time HUD (uses more CPU)",
     "hoverLift": "Hover Lift",

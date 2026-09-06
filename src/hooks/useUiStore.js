@@ -173,6 +173,29 @@ export const useUiStore = create((set, get) => ({
       return { shakingCards };
     }),
 
+  // Win coin-flight display mask (ephemeral, never persisted). While active
+  // the Toolbar shows base + landed instead of the store balance (which was
+  // already fully credited underneath) so the user sees +1 per coin landing.
+  // Armed in Board's win effect before recordWin's optimistic bump lands, so
+  // the display never flashes the full amount early.
+  coinFlight: { active: false, base: 0, landed: 0, total: 0 },
+  /** Arm the display mask at win time (base = pre-win balance). */
+  startCoinFlight: ({ base, total }) =>
+    set({ coinFlight: { active: true, base, landed: 0, total } }),
+  /** Tick the displayed count up by one (called per coin landing). */
+  landCoin: () =>
+    set((s) => {
+      if (!s.coinFlight.active) return s;
+      const landed = Math.min(s.coinFlight.landed + 1, s.coinFlight.total);
+      return { coinFlight: { ...s.coinFlight, landed } };
+    }),
+  /** Drop the mask (flight done, skipped, or modal closed early). */
+  endCoinFlight: () =>
+    set((s) => {
+      if (!s.coinFlight.active) return s;
+      return { coinFlight: { ...s.coinFlight, active: false } };
+    }),
+
   /**
    * Reserve the cards/locators a transition is about to animate. Called by the
    * store action right before it mutates state (synchronously, so the lock is

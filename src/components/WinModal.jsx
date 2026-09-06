@@ -6,9 +6,10 @@
 // mode or replay the exact same deal. Dismissed by clicking outside the panel,
 // pressing Escape, or either button.
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useUiStore } from '../hooks/useUiStore.js';
+import { flyCoins } from '../render/animation/coinFly.js';
 import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
 import { useGameStore } from '../hooks/useGameStore.js';
@@ -49,6 +50,35 @@ export default function WinModal() {
   });
 
   const backdrop = useModalBackdrop(entering ? () => {} : closeWinDialog);
+
+  // Win coin flight: once the entrance lands, fly one gold coin per reward
+  // unit from the panel center to the Toolbar balance; each landing ticks the
+  // displayed balance +1 (store/DB already hold the full award underneath).
+  // Closing early cancels the flight and drops the mask so the true balance
+  // shows — credits can never appear lost.
+  useEffect(() => {
+    if (!winDialogOpen || !summary || entering) return undefined;
+    if (!useUiStore.getState().coinFlight.active) return undefined;
+    const panel = panelRef.current;
+    const target = document.querySelector('[data-coin-balance]');
+    if (!panel || !target) {
+      useUiStore.getState().endCoinFlight();
+      return undefined;
+    }
+    const pr = panel.getBoundingClientRect();
+    const tr = target.getBoundingClientRect();
+    const { cancel } = flyCoins({
+      from: { x: pr.left + pr.width / 2, y: pr.top + pr.height / 2 },
+      to: { x: tr.left + tr.width / 2, y: tr.top + tr.height / 2 },
+      count: useUiStore.getState().coinFlight.total,
+      targetEl: target,
+      onArrive: () => useUiStore.getState().landCoin(),
+    });
+    return () => {
+      cancel();
+      useUiStore.getState().endCoinFlight();
+    };
+  }, [winDialogOpen, summary, entering]);
 
   // Focus the panel on open; Escape closes only when this is the topmost modal
   // and the entrance animation has finished.

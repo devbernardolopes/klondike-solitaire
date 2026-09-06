@@ -58,6 +58,7 @@ export default function SettingsOptionsModal({
   const tableTexture = useSettingsStore((s) => s.tableTexture);
   const boardFrame = useSettingsStore((s) => s.boardFrame);
   const cardShake = useSettingsStore((s) => s.cardShake);
+  const coinFly = useSettingsStore((s) => s.coinFly);
   const centisecondsOn = useSettingsStore((s) => s.centisecondsOn);
   const hoverLift = useSettingsStore((s) => s.hoverLift);
   const flipOvershoot = useSettingsStore((s) => s.flipOvershoot);
@@ -220,6 +221,15 @@ export default function SettingsOptionsModal({
             checked={!!cardShake}
             onChange={(v) => useSettingsStore.getState().setCardShake(v)}
             label={t('settings.cardShake')}
+          />
+        </div>
+
+        <div style={{ ...field, marginBottom: 20 }}>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.coinFly')}</label>
+          <ToggleSwitch
+            checked={!!coinFly}
+            onChange={(v) => useSettingsStore.getState().setCoinFly(v)}
+            label={t('settings.coinFly.desc')}
           />
         </div>
 

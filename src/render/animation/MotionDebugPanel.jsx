@@ -109,6 +109,13 @@ export function MotionDebugPanel() {
     radius: { value: MOTION.particles.radius, min: 20, max: 300, step: 5, onChange: (v) => (MOTION.particles.radius = v) },
     count: { value: MOTION.particles.count, min: 1, max: 30, step: 1, onChange: (v) => (MOTION.particles.count = v) },
   });
+  useControls('coinFly', {
+    firstDuration: { value: MOTION.coinFly.firstDuration, min: 0.2, max: 2, step: 0.05, onChange: (v) => (MOTION.coinFly.firstDuration = v) },
+    accelFactor: { value: MOTION.coinFly.accelFactor, min: 0.7, max: 1, step: 0.01, onChange: (v) => (MOTION.coinFly.accelFactor = v) },
+    stagger: { value: MOTION.coinFly.stagger, min: 0, max: 0.5, step: 0.01, onChange: (v) => (MOTION.coinFly.stagger = v) },
+    arcHeight: { value: MOTION.coinFly.arcHeight, min: 0, max: 200, step: 5, onChange: (v) => (MOTION.coinFly.arcHeight = v) },
+    size: { value: MOTION.coinFly.size, min: 16, max: 48, step: 1, onChange: (v) => (MOTION.coinFly.size = v) },
+  });
   useControls('toast', {
     slideDuration: { value: MOTION.toast.slide.duration, min: 0.05, max: 1, step: 0.01, onChange: (v) => (MOTION.toast.slide.duration = v) },
     fadeDuration: { value: MOTION.toast.fade.duration, min: 0.05, max: 1, step: 0.01, onChange: (v) => (MOTION.toast.fade.duration = v) },

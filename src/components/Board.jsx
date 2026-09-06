@@ -17,7 +17,7 @@ import { useStockDrawSlide } from '../render/animation/useStockDrawSlide.js';
 import { useFoundationParticles } from '../render/animation/useFoundationParticles.js';
 import { applyWoodFrame, removeWoodFrame } from '../render/themes/woodFrame.js';
 import { useToastStore, TOAST_PRIORITY } from '../hooks/useToastStore.js';
-import { WIN_COIN_REWARD } from '../hooks/useAuthStore.js';
+import { WIN_COIN_REWARD, useAuthStore } from '../hooks/useAuthStore.js';
 import { playWinCascade } from '../render/animation/winCascade.js';
 import { isWon } from '../core/winDetection.js';
 import { solveAsync, STALE } from '../core/solverClient.js';
@@ -262,6 +262,22 @@ export default function Board() {
         seed: gameState.seed,
       });
       const nextStreak = (prev.currentStreak || 0) + 1;
+      // Arm the win coin-flight display mask BEFORE recordWin's optimistic
+      // +10 lands, capturing the pre-win balance so the Toolbar can count up
+      // +1 per coin landing instead of flashing the full amount early.
+      // Skipped when the toggle is off or reduced-motion is requested — then
+      // the balance simply jumps +10 as before. The DB/store award below is
+      // untouched either way.
+      try {
+        const settings = useSettingsStore.getState();
+        const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (settings.coinFly && !reduced) {
+          useUiStore.getState().startCoinFlight({
+            base: useAuthStore.getState().coins,
+            total: WIN_COIN_REWARD,
+          });
+        }
+      } catch {}
       useToastStore.getState().push({
         name: t('toasts.coinsAwarded.title', { count: WIN_COIN_REWARD }),
         description: t('toasts.coinsAwarded.desc', { count: WIN_COIN_REWARD }),

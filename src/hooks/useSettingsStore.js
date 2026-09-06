@@ -58,6 +58,7 @@ const DEFAULTS = {
   centisecondsOn: true,
   hoverLift: true,
   flipOvershoot: true,
+  coinFly: true,
 };
 
 // Synchronous mirrors of the settings that affect first paint (theme + board
@@ -90,6 +91,7 @@ const LS_KEYS = {
   centisecondsOn: 'klondike:centisecondsOn',
   hoverLift: 'klondike:hoverLift',
   flipOvershoot: 'klondike:flipOvershoot',
+  coinFly: 'klondike:coinFly',
 };
 
 function readLanguageLS() {
@@ -155,6 +157,7 @@ export const useSettingsStore = create((set, get) => ({
   centisecondsOn: readLS(LS_KEYS.centisecondsOn, DEFAULTS.centisecondsOn),
   hoverLift: readLS(LS_KEYS.hoverLift, DEFAULTS.hoverLift),
   flipOvershoot: readLS(LS_KEYS.flipOvershoot, DEFAULTS.flipOvershoot),
+  coinFly: readLS(LS_KEYS.coinFly, DEFAULTS.coinFly),
   seenThemeItemIds: new Set(),
   seenAchievementIds: new Set(),
   themeModalTab: 'interface',
@@ -171,7 +174,7 @@ export const useSettingsStore = create((set, get) => ({
       'language', 'theme', 'interfaceTheme', 'deck', 'cardBack', 'handedness',
       'highlightCard', 'particles', 'cardEffects', 'tableTexture', 'boardFrame',
       'bounce', 'ghostEcho', 'ghostTrail', 'shimmer', 'uncover', 'winEnhanced', 'winCascade',
-      'hoverGlow', 'cardShake', 'centisecondsOn', 'hoverLift', 'flipOvershoot', 'seenThemeItemIds', 'seenAchievementIds', 'themeModalTab',
+      'hoverGlow', 'cardShake', 'centisecondsOn', 'hoverLift', 'flipOvershoot', 'coinFly', 'seenThemeItemIds', 'seenAchievementIds', 'themeModalTab',
     ];
     const SETTING_DEFAULTS = {
       theme: DEFAULTS.theme,
@@ -196,11 +199,12 @@ export const useSettingsStore = create((set, get) => ({
       centisecondsOn: DEFAULTS.centisecondsOn,
       hoverLift: DEFAULTS.hoverLift,
       flipOvershoot: DEFAULTS.flipOvershoot,
+      coinFly: DEFAULTS.coinFly,
       seenThemeItemIds: [],
       seenAchievementIds: [],
       themeModalTab: 'background',
     };
-    const [language, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostEcho, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, cardShake, centisecondsOn, hoverLift, flipOvershoot, seenThemeItemIdsArr, seenAchievementIdsArr, themeModalTab] = await getSettings(SETTING_KEYS, SETTING_DEFAULTS);
+    const [language, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostEcho, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, cardShake, centisecondsOn, hoverLift, flipOvershoot, coinFly, seenThemeItemIdsArr, seenAchievementIdsArr, themeModalTab] = await getSettings(SETTING_KEYS, SETTING_DEFAULTS);
     // Use the LS read for language as a last-resort fallback for the language
     // key (the per-key default above is a static DEFAULT_LOCALE; the LS version
     // may have detected the system locale on a previous session).
@@ -236,6 +240,7 @@ export const useSettingsStore = create((set, get) => ({
         ['centisecondsOn', centisecondsOn],
         ['hoverLift', hoverLift],
         ['flipOvershoot', flipOvershoot],
+        ['coinFly', coinFly],
       ];
       // Unconditional write: the in-memory value is the source of truth
       // (either just loaded from Dexie or the in-code DEFAULTS). Skipping
@@ -253,7 +258,7 @@ export const useSettingsStore = create((set, get) => ({
       if (i18n.language !== normalizedLang) await i18n.changeLanguage(normalizedLang);
       try { document.documentElement.lang = normalizedLang; } catch {}
     } catch {}
-    set({ language: normalizedLang, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostEcho, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, cardShake, centisecondsOn, hoverLift, flipOvershoot, seenThemeItemIds: seenThemeIds, seenAchievementIds: seenAchievementIds, themeModalTab, loaded: true });
+    set({ language: normalizedLang, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostEcho, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, cardShake, centisecondsOn, hoverLift, flipOvershoot, coinFly, seenThemeItemIds: seenThemeIds, seenAchievementIds: seenAchievementIds, themeModalTab, loaded: true });
   },
 
   /**
@@ -375,6 +380,7 @@ export const useSettingsStore = create((set, get) => ({
   setCentisecondsOn: (centisecondsOn) => { set({ centisecondsOn }); setSetting('centisecondsOn', centisecondsOn); writeLS(LS_KEYS.centisecondsOn, centisecondsOn); },
   setHoverLift: (hoverLift) => { set({ hoverLift }); setSetting('hoverLift', hoverLift); writeLS(LS_KEYS.hoverLift, hoverLift); },
   setFlipOvershoot: (flipOvershoot) => { set({ flipOvershoot }); setSetting('flipOvershoot', flipOvershoot); writeLS(LS_KEYS.flipOvershoot, flipOvershoot); },
+  setCoinFly: (coinFly) => { set({ coinFly }); setSetting('coinFly', coinFly); writeLS(LS_KEYS.coinFly, coinFly); },
 
   /**
    * Persist the last-selected Theme modal tab so re-opening restores it.
