@@ -108,5 +108,30 @@
         "coinReward": 200
       }
     ]
+  },
+  {
+    "id": "independence-day-2026",
+    "title": "Independence Day",
+    "description": "Independence Day commemorates the adoption of the Declaration of Independence with fireworks, patriotic displays, family gatherings, and celebrations of American freedom and history.",
+    "startsAt": "2026-07-04T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "independence-day-2026/page1.jpg",
+        "coinReward": 50
+      },
+      {
+        "gridSize": 3,
+        "imagePath": "independence-day-2026/page2.jpg",
+        "coinReward": 100
+      },
+      {
+        "gridSize": 4,
+        "imagePath": "independence-day-2026/page3.jpg",
+        "coinReward": 200
+      }
+    ]
   }
 ]
