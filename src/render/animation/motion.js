@@ -206,7 +206,7 @@ export const MOTION = {
   // Foundation particle burst: suit-glyph explosion from foundation center.
   // Outward accelerating (power2.in) up to radius px while fading.
   particles: {
-    count: 10,            // per burst
+    count: 32,            // per burst
     radius: 120,           // max travel px
     size: 44,             // glyph px
     duration: 0.55,       // per-particle lifetime (s)
