@@ -281,12 +281,14 @@
     transition: transform 0.12s ease, filter 0.12s ease;
   }
   @media (hover: hover) and (pointer: fine) {
-    html[data-hover-lift="on"] [data-card][data-face-up="on"]:hover:not([data-shaking]) {
+    html[data-hover-lift="on"] [data-card][data-face-up="on"]:hover:not([data-shaking]):not([data-animating]):not([data-sliding]) {
       transform: translateY(-2px);
       filter: brightness(1.12);
     }
   }
-  html[data-hover-lift="on"] [data-card][data-shaking] {
+  html[data-hover-lift="on"] [data-card][data-shaking],
+  html[data-hover-lift="on"] [data-card][data-animating],
+  html[data-hover-lift="on"] [data-card][data-sliding] {
     transition: none !important;
   }
   html[data-hover-lift="on"] [data-card]:active {

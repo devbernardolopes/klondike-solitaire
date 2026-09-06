@@ -212,6 +212,8 @@ function CardViewBase({ card, from, zIndex = 0, hidden = false, onAutoMove, hard
       role="button"
       data-card={card.id}
       data-face-up={card.faceUp ? 'on' : undefined}
+      data-animating={isAnimating ? 'on' : undefined}
+      data-sliding={isSliding ? 'on' : undefined}
       data-shaking={isShaking ? 'on' : undefined}
       data-flip-id={card.id}
       style={{
