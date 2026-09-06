@@ -169,7 +169,7 @@ export function spawnTrailCascade({ sourceEl, sourceRect, targetRect }) {
       // Never stop emitting: if we're at the cap, dispose the oldest live
       // segment to make room instead of dropping this new spawn.
       if (cascadeEls.size >= maxConcurrentCascade) evictOldest(cascadeEls);
-      const seg = cloneAt(sourceEl, left, top, sourceRect, opacity, '1400', scale, 'cascade');
+      const seg = cloneAt(sourceEl, left, top, sourceRect, opacity, '10', scale, 'cascade');
       seg._ghostTween = gsap.to(seg, {
         opacity: 0,
         scale: scale * 0.92,
@@ -197,9 +197,9 @@ export function spawnTrailCascade({ sourceEl, sourceRect, targetRect }) {
  * @param {HTMLElement} opts.sourceEl   card DOM node to clone from
  * @param {{left:number, top:number, width:number, height:number}} opts.targetRect
  * @param {string} opts.dragId         dnd-kit active.id (used as throttle key)
- * @param {string|number} [opts.z]      z-index; default 1450 (above the cascade)
+ * @param {string|number} [opts.z]      z-index; default 15 (above cascade, below all cards)
  */
-export function spawnDragSegment({ sourceEl, targetRect, dragId, z = '1450' }) {
+export function spawnDragSegment({ sourceEl, targetRect, dragId, z = '15' }) {
   if (!shouldShowTrail() || !sourceEl || !targetRect) return;
   const cfg = MOTION.ghostTrail;
   if (!cfg) return;
