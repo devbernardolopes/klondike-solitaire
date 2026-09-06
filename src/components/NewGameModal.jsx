@@ -93,9 +93,6 @@ export default function NewGameModal({ open, onReplay, canReplay, onWinningDeal,
       <div style={panel}>
         <h2 style={{ margin: '0 0 10px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>{t('newGameModal.title')}</h2>
         <ModalCloseButton onClick={onDismiss} />
-        <p style={{ margin: '0 0 18px', fontSize: 14, lineHeight: 1.45 }}>
-          {t('newGameModal.prompt')}
-        </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <button
             ref={firstBtnRef}
