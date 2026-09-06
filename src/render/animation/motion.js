@@ -182,7 +182,7 @@ export const MOTION = {
   //                        card run spawns. Raised to 48 to support a long drag
   //                        (which can spawn 30+ segments/s for several seconds)
   //                        without starving the cascade or each other.
-  ghostTrail: { duration: 1.75, ease: 'power1.out', alpha: 1.0, scale: { start: 0.95, end: 0.15 }, segments: 5, segmentInterval: 0.3, maxConcurrentCascade: 30, maxConcurrentDrag: 24, dragDuration: 1.8, dragSpawnIntervalMs: 75 },
+  ghostTrail: { duration: 0.75, ease: 'power1.out', alpha: 1.0, scale: { start: 0.95, end: 0.15 }, segments: 5, segmentInterval: 0.05, maxConcurrentCascade: 24, maxConcurrentDrag: 24, dragDuration: 0.75, dragSpawnIntervalMs: 75 },
 
   // Wood frame entry (future GSAP reveal; currently CSS texture).
   boardFrame: { duration: 0.4, ease: 'power2.out' },
