@@ -78,6 +78,27 @@ export async function addWin({ score, timeMs, moves, undos }) {
 }
 
 /**
+ * Best-effort inverse of addWin, used only when no pre-win snapshot exists
+ * for a server-rejected win. Totals and the win count are decremented;
+ * min/max/best records cannot be inverted and are left untouched (the
+ * snapshot-restore path in useStatisticsStore is the exact one).
+ * @param {{score:number, timeMs:number, moves:number, undos:number}} win
+ * @returns {Promise<CumulativeStats>} the updated row
+ */
+export async function removeWin({ score, timeMs, moves, undos }) {
+  const cur = await loadStats();
+  const next = {
+    ...cur,
+    totalGamesWon: Math.max(0, cur.totalGamesWon - 1),
+    totalTimeMsWon: Math.max(0, (cur.totalTimeMsWon || 0) - (timeMs || 0)),
+    totalMovesWon: Math.max(0, (cur.totalMovesWon || 0) - (moves || 0)),
+    currentStreak: Math.max(0, (cur.currentStreak || 0) - 1),
+  };
+  await saveStats(next);
+  return next;
+}
+
+/**
  * End a losing (non-winning) game: the current streak is broken, but the best
  * streak achieved so far is preserved.
  * @returns {Promise<CumulativeStats>} the updated row

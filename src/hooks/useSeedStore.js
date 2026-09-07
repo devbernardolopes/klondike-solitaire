@@ -29,6 +29,18 @@ export const useSeedStore = create((set, get) => ({
     savePlayedSeeds(next);
   },
 
+  /**
+   * Remove a seed from the won set (rollback for a server-rejected win).
+   * No-op if absent. Updates state synchronously and persists to Dexie.
+   * @param {number} seed
+   */
+  removePlayedSeed: (seed) => {
+    if (!get().playedSeeds.includes(seed)) return;
+    const next = get().playedSeeds.filter((s) => s !== seed);
+    set({ playedSeeds: next });
+    savePlayedSeeds(next);
+  },
+
   /** Clear the won-seed set so every pool seed becomes available again. */
   resetPlayed: () => {
     set({ playedSeeds: [] });

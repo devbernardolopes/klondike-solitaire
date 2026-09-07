@@ -102,3 +102,10 @@ test('freeze records a loss when the 500-move limit is hit', () => {
   assert.equal(s.isOver, true);
   assert.equal(s.overReason, 'moves');
 });
+
+test('getLimits exposes the bundled fallback pair by default', () => {
+  const limits = useStatsStore.getState().getLimits();
+  assert.deepEqual(limits, { maxTimeMs: MAX_TIME_MS, maxMoves: MAX_MOVES });
+  assert.equal(limits.maxTimeMs, 1800000);
+  assert.equal(limits.maxMoves, 500);
+});

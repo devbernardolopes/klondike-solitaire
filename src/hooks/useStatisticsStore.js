@@ -4,7 +4,11 @@
 // db helpers so values survive reloads and aggregate across sessions.
 
 import { create } from 'zustand';
-import { loadStats, addWin, addGamePlayed, recordLoss as dbRecordLoss, resetStats } from '../db/stats.js';
+import { loadStats, addWin, addGamePlayed, recordLoss as dbRecordLoss, removeWin, resetStats, saveStats } from '../db/stats.js';
+import { getDailyResult } from '../db/dailyResults.js';
+import { getWinSnapshot, saveWinSnapshot, clearWinSnapshot } from '../db/winSnapshots.js';
+import { useSeedStore } from './useSeedStore.js';
+import { revertOptimisticSolve } from '../repo/specialEventsRepository.js';
 // Imported lazily (only used inside finalizeGame at call-time) so the circular
 // reference with useStatsStore never resolves during module evaluation.
 import { useStatsStore } from './useStatsStore.js';
@@ -58,8 +62,39 @@ export const useStatisticsStore = create((set, get) => ({
    *   eventDealId?:number|null, eventId?:string|null, eventDealReplayed?:boolean}} win
    */
   recordWin: async ({ score, timeMs, moves, undos, seed, gameKind, dailyDate, eventDealId, eventId, eventDealReplayed, coinTotal, achievementTelemetry }) => {
+    // Snapshot the pre-win row (plus the side effects below) keyed by gameId
+    // so a server-rejected optimistic win (over-limit) can be rolled back
+    // exactly in applyRejectedWin. Best-effort: a snapshot failure must never
+    // block the win itself.
+    const gameId = achievementTelemetry?.gameId ?? null;
+    let prevStats = null;
+    let prevDaily = null;
+    let seedAdded = false;
+    try {
+      prevStats = await loadStats();
+      if (gameKind === 'daily' && dailyDate) {
+        prevDaily = await getDailyResult(dailyDate);
+      }
+      if (gameKind === 'winning' && seed != null) {
+        seedAdded = !useSeedStore.getState().playedSeeds.includes(seed);
+      }
+    } catch {}
     const stats = await addWin({ score, timeMs, moves, undos });
     set({ stats, gameWon: true });
+    if (gameId != null && prevStats) {
+      try {
+        await saveWinSnapshot({
+          gameId,
+          prevStats,
+          seedAdded,
+          seed: seed ?? null,
+          gameKind: gameKind ?? null,
+          dailyDate: gameKind === 'daily' ? (dailyDate ?? null) : null,
+          prevDaily,
+          eventDealId: gameKind === 'event' ? (eventDealId ?? null) : null,
+        });
+      } catch {}
+    }
     // Parallel remote-sync path: one RPC folds the win into game_results, coins,
     // streak, personal bests, achievement checks, played-seed tracking, Daily
     // Challenge results, and — when eventDealId is set — Special Events deal/page/
@@ -204,6 +239,71 @@ recordLoss: async () => {
       p_ace_ids_to_foundation: telemetry?.aceIdsToFoundation ?? [],
       p_event_deal_id: gameKind === 'event' ? (ui.currentEventDealId ?? gameStore.replaySpec?.eventDealId ?? null) : null,
     });
+  },
+
+  /**
+   * Roll back an optimistic win the server rejected as over-limit
+   * (limit_rejected). Restores the exact pre-win stats snapshot, then applies
+   * the loss the rejected game actually was (streak broken, best kept) —
+   * mirroring the server, which records the row as a loss. Also reverts the
+   * win's side effects: played-seed entry, daily best fold, and optimistic
+   * event solve. Coins need no handling here: the server returns
+   * coins_awarded 0 and the existing delta-reconcile subtracts the optimistic
+   * bump. Achievements need none either: the server suppresses unlocks for
+   * rejected wins. Does NOT enqueue anything — the server already recorded
+   * the loss via the rejected row. Never throws.
+   * @param {{gameId:string|null, payload?:object}} args
+   */
+  applyRejectedWin: async ({ gameId, payload = {} }) => {
+    try {
+      const snap = await getWinSnapshot(gameId).catch(() => null);
+      if (snap?.prevStats) {
+        await saveStats(snap.prevStats);
+        const stats = await dbRecordLoss();
+        set({ stats, gameWon: false });
+        if (snap.seedAdded && snap.seed != null) {
+          try {
+            useSeedStore.getState().removePlayedSeed(snap.seed);
+          } catch {}
+        }
+        if (snap.dailyDate) {
+          try {
+            const { db } = await import('../db/schema.js');
+            if (snap.prevDaily) {
+              await db.dailyResults.put(snap.prevDaily);
+            } else {
+              await db.dailyResults.delete(snap.dailyDate);
+            }
+          } catch {}
+        }
+        if (snap.eventDealId != null) {
+          try {
+            revertOptimisticSolve(snap.eventDealId);
+          } catch {}
+        }
+      } else {
+        const stats = await removeWin({
+          score: payload?.p_score ?? 0,
+          timeMs: payload?.p_duration_ms ?? 0,
+          moves: payload?.p_moves ?? 0,
+          undos: payload?.p_undos ?? 0,
+        });
+        set({ stats, gameWon: false });
+        if (payload?.p_game_kind === 'winning' && payload?.p_seed != null) {
+          try {
+            useSeedStore.getState().removePlayedSeed(payload.p_seed);
+          } catch {}
+        }
+        if (payload?.p_event_deal_id != null) {
+          try {
+            revertOptimisticSolve(payload.p_event_deal_id);
+          } catch {}
+        }
+      }
+    } catch {}
+    try {
+      await clearWinSnapshot(gameId);
+    } catch {}
   },
 
   /**

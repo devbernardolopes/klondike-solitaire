@@ -27,6 +27,7 @@ import { getAutoFireSolveOptions } from '../core/solver.js';
 import { playSfx } from '../audio/index.js';
 import { useTranslation } from 'react-i18next';
 import { getCachedEventDetailSync } from '../repo/specialEventsRepository.js';
+import { formatTimeClock } from '../utils/formatTime.js';
 import Pile from './Pile.jsx';
 import { CardFace, cardAriaString } from './CardView.jsx';
 
@@ -183,6 +184,7 @@ export default function Board() {
   const autoCompleteSetting = useSettingsStore((s) => s.autoComplete);
   const isOver = useStatsStore((s) => s.isOver);
   const overReason = useStatsStore((s) => s.overReason);
+  const getLimits = useStatsStore((s) => s.getLimits);
   const autoCompleting = useGameStore((s) => s.autoCompleting);
   const autoCompletingToWin = useGameStore((s) => s.autoCompletingToWin);
   const won = isWon(state);
@@ -627,8 +629,8 @@ export default function Board() {
             <strong style={{ display: 'block', fontSize: 18, marginBottom: 5 }}>{t('board.gameOver')}</strong>
             <span style={{ display: 'block', fontSize: 13, lineHeight: 1.4 }}>
               {overReason === 'moves'
-                ? t('board.moveLimit')
-                : t('board.timeLimit')}
+                ? t('board.moveLimit', { count: getLimits().maxMoves })
+                : t('board.timeLimit', { time: formatTimeClock(getLimits().maxTimeMs, { centiseconds: false }) })}
               {' '}{t('board.pressNewGame')}
             </span>
           </div>

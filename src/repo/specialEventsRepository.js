@@ -36,6 +36,72 @@ export function clearEventCatalogMemory() {
   catalogMemory.clear();
 }
 
+/**
+ * Reverse an optimistic solve: mark the deal unsolved in the in-memory
+ * catalog and the persisted Dexie rows, then recompute the (sticky) page
+ * states. Used when the server rejects an over-limit win. Page `completed`
+ * stays sticky-true by design (same semantics as the optimistic path); the
+ * next fetchEventDetail converges fully to server truth. Dispatches
+ * `event-detail-optimistic` so open UI refreshes.
+ * @param {number} dealId
+ */
+export function revertOptimisticSolve(dealId) {
+  if (dealId == null) return;
+  const unset = (detail) => {
+    if (!detail || !Array.isArray(detail.pages)) return false;
+    let touched = false;
+    for (const p of detail.pages) {
+      for (const d of p.deals || []) {
+        if (d.id === dealId && d.solved) {
+          d.solved = false;
+          touched = true;
+        }
+      }
+    }
+    if (!touched) return false;
+    let prevCompleted = true;
+    for (const p of detail.pages) {
+      const allSolved = p.deals.length > 0 && p.deals.every((d) => d.solved);
+      p.completed = p.completed || allSolved;
+      p.unlocked = prevCompleted;
+      prevCompleted = p.completed;
+    }
+    return true;
+  };
+  for (const [, detail] of catalogMemory) {
+    unset(detail);
+  }
+  (async () => {
+    try {
+      const rows = await db.eventCatalogCache.toArray();
+      for (const row of rows) {
+        if (!row.detail || !Array.isArray(row.detail.pages)) continue;
+        const hasDeal = row.detail.pages.some((p) => (p.deals || []).some((d) => d.id === dealId));
+        if (!hasDeal) continue;
+        const cloned = {
+          ...row.detail,
+          pages: row.detail.pages.map((p) => ({
+            ...p,
+            deals: (p.deals || []).map((d) => ({ ...d })),
+          })),
+        };
+        if (!unset(cloned)) continue;
+        await db.eventCatalogCache.put({ eventId: cloned.id, detail: cloned, updatedAt: Date.now() });
+        try {
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('event-detail-optimistic', { detail: { eventId: cloned.id, dealId } }));
+          }
+        } catch {}
+      }
+    } catch {}
+  })();
+  try {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('event-detail-optimistic', { detail: { dealId } }));
+    }
+  } catch {}
+}
+
 export function patchCachedEventDealSolved(dealId) {
   if (dealId == null) return null;
   let patchedId = null;

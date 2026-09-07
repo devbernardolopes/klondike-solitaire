@@ -88,6 +88,30 @@ export default function SettingsModal({
   const [hasNewTheme, setHasNewTheme] = useState(false);
   const [hasNewAchievements, setHasNewAchievements] = useState(false);
   const badgeDataReady = bootstrapReady && settingsLoaded && profileReady;
+  // The Store is server-driven (catalog + purchases), so it is only
+  // available while online. Track navigator status live so the entry
+  // re-enables on reconnect without reopening the menu.
+  const [isOnline, setIsOnline] = useState(() => (
+    typeof navigator === 'undefined' || navigator.onLine == null ? true : navigator.onLine
+  ));
+  useEffect(() => {
+    const update = () => {
+      try {
+        setIsOnline(typeof navigator === 'undefined' || navigator.onLine == null ? true : navigator.onLine);
+      } catch {}
+    };
+    update();
+    try {
+      window.addEventListener('online', update);
+      window.addEventListener('offline', update);
+    } catch {}
+    return () => {
+      try {
+        window.removeEventListener('online', update);
+        window.removeEventListener('offline', update);
+      } catch {}
+    };
+  }, []);
 
   // useAuthStore can't refresh these itself (circular import) — do it here,
   // after it has reset local caches and re-established an anonymous session.
@@ -335,11 +359,16 @@ export default function SettingsModal({
             </button>
             <button
               type="button"
-              style={{ ...btn, width: '100%' }}
+              style={{ ...btn, width: '100%', opacity: isOnline ? 1 : 0.5 }}
               onClick={() => setStoreOpen(true)}
+              disabled={!isOnline}
+              title={isOnline ? undefined : t('mainMenu.storeOffline')}
             >
               {t('mainMenu.store')}
             </button>
+            {!isOnline && (
+              <div style={{ fontSize: 12, opacity: 0.75, marginTop: -6 }}>{t('mainMenu.storeOffline')}</div>
+            )}
             <button
               type="button"
               style={{ ...btn, width: '100%' }}

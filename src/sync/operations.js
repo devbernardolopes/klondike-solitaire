@@ -10,8 +10,13 @@
 import { supabase } from '../lib/supabaseClient.js';
 import { useAchievementEventsStore } from '../hooks/useAchievementEventsStore.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
+import { useToastStore, TOAST_PRIORITY } from '../hooks/useToastStore.js';
+import i18n from '../i18n/index.js';
 import { computeReward } from '../core/coinRewards.js';
 import { getRewardConfigSync } from '../repo/rewardRulesRepository.js';
+import { refreshLimitRules } from '../repo/limitRulesRepository.js';
+import { clearWinSnapshot } from '../db/winSnapshots.js';
+import { formatTime } from '../utils/formatTime.js';
 
 /**
  * @typedef {Object} OperationHandler
@@ -76,6 +81,42 @@ export const operations = {
         useAuthStore.getState().addCoinsOptimistic(delta);
       }
     } catch {}
+    // A claimed win is always flushed (even a rejected one), so its pre-win
+    // snapshot is no longer needed once the server has judged it.
+    try {
+      await clearWinSnapshot(payload?.p_game_id);
+    } catch {}
+    // Over-limit win rejected by the server (migration_033): roll back the
+    // optimistic win (stats/seed/daily/event) and tell the player. The coin
+    // bump above already self-corrected (serverTotal 0 minus the bump), the
+    // game_results row was recorded as a loss (history stays truthful), and
+    // no achievements were unlocked server-side. This handler only runs on
+    // flush, so the message surfaces exactly when the user gets online.
+    // Lazy import: useStatisticsStore pulls a syncEngine chain that closes a
+    // static cycle back to this module; the import only resolves here at
+    // flush time (same pattern as recordLoss in useStatisticsStore).
+    if (data?.limit_rejected === true) {
+      try {
+        const { useStatisticsStore } = await import('../hooks/useStatisticsStore.js');
+        await useStatisticsStore.getState().applyRejectedWin({ gameId: payload?.p_game_id, payload });
+      } catch {}
+      // Converge the enforcement cache to the limits that judged this win.
+      try {
+        await refreshLimitRules();
+      } catch {}
+      try {
+        const maxMoves = data?.limit_max_moves;
+        const maxTimeMs = data?.limit_max_time_ms;
+        const overMoves = Number.isFinite(payload?.p_moves) && Number.isFinite(maxMoves) && payload.p_moves > maxMoves;
+        useToastStore.getState().push({
+          name: i18n.t('toasts.limitRejected.title'),
+          description: i18n.t('toasts.limitRejected.desc', overMoves
+            ? { limit: i18n.t('toasts.limitRejected.moves', { count: maxMoves }) }
+            : { limit: i18n.t('toasts.limitRejected.time', { time: formatTime(maxTimeMs) }) }),
+          priority: TOAST_PRIORITY.COINS,
+        });
+      } catch {}
+    }
   },
 
   // Upsert the in-progress session for this (user, device). Keyed by

@@ -25,6 +25,7 @@ import { startSyncEngine } from '../sync/syncEngine.js';
 import { pullRemoteProfile } from '../sync/pullProfile.js';
 import { checkAuthRedirectResult } from '../lib/authRedirect.js';
 import ConfirmModal from './ConfirmModal.jsx';
+import { formatTimeClock } from '../utils/formatTime.js';
 import { MotionDebugPanel } from '../render/animation/MotionDebugPanel.jsx';
 import { useTranslation } from 'react-i18next';
 import { useToastStore } from '../hooks/useToastStore.js';
@@ -44,6 +45,7 @@ import { hydrateEventCachesFromDexie } from '../repo/specialEventsRepository.js'
 import { isInterfaceTheme } from '../render/themes/interfaceThemes.js';
 import { hydrateAchievementCache } from '../repo/achievementRepository.js';
 import { hydrateRewardRules, refreshRewardRules } from '../repo/rewardRulesRepository.js';
+import { hydrateLimitRules, refreshLimitRules } from '../repo/limitRulesRepository.js';
 
 export default function App() {
   const [bootstrapReady, setBootstrapReady] = useState(false);
@@ -96,6 +98,10 @@ export default function App() {
       // authoritative on sync flush.
       hydrateRewardRules().catch(() => {});
       refreshRewardRules().catch(() => {});
+      // Game-over limit config the freeze checks enforce from. Best-effort:
+      // failures keep the bundled fallback; the server judges on flush.
+      hydrateLimitRules().catch(() => {});
+      refreshLimitRules().catch(() => {});
       // Resolve the per-device id, then restore any in-progress session from
       // local Dexie (or Supabase for a linked account). Skip the initial deal
       // when a session was restored — this is a resume, not a fresh game.
@@ -206,6 +212,7 @@ export default function App() {
   const setDailyChallengeOrigin = useUiStore((s) => s.setDailyChallengeOrigin);
   const overReason = useStatsStore((s) => s.overReason);
   const isOver = useStatsStore((s) => s.isOver);
+  const getLimits = useStatsStore((s) => s.getLimits);
   const lastNewGameMode = useUiStore((s) => s.lastNewGameMode);
   const currentGameKind = useUiStore((s) => s.currentGameKind);
   const dealNewGame = useGameStore((s) => s.dealNewGame);
@@ -349,8 +356,8 @@ export default function App() {
         title={t('toolbar.gameOver.title')}
         message={
           overReason === 'moves'
-            ? t('toolbar.gameOver.moves')
-            : t('toolbar.gameOver.time')
+            ? t('toolbar.gameOver.moves', { count: getLimits().maxMoves })
+            : t('toolbar.gameOver.time', { time: formatTimeClock(getLimits().maxTimeMs, { centiseconds: false }) })
         }
         confirmText={t('common.ok')}
         hideCancel

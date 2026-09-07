@@ -8,6 +8,8 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { useStatisticsStore } from './useStatisticsStore.js';
+import { useUiStore } from './useUiStore.js';
+import { limitsFor, FALLBACK_MAX_TIME_MS, FALLBACK_MAX_MOVES } from '../repo/limitRulesRepository.js';
 import {
   createAchievementTelemetry as createTelemetry,
   markHintUsed,
@@ -16,10 +18,26 @@ import {
   recordRecycle,
 } from '../core/achievementTelemetry.js';
 
-// Hard limits that end the game. Reaching either freezes the session so only a
-// new game can continue (timer stops, moves stop, interactions lock).
-export const MAX_TIME_MS = 60 * 30 * 1000; // 30:00
-export const MAX_MOVES = 500;
+// Bundled fallback for the hard limits that end the game (mirrors the
+// migration_033 seeds). The live values come from game_limit_rules via
+// limitRulesRepository (limitsFor); these constants are the offline-first
+// fallback and the floor the client enforces from before the first fetch.
+// Reaching either freezes the session so only a new game can continue
+// (timer stops, moves stop, interactions lock).
+export const MAX_TIME_MS = FALLBACK_MAX_TIME_MS; // 30:00
+export const MAX_MOVES = FALLBACK_MAX_MOVES; // 500
+
+function currentLimits() {
+  let kind = null;
+  try {
+    kind = useUiStore.getState().currentGameKind ?? null;
+  } catch {}
+  try {
+    return limitsFor(kind);
+  } catch {
+    return { maxTimeMs: MAX_TIME_MS, maxMoves: MAX_MOVES };
+  }
+}
 
 const createGameId = () =>
   globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -112,10 +130,10 @@ export const useStatsStore = create(subscribeWithSelector((set, get) => ({
   },
 
   /**
-   * Freeze the session: lock interaction and stop the clock. The 500th move is
-   * still applied before this fires (caller increments first), so the counter
-   * reads exactly MAX_MOVES. For the time limit we pin endTime so the display
-   * reads exactly 30:00 rather than a slightly-over 250ms-tick value.
+    * Freeze the session: lock interaction and stop the clock. The limit move is
+    * still applied before this fires (caller increments first), so the counter
+    * reads exactly the move limit. For the time limit we pin endTime so the
+    * display reads exactly the limit rather than a slightly-over 250ms-tick value.
    * @param {'time'|'moves'} reason
    */
   freeze: (reason) => {
@@ -128,7 +146,7 @@ export const useStatsStore = create(subscribeWithSelector((set, get) => ({
     if (get().pausedAt !== null) get().setFocused(true);
     set({ isOver: true, overReason: reason });
     if (startTime !== null && endTime === null) {
-      set({ endTime: reason === 'time' ? startTime + MAX_TIME_MS : Date.now() });
+      set({ endTime: reason === 'time' ? startTime + currentLimits().maxTimeMs : Date.now() });
     }
     // Game Over is a loss: break the winning streak immediately (mirrors
     // recordWin at win time and recordGamePlayed at timer-start time). This is
@@ -149,7 +167,7 @@ export const useStatsStore = create(subscribeWithSelector((set, get) => ({
     // Don't re-evaluate the time limit once the clock has stopped — a win pins
     // endTime without setting isOver, so isOver alone is not enough to bail out.
     if (isOver || startTime === null || endTime !== null) return;
-    if (get().getElapsedMs() >= MAX_TIME_MS) get().freeze('time');
+    if (get().getElapsedMs() >= currentLimits().maxTimeMs) get().freeze('time');
   },
 
   /**
@@ -181,8 +199,11 @@ export const useStatsStore = create(subscribeWithSelector((set, get) => ({
     if (isOver) return;
     const next = moves + n;
     set({ moves: next });
-    if (next >= MAX_MOVES) get().freeze('moves');
+    if (next >= currentLimits().maxMoves) get().freeze('moves');
   },
+
+  /** The enforced game-over limits for the current game kind. */
+  getLimits: () => currentLimits(),
 
   /** Record one (or more) undo actions performed in the current game. */
   addUndos: (n = 1) => {

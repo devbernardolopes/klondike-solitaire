@@ -27,6 +27,11 @@ export async function getDailyResult(date) {
   return row || null;
 }
 
+/** Delete a day's result (rollback for a server-rejected win). @param {string} date */
+export async function deleteDailyResult(date) {
+  await db.dailyResults.delete(date);
+}
+
 /**
  * Record (or fold into) a completed daily result. Best score is maximized;
  * best time/moves are minimized. Returns the updated row.

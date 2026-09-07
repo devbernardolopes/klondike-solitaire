@@ -1,37 +1,116 @@
--- Canonical submit_game_result definition. The schema changes and reset RPC
--- are applied by klondike_supabase_migration_018.sql. This revision (paired
--- with migration_022.sql) adds p_event_deal_id: when a win comes from a
--- Special Events grid cell, the client passes that deal's id and this
--- function atomically (1) marks the deal solved, (2) if that was the deal
--- that completed its page, awards the page's coin bonus exactly once, and
--- (3) if that was the page that completed the event, flags the event as
--- fully solved exactly once (for the deferred prize feature). All three
--- steps are idempotent via on-conflict-do-nothing, on top of the existing
--- game_id dedup guard at the top of the function.
+-- ============================================================
+-- Klondike Solitaire — Supabase migration 033 (DB-driven game-over limits)
+-- Paste into: Supabase Dashboard > SQL Editor > New query > Run
+-- ============================================================
+-- Moves the hard game-over limits (30:00 elapsed, 500 moves) out of the
+-- client constants (useStatsStore MAX_TIME_MS / MAX_MOVES) into
+-- admin-settable tables that the client NEVER writes:
 --
--- Revision paired with migration_032.sql: the per-win coin reward is no
--- longer the `v_coins_awarded := 10` literal. Coins are derived server-side
--- from the admin-settable coin_reward_rules / coin_reward_settings tables
--- (per-kind base + speed/move bonuses, daily rate cap, plausibility floors
--- that pay 0 + flag instead of raising). The RPC accepts FACTS only
--- (kind/moves/duration) — never an amount — and returns a coins_* breakdown
--- the client uses to reconcile its optimistic display. Signature unchanged.
+--   game_limit_rules      per-game_kind max elapsed time + max moves
+--   game_limit_settings   global fallback pair for unknown kinds
+--   game_limit_flags      append-only anomaly log (rejected over-limit
+--                         wins) for review — no client access, written
+--                         only by submit_game_result.
 --
--- The event page bonus (coin_reward on special_event_pages) still applies to
--- event deals same as any other win — on top of the computed base+bonuses.
+-- Enforcement model (mirrors the coin_reward_* tables from migration_032,
+-- adapted: limits must fire instantly and offline, so the client enforces
+-- from its cache while the server judges on flush):
+--   1. The client polls/checks against its cached config (bundled seed ->
+--      Dexie snapshot -> live SELECT) and freezes the game at the limit.
+--      Stale cache only ever enforces older values; behavior is unchanged
+--      when the cache matches the tables.
+--   2. The RPC accepts FACTS only (kind/moves/duration) — never a verdict.
+--      On flush it compares a claimed WIN against the live tables.
+--   3. An over-limit win is REJECTED: the game_results row is recorded as a
+--      LOSS (history/leaderboard stay truthful), no win credit is applied
+--      (no streak, no bests, no coins, no achievements, no played-seed /
+--      daily / event progress), a game_limit_flags row is written, and the
+--      response carries limit_rejected:true plus the authoritative limits
+--      so the client rolls back its optimistic win and refreshes its cache.
+--   4. Deliberately NOT an exception: a raise would fail the sync op
+--      forever and wedge the client's outbox (same flag-not-raise rule as
+--      implausible/rate-capped coin rewards).
+--   5. Losses are never judged (a limit-ended game legitimately exceeds).
+-- Client impact: NONE on the RPC signature (same 20 args). The response
+-- JSON gains limit_rejected / limit_max_time_ms / limit_max_moves keys the
+-- client uses to roll back a rejected optimistic win. Offline flow
+-- unchanged: the outbox submits facts on reconnect; the server judges then.
 --
--- Revision paired with migration_033.sql: claimed wins are judged against
--- the admin-settable game_limit_rules / game_limit_settings tables. An
--- over-limit win is REJECTED — recorded as a loss with no win credit
--- (no streak/bests/coins/achievements/seed/daily/event progress), flagged
--- in game_limit_flags, and reported via limit_rejected + the authoritative
--- limits so the client rolls back its optimistic win. Signature unchanged.
+-- Fairness note: rejection compares against the CURRENT table values, so a
+-- win queued offline under older (looser) limits is judged by the newer
+-- ones. Retune limits with that in mind; every rejection is logged with
+-- the facts and the limits that judged it.
+--
+-- To retune limits, edit the tables directly, e.g.:
+--   update game_limit_rules set max_moves = 600 where game_kind = 'daily';
+--   update game_limit_settings set value_int = 3600000
+--     where key = 'fallback_max_time_ms';
+-- ============================================================
 
-drop function if exists public.submit_game_result(
-  boolean, integer, integer, integer, integer, bigint, text, date, uuid,
-  boolean, boolean, integer, integer, integer, integer, boolean, boolean,
-  integer, jsonb
+-- ------------------------------------------------------------
+-- 1. Limit tables (admin-settable; client gets SELECT only)
+-- ------------------------------------------------------------
+
+create table if not exists public.game_limit_rules (
+  game_kind text primary key,
+  max_time_ms integer not null check (max_time_ms > 0),
+  max_moves integer not null check (max_moves > 0)
 );
+
+create table if not exists public.game_limit_settings (
+  key text primary key,
+  value_int integer not null
+);
+
+-- Anomaly log: written by the RPC only. No client policies are created on
+-- purpose — with RLS enabled and zero policies, all client roles are denied
+-- while SECURITY DEFINER functions still write.
+create table if not exists public.game_limit_flags (
+  id bigint generated always as identity primary key,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  game_id uuid,
+  reason text not null,
+  detail jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+alter table public.game_limit_rules enable row level security;
+alter table public.game_limit_settings enable row level security;
+alter table public.game_limit_flags enable row level security;
+
+drop policy if exists "game_limit_rules_public_read" on public.game_limit_rules;
+create policy "game_limit_rules_public_read"
+  on public.game_limit_rules for select
+  to anon, authenticated
+  using (true);
+
+drop policy if exists "game_limit_settings_public_read" on public.game_limit_settings;
+create policy "game_limit_settings_public_read"
+  on public.game_limit_settings for select
+  to anon, authenticated
+  using (true);
+
+-- ------------------------------------------------------------
+-- 2. Seed defaults (insert-only — re-running never overwrites admin edits)
+-- ------------------------------------------------------------
+
+insert into public.game_limit_rules (game_kind, max_time_ms, max_moves)
+values
+  ('winning', 1800000, 500),
+  ('daily',   1800000, 500),
+  ('random',  1800000, 500),
+  ('event',   1800000, 500)
+on conflict (game_kind) do nothing;
+
+insert into public.game_limit_settings (key, value_int)
+values
+  ('fallback_max_time_ms', 1800000),
+  ('fallback_max_moves', 500)
+on conflict (key) do nothing;
+
+-- ------------------------------------------------------------
+-- 3. Limit check inside submit_game_result (same 20-arg signature)
+-- ------------------------------------------------------------
 
 create or replace function public.submit_game_result(
   p_won boolean,
@@ -426,3 +505,21 @@ grant execute on function public.submit_game_result(
   boolean, boolean, integer, integer, integer, integer, boolean, boolean,
   integer, jsonb, bigint
 ) to authenticated;
+
+-- ============================================================
+-- Testing note (run as the table owner / service role):
+--   -- breakdown for a normal win:
+--   select public.submit_game_result(true, 120, 240000, 0, 0, 1, 'winning');
+--   -- expect coins_awarded = 10+3+0 = 13 (fast bonus, moves >= 100).
+--   -- unknown kind falls back to base 5, no bonuses:
+--   select public.submit_game_result(true, 50, 60000, 0, 0, 2, 'nope');
+--   -- duplicate game_id pays once:
+--   select public.submit_game_result(true, 50, 60000, 0, 0, 2, 'nope',
+--     null, '00000000-0000-0000-0000-000000000001');
+--   select public.submit_game_result(true, 50, 60000, 0, 0, 2, 'nope',
+--     null, '00000000-0000-0000-0000-000000000001');
+--   -- second call returns no coins_* keys (no double adjustment client-side).
+--   -- over-limit win is rejected and recorded as a loss:
+--   select public.submit_game_result(true, 600, 240000, 0, 0, 3, 'winning');
+--   -- expect limit_rejected = true, coins_awarded = 0, no newly unlocked ids.
+-- ============================================================

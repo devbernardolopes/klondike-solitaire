@@ -188,6 +188,29 @@ db.version(13).stores({
   achievementImageCache: 'imagePath',
   rewardRules: 'key',
 });
+// v14 adds the `limitRules` cache (server-side game_limit_rules +
+// game_limit_settings snapshot the hard game-over limits enforce from) and
+// `winSnapshots` (pre-win stats snapshots keyed by gameId, so a
+// server-rejected optimistic win can be rolled back exactly).
+db.version(14).stores({
+  games: '++id, startedAt, finishedAt, won, durationMs',
+  settings: 'key',
+  stats: 'key',
+  playedSeeds: 'key',
+  dailyResults: 'date',
+  syncQueue: '++id, type, createdAt, dedupeKey',
+  activeSession: 'key',
+  usedRandomSeeds: 'seed',
+  seedCache: 'key',
+  eventProgress: null,
+  eventCatalogCache: 'eventId',
+  eventImageCache: 'imagePath',
+  achievementCatalogCache: 'id',
+  achievementImageCache: 'imagePath',
+  rewardRules: 'key',
+  limitRules: 'key',
+  winSnapshots: 'gameId',
+});
 
 /**
  * Insert a finished/abandoned game record.
