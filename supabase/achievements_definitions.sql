@@ -1,5 +1,5 @@
 -- ============================================================
--- Catalog dump — generated 2026-09-07T16:53:23.835Z
+-- Catalog dump — generated 2026-09-07T18:25:55.164Z
 -- Source of truth for scripts/i18n-sync.mjs. Do not edit by hand.
 -- Re-run `npm run catalog:dump` after any dashboard edits.
 -- Idempotent: safe to paste into Supabase SQL editor and re-run.
