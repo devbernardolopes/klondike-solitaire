@@ -34,6 +34,8 @@
     "cardShake": "Invalid-Move Shake",
     "coinFly": "Win Coin Flight",
     "coinFly.desc": "Fly coins from the win modal to your balance, counting up one by one",
+    "autoComplete": "Auto-Complete",
+    "autoComplete.desc": "Automatically finish the game when every remaining move is forced",
     "centiseconds": "Show Centiseconds",
     "centiseconds.desc": "Show hundredths of a second on the Time HUD (uses more CPU)",
     "hoverLift": "Hover Lift",

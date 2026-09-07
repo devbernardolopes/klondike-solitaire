@@ -62,6 +62,7 @@ export default function SettingsOptionsModal({
   const boardFrame = useSettingsStore((s) => s.boardFrame);
   const cardShake = useSettingsStore((s) => s.cardShake);
   const coinFly = useSettingsStore((s) => s.coinFly);
+  const autoComplete = useSettingsStore((s) => s.autoComplete);
   const centisecondsOn = useSettingsStore((s) => s.centisecondsOn);
   const hoverLift = useSettingsStore((s) => s.hoverLift);
   const flipOvershoot = useSettingsStore((s) => s.flipOvershoot);
@@ -364,6 +365,15 @@ export default function SettingsOptionsModal({
             onChange={(v) => useSettingsStore.getState().setGhostTrail(v)}
             label={t('settings.ghostTrail')}
             disabled={!cardEffects || osReducesMotion}
+          />
+        </div>
+
+        <div style={{ ...field, marginBottom: 20 }}>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.autoComplete')}</label>
+          <ToggleSwitch
+            checked={!!autoComplete}
+            onChange={(v) => useSettingsStore.getState().setAutoComplete(v)}
+            label={t('settings.autoComplete.desc')}
           />
         </div>
 

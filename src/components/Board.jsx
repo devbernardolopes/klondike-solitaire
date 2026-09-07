@@ -179,6 +179,7 @@ export default function Board() {
   const setAnnounce = useUiStore((s) => s.setAnnounce);
   const announce = useUiStore((s) => s.announce);
   const handedness = useSettingsStore((s) => s.handedness);
+  const autoCompleteSetting = useSettingsStore((s) => s.autoComplete);
   const isOver = useStatsStore((s) => s.isOver);
   const overReason = useStatsStore((s) => s.overReason);
   const autoCompleting = useGameStore((s) => s.autoCompleting);
@@ -398,6 +399,7 @@ export default function Board() {
   useEffect(() => {
     if (won) return;
     if (useGameStore.getState().autoCompleting) return;
+    if (useSettingsStore.getState().autoComplete === false) return;
     // Skip the transient pre-deal state: its tableau is empty (vacuously
     // "all face-up"), so we'd start an auto-complete on a state that is about
     // to be replaced by the real deal — which would throw mid-sequence.
@@ -423,7 +425,7 @@ export default function Board() {
       }
     });
     return () => cancel();
-  }, [state, won, autoCompleting]);
+  }, [state, won, autoCompleting, autoCompleteSetting]);
 
   // Global keyboard shortcuts (single-letter, no modifiers). Cards and piles
   // handle their own Enter/Space activation, so these never conflict with them.
