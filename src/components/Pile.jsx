@@ -11,6 +11,7 @@ import { useGameStore } from '../hooks/useGameStore.js';
 import { useUiStore, findCardLocator } from '../hooks/useUiStore.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { MOTION } from '../render/animation/motion.js';
+import { computeTableauFan, resolveTableauMins, tableauTransition } from '../render/layout/tableauLayout.js';
 import { shouldRenderPileHoverOverlay } from './pileHoverOverlay.js';
 
 /**
@@ -58,12 +59,10 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
     showHover = isOver && !!draggingCard && draggingCard.rank === 1;
   }
 
-  // Adaptive tableau spacing: each card's vertical offset depends on whether it
-  // is face-down (tight peek) or face-up (normal fan). Face-down spacing is a
-  // hard floor because it communicates unrevealed game state; only face-up
-  // spacing is compressed when the pile exceeds the preferred height.
-  const FAN_DOWN_MIN = metrics?.fanDownMin ?? 3;
-  const FAN_UP_EMERGENCY_MIN = metrics?.fanUpEmergencyMin ?? 8;
+  // Adaptive tableau spacing + height smoothing. Numbers and conditions are
+  // owned by render/layout/tableauLayout.js (TABLEAU_LAYOUT) — tweak there.
+  // Face-down spacing is a hard floor (unrevealed state); only face-up spacing
+  // compresses when the pile exceeds its vertical budget.
 
   // Visual freeze for cards in flight: hide the moving card from the resting
   // stack so the moving wrapper (lifted above) renders cleanly above the pile.
@@ -71,67 +70,42 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
   const freezeVisual = fanned && isAnimating && animatingIdsSet && cards.some((c) => animatingIdsSet.has(c.id));
   const effectiveCardsForVisual = freezeVisual ? cards.filter((c) => !animatingIdsSet.has(c.id)) : null;
   const effectiveLenForVisual = freezeVisual ? effectiveCardsForVisual.length : cards.length;
+  const { downMin, upEmergencyMin } = resolveTableauMins(metrics);
 
   let tops = null;
   let pileHeight = null;
   if (fanned && metrics && metrics.cardH) {
-    const { cardH, fanUp: fanUpMax, fanDown: fanDownMax, fanDownMin, fanUpEmergencyMin, avail } = metrics;
-    const downMin = fanDownMin ?? FAN_DOWN_MIN;
-    const upEmergencyMin = fanUpEmergencyMin ?? FAN_UP_EMERGENCY_MIN;
-    const offsetCount = Math.max(0, cards.length - 1);
-    let nDown = 0, nUp = 0;
-    for (let i = 0; i < offsetCount; i++) {
-      if (cards[i].faceUp) nUp++; else nDown++;
-    }
-
-    let fanDown = fanDownMax;
-    let fanUp = fanUpMax;
-    const naturalExtra = nDown * fanDownMax + nUp * fanUpMax;
-
-    if (avail > 0 && naturalExtra > avail) {
-      fanDown = downMin;
-      const remaining = avail - nDown * downMin;
-      const strictFanUp = nUp > 0 ? Math.max(remaining / nUp, 0) : fanUpMax;
-      fanUp = Math.max(strictFanUp, upEmergencyMin);
-    }
-
-    tops = [];
-    let acc = 0;
-    for (let i = 0; i < cards.length; i++) {
-      tops.push(acc);
-      if (i < cards.length - 1) acc += cards[i].faceUp ? fanUp : fanDown;
-    }
-    pileHeight = cardH + acc;
+    const r = computeTableauFan(cards, {
+      cardH: metrics.cardH,
+      fanUpMax: metrics.fanUp,
+      fanDownMax: metrics.fanDown,
+      downMin,
+      upEmergencyMin,
+      avail: metrics.avail,
+    });
+    tops = r.tops;
+    pileHeight = r.pileHeight;
   }
 
   let visualPileHeight = null;
   if (fanned && freezeVisual && metrics && metrics.cardH) {
-    const { cardH, fanUp: fanUpMax, fanDown: fanDownMax, fanDownMin, fanUpEmergencyMin, avail } = metrics;
-    const downMin = fanDownMin ?? FAN_DOWN_MIN;
-    const upEmergencyMin = fanUpEmergencyMin ?? FAN_UP_EMERGENCY_MIN;
-    const effLen = effectiveLenForVisual;
-    const offsetCount = Math.max(0, effLen - 1);
-    let nDown = 0, nUp = 0;
-    for (let i = 0; i < offsetCount; i++) {
-      if (effectiveCardsForVisual[i].faceUp) nUp++; else nDown++;
-    }
-    let fanDown = fanDownMax;
-    let fanUp = fanUpMax;
-    const naturalExtra = nDown * fanDownMax + nUp * fanUpMax;
-    if (avail > 0 && naturalExtra > avail) {
-      fanDown = downMin;
-      const remaining = avail - nDown * downMin;
-      const strictFanUp = nUp > 0 ? Math.max(remaining / nUp, 0) : fanUpMax;
-      fanUp = Math.max(strictFanUp, upEmergencyMin);
-    }
-    let effAcc = 0;
-    for (let i = 0; i < effLen - 1; i++) effAcc += effectiveCardsForVisual[i].faceUp ? fanUp : fanDown;
-    visualPileHeight = effLen === 0 ? cardH : cardH + effAcc;
+    const r = computeTableauFan(effectiveCardsForVisual, {
+      cardH: metrics.cardH,
+      fanUpMax: metrics.fanUp,
+      fanDownMax: metrics.fanDown,
+      downMin,
+      upEmergencyMin,
+      avail: metrics.avail,
+    });
+    visualPileHeight = effectiveLenForVisual === 0 ? metrics.cardH : r.pileHeight;
   } else if (fanned && freezeVisual) {
     visualPileHeight = null;
   } else {
     visualPileHeight = pileHeight;
   }
+
+  const smoothTop = fanned && tops ? tableauTransition('top') : undefined;
+  const smoothHeight = fanned ? tableauTransition('height') : undefined;
 
   // Position a hint highlight so its TOP edge starts at the relevant card
   // rather than at the top of the whole pile (which would also ring the
@@ -227,6 +201,7 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
         boxShadow: fanned ? 'none' : 'var(--pile-empty-shadow, none)',
         cursor: onClick && !locked ? 'pointer' : 'default',
         outlineOffset: 2,
+        transition: smoothHeight,
       }}
       data-loc={loc}
     >
@@ -340,12 +315,14 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
       {cards.map((card, i) => (
         <div
           key={card.id}
+          data-tableau-pos={fanned ? '' : undefined}
           style={{
             position: 'absolute',
             top: tops ? `${tops[i]}px` : fanned ? `calc(${i} * var(--tableau-fan))` : 0,
             left: 0,
             width: 'var(--card-width)',
             zIndex: i,
+            transition: smoothTop,
           }}
         >
           <CardView

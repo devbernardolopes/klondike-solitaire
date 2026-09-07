@@ -22,12 +22,13 @@ import { useUiStore } from './useUiStore.js';
 import { getTableauRun } from '../core/rules.js';
 import { spawnDragRunSegments, endDrag } from '../render/animation/ghostTrail.js';
 import { audioEngine } from '../audio/AudioEngine.js';
+import { TABLEAU_LAYOUT } from '../render/layout/tableauLayout.js';
 
 // Tableau fan offset per card in a multi-card run. Mirrors the CSS variable
 // used by Pile.jsx for the resting state; the DragOverlay uses the same
 // metric to position the run cards behind the leader. We measure the actual
 // CSS value at drag-start (cache it for the run) so the trail matches the
-// rendered drag.
+// rendered drag. Fallback owned by TABLEAU_LAYOUT (see tableauLayout.js).
 function readFanUpPx() {
   try {
     const probe = document.createElement('div');
@@ -37,7 +38,7 @@ function readFanUpPx() {
     document.body.removeChild(probe);
     return px;
   } catch {
-    return 24; // sensible default if the var is undefined
+    return TABLEAU_LAYOUT.fallbacks.dragFanUpPx;
   }
 }
 

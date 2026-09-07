@@ -1,8 +1,19 @@
 import { useControls } from 'leva';
 import { MOTION } from './motion.js';
+import { TABLEAU_LAYOUT } from '../layout/tableauLayout.js';
+
+function remeasureTableau() {
+  try {
+    window.dispatchEvent(new Event('resize'));
+  } catch {}
+}
 
 export function MotionDebugPanel() {
-  useControls('move', {
+  useControls('tableau', {
+    fanDownMinOverride: { value: TABLEAU_LAYOUT.tuning.fanDownMinOverride ?? TABLEAU_LAYOUT.fallbacks.fanDownMin, min: 0, max: 30, step: 1, onChange: (v) => { TABLEAU_LAYOUT.tuning.fanDownMinOverride = v; remeasureTableau(); } },
+    fanUpEmergencyMinOverride: { value: TABLEAU_LAYOUT.tuning.fanUpEmergencyMinOverride ?? TABLEAU_LAYOUT.fallbacks.fanUpEmergencyMin, min: 0, max: 30, step: 1, onChange: (v) => { TABLEAU_LAYOUT.tuning.fanUpEmergencyMinOverride = v; remeasureTableau(); } },
+    smoothDuration: { value: TABLEAU_LAYOUT.smooth.duration, min: 0, max: 1, step: 0.05, onChange: (v) => (TABLEAU_LAYOUT.smooth.duration = v) },
+  });  useControls('move', {
     duration: { value: MOTION.move.duration, min: 0.05, max: 1, step: 0.01, onChange: (v) => (MOTION.move.duration = v) },
     stagger: { value: MOTION.move.stagger, min: 0, max: 0.2, step: 0.005, onChange: (v) => (MOTION.move.stagger = v) },
   });

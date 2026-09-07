@@ -54,6 +54,14 @@
   }
 }
 
+/* Tableau height smoothing kill-switch, see classic.css. */
+@media (prefers-reduced-motion: reduce) {
+  [data-loc^="tableau:"],
+  [data-loc^="tableau:"] > div {
+    transition: none !important;
+  }
+}
+
 /* Interface (UI chrome) theme — see classic.css for notes. Independent of the
    board/Background theme. */
 .ui-dark {

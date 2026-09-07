@@ -57,6 +57,16 @@
   }
 }
 
+/* Tableau height smoothing (durations owned by TABLEAU_LAYOUT.smooth in
+   render/layout/tableauLayout.js, applied as inline transitions in Pile.jsx).
+   Reduced-motion users get the instant jump instead. */
+@media (prefers-reduced-motion: reduce) {
+  [data-loc^="tableau:"],
+  [data-loc^="tableau:"] > div {
+    transition: none !important;
+  }
+}
+
 /* Interface (UI chrome) theme — controls modals, buttons, controls, and the
    modal panel surface. Independent of the board/Background theme so the two
    looks can be mixed (e.g. dark felt + light UI). Applied via the `ui-<name>`

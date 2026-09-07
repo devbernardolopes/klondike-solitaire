@@ -30,6 +30,7 @@ import { getCachedEventDetailSync } from '../repo/specialEventsRepository.js';
 import { formatTimeClock } from '../utils/formatTime.js';
 import Pile from './Pile.jsx';
 import { CardFace, cardAriaString } from './CardView.jsx';
+import { computeAvailBudget, computeTableauFan, resolveTableauMins } from '../render/layout/tableauLayout.js';
 
 // Resolve a batch of CSS length expressions (clamp()/calc()/var()) to pixel
 // numbers in a single DOM probe pass. Custom-property tokens are NOT pre-resolved
@@ -81,25 +82,50 @@ function clearFanMetrics() {
  */
 function RunPreview({ cards, metrics }) {
   const { t } = useTranslation();
-  const { cardH, fanUp, avail } = metrics || {};
-  // The lifted run is always face-up; compute a fit scale the same way Pile does
-  // so the floating stack matches the source column's compressed spacing.
-  const offs = (cardH ? cards.map(() => fanUp) : null);
-  const used = offs ? offs.slice(0, Math.max(0, cards.length - 1)).reduce((a, b) => a + b, 0) : 0;
-  const natural = cardH ? cardH + used : 0;
-  const scale = avail > 0 && natural > avail ? avail / natural : 1;
+  // The lifted run is always face-up; reuse the same compression as Pile so
+  // the floating stack matches the source column. Floors/budget owned by
+  // render/layout/tableauLayout.js.
+  if (metrics && metrics.cardH) {
+    const { cardH, fanUp: fanUpMax, fanDown: fanDownMax, avail } = metrics;
+    const { downMin, upEmergencyMin } = resolveTableauMins(metrics);
+    const { tops, pileHeight } = computeTableauFan(cards, {
+      cardH, fanUpMax, fanDownMax, downMin, upEmergencyMin, avail,
+    });
+    return (
+      <div
+        style={{
+          position: 'relative',
+          width: 'var(--card-width)',
+          height: `${pileHeight}px`,
+        }}
+      >
+        {cards.map((card, i) => (
+          <div
+            key={card.id}
+            style={{
+              position: 'absolute',
+              top: `${tops[i]}px`,
+              left: 0,
+              width: 'var(--card-width)',
+              zIndex: i,
+            }}
+          >
+            <CardFace card={card} zIndex={i} ariaLabel={cardAriaString(t, card)} faceDownLabel={t('cards.faceDown')} />
+          </div>
+        ))}
+      </div>
+    );
+  }
   const tops = [];
-  let acc = 0;
   for (let i = 0; i < cards.length; i++) {
-    tops.push(acc);
-    if (i < cards.length - 1) acc += (cardH ? fanUp : 0) * scale;
+    tops.push(i);
   }
   return (
     <div
       style={{
         position: 'relative',
         width: 'var(--card-width)',
-        height: cardH ? `${cardH + used * scale}px` : `calc(var(--card-height) + ${Math.max(cards.length - 1, 0)} * var(--tableau-fan))`,
+        height: `calc(var(--card-height) + ${Math.max(cards.length - 1, 0)} * var(--tableau-fan))`,
       }}
     >
       {cards.map((card, i) => (
@@ -107,7 +133,7 @@ function RunPreview({ cards, metrics }) {
           key={card.id}
           style={{
             position: 'absolute',
-            top: cardH ? `${tops[i]}px` : `calc(${i} * var(--tableau-fan))`,
+            top: `calc(${i} * var(--tableau-fan))`,
             left: 0,
             width: 'var(--card-width)',
             zIndex: i,
@@ -156,9 +182,14 @@ export default function Board() {
         'clamp(8px, 2vw, 20px)',
         boardFrame ? 'var(--wood-frame-width, 0px)' : '0px',
       ];
-      const [cardH, fanUp, fanDown, fanDownMin, fanUpEmergencyMin, gap, pad, frame] = measureVarsBatch(exprs);
-      const frameMargin = boardFrame ? 16 : 0;
-      const avail = Math.max(0, board.clientHeight - 2 * cardH - gap - 2 * pad - 2 * frame - frameMargin - 8);
+      const [cardH, fanUp, fanDown, measuredDownMin, measuredUpMin, gap, pad, frame] = measureVarsBatch(exprs);
+      // Floors: tuning overrides in tableauLayout.js win over measured CSS vars.
+      const { downMin: fanDownMin, upEmergencyMin: fanUpEmergencyMin } = resolveTableauMins({
+        fanDownMin: measuredDownMin,
+        fanUpEmergencyMin: measuredUpMin,
+      });
+      // Budget: constants owned by TABLEAU_LAYOUT.budget (see tableauLayout.js).
+      const avail = computeAvailBudget({ boardH: board.clientHeight, cardH, gap, pad, frame, boardFrame });
       setMetrics({ cardH, fanUp, fanDown, fanDownMin, fanUpEmergencyMin, avail });
     };
     measure();
