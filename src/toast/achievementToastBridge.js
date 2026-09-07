@@ -12,7 +12,12 @@
 import { supabase } from '../lib/supabaseClient.js';
 import { useAchievementEventsStore } from '../hooks/useAchievementEventsStore.js';
 import { useToastStore, TOAST_PRIORITY } from '../hooks/useToastStore.js';
-import { achievementImageUrl, preloadAchievementImage, clearAchievementImagePreloads } from '../utils/achievementImage.js';
+import { preloadAchievementImage, clearAchievementImagePreloads } from '../utils/achievementImage.js';
+import {
+  ensureAchievementImageCached,
+  getAchievementImageUrlSync,
+} from '../utils/achievementImageCache.js';
+import { getCachedAchievementsSync } from '../repo/achievementRepository.js';
 import { translateAchievement } from '../i18n/db.js';
 
 // Session cache so the same id is never looked up twice.
@@ -29,7 +34,12 @@ async function resolve(id) {
   if (cached) return cached;
 
   let result = { name: id, description: '', image: null };
-  if (supabase) {
+  const catalogHit = (getCachedAchievementsSync() || []).find((definition) => definition.id === id);
+  if (catalogHit) {
+    const translated = translateAchievement({ id, name: catalogHit.name || id, description: catalogHit.description || '' });
+    try { await ensureAchievementImageCached(catalogHit.image_path); } catch {}
+    result = { name: translated.name, description: translated.description, image: getAchievementImageUrlSync(catalogHit.image_path) };
+  } else if (supabase) {
     try {
       const { data } = await supabase
         .from('achievements_definitions')
@@ -37,7 +47,8 @@ async function resolve(id) {
         .eq('id', id)
         .single();
       if (data) {
-          const image = achievementImageUrl(data.image_path);
+        try { await ensureAchievementImageCached(data.image_path); } catch {}
+        const image = getAchievementImageUrlSync(data.image_path);
         const translated = translateAchievement({ id, name: data.name || id, description: data.description || '' });
         result = { name: translated.name, description: translated.description, image };
       }

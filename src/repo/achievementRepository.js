@@ -1,5 +1,10 @@
 import { db } from '../db/schema.js';
 import { supabase } from '../lib/supabaseClient.js';
+import {
+  clearAchievementImageCache,
+  ensureAchievementImageCached,
+  warmAchievementImageCache,
+} from '../utils/achievementImageCache.js';
 
 const catalogMemory = new Map();
 
@@ -15,6 +20,9 @@ export async function hydrateAchievementCache() {
     for (const row of rows) {
       if (row.definition?.id) catalogMemory.set(row.definition.id, row.definition);
     }
+  } catch {}
+  try {
+    await warmAchievementImageCache();
   } catch {}
   return getCachedAchievementsSync();
 }
@@ -40,6 +48,21 @@ export async function fetchAchievements() {
       );
     });
   } catch {}
+  try {
+    await Promise.allSettled(
+      definitions.map((definition) => ensureAchievementImageCached(definition.image_path)),
+    );
+  } catch {}
+  try {
+    const livePaths = new Set(
+      definitions.map((definition) => definition.image_path).filter(Boolean),
+    );
+    const cachedRows = await db.achievementImageCache.toArray();
+    const staleKeys = cachedRows
+      .map((row) => row.imagePath)
+      .filter((imagePath) => imagePath && !livePaths.has(imagePath));
+    if (staleKeys.length) await db.achievementImageCache.bulkDelete(staleKeys);
+  } catch {}
   return definitions.filter((definition) => ids.has(definition.id));
 }
 
@@ -49,6 +72,7 @@ export function clearAchievementMemory() {
 
 export async function clearAchievementCache() {
   clearAchievementMemory();
+  clearAchievementImageCache();
   try {
     await db.achievementCatalogCache.clear();
     await db.achievementImageCache.clear();

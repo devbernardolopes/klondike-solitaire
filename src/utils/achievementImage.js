@@ -20,7 +20,7 @@ const completedImages = new Map();
  * @returns {string}
  */
 export function achievementImageUrl(imagePath) {
-  if (typeof imagePath === 'string' && /^https?:\/\//i.test(imagePath)) return imagePath;
+  if (typeof imagePath === 'string' && /^(https?|blob|data):/i.test(imagePath)) return imagePath;
   if (imagePath && supabase) {
     return supabase.storage.from('achievement-images').getPublicUrl(imagePath).data.publicUrl;
   }
