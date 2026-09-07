@@ -111,7 +111,7 @@ export default function HistoryDetailModal({ entry, open, onClose }) {
         <ModalCloseButton onClick={onClose} />
         <div className="modal-body-scroll" style={{ maxHeight: '60vh' }}>
           {rows.map(([k, v]) => (
-            <div key={k} style={row}>
+            <div key={k} style={k === t('history.detail.score') ? { ...row, display: 'none' } : row}>
               <span style={label}>{k}</span>
               <span style={value}>{v}</span>
             </div>

@@ -176,7 +176,7 @@ export default function LeaderboardModal({ open, onClose }) {
             marginBottom: 14,
           }}
         >
-          {TABS.map((tab) => (
+          {TABS.filter((tab) => tab.key !== 'highest_score').map((tab) => (
             <button
               key={tab.key}
               type="button"

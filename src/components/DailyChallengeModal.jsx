@@ -432,7 +432,7 @@ export default function DailyChallengeModal() {
                 <div style={{ fontSize: 13, lineHeight: 1.6 }}>
                   <div style={{ marginBottom: 8, fontWeight: 600 }}>{selected}</div>
                   <div>{t('dailyChallenge.seed', { seed: selectedResult ? selectedResult.seed : seedForDate(selected) })}</div>
-                  <div>{t('dailyChallenge.bestScore', { value: selectedResult ? selectedResult.bestScore : 0 })}</div>
+                  <div style={{ display: 'none' }}>{t('dailyChallenge.bestScore', { value: selectedResult ? selectedResult.bestScore : 0 })}</div>
                   <div>{t('dailyChallenge.bestTime', { value: selectedResult ? formatTime(selectedResult.bestTimeMs) : formatTime(0) })}</div>
                   <div>{t('dailyChallenge.bestMoves', { value: selectedResult ? selectedResult.bestMoves : 0 })}</div>
                   <div style={{ opacity: 0.7 }}>

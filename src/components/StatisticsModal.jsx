@@ -167,7 +167,7 @@ export default function StatisticsModal({ open, onClose }) {
               <span style={labelStyle}>{t('statistics.totalWon', { pct: wonPct })}</span>
               <span style={valueStyle}>{stats.totalGamesWon}</span>
             </div>
-            <div style={row}>
+            <div style={{ ...row, display: 'none' }}>
               <span style={labelStyle}>{t('statistics.highestScore')}</span>
               <span style={valueStyle}>{stats.highestScore}</span>
             </div>

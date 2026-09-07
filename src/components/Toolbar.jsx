@@ -481,7 +481,7 @@ function ElapsedClock() {
             pointerEvents: 'none',
           }}
         >
-          <div style={hudColStyle}>
+          <div style={{ ...hudColStyle, display: 'none' }}>
             <span style={hudLabelStyle}>{t('toolbar.score')}</span>
             <span style={hudValueStyle}>{score}</span>
           </div>

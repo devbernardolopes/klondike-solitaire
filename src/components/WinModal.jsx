@@ -366,8 +366,10 @@ export default function WinModal() {
          )}
 
           <div style={{ marginBottom: 18 }}>
-           <HeaderRow />
-           <StatRow label={t('winModal.score')} value={String(score)} best={String(bestScore)} isNew={newScore} />
+            <HeaderRow />
+            <div style={{ display: 'none' }}>
+            <StatRow label={t('winModal.score')} value={String(score)} best={String(bestScore)} isNew={newScore} />
+            </div>
            <StatRow
              label={t('winModal.time')}
              value={formatTime(timeMs)}
