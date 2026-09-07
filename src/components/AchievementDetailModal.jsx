@@ -11,6 +11,7 @@ import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useModalBackdrop } from './modalBackdrop.js';
 import { useModalEscape } from '../hooks/useModalEscape.js';
+import i18n from '../i18n/index.js';
 import { Z } from '../utils/modalStack.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
 import AchievementImage from './AchievementImage.jsx';
@@ -52,9 +53,14 @@ export default function AchievementDetailModal({ achievement, open, onClose }) {
   };
 
   const formatDate = (iso) => {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return '';
-    return d.toLocaleDateString();
+    if (!iso) return '';
+    try {
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return '';
+      return d.toLocaleDateString(i18n.language || 'en', { day: 'numeric', month: 'long', year: 'numeric' });
+    } catch {
+      return '';
+    }
   };
 
   const isUnlocked = Boolean(achievement.earnedAt);
