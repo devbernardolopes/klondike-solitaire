@@ -9,7 +9,6 @@ import { useUiStore, isAnyModalOpen, whenTransitionDone } from '../hooks/useUiSt
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
-import { useSound } from '../hooks/useSound.js';
 import { isWon } from '../core/winDetection.js';
 import NewGameModal from './NewGameModal.jsx';
 import SettingsModal from './SettingsModal.jsx';
@@ -134,7 +133,6 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const isOver = useStatsStore((s) => s.isOver);
   const startTime = useStatsStore((s) => s.startTime);
   const canReplay = startTime !== null;
-  const { play } = useSound();
 
   const newGameDialogOpen = useUiStore((s) => s.newGameDialogOpen);
   const setNewGameDialogOpen = useUiStore((s) => s.setNewGameDialogOpen);
@@ -283,23 +281,20 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
     startDealOrConfirm(() => {
       setNewGameDialogOpen(false);
       replayGame();
-      play('deal');
     });
-  }, [startDealOrConfirm, setNewGameDialogOpen, replayGame, play]);
+  }, [startDealOrConfirm, setNewGameDialogOpen, replayGame]);
   const onWinningDeal = useCallback(() => {
     startDealOrConfirm(() => {
       setNewGameDialogOpen(false);
       dealNewGame('winning');
-      play('deal');
     });
-  }, [startDealOrConfirm, setNewGameDialogOpen, dealNewGame, play]);
+  }, [startDealOrConfirm, setNewGameDialogOpen, dealNewGame]);
   const onRandomShuffle = useCallback(() => {
     startDealOrConfirm(() => {
       setNewGameDialogOpen(false);
       dealNewGame('random');
-      play('deal');
     });
-  }, [startDealOrConfirm, setNewGameDialogOpen, dealNewGame, play]);
+  }, [startDealOrConfirm, setNewGameDialogOpen, dealNewGame]);
   const onDailyChallenge = useCallback(() => {
     setNewGameDialogOpen(false);
     setDailyChallengeOrigin('newgame');
@@ -313,10 +308,9 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
     startDealOrConfirm(() => {
       setSeedInputDialogOpen(false);
       dealWithSeed(seed);
-      play('deal');
       setAnnounce(t('toolbar.announce.newGame', { seed }));
     });
-  }, [startDealOrConfirm, setSeedInputDialogOpen, dealWithSeed, play, setAnnounce, t]);
+  }, [startDealOrConfirm, setSeedInputDialogOpen, dealWithSeed, setAnnounce, t]);
   const onSeedCancel = useCallback(() => {
     setSeedInputDialogOpen(false);
   }, [setSeedInputDialogOpen]);

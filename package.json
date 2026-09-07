@@ -1,7 +1,7 @@
 {
   "name": "klondike-solitaire",
   "private": true,
-  "version": "0.0.581",
+  "version": "0.0.582",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -19,7 +19,6 @@
     "@supabase/supabase-js": "^2.112.4",
     "dexie": "^4.0.8",
     "gsap": "^3.12.5",
-    "howler": "^2.2.4",
     "i18next": "^23.16.8",
     "leva": "^0.10.1",
     "lucide-react": "^1.31.0",

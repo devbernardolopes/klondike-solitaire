@@ -29,6 +29,7 @@ import { triggerUncoverSparkle } from '../render/animation/useUncoverSparkle.js'
 import { shouldFireUncoverSparkle } from '../render/animation/shouldFireUncoverSparkle.js';
 import { MOTION } from '../render/animation/motion.js';
 import i18n from '../i18n/index.js';
+import { playSfx } from '../audio/index.js';
 import { useUiStore, whenTransitionDone, warnDealBlocked } from './useUiStore.js';
 import { useStatsStore } from './useStatsStore.js';
 import { useStatisticsStore } from './useStatisticsStore.js';
@@ -198,6 +199,10 @@ function runAnimatedDeal(get, set, { seed, order, deck, kind, date, eventDealId,
     const tid = captureFlip('deal', allIds);
     useUiStore.getState().beginTransition(tid, allIds, allLocs);
     set({ state: next, lastActionMeta: { type: 'deal' } });
+    // Audio for the deal animation: one blip per card, staggered ~50ms apart.
+    // Klondike deal = 1+2+3+4+5+6+7 = 28 cards; pass the actual count so a
+    // future variant (e.g. 7-card deal) gets the right pacing automatically.
+    playSfx('deal', { count: allIds.length });
   });
 }
 

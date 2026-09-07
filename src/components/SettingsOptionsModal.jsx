@@ -17,6 +17,7 @@ import { useHoverCapable } from '../hooks/useHoverCapable.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { supabase } from '../lib/supabaseClient.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
+import { useSoundStore } from '../store/useSoundStore.js';
 import { useTranslation } from 'react-i18next';
 
 /**
@@ -61,6 +62,10 @@ export default function SettingsOptionsModal({
   const tableTexture = useSettingsStore((s) => s.tableTexture);
   const boardFrame = useSettingsStore((s) => s.boardFrame);
   const cardShake = useSettingsStore((s) => s.cardShake);
+  const soundEnabled = useSoundStore((s) => s.enabled);
+  const soundVolume = useSoundStore((s) => s.volume);
+  const setSoundEnabled = useSoundStore((s) => s.setEnabled);
+  const setSoundVolume = useSoundStore((s) => s.setVolume);
   const coinFly = useSettingsStore((s) => s.coinFly);
   const autoComplete = useSettingsStore((s) => s.autoComplete);
   const centisecondsOn = useSettingsStore((s) => s.centisecondsOn);
@@ -257,6 +262,45 @@ export default function SettingsOptionsModal({
             checked={!!cardShake}
             onChange={(v) => useSettingsStore.getState().setCardShake(v)}
             label={t('settings.cardShake')}
+          />
+        </div>
+
+        {/* Sound toggle + volume slider. The toggle is ALWAYS shown and
+            ALWAYS togglable regardless of device capability (unlike
+            reduced-motion-gated effects) — there is no reliable OS-level
+            "audio unavailable" signal, and a runtime check for AudioContext
+            support could fail in environments where audio still works
+            (e.g. a delayed unlock). The volume slider mirrors the
+            useSoundStore.setVolume path: change → audioEngine.setVolume,
+            audible on the next sfx without any extra wiring. */}
+        <div style={{ ...field, marginBottom: 20 }}>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.sound')}</label>
+          <ToggleSwitch
+            checked={!!soundEnabled}
+            onChange={(v) => setSoundEnabled(v)}
+            label={t('settings.sound')}
+          />
+        </div>
+
+        <div style={{ ...field, marginBottom: 20, opacity: soundEnabled ? 1 : 0.5 }}>
+          <label style={{ fontSize: 14, fontWeight: 600 }} htmlFor="soundVolumeSlider">
+            {t('settings.soundVolume')}
+          </label>
+          <input
+            id="soundVolumeSlider"
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={soundVolume}
+            disabled={!soundEnabled}
+            onChange={(e) => setSoundVolume(Number(e.target.value))}
+            aria-label={t('settings.soundVolume')}
+            style={{
+              width: 140,
+              accentColor: 'var(--ui-modal-fg, currentColor)',
+              cursor: soundEnabled ? 'pointer' : 'not-allowed',
+            }}
           />
         </div>
 

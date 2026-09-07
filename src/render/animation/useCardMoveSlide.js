@@ -7,6 +7,7 @@ import { useUiStore } from '../../hooks/useUiStore.js';
 import { useSettingsStore } from '../../hooks/useSettingsStore.js';
 import { spawnTrailCascade, clearAllGhostTrails } from './ghostTrail.js';
 import { buildBounceSteps } from './useCardMoveSlideBounce.js';
+import { playSfx } from '../../audio/index.js';
 
 const CONFIG_BY_TYPE = {
   // All generic card relocations (single cards and multi-card runs) share the
@@ -347,7 +348,28 @@ export function useCardMoveSlide() {
      // Capture every card id participating in this tween so the registry
      // can dereference them in onComplete (and so cancelSlideTween can
      // find this tween by any one of them).
-     const cardIds = moved.map((el) => el.getAttribute('data-flip-id') || el.getAttribute('data-card'));
+const cardIds = moved.map((el) => el.getAttribute('data-flip-id') || el.getAttribute('data-card'));
+     // Fire the in-flight cardMove sfx at tween start for move/auto/drag types
+     // only. deal/recycle/undo have their own (or no) audio so we don't double
+     // up. speedFactor scales detune cents (a faster move sounds higher); a
+     // 0.20s move is the baseline so speedFactor = baseline / cfg.duration.
+     if (type === 'move' || type === 'auto') {
+       const baseDuration = MOTION.move.duration || 0.20;
+       const speedFactor = cfg.duration > 0 ? baseDuration / cfg.duration : 1;
+       try { playSfx('cardMove', { speedFactor }); } catch {}
+     }
+     // Look up the destination pile loc(s) for this transition so the
+     // landing sfx can pick the right variant (foundation = foundationLand,
+     // everything else = cardLand). Pulled BEFORE endTransition releases
+     // the record below.
+     const landingLocs = (() => {
+       try {
+         const rec = useUiStore.getState().activeTransitions[tid];
+         if (rec && rec.locs) return Array.from(rec.locs);
+       } catch {}
+       return [];
+     })();
+     const isFoundationLanding = landingLocs.some((l) => typeof l === 'string' && l.startsWith('foundation'));
      const tl = gsap.timeline({
        onComplete: () => {
          completed = true;
@@ -357,6 +379,16 @@ export function useCardMoveSlide() {
            if (wrap) wrap.style.zIndex = prevZ;
          });
          if (stockWrap) stockWrap.style.zIndex = prevStockZ;
+         // Landing sfx: foundation pile destinations get the brighter
+         // foundationLand; tableau/waste destinations get cardLand. Only
+         // move/auto/drag transitions land a card — deal/recycle/undo are
+         // excluded so they don't double-sound (deal has its own per-card
+         // blips via the deal sfx, recycle is silent, undo is silent).
+         if (type === 'move' || type === 'auto') {
+           try {
+             playSfx(isFoundationLanding ? 'foundationLand' : 'cardLand');
+           } catch {}
+         }
          // Deregister every card id this tween owned. Only delete if the
          // registered record still points at THIS tween (cancelSlideTween
          // may have already removed the entry, in which case this is a

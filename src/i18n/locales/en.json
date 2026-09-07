@@ -32,6 +32,8 @@
     "highlightCard": "Highlight Card",
     "foundationParticles": "Foundation Particles",
     "cardShake": "Invalid-Move Shake",
+    "sound": "Sound",
+    "soundVolume": "Sound Volume",
     "coinFly": "Win Coin Flight",
     "coinFly.desc": "Fly coins from the win modal to your balance, counting up one by one",
     "autoComplete": "Auto-Complete",

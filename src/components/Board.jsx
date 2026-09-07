@@ -24,6 +24,7 @@ import { playWinCascade } from '../render/animation/winCascade.js';
 import { isWon } from '../core/winDetection.js';
 import { solveAsync, STALE } from '../core/solverClient.js';
 import { getAutoFireSolveOptions } from '../core/solver.js';
+import { playSfx } from '../audio/index.js';
 import { useTranslation } from 'react-i18next';
 import { getCachedEventDetailSync } from '../repo/specialEventsRepository.js';
 import Pile from './Pile.jsx';
@@ -225,6 +226,7 @@ export default function Board() {
     if (won && !wasWon.current) {
       clearSelection();
       playWinCascade();
+      playSfx('winFanfare');
       useStatsStore.getState().stopTimer();
       // Snapshot the finished game and the PREVIOUS bests (before recordWin
       // mutates them) so we can flag which stats are new records.
@@ -509,7 +511,13 @@ export default function Board() {
       pendingDrawRef.current = true;
       return;
     }
-    if (state.stock.length > 0) drawFromStock();
+    // Paper-flick sfx when the stock has cards to draw. Recycle has its own
+    // sound budget (intentionally silent) so a recycle isn't double-sounded
+    // against the stock click.
+    if (state.stock.length > 0) {
+      playSfx('stockDraw');
+      drawFromStock();
+    }
     else if (state.waste.length > 0) recycleStock();
   };
 

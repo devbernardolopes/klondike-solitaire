@@ -21,6 +21,7 @@ import { useGameStore } from './useGameStore.js';
 import { useUiStore } from './useUiStore.js';
 import { getTableauRun } from '../core/rules.js';
 import { spawnDragRunSegments, endDrag } from '../render/animation/ghostTrail.js';
+import { audioEngine } from '../audio/AudioEngine.js';
 
 // Tableau fan offset per card in a multi-card run. Mirrors the CSS variable
 // used by Pile.jsx for the resting state; the DragOverlay uses the same
@@ -95,7 +96,15 @@ export function useDragEngine() {
   // late-activation zombie described above on the release side.
   useEffect(() => {
     const onDown = (e) => {
-      if (e.button === 0) pointerDownRef.current = true;
+      if (e.button === 0) {
+        pointerDownRef.current = true;
+        // Earliest user-gesture entry point: resume the AudioContext so the
+        // first sfx plays without an autoplay-policy block. Re-using this
+        // existing pointerdown listener avoids adding a new global handler.
+        // unlock() is idempotent and a no-op when the context is already
+        // running, so spam clicks cost nothing.
+        audioEngine.unlock();
+      }
     };
     const onUp = (e) => {
       if (e.button !== 0 && e.type !== 'pointercancel') return;

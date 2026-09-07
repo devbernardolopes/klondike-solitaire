@@ -7,6 +7,7 @@ import { useUiStore } from '../hooks/useUiStore.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { getDeck } from '../render/deck/deckRegistry.js';
 import { getCardBack } from '../render/deck/cardBackRegistry.js';
+import { playSfx } from '../audio/index.js';
 
 const RANK_I18N_KEY = {
   1: 'ace',
@@ -168,7 +169,10 @@ function CardViewBase({ card, from, zIndex = 0, hidden = false, onAutoMove, hard
         return;
       }
       const ok = onAutoMove(from, card.id);
-      if (!ok) playCardShake(e.currentTarget);
+      if (!ok) {
+        playCardShake(e.currentTarget);
+        playSfx('invalidShake');
+      }
     }
     downPos.current = null;
   };
@@ -194,6 +198,7 @@ function CardViewBase({ card, from, zIndex = 0, hidden = false, onAutoMove, hard
       } else {
         setAnnounce(t('cards.noValidMove', { card: cardAria }));
         playCardShake(e.currentTarget);
+        playSfx('invalidShake');
       }
     }
   };

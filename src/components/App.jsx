@@ -32,7 +32,7 @@ import { initAchievementToastBridge } from '../toast/achievementToastBridge.js';
 import ToastHost from './ToastHost.jsx';
 import SpecialEventsModal from './SpecialEventsModal.jsx';
 import EventDetailModal from './EventDetailModal.jsx';
-import { useSound } from '../hooks/useSound.js';
+import { useSoundStore } from '../store/useSoundStore.js';
 import { Z } from '../utils/modalStack.js';
 import {
   ensureDeviceId,
@@ -84,6 +84,9 @@ export default function App() {
       init();
       initStats();
       initSeeds();
+      // Hydrate the sound preferences from Dexie so the toggle + volume
+      // slider in Settings reflect the saved value from a previous session.
+      useSoundStore.getState().init();
       await initUsedRandomSeeds();
       prefetchSeeds().catch(() => {});
       hydrateEventCachesFromDexie().catch(() => {});
@@ -208,7 +211,6 @@ export default function App() {
   const dealNewGame = useGameStore((s) => s.dealNewGame);
   const replayGame = useGameStore((s) => s.replayGame);
   const undo = useGameStore((s) => s.undo);
-  const { play } = useSound();
 
   // When the session hits a hard limit (time or moves), useStatsStore.freeze()
   // sets `isOver: true`; surface it as a confirm dialog here at the root.
@@ -232,8 +234,7 @@ export default function App() {
   const onNoMovesReplay = useCallback(() => {
     setNoMovesDialogOpen(false);
     replayGame();
-    play('deal');
-  }, [setNoMovesDialogOpen, replayGame, play]);
+  }, [setNoMovesDialogOpen, replayGame]);
   // "Keep Going" just closes the dialog without undoing, leaving the board so
   // the user can recycle the stock (or make another move) if they choose to.
   const onNoMovesKeepGoing = useCallback(
