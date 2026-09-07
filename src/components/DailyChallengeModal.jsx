@@ -64,6 +64,10 @@ const panel = {
   width: 'min(94vw, 760px)',
   maxWidth: '100%',
   outline: 'none',
+  // Allow vertical scroll/pan inside the modal while letting pointer events
+  // for horizontal swipes flow through to the panel's own handlers. Matches
+  // EventDetailModal.jsx's viewport setup.
+  touchAction: 'pan-y',
 };
 
 const selectStyle = {
@@ -110,6 +114,13 @@ export default function DailyChallengeModal() {
   const selectedRef = useRef(null);
   const todayRef = useRef(fallbackDate);
   const initialRef = useRef({ today: null, selected: null, usedPreferred: false });
+  // Horizontal-swipe gesture state. Mirrors the pattern in
+  // EventDetailModal.jsx — we don't have a translated track, so the live
+  // drag is invisible and only the release decides whether to advance the
+  // viewed month.
+  const dragStateRef = useRef({ startX: 0, startY: 0, active: false, committed: false, pointerId: null });
+  const justSwipedRef = useRef(false);
+  const justSwipedTimerRef = useRef(null);
 
   const applySelected = (v) => { selectedRef.current = v; setSelected(v); };
   const applyToday = (v) => { todayRef.current = v; setToday(v); };
@@ -239,6 +250,16 @@ export default function DailyChallengeModal() {
     return () => clearTimeout(id);
   }, [open]);
 
+  // Clear any pending post-swipe click-suppression timer on unmount so a
+  // stale timer can't fire after the modal closes (mirrors the cleanup
+  // EventDetailModal.jsx performs for its own justSwipedTimerRef).
+  useEffect(() => () => {
+    if (justSwipedTimerRef.current) {
+      clearTimeout(justSwipedTimerRef.current);
+      justSwipedTimerRef.current = null;
+    }
+  }, []);
+
   // Pull the linked account's latest progress when the calendar opens, so
   // completion marks / bests reflect what another device has done.
   useEffect(() => {
@@ -284,6 +305,96 @@ export default function DailyChallengeModal() {
   const canNext = isSupportedYM(next.y, next.m);
   const years = listSupportedYears();
   const monthsInYear = Array.from({ length: 12 }, (_, i) => i + 1);
+
+  // Step the viewed month by one, gated by the same canPrev/canNext the
+  // arrow buttons honor so a swipe past the supported window is a no-op.
+  // Shared by the arrow buttons, the swipe gesture, and ArrowLeft/Right.
+  const goPrevMonth = () => {
+    if (!canPrev) return;
+    setViewM(prev.m);
+    setViewY(prev.y);
+  };
+  const goNextMonth = () => {
+    if (!canNext) return;
+    setViewM(next.m);
+    setViewY(next.y);
+  };
+
+  // Fixed swipe threshold (px) on the release. Roughly 12% of a 520 px panel
+  // and ~17% of a 360 px mobile viewport — close enough to the events
+  // modal's 20% ratio feel without needing a width ref. Direction is the
+  // player's finger: a leftward drag (dx < 0) advances to the next month,
+  // matching the right-to-left reading order and the right-pointing arrow.
+  const SWIPE_THRESHOLD_PX = 60;
+
+  const onPanelPointerDown = (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    // Don't hijack drags that begin on a real control — those have their
+    // own click/keyboard behavior (day cells select, dropdowns open, etc.).
+    const tag = e.target?.tagName;
+    if (tag === 'BUTTON' || tag === 'SELECT' || tag === 'OPTION') return;
+    dragStateRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      active: true,
+      committed: false,
+      pointerId: e.pointerId,
+    };
+  };
+
+  const onPanelPointerMove = (e) => {
+    if (!dragStateRef.current.active) return;
+    const dx = e.clientX - dragStateRef.current.startX;
+    const dy = e.clientY - dragStateRef.current.startY;
+    if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 12) return; // vertical gesture
+    if (!dragStateRef.current.committed && Math.abs(dx) > 10) {
+      try { e.currentTarget.setPointerCapture(dragStateRef.current.pointerId); } catch {}
+      dragStateRef.current.committed = true;
+    }
+  };
+
+  const endDrag = (e) => {
+    if (!dragStateRef.current.active) return;
+    const { committed, pointerId, startX } = dragStateRef.current;
+    if (committed && e?.currentTarget && typeof e.currentTarget.hasPointerCapture === 'function'
+      && e.currentTarget.hasPointerCapture(pointerId)) {
+      try { e.currentTarget.releasePointerCapture(pointerId); } catch {}
+    }
+    if (committed) {
+      const releaseX = e?.clientX ?? startX;
+      const dx = releaseX - startX;
+      if (dx <= -SWIPE_THRESHOLD_PX) goNextMonth();
+      else if (dx >= SWIPE_THRESHOLD_PX) goPrevMonth();
+      // Swallow the synthetic click that the browser fires at the release
+      // point — it can land on a day cell and accidentally select it. The
+      // 250 ms window matches EventDetailModal.jsx's justSwipedRef guard.
+      justSwipedRef.current = true;
+      if (justSwipedTimerRef.current) clearTimeout(justSwipedTimerRef.current);
+      justSwipedTimerRef.current = setTimeout(() => {
+        justSwipedRef.current = false;
+        justSwipedTimerRef.current = null;
+      }, 250);
+    }
+    dragStateRef.current.active = false;
+    dragStateRef.current.committed = false;
+  };
+
+  const handlePanelClickCapture = (e) => {
+    if (justSwipedRef.current) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+  };
+
+  const onPanelKeyDown = (e) => {
+    // A focused <select> already absorbs Arrow keys for its own list
+    // navigation; only react when the panel itself (or a non-select child)
+    // has focus.
+    const tag = e.target?.tagName;
+    if (tag === 'SELECT' || tag === 'OPTION') return;
+    if (e.key === 'ArrowLeft') { e.preventDefault(); goPrevMonth(); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); goNextMonth(); }
+  };
 
   const selectedResult = selected ? results[selected] : null;
 
@@ -345,7 +456,17 @@ export default function DailyChallengeModal() {
         padding: 16,
       }}
     >
-      <div ref={panelRef} tabIndex={-1} style={panel}>
+      <div
+        ref={panelRef}
+        tabIndex={-1}
+        onKeyDown={onPanelKeyDown}
+        onPointerDown={onPanelPointerDown}
+        onPointerMove={onPanelPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onClickCapture={handlePanelClickCapture}
+        style={panel}
+      >
         <h2 style={{ margin: '0 0 14px', fontSize: 20, fontWeight: 800, textAlign: 'center', paddingRight: 36 }}>
           {t('dailyChallenge.title')}
         </h2>
@@ -358,7 +479,7 @@ export default function DailyChallengeModal() {
               type="button"
               aria-label={t('dailyChallenge.prevMonth')}
               disabled={!canPrev}
-              onClick={() => { if (canPrev) { setViewM(prev.m); setViewY(prev.y); } }}
+              onClick={goPrevMonth}
               style={{
                 ...btn,
                 position: 'absolute',
@@ -406,7 +527,7 @@ export default function DailyChallengeModal() {
               type="button"
               aria-label={t('dailyChallenge.nextMonth')}
               disabled={!canNext}
-              onClick={() => { if (canNext) { setViewM(next.m); setViewY(next.y); } }}
+              onClick={goNextMonth}
               style={{
                 ...btn,
                 position: 'absolute',
