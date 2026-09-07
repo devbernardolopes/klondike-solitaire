@@ -260,12 +260,16 @@ export default function SettingsOptionsModal({
           />
         </div>
 
-        <div style={{ ...field, marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.coinFly')}</label>
+        <div style={{ ...field, marginBottom: 20, opacity: osReducesMotion ? 0.5 : 1 }}>
+          <span style={{ fontSize: 14, fontWeight: 600 }}>
+            {t('settings.coinFly')}
+            {osReducesMotion && <BlockedInfoButton effect={t('settings.coinFly')} reason="os" />}
+          </span>
           <ToggleSwitch
             checked={!!coinFly}
             onChange={(v) => useSettingsStore.getState().setCoinFly(v)}
             label={t('settings.coinFly.desc')}
+            disabled={osReducesMotion}
           />
         </div>
 
