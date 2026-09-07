@@ -1,223 +1,85 @@
 {
-  "common": {
-    "cancel": "Cancel",
-    "confirm": "Confirm",
-    "save": "Save",
-    "close": "Close",
-    "ok": "OK",
-    "buy": "Buy",
-    "owned": "Owned",
+  "achievements": {
+    "confirm.message": "This will clear all of your unlocked achievements. They can be earned again by playing.",
+    "confirm.title": "Reset Achievements?",
+    "detail.locked": "Locked",
+    "detail.unlocked": "Unlocked {{date}}",
     "loading": "Loading…",
-    "new": "New",
-    "completed": "Completed",
-    "locked": "Locked",
-    "comingSoon": "Coming soon",
-    "selected": "selected",
-    "scrollTop": "Scroll to top",
-    "scrollBottom": "Scroll to bottom"
-  },
-  "settings": {
-    "title": "Settings",
-    "language": "Language",
-    "language.aria": "Select language",
-    "language.english": "English",
-    "language.french": "French",
-    "language.german": "German",
-    "language.italian": "Italian",
-    "language.spanish": "Spanish",
-    "language.portugueseBR": "Portuguese (BR)",
-    "hand": "Hand",
-    "hand.left": "Left",
-    "hand.right": "Right",
-    "highlightCard": "Highlight Card",
-    "foundationParticles": "Foundation Particles",
-    "cardShake": "Invalid-Move Shake",
-    "sound": "Sound",
-    "soundVolume": "Sound Volume",
-    "coinFly": "Win Coin Flight",
-    "coinFly.desc": "Fly coins from the win modal to your balance, counting up one by one",
-    "autoComplete": "Auto-Complete",
-    "autoComplete.desc": "Automatically finish the game when every remaining move is forced",
-    "centiseconds": "Show Centiseconds",
-    "centiseconds.desc": "Show hundredths of a second on the Time HUD (uses more CPU)",
-    "hoverLift": "Hover Lift",
-    "hoverLift.desc": "Raise the card slightly when the mouse hovers over it",
-    "flipOvershoot": "Flip Overshoot",
-    "flipOvershoot.desc": "Subtle pop when a face-down card flips face-up",
-    "cardEffects": "Card Effects",
-    "cardBounce": "Card Bounce",
-    "cardFlipShimmer": "Card Flip Shimmer",
-    "uncoverSparkle": "Uncover Sparkle",
-    "hoverGlow": "Hover Glow / Drop Highlight",
-    "ghostEcho": "Ghost Echo",
-    "ghostTrail": "Ghost Trail",
-    "winCelebration": "Win Celebration",
-    "winCelebration.desc": "Falling Cards on Win",
-    "enhancedWin": "Enhanced Win Celebration",
-    "tableTexture": "Table Texture",
-    "boardFrame": "Board Frame",
-    "appearLeaderboard": "Appear on Leaderboard",
-    "motionBlocked.title": "Effect unavailable",
-    "motionBlocked.infoAria": "Why is this unavailable?",
-    "motionBlocked.osMessage": "Your operating system is asking apps to reduce motion, so this effect can't play even though it's switched on here. On Windows, turn on Show animations (Settings > Accessibility > Display, or Ease of Access > Display on Windows 10); on macOS turn off Reduce motion; on Android turn off Remove animations. Your saved setting is kept and will take effect once the OS allows motion again.",
-    "motionBlocked.touchMessage": "Hover Lift needs a mouse or trackpad pointer. Touch screens can't hover, so this effect isn't available on this device.",
-    "scrollTop": "Scroll settings to top",
-    "scrollBottom": "Scroll settings to bottom"
-  },
-  "mainMenu": {
-    "title": "Main Menu",
-    "settings": "Settings",
-    "theme": "Theme",
-    "statistics": "Statistics",
-    "achievements": "Achievements",
-    "leaderboard": "Leaderboard",
-    "store": "Store",
-    "help": "Keyboard shortcuts",
-    "takeSnapshot": "Take Snapshot",
-    "export": "Export",
-    "account": "Account",
-    "playingAs": "Playing as {{name}}",
-    "signedInAs": "Signed in as {{name}}",
-    "signInGoogle": "Sign in with Google",
-    "signOut": "Sign Out",
-    "signOutConfirm.title": "Sign out?",
-    "signOutConfirm.message": "This device will continue as a new guest. Your Google account's progress is safe on Supabase and you can sign back in anytime.",
-    "rename.validation": "3-20 characters: letters, numbers, underscores only.",
-    "rename.taken": "That name is taken.",
-    "rename.cooldown": "You can rename until {{date}}",
-    "announce.snapshotExported": "Board snapshot exported",
-    "announce.solvitaireExported": "Solvitaire deal exported",
-    "account.switch.title": "Google account already linked",
-    "account.switch.message": "This Google account is already linked to a different player profile. Continuing will switch this device to that profile's data — this device's current progress (not yet linked to any account) will not be kept.",
-    "account.switch.confirm": "Switch to that profile",
-    "account.switch.cancel": "Stay on this device"
-  },
-  "toolbar": {
-    "time": "Time",
-    "score": "Score",
-    "moves": "Moves",
-    "coins": "Coins",
-    "seedHint": "Double-click to enter a specific seed",
-    "dailyChallenge": "Daily Challenge: {{date}} ({{seed}})",
-    "random": "Random ({{seed}})",
-    "specialEvent": "Special Event, Deal {{dealNumber}} ({{seed}})",
-    "winningDeal": "Winning Deal ({{seed}})",
-    "mainMenu": "Main Menu",
-    "newGame": "New Game — start a new deal",
-    "newGame.title": "Start a new game",
-    "hint": "Hint: show available moves (H)",
-    "undo": "Undo",
-    "noMoves.title": "No moves remaining",
-    "noMoves.message": "There don't seem to be any more valid moves. You can keep going to recycle the stock, undo your last move, replay this exact deal, or start a new game.",
-    "noMoves.dailyConfirm": "Return to Daily Challenge",
-    "noMoves.confirm": "New Game",
-    "noMoves.cancel": "Undo Last Move",
-    "noMoves.tertiary": "Replay this Game",
-    "noMoves.quaternary": "Keep Going",
-    "gameOver.title": "Game Over",
-    "gameOver.moves": "You reached the 500-move limit. Close this message, then start a new game to keep playing.",
-    "gameOver.time": "You reached the 30:00 time limit. Close this message, then start a new game to keep playing.",
-    "confirmNewGame.title": "Start a new game?",
-    "confirmNewGame.message": "The current game is in progress. Starting a new game will discard your current progress. This game will count as a loss and be recorded in your statistics.",
-    "announce.newGame": "New game: seed {{seed}}"
+    "reset": "Reset Achievements",
+    "resetting": "Resetting…",
+    "scrollBottom": "Scroll achievements to bottom",
+    "scrollTop": "Scroll achievements to top",
+    "title": "Achievements"
   },
   "board": {
-    "gameOver": "Game Over",
-    "moveLimit": "The 500-move limit was reached.",
-    "timeLimit": "The 30:00 time limit was reached.",
-    "pressNewGame": "Press N or use New Game to start again.",
-    "autocomplete": "Autocomplete",
     "autoCompleting": "Auto-completing to foundations",
-    "newGameDealt": "New game dealt",
+    "autocomplete": "Autocomplete",
     "confirmNewGame": "Confirm new game",
     "drewFromStock": "Drew from stock",
-    "undo": "Undo",
-    "noHints": "No hints available",
-    "hintsCleared": "Hints cleared",
-    "noMoves": "No moves available right now",
+    "gameOver": "Game Over",
     "hintAvailable": "Hint: {{count}} move(s) available",
     "hintAvailable_one": "Hint: {{count}} move available",
-    "hintAvailable_other": "Hint: {{count}} moves available"
+    "hintAvailable_other": "Hint: {{count}} moves available",
+    "hintsCleared": "Hints cleared",
+    "moveLimit": "The 500-move limit was reached.",
+    "newGameDealt": "New game dealt",
+    "noHints": "No hints available",
+    "noMoves": "No moves available right now",
+    "pressNewGame": "Press N or use New Game to start again.",
+    "timeLimit": "The 30:00 time limit was reached.",
+    "undo": "Undo"
   },
   "cards": {
-    "faceDown": "face-down card",
-    "faceDownSuffix": " (face down)",
     "ace": "Ace",
-    "jack": "Jack",
-    "queen": "Queen",
-    "king": "King",
-    "suit.spades": "spades",
-    "suit.hearts": "hearts",
-    "suit.clubs": "clubs",
-    "suit.diamonds": "diamonds",
     "aria": "{{rank}} of {{suit}}",
     "ariaFaceDown": "{{rank}} of {{suit}} (face down)",
     "autoMoved": "Auto-moved {{card}}",
-    "noValidMove": "No valid move for {{card}}"
+    "faceDown": "face-down card",
+    "faceDownSuffix": " (face down)",
+    "jack": "Jack",
+    "king": "King",
+    "noValidMove": "No valid move for {{card}}",
+    "queen": "Queen",
+    "suit.clubs": "clubs",
+    "suit.diamonds": "diamonds",
+    "suit.hearts": "hearts",
+    "suit.spades": "spades"
   },
-  "piles": {
-    "stock": "Stock",
-    "waste": "Waste",
-    "foundation": "Foundation {{n}}",
-    "tableau": "Tableau {{n}}",
-    "selectFirst": "Select a card first to move it to {{pile}}",
-    "noLongerAvailable": "Selected card is no longer available",
-    "movedTo": "Moved card to {{pile}}",
-    "cannotMove": "Cannot move that card to {{pile}}",
-    "empty": ", empty",
-    "cards": ", {{count}} cards",
-    "cards_one": ", {{count}} card",
-    "cards_other": ", {{count}} cards"
+  "common": {
+    "buy": "Buy",
+    "cancel": "Cancel",
+    "close": "Close",
+    "comingSoon": "Coming soon",
+    "completed": "Completed",
+    "confirm": "Confirm",
+    "loading": "Loading…",
+    "locked": "Locked",
+    "new": "New",
+    "ok": "OK",
+    "owned": "Owned",
+    "save": "Save",
+    "scrollBottom": "Scroll to bottom",
+    "scrollTop": "Scroll to top",
+    "selected": "selected"
   },
-  "winModal": {
-    "title": "You Won",
-    "dailyBanner": "Daily Challenge: {{date}} (seed {{seed}})",
-    "eventBanner": "Special Event: {{title}} (seed {{seed}})",
-    "eventFallbackTitle": "Special Event",
-    "current": "Current",
-    "best": "Best",
-    "score": "Score",
-    "time": "Time",
-    "moves": "Moves",
-    "replay": "Replay this Game",
-    "returnDaily": "Return to Daily Challenge",
-    "returnEvent": "Return to Special Event",
-    "newGame": "New Game"
-  },
-  "newGameModal": {
-    "title": "New Game",
-    "prompt": "Current progress will be lost. Choose how to deal the new game:",
-    "winningDeal": "Winning Deal",
-    "winningDeal.desc": "— guaranteed solvable",
-    "randomShuffle": "Random Shuffle",
-    "randomShuffle.desc": "— true random, may be unwinnable",
-    "dailyChallenge": "Daily Challenge",
-    "dailyChallenge.desc": "— a new deal every day",
-    "specialEvents": "Special Events",
-    "specialEvents.desc": "— themed collections",
-    "replay": "Replay this Game",
-    "replay.desc": "— restart the same deal"
+  "confirm": {
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "reset": "Reset"
   },
   "dailyChallenge": {
-    "title": "Daily Challenge",
-    "prevMonth": "Previous month",
-    "nextMonth": "Next month",
-    "month": "Month",
-    "year": "Year",
+    "bestMoves": "Best Moves: {{value}}",
     "bestResult": "Best Result",
-    "seed": "Seed: {{seed}}",
     "bestScore": "Best Score: {{value}}",
     "bestTime": "Best Time: {{value}}",
-    "bestMoves": "Best Moves: {{value}}",
     "completedTimes": "Completed {{count}} time(s)",
     "completedTimes_one": "Completed {{count}} time",
     "completedTimes_other": "Completed {{count}} times",
-    "selectDay": "Select a day to see its best result.",
-    "goToToday": "Go to today",
-    "play": "Play",
     "dayAria": "Day {{d}}",
     "dayCompleted": " (completed)",
     "dayToday": " (today)",
+    "goToToday": "Go to today",
+    "month": "Month",
     "months": [
       "January",
       "February",
@@ -231,403 +93,513 @@
       "October",
       "November",
       "December"
-    ]
-  },
-  "specialEvents": {
-    "title": "Special Events",
-    "scrollTop": "Scroll events to top",
-    "scrollBottom": "Scroll events to bottom",
-    "noEvents": "No events available yet. Check back soon!",
-    "completed": "Completed",
-    "availableFrom": "Disponibile dal {{date}}",
-    "startedOn": "Iniziato il {{date}}",
-    "dealsAndPrize": "{{count}} deals · {{coins}} coin prize",
-    "dealsAndPrize_one": "{{count}} deal · {{coins}} coin prize",
-    "dealsAndPrize_other": "{{count}} deals · {{coins}} coin prize",
-    "filters.notCompleted": "Not Completed",
-    "progress.comingSoon": "Coming soon",
-    "progress.percentAria": "{{percent}} % risolto",
-    "progress.allSolved": "All {{count}} page(s) solved",
-    "progress.allSolved_one": "All {{count}} page solved",
-    "progress.allSolved_other": "All {{count}} pages solved",
-    "progress.solved": "{{completed}}/{{total}} page(s) solved",
-    "progress.solved_one": "{{completed}}/{{total}} page solved",
-    "progress.solved_other": "{{completed}}/{{total}} pages solved"
-  },
-  "eventDetail": {
-    "title": "Event",
-    "back": "← Events",
-    "noPages": "This event doesn't have any pages yet.",
-    "prevPage": "Previous page",
-    "nextPage": "Next page",
-    "pageAria": "Page {{n}}",
-    "pageLocked": "Page {{n}} locked",
-    "unlockHint": "Complete the previous page to unlock",
-    "pageTitle": "Page {{n}}",
-    "gridInfo": "{{grid}}×{{grid}} grid — {{count}} deal(s)",
-    "gridInfo_one": "{{grid}}×{{grid}} grid — {{count}} deal",
-    "gridInfo_other": "{{grid}}×{{grid}} grid — {{count}} deals",
-    "coinReward": "+{{coins}} coins on completion",
-    "dealsSoon": "Deals coming soon",
+    ],
+    "nextMonth": "Next month",
     "play": "Play",
-    "dealBlocked": "Impossibile avviare questa mano. Riprova.",
-    "showPostcard": "Mostra cartolina",
-    "downloadPostcard": "Scarica cartolina",
-    "postcardViewerLabel": "Cartolina {{title}}"
-  },
-  "achievements": {
-    "title": "Achievements",
-    "loading": "Loading…",
-    "scrollTop": "Scroll achievements to top",
-    "scrollBottom": "Scroll achievements to bottom",
-    "reset": "Reset Achievements",
-    "resetting": "Resetting…",
-    "confirm.title": "Reset Achievements?",
-    "confirm.message": "This will clear all of your unlocked achievements. They can be earned again by playing.",
-    "detail.unlocked": "Unlocked {{date}}",
-    "detail.locked": "Locked"
-  },
-  "leaderboard": {
-    "title": "Leaderboard",
-    "tabs.coins": "Coins",
-    "tabs.gamesWon": "Games Won",
-    "tabs.bestStreak": "Best Streak",
-    "tabs.highestScore": "Highest Score",
-    "tabs.fastestWin": "Fastest Win",
-    "tabs.fewestMoves": "Fewest Moves",
-    "loading": "Loading…",
-    "empty": "No results yet."
-  },
-  "store": {
-    "title": "Store",
-    "scrollTop": "Scroll store to top",
-    "scrollBottom": "Scroll store to bottom",
-    "confirm.title": "Confirm purchase",
-    "confirm.message": "Buy {{name}} for {{price}} coins?",
-    "success.title": "{{name}}",
-    "success.message": "{{name}} is now available in the Theme modal under the {{tab}} tab.",
-    "tab.interface": "Interface",
-    "tab.background": "Background",
-    "tab.cardBack": "Cards Back",
-    "tab.cardsFace": "Cards Face"
-  },
-  "theme": {
-    "title": "Theme",
-    "tabs.interface": "Interface",
-    "tabs.background": "Background",
-    "tabs.cardBack": "Cards Back",
-    "tabs.cardsFace": "Cards Face",
-    "aria.background": "Background: {{label}}",
-    "aria.interface": "Interface: {{label}}",
-    "aria.cardBack": "Cards Back: {{label}}",
-    "aria.cardsFace": "Cards Face: {{label}}",
-    "announce.background": "{{label}} background selected",
-    "announce.interface": "{{label}} interface selected",
-    "announce.cardBack": "{{label}} card back selected",
-    "announce.cardsFace": "{{label}} cards selected",
-    "scrollTop": "Scroll theme options to top",
-    "scrollBottom": "Scroll theme options to bottom"
-  },
-  "statistics": {
-    "title": "Statistics",
-    "totalPlayed": "Total games played",
-    "totalWon": "Total games won ({{pct}}%)",
-    "highestScore": "Highest score",
-    "lowestTime": "Lowest time",
-    "lowestMoves": "Lowest moves",
-    "avgTime": "Average time",
-    "avgMoves": "Average moves",
-    "currentStreak": "Current Winning Streak",
-    "bestStreak": "Best Winning Streak",
-    "coinsEarned": "Coins Earned",
-    "coinsSpent": "Coins Spent",
-    "scrollTop": "Scroll statistics to top",
-    "scrollBottom": "Scroll statistics to bottom",
-    "reset": "Reset Statistics",
-    "confirm.title": "Reset statistics?",
-    "confirm.message": "This clears your games played, wins, personal bests, and winning streaks. Your coins, achievements, and Daily Challenge history are not affected. This cannot be undone.",
-    "confirm.inProgress": " Your current game is in progress and will be discarded and replayed (the same as choosing Replay this Game).",
-    "na": "—"
-  },
-  "help": {
-    "title": "Keyboard Shortcuts",
-    "keys.newGame": "New game",
-    "keys.draw": "Draw from stock (recycles when stock is empty)",
-    "keys.undo": "Undo",
-    "keys.autoComplete": "Auto-complete to foundations",
-    "keys.hints": "Show hints",
-    "keys.autoMove": "Auto-move the focused card"
-  },
-  "seedInput": {
-    "title": "Enter Seed",
-    "prompt": "Type a valid Winning-Deal seed number to start that exact game.",
-    "aria": "Seed number",
-    "placeholder": "e.g. 123456",
-    "error.empty": "Enter a seed number first.",
-    "error.notFound": "Seed {{seed}} not found. Try another number."
-  },
-  "confirm": {
-    "confirm": "Confirm",
-    "cancel": "Cancel",
-    "reset": "Reset"
-  },
-  "toasts": {
-    "achievementUnlocked": "Achievement unlocked: {{name}}",
-    "newBestStreak.title": "New Best Streak: {{count}}!",
-    "newBestStreak.desc": "You've won {{count}} game(s) in a row — new personal record.",
-    "newBestTime.title": "New Best Time!",
-    "newBestTime.desc": "You beat your record — {{secs}}s",
-    "newBestMoves.title": "New Best Moves!",
-    "newBestMoves.desc": "You won in just {{count}} moves — new fewest!",
-    "coinsAwarded.title": "+{{count}} Coins!",
-    "coinsAwarded.desc": "Win reward added to your balance."
+    "prevMonth": "Previous month",
+    "seed": "Seed: {{seed}}",
+    "selectDay": "Select a day to see its best result.",
+    "title": "Daily Challenge",
+    "year": "Year"
   },
   "db": {
     "achievements": {
       "ace_collector": {
-        "name": "Ace Collector",
-        "description": "Move all four Aces to Foundation before any other Foundation card."
+        "description": "Move all four Aces to Foundation before any other Foundation card.",
+        "name": "Ace Collector"
       },
       "back_on_track": {
-        "name": "Back on Track",
-        "description": "Win 3 games in a row after a loss."
+        "description": "Win 3 games in a row after a loss.",
+        "name": "Back on Track"
       },
       "blitz": {
-        "name": "Blitz",
-        "description": "Win a game in under 30 seconds."
+        "description": "Win a game in under 30 seconds.",
+        "name": "Blitz"
       },
       "broken_chain": {
-        "name": "Broken Chain",
-        "description": "Win a game immediately after losing a game."
+        "description": "Win a game immediately after losing a game.",
+        "name": "Broken Chain"
       },
       "champion": {
-        "name": "Champion",
-        "description": "Win 10,000 games."
+        "description": "Win 10,000 games.",
+        "name": "Champion"
       },
       "clean_hands": {
-        "name": "Clean Hands",
-        "description": "Win a game without using Undo."
+        "description": "Win a game without using Undo.",
+        "name": "Clean Hands"
       },
       "clean_sweep": {
-        "name": "Clean Sweep",
-        "description": "Win a game without moving any card from Foundation back to Tableau."
+        "description": "Win a game without moving any card from Foundation back to Tableau.",
+        "name": "Clean Sweep"
       },
       "comeback": {
-        "name": "Comeback",
-        "description": "Lose a game and then establish a new personal win-streak record."
+        "description": "Lose a game and then establish a new personal win-streak record.",
+        "name": "Comeback"
       },
       "first_things_first": {
-        "name": "First Things First",
-        "description": "Move a card to Foundation before making any Tableau-to-Tableau move."
+        "description": "Move a card to Foundation before making any Tableau-to-Tableau move.",
+        "name": "First Things First"
       },
       "flawless": {
-        "name": "Flawless",
-        "description": "Win a game in under 105 moves."
+        "description": "Win a game in under 105 moves.",
+        "name": "Flawless"
       },
       "fortune": {
-        "name": "Fortune",
-        "description": "Earn 10,000 coins."
+        "description": "Earn 10,000 coins.",
+        "name": "Fortune"
       },
       "hot_hand": {
-        "name": "Hot Hand",
-        "description": "Achieve a 25-game win streak."
+        "description": "Achieve a 25-game win streak.",
+        "name": "Hot Hand"
       },
       "immortal": {
-        "name": "Immortal",
-        "description": "Play 100,000 games."
+        "description": "Play 100,000 games.",
+        "name": "Immortal"
       },
       "legendary": {
-        "name": "Legendary",
-        "description": "Achieve a 500-game win streak."
+        "description": "Achieve a 500-game win streak.",
+        "name": "Legendary"
       },
       "lightning": {
-        "name": "Lightning",
-        "description": "Win a game in under 45 seconds."
+        "description": "Win a game in under 45 seconds.",
+        "name": "Lightning"
       },
       "master": {
-        "name": "Master",
-        "description": "Win 100,000 games."
+        "description": "Win 100,000 games.",
+        "name": "Master"
       },
       "near_perfect": {
-        "name": "Near Perfect",
-        "description": "Win a game in under 100 moves."
+        "description": "Win a game in under 100 moves.",
+        "name": "Near Perfect"
       },
       "no_assistance": {
-        "name": "No Assistance",
-        "description": "Win a game without using a Hint."
+        "description": "Win a game without using a Hint.",
+        "name": "No Assistance"
       },
       "no_looking_back": {
-        "name": "No Looking Back",
-        "description": "Win a game without recycling the Stock."
+        "description": "Win a game without recycling the Stock.",
+        "name": "No Looking Back"
       },
       "one_pass": {
-        "name": "One Pass",
-        "description": "Win a game with exactly one Stock recycle."
+        "description": "Win a game with exactly one Stock recycle.",
+        "name": "One Pass"
       },
       "perfect_game": {
-        "name": "Perfect Game",
-        "description": "Win a game without using Undo or Hint."
+        "description": "Win a game without using Undo or Hint.",
+        "name": "Perfect Game"
       },
       "perfect_timing": {
-        "name": "Perfect Timing",
-        "description": "Win a game in under 2 minutes and under 105 moves."
+        "description": "Win a game in under 2 minutes and under 105 moves.",
+        "name": "Perfect Timing"
       },
       "pocket_change": {
-        "name": "Pocket Change",
-        "description": "Earn 1,000 coins."
+        "description": "Earn 1,000 coins.",
+        "name": "Pocket Change"
       },
       "precision": {
-        "name": "Precision",
-        "description": "Win a game in under 110 moves."
+        "description": "Win a game in under 110 moves.",
+        "name": "Precision"
       },
       "proven": {
-        "name": "Proven",
-        "description": "Win 1,000 games."
+        "description": "Win 1,000 games.",
+        "name": "Proven"
       },
       "quick_draw": {
-        "name": "Quick Draw",
-        "description": "Win a game in under 90 seconds and under 110 moves."
+        "description": "Win a game in under 90 seconds and under 110 moves.",
+        "name": "Quick Draw"
       },
       "seasoned": {
-        "name": "Seasoned",
-        "description": "Play 1,000 games."
+        "description": "Play 1,000 games.",
+        "name": "Seasoned"
       },
       "sharp_play": {
-        "name": "Sharp Play",
-        "description": "Win a game in under 120 moves."
+        "description": "Win a game in under 120 moves.",
+        "name": "Sharp Play"
       },
       "speed_demon": {
-        "name": "Speed Demon",
-        "description": "Win a game in under 60 seconds and under 120 moves."
+        "description": "Win a game in under 60 seconds and under 120 moves.",
+        "name": "Speed Demon"
       },
       "unstoppable": {
-        "name": "Unstoppable",
-        "description": "Achieve a 50-game win streak."
+        "description": "Achieve a 50-game win streak.",
+        "name": "Unstoppable"
       },
       "untouchable": {
-        "name": "Untouchable",
-        "description": "Achieve a 100-game win streak."
+        "description": "Achieve a 100-game win streak.",
+        "name": "Untouchable"
       },
       "veteran": {
-        "name": "Veteran",
-        "description": "Play 10,000 games."
-      }
-    },
-    "storeItems": {
-      "card-back-red": {
-        "name": "Red Card Back",
-        "description": "A red-themed card back."
-      },
-      "card-back-green": {
-        "name": "Green Card Back",
-        "description": "A green-themed card back."
-      },
-      "bg-noir": {
-        "name": "Noir",
-        "description": "Deep black felt."
-      },
-      "bg-retro-crt": {
-        "name": "Retro CRT",
-        "description": "Phosphor green tint."
+        "description": "Play 10,000 games.",
+        "name": "Veteran"
       }
     },
     "specialEvents": {
-      "christmas-2026": {
-        "title": "Christmas 2026",
-        "description": "A festive three-page collection."
-      },
-      "tribute-in-light": {
-        "title": "Tribute in Light",
-        "description": "A three-page memorial collection honoring the September 11 anniversary."
-      },
-      "valentines-day-2026": {
-        "title": "Valentine's Day 2026"
-      },
-      "independence-day-2026": {
-        "title": "Independence Day",
-        "description": "Independence Day commemorates the adoption of the Declaration of Independence with fireworks, patriotic displays, family gatherings, and celebrations of American freedom and history."
-      },
-      "juneteenth-2026": {
-        "title": "Juneteenth 2026"
-      },
-      "juneteenth-2025": {
-        "title": "Juneteenth 2025"
-      },
-      "valentines-day-2025": {
-        "title": "Valentine's Day 2025"
-      },
-      "memorial-day-2026": {
-        "title": "Memorial Day 2026"
-      },
-      "thanksgiving-day-2025": {
-        "title": "Thanksgiving Day 2025"
-      },
-      "thanksgiving-day-2024": {
-        "title": "Thanksgiving Day 2024"
-      },
-      "national-girl-scout-day-2026": {
-        "title": "National Girl Scout Day 2026"
-      },
-      "festival-of-san-fermin-2026": {
-        "title": "Festival of San Fermín 2026",
-        "description": "The 2026 Festival of San Fermín in Pamplona, Spain, features the famous running of the bulls, traditional processions, and festive gatherings from 6 to 14 July."
-      },
-      "holi-2026": {
-        "title": "Holi 2026",
-        "description": "Holi 2026, the Festival of Colors, marks the arrival of spring in India and beyond with joyful gatherings, vibrant powdered dyes, music, and the triumph of good over evil."
-      },
-      "diwali-2026": {
-        "title": "Diwali 2026",
-        "description": "Diwali 2026, the Festival of Lights, celebrates the victory of light over darkness with oil lamps, rangoli patterns, family gatherings, and fireworks across India and the global diaspora."
-      },
-      "swedish-midsommar-2026": {
-        "title": "Swedish Midsommar 2026",
-        "description": "Swedish Midsommar 2026 marks the traditional Midsummer celebration with maypoles, floral crowns, outdoor dances, and gatherings under the long Nordic summer light around the solstice."
-      },
-      "world-goth-day-2026": {
-        "title": "World Goth Day 2026",
-        "description": "World Goth Day 2026 is an international celebration of goth subculture, encompassing its distinctive music, fashion, art, and community expression observed each year on 22 May."
-      },
-      "world-goth-day-2026-2": {
-        "title": "World Goth Day 2026",
-        "description": "World Goth Day 2026 is an international celebration of goth subculture, encompassing its distinctive music, fashion, art, and community expression observed each year on 22 May."
+      "day-of-the-dead-2026": {
+        "description": "Día de los Muertos is a vibrant Mexican tradition that honors deceased loved ones with colorful ofrendas, marigolds, sugar skulls, and festive gatherings that celebrate life and memory.",
+        "title": "Day of the Dead"
       },
       "dragon-boat-festival-2026": {
-        "title": "Dragon Boat Festival 2026",
-        "description": "The Dragon Boat Festival commemorates the poet Qu Yuan with competitive dragon boat races, sticky rice dumplings (zongzi), and traditional rituals across China and East Asian communities."
+        "description": "The Dragon Boat Festival commemorates the poet Qu Yuan with competitive dragon boat races, sticky rice dumplings (zongzi), and traditional rituals across China and East Asian communities.",
+        "title": "Dragon Boat Festival 2026"
       },
       "festivus-2025": {
-        "title": "Festivus 2025",
-        "description": "Festivus is the secular, anti-commercial holiday popularized by the television series Seinfeld, featuring the aluminum Festivus pole, the airing of grievances, and feats of strength, observed on 23 December."
+        "description": "Festivus is the secular, anti-commercial holiday popularized by the television series Seinfeld, featuring the aluminum Festivus pole, the airing of grievances, and feats of strength, observed on 23 December.",
+        "title": "Festivus 2025"
       },
-      "world-rock-day-2026": {
-        "title": "World Rock Day 2026",
-        "description": "The World Rock Day honors the enduring legacy of rock music, its pioneering artists, and the cultural impact of the genre celebrated around the anniversary of the historic Live Aid concerts."
-      },
-      "day-of-the-dead-2026": {
-        "title": "Day of the Dead",
-        "description": "Día de los Muertos is a vibrant Mexican tradition that honors deceased loved ones with colorful ofrendas, marigolds, sugar skulls, and festive gatherings that celebrate life and memory."
-      },
-      "talk-like-a-pirate-day-2025": {
-        "title": "Talk Like a Pirate Day 2025",
-        "description": "Talk Like a Pirate Day is a light-hearted annual observance that encourages playful pirate speech, nautical costumes, and spirited fun in celebration of pirate lore and adventure."
-      },
-      "tolkien-day-2026": {
-        "title": "Tolkien Day 2026",
-        "description": "Tolkien Day honors the life and works of J. R. R. Tolkien, inviting readers to explore the rich landscapes, languages, and epic tales of Middle-earth through literature and shared appreciation."
-      },
-      "test-event-2026": {
-        "title": "Test Event 2026",
-        "description": "Tolkien Day honors the life and works of J. R. R. Tolkien, inviting readers to explore the rich landscapes, languages, and epic tales of Middle-earth through literature and shared appreciation."
-      },
-      "st-patricks-day-2026": {
-        "title": "St. Patrick's Day",
-        "description": "St. Patrick's Day commemorates Ireland's patron saint with parades, green attire, traditional music, and festive gatherings that celebrate Irish heritage and culture worldwide."
+      "independence-day-2026": {
+        "description": "Independence Day commemorates the adoption of the Declaration of Independence with fireworks, patriotic displays, family gatherings, and celebrations of American freedom and history.",
+        "title": "Independence Day"
       },
       "la-tomatina-2026": {
-        "title": "La Tomatina",
-        "description": "La Tomatina is the famous Spanish tomato-throwing festival held in Buñol, where participants engage in a massive, joyful food fight that fills the streets with red pulp and laughter."
+        "description": "La Tomatina is the famous Spanish tomato-throwing festival held in Buñol, where participants engage in a massive, joyful food fight that fills the streets with red pulp and laughter.",
+        "title": "La Tomatina"
+      },
+      "onam-2026": {
+        "description": "Onam is the major harvest festival of Kerala, marked by intricate floral rangoli (pookalam), traditional boat races, elaborate feasts, and cultural performances that welcome the legendary King Mahabali.",
+        "title": "Onam 2026"
+      },
+      "st-patricks-day-2026": {
+        "description": "St. Patrick's Day commemorates Ireland's patron saint with parades, green attire, traditional music, and festive gatherings that celebrate Irish heritage and culture worldwide.",
+        "title": "St. Patrick's Day"
+      },
+      "swedish-midsommar-2026": {
+        "description": "Swedish Midsommar 2026 marks the traditional Midsummer celebration with maypoles, floral crowns, outdoor dances, and gatherings under the long Nordic summer light around the solstice.",
+        "title": "Swedish Midsommar 2026"
+      },
+      "talk-like-a-pirate-day-2025": {
+        "description": "Talk Like a Pirate Day is a light-hearted annual observance that encourages playful pirate speech, nautical costumes, and spirited fun in celebration of pirate lore and adventure.",
+        "title": "Talk Like a Pirate Day 2025"
+      },
+      "test-event-2026": {
+        "description": "Tolkien Day honors the life and works of J. R. R. Tolkien, inviting readers to explore the rich landscapes, languages, and epic tales of Middle-earth through literature and shared appreciation.",
+        "title": "Test Event 2026"
+      },
+      "tolkien-day-2026": {
+        "description": "Tolkien Day honors the life and works of J. R. R. Tolkien, inviting readers to explore the rich landscapes, languages, and epic tales of Middle-earth through literature and shared appreciation.",
+        "title": "Tolkien Day 2026"
+      },
+      "world-goth-day-2026-2": {
+        "description": "World Goth Day 2026 is an international celebration of goth subculture, encompassing its distinctive music, fashion, art, and community expression observed each year on 22 May.",
+        "title": "World Goth Day 2026"
+      },
+      "world-rock-day-2026": {
+        "description": "The World Rock Day honors the enduring legacy of rock music, its pioneering artists, and the cultural impact of the genre celebrated around the anniversary of the historic Live Aid concerts.",
+        "title": "World Rock Day 2026"
+      }
+    },
+    "storeItems": {
+      "bg-noir": {
+        "description": "Deep black felt.",
+        "name": "Noir"
+      },
+      "bg-retro-crt": {
+        "description": "Phosphor green tint.",
+        "name": "Retro CRT"
+      },
+      "card-back-black": {
+        "description": "A black-themed card back.",
+        "name": "Black Card Back"
+      },
+      "card-back-golden": {
+        "description": "A golden-themed card back.",
+        "name": "Golden Card Back"
+      },
+      "card-back-gray": {
+        "description": "A gray-themed card back.",
+        "name": "Gray Card Back"
+      },
+      "card-back-green": {
+        "description": "A green-themed card back.",
+        "name": "Green Card Back"
+      },
+      "card-back-purple": {
+        "description": "A purple-themed card back.",
+        "name": "Purple Card Back"
+      },
+      "card-back-red": {
+        "description": "A red-themed card back.",
+        "name": "Red Card Back"
       }
     }
+  },
+  "eventDetail": {
+    "back": "← Events",
+    "coinReward": "+{{coins}} coins on completion",
+    "dealBlocked": "Impossibile avviare questa mano. Riprova.",
+    "dealsSoon": "Deals coming soon",
+    "downloadPostcard": "Scarica cartolina",
+    "gridInfo": "{{grid}}×{{grid}} grid — {{count}} deal(s)",
+    "gridInfo_one": "{{grid}}×{{grid}} grid — {{count}} deal",
+    "gridInfo_other": "{{grid}}×{{grid}} grid — {{count}} deals",
+    "nextPage": "Next page",
+    "noPages": "This event doesn't have any pages yet.",
+    "pageAria": "Page {{n}}",
+    "pageLocked": "Page {{n}} locked",
+    "pageTitle": "Page {{n}}",
+    "play": "Play",
+    "postcardViewerLabel": "Cartolina {{title}}",
+    "prevPage": "Previous page",
+    "showPostcard": "Mostra cartolina",
+    "title": "Event",
+    "unlockHint": "Complete the previous page to unlock"
+  },
+  "help": {
+    "keys.autoComplete": "Auto-complete to foundations",
+    "keys.autoMove": "Auto-move the focused card",
+    "keys.draw": "Draw from stock (recycles when stock is empty)",
+    "keys.hints": "Show hints",
+    "keys.newGame": "New game",
+    "keys.undo": "Undo",
+    "title": "Keyboard Shortcuts"
+  },
+  "leaderboard": {
+    "empty": "No results yet.",
+    "loading": "Loading…",
+    "tabs.bestStreak": "Best Streak",
+    "tabs.coins": "Coins",
+    "tabs.fastestWin": "Fastest Win",
+    "tabs.fewestMoves": "Fewest Moves",
+    "tabs.gamesWon": "Games Won",
+    "tabs.highestScore": "Highest Score",
+    "title": "Leaderboard"
+  },
+  "mainMenu": {
+    "account": "Account",
+    "account.switch.cancel": "Stay on this device",
+    "account.switch.confirm": "Switch to that profile",
+    "account.switch.message": "This Google account is already linked to a different player profile. Continuing will switch this device to that profile's data — this device's current progress (not yet linked to any account) will not be kept.",
+    "account.switch.title": "Google account already linked",
+    "achievements": "Achievements",
+    "announce.snapshotExported": "Board snapshot exported",
+    "announce.solvitaireExported": "Solvitaire deal exported",
+    "export": "Export",
+    "help": "Keyboard shortcuts",
+    "leaderboard": "Leaderboard",
+    "playingAs": "Playing as {{name}}",
+    "rename.cooldown": "You can rename until {{date}}",
+    "rename.taken": "That name is taken.",
+    "rename.validation": "3-20 characters: letters, numbers, underscores only.",
+    "settings": "Settings",
+    "signInGoogle": "Sign in with Google",
+    "signOut": "Sign Out",
+    "signOutConfirm.message": "This device will continue as a new guest. Your Google account's progress is safe on Supabase and you can sign back in anytime.",
+    "signOutConfirm.title": "Sign out?",
+    "signedInAs": "Signed in as {{name}}",
+    "statistics": "Statistics",
+    "store": "Store",
+    "takeSnapshot": "Take Snapshot",
+    "theme": "Theme",
+    "title": "Main Menu"
+  },
+  "newGameModal": {
+    "dailyChallenge": "Daily Challenge",
+    "dailyChallenge.desc": "— a new deal every day",
+    "prompt": "Current progress will be lost. Choose how to deal the new game:",
+    "randomShuffle": "Random Shuffle",
+    "randomShuffle.desc": "— true random, may be unwinnable",
+    "replay": "Replay this Game",
+    "replay.desc": "— restart the same deal",
+    "specialEvents": "Special Events",
+    "specialEvents.desc": "— themed collections",
+    "title": "New Game",
+    "winningDeal": "Winning Deal",
+    "winningDeal.desc": "— guaranteed solvable"
+  },
+  "piles": {
+    "cannotMove": "Cannot move that card to {{pile}}",
+    "cards": ", {{count}} cards",
+    "cards_one": ", {{count}} card",
+    "cards_other": ", {{count}} cards",
+    "empty": ", empty",
+    "foundation": "Foundation {{n}}",
+    "movedTo": "Moved card to {{pile}}",
+    "noLongerAvailable": "Selected card is no longer available",
+    "selectFirst": "Select a card first to move it to {{pile}}",
+    "stock": "Stock",
+    "tableau": "Tableau {{n}}",
+    "waste": "Waste"
+  },
+  "seedInput": {
+    "aria": "Seed number",
+    "error.empty": "Enter a seed number first.",
+    "error.notFound": "Seed {{seed}} not found. Try another number.",
+    "placeholder": "e.g. 123456",
+    "prompt": "Type a valid Winning-Deal seed number to start that exact game.",
+    "title": "Enter Seed"
+  },
+  "settings": {
+    "appearLeaderboard": "Appear on Leaderboard",
+    "autoComplete": "Auto-Complete",
+    "autoComplete.desc": "Automatically finish the game when every remaining move is forced",
+    "boardFrame": "Board Frame",
+    "cardBounce": "Card Bounce",
+    "cardEffects": "Card Effects",
+    "cardFlipShimmer": "Card Flip Shimmer",
+    "cardShake": "Invalid-Move Shake",
+    "centiseconds": "Show Centiseconds",
+    "centiseconds.desc": "Show hundredths of a second on the Time HUD (uses more CPU)",
+    "coinFly": "Win Coin Flight",
+    "coinFly.desc": "Fly coins from the win modal to your balance, counting up one by one",
+    "enhancedWin": "Enhanced Win Celebration",
+    "flipOvershoot": "Flip Overshoot",
+    "flipOvershoot.desc": "Subtle pop when a face-down card flips face-up",
+    "foundationParticles": "Foundation Particles",
+    "ghostEcho": "Ghost Echo",
+    "ghostTrail": "Ghost Trail",
+    "hand": "Hand",
+    "hand.left": "Left",
+    "hand.right": "Right",
+    "highlightCard": "Highlight Card",
+    "hoverGlow": "Hover Glow / Drop Highlight",
+    "hoverLift": "Hover Lift",
+    "hoverLift.desc": "Raise the card slightly when the mouse hovers over it",
+    "language": "Language",
+    "language.aria": "Select language",
+    "language.english": "English",
+    "language.french": "French",
+    "language.german": "German",
+    "language.italian": "Italian",
+    "language.portugueseBR": "Portuguese (BR)",
+    "language.spanish": "Spanish",
+    "motionBlocked.infoAria": "Why is this unavailable?",
+    "motionBlocked.osMessage": "Your operating system is asking apps to reduce motion, so this effect can't play even though it's switched on here. On Windows, turn on Show animations (Settings > Accessibility > Display, or Ease of Access > Display on Windows 10); on macOS turn off Reduce motion; on Android turn off Remove animations. Your saved setting is kept and will take effect once the OS allows motion again.",
+    "motionBlocked.title": "Effect unavailable",
+    "motionBlocked.touchMessage": "Hover Lift needs a mouse or trackpad pointer. Touch screens can't hover, so this effect isn't available on this device.",
+    "scrollBottom": "Scroll settings to bottom",
+    "scrollTop": "Scroll settings to top",
+    "sound": "Sound",
+    "soundVolume": "Sound Volume",
+    "tableTexture": "Table Texture",
+    "title": "Settings",
+    "uncoverSparkle": "Uncover Sparkle",
+    "winCelebration": "Win Celebration",
+    "winCelebration.desc": "Falling Cards on Win"
+  },
+  "specialEvents": {
+    "availableFrom": "Disponibile dal {{date}}",
+    "completed": "Completed",
+    "dealsAndPrize": "{{count}} deals · {{coins}} coin prize",
+    "dealsAndPrize_one": "{{count}} deal · {{coins}} coin prize",
+    "dealsAndPrize_other": "{{count}} deals · {{coins}} coin prize",
+    "filters.notCompleted": "Not Completed",
+    "noEvents": "No events available yet. Check back soon!",
+    "progress.allSolved": "All {{count}} page(s) solved",
+    "progress.allSolved_one": "All {{count}} page solved",
+    "progress.allSolved_other": "All {{count}} pages solved",
+    "progress.comingSoon": "Coming soon",
+    "progress.percentAria": "{{percent}} % risolto",
+    "progress.solved": "{{completed}}/{{total}} page(s) solved",
+    "progress.solved_one": "{{completed}}/{{total}} page solved",
+    "progress.solved_other": "{{completed}}/{{total}} pages solved",
+    "scrollBottom": "Scroll events to bottom",
+    "scrollTop": "Scroll events to top",
+    "startedOn": "Iniziato il {{date}}",
+    "title": "Special Events"
+  },
+  "statistics": {
+    "avgMoves": "Average moves",
+    "avgTime": "Average time",
+    "bestStreak": "Best Winning Streak",
+    "coinsEarned": "Coins Earned",
+    "coinsSpent": "Coins Spent",
+    "confirm.inProgress": " Your current game is in progress and will be discarded and replayed (the same as choosing Replay this Game).",
+    "confirm.message": "This clears your games played, wins, personal bests, and winning streaks. Your coins, achievements, and Daily Challenge history are not affected. This cannot be undone.",
+    "confirm.title": "Reset statistics?",
+    "currentStreak": "Current Winning Streak",
+    "highestScore": "Highest score",
+    "lowestMoves": "Lowest moves",
+    "lowestTime": "Lowest time",
+    "na": "—",
+    "reset": "Reset Statistics",
+    "scrollBottom": "Scroll statistics to bottom",
+    "scrollTop": "Scroll statistics to top",
+    "title": "Statistics",
+    "totalPlayed": "Total games played",
+    "totalWon": "Total games won ({{pct}}%)"
+  },
+  "store": {
+    "confirm.message": "Buy {{name}} for {{price}} coins?",
+    "confirm.title": "Confirm purchase",
+    "scrollBottom": "Scroll store to bottom",
+    "scrollTop": "Scroll store to top",
+    "success.message": "{{name}} is now available in the Theme modal under the {{tab}} tab.",
+    "success.title": "{{name}}",
+    "tab.background": "Background",
+    "tab.cardBack": "Cards Back",
+    "tab.cardsFace": "Cards Face",
+    "tab.interface": "Interface",
+    "title": "Store"
+  },
+  "theme": {
+    "announce.background": "{{label}} background selected",
+    "announce.cardBack": "{{label}} card back selected",
+    "announce.cardsFace": "{{label}} cards selected",
+    "announce.interface": "{{label}} interface selected",
+    "aria.background": "Background: {{label}}",
+    "aria.cardBack": "Cards Back: {{label}}",
+    "aria.cardsFace": "Cards Face: {{label}}",
+    "aria.interface": "Interface: {{label}}",
+    "scrollBottom": "Scroll theme options to bottom",
+    "scrollTop": "Scroll theme options to top",
+    "tabs.background": "Background",
+    "tabs.cardBack": "Cards Back",
+    "tabs.cardsFace": "Cards Face",
+    "tabs.interface": "Interface",
+    "title": "Theme"
+  },
+  "toasts": {
+    "achievementUnlocked": "Achievement unlocked: {{name}}",
+    "coinsAwarded.desc": "Win reward added to your balance.",
+    "coinsAwarded.title": "+{{count}} Coins!",
+    "newBestMoves.desc": "You won in just {{count}} moves — new fewest!",
+    "newBestMoves.title": "New Best Moves!",
+    "newBestStreak.desc": "You've won {{count}} game(s) in a row — new personal record.",
+    "newBestStreak.title": "New Best Streak: {{count}}!",
+    "newBestTime.desc": "You beat your record — {{secs}}s",
+    "newBestTime.title": "New Best Time!"
+  },
+  "toolbar": {
+    "announce.newGame": "New game: seed {{seed}}",
+    "coins": "Coins",
+    "confirmNewGame.message": "The current game is in progress. Starting a new game will discard your current progress. This game will count as a loss and be recorded in your statistics.",
+    "confirmNewGame.title": "Start a new game?",
+    "dailyChallenge": "Daily Challenge: {{date}} ({{seed}})",
+    "gameOver.moves": "You reached the 500-move limit. Close this message, then start a new game to keep playing.",
+    "gameOver.time": "You reached the 30:00 time limit. Close this message, then start a new game to keep playing.",
+    "gameOver.title": "Game Over",
+    "hint": "Hint: show available moves (H)",
+    "mainMenu": "Main Menu",
+    "moves": "Moves",
+    "newGame": "New Game — start a new deal",
+    "newGame.title": "Start a new game",
+    "noMoves.cancel": "Undo Last Move",
+    "noMoves.confirm": "New Game",
+    "noMoves.dailyConfirm": "Return to Daily Challenge",
+    "noMoves.message": "There don't seem to be any more valid moves. You can keep going to recycle the stock, undo your last move, replay this exact deal, or start a new game.",
+    "noMoves.quaternary": "Keep Going",
+    "noMoves.tertiary": "Replay this Game",
+    "noMoves.title": "No moves remaining",
+    "random": "Random ({{seed}})",
+    "score": "Score",
+    "seedHint": "Double-click to enter a specific seed",
+    "specialEvent": "Special Event, Deal {{dealNumber}} ({{seed}})",
+    "time": "Time",
+    "undo": "Undo",
+    "winningDeal": "Winning Deal ({{seed}})"
+  },
+  "winModal": {
+    "best": "Best",
+    "current": "Current",
+    "dailyBanner": "Daily Challenge: {{date}} (seed {{seed}})",
+    "eventBanner": "Special Event: {{title}} (seed {{seed}})",
+    "eventFallbackTitle": "Special Event",
+    "moves": "Moves",
+    "newGame": "New Game",
+    "replay": "Replay this Game",
+    "returnDaily": "Return to Daily Challenge",
+    "returnEvent": "Return to Special Event",
+    "score": "Score",
+    "time": "Time",
+    "title": "You Won"
   }
 }

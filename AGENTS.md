@@ -356,14 +356,59 @@ depend on score (`highestScore`) are currently 0-based.
 7. **Special-event seed authoring** — use `scripts/generateEventSeeds.mjs` with
    `scripts/eventCatalog.src.json` to produce migration 022 SQL for insertion into Supabase.
 
+## Database ↔ Locale sync
+
+The locale files under `src/i18n/locales/*.json` carry three "DB-mirrored" sections
+(`db.achievements`, `db.storeItems`, `db.specialEvents`) consumed by
+`src/i18n/db.js` — these stay in sync with the Supabase catalog tables
+(`public.achievements_definitions`, `public.store_items`, `public.special_events`)
+via a small two-script pipeline. The Supabase tables are the source of truth;
+the locale files are a derived artifact.
+
+- **Canonical row dumps** (committed, offline-friendly, idempotent):
+  - `supabase/achievements_definitions.sql`
+  - `supabase/store_items.dump.sql`
+  - `supabase/special_events.dump.sql`
+- **Refresh the dumps after any dashboard edit** to a catalog table:
+  ```bash
+  npm run catalog:dump        # writes the three .dump.sql files
+  ```
+  Reads `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` from `.env.local`
+  (git-ignored). Both vars are also listed in `.env.example`.
+- **Converge the locale files to the dumps**:
+  ```bash
+  npm run i18n:fix            # adds missing ids, updates English text, prunes stale ids
+  npm run i18n:check          # verify parity (default in CI + pre-commit)
+  ```
+  English is the reference (`en.json` always mirrors the dump exactly).
+  Other locales are only auto-seeded where they previously had no translation,
+  so translator work in `fr/de/it/es/pt-BR` is never clobbered.
+- **Pre-commit hook** (`husky` → `npm test`) **blocks any commit** that introduces
+  drift between the dumps and the locales. When a check fails, run
+  `npm run i18n:fix` (and `npm run catalog:dump` if the upstream tables changed)
+  and re-commit.
+
+**Adding/removing a catalog row:**
+1. Edit the row via the Supabase dashboard (or via a new `migration_*.sql`).
+2. `npm run catalog:dump` to refresh the canonical SQL dumps.
+3. `npm run i18n:fix` to update `en.json` (and seed any missing translations).
+4. Commit the dump + locale changes together.
+
+The new special-event wizard (`scripts/createSpecialEvent.mjs`) keeps writing the
+locale doc inline as it always has; the next `npm run catalog:dump` followed by
+`npm run i18n:check` will validate the result.
+
 ## Run
 
 ```bash
 npm install
-npm run dev      # dev server
-npm run build    # production build
-npm run lint     # eslint
-npm test         # node --test (core unit tests)
+npm run dev           # dev server
+npm run build         # production build
+npm run lint          # eslint
+npm test              # node --test + i18n:check
+npm run catalog:dump  # refresh Supabase catalog dumps (requires .env.local)
+npm run i18n:check    # verify locale ↔ dump parity
+npm run i18n:fix      # converge locale files to dumps
 ```
 
 ## Commit Convention
