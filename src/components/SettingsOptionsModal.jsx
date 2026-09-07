@@ -5,12 +5,15 @@
 // tapping its own trigger while open) of ThemeModal.jsx / SettingsModal.jsx.
 
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
+import ConfirmModal from './ConfirmModal.jsx';
 import ToggleSwitch from './ToggleSwitch.jsx';
+import { useReducedMotion } from '../hooks/useReducedMotion.js';
+import { useHoverCapable } from '../hooks/useHoverCapable.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { supabase } from '../lib/supabaseClient.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
@@ -62,6 +65,9 @@ export default function SettingsOptionsModal({
   const centisecondsOn = useSettingsStore((s) => s.centisecondsOn);
   const hoverLift = useSettingsStore((s) => s.hoverLift);
   const flipOvershoot = useSettingsStore((s) => s.flipOvershoot);
+  const osReducesMotion = useReducedMotion();
+  const hoverCapable = useHoverCapable();
+  const [blockedInfo, setBlockedInfo] = useState(null);
 
   useModalEscape({ open, onClose, id: 'settings-options', z: Z.CHILD });
 
@@ -142,7 +148,36 @@ export default function SettingsOptionsModal({
     marginBottom: 14,
   };
 
+  const hoverLiftReason = !hoverCapable ? 'touch' : 'os';
+  const hoverLiftBlocked = osReducesMotion || !hoverCapable;
+
+  const BlockedInfoButton = ({ effect, reason }) => (
+    <button
+      type="button"
+      aria-label={t('settings.motionBlocked.infoAria')}
+      title={t('settings.motionBlocked.infoAria')}
+      onClick={() => setBlockedInfo({ effect, reason })}
+      style={{
+        display: 'inline-grid',
+        placeItems: 'center',
+        width: 28,
+        height: 28,
+        padding: 0,
+        marginLeft: 6,
+        border: '1px solid var(--ui-control-border)',
+        borderRadius: '50%',
+        background: 'transparent',
+        color: 'var(--ui-modal-panel-fg)',
+        cursor: 'pointer',
+        verticalAlign: 'middle',
+      }}
+    >
+      <Info size={15} aria-hidden="true" />
+    </button>
+  );
+
   return (
+    <>
     <div
       ref={dialogRef}
       role="dialog"
@@ -251,30 +286,42 @@ export default function SettingsOptionsModal({
             a data-bounce CSS attribute, which coupled the hover-rise to the
             move-landing pop. See useSettingsStore + useCardMoveSlide for the
             underlying state. */}
-        <div style={{ ...field, marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.hoverLift')}</label>
+        <div style={{ ...field, marginBottom: 20, opacity: hoverLiftBlocked ? 0.5 : 1 }}>
+          <span style={{ fontSize: 14, fontWeight: 600 }}>
+            {t('settings.hoverLift')}
+            {hoverLiftBlocked && <BlockedInfoButton effect={t('settings.hoverLift')} reason={hoverLiftReason} />}
+          </span>
           <ToggleSwitch
             checked={!!hoverLift}
             onChange={(v) => useSettingsStore.getState().setHoverLift(v)}
             label={t('settings.hoverLift.desc')}
+            disabled={hoverLiftBlocked}
           />
         </div>
 
-        <div style={{ ...field, marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.flipOvershoot')}</label>
+        <div style={{ ...field, marginBottom: 20, opacity: osReducesMotion ? 0.5 : 1 }}>
+          <span style={{ fontSize: 14, fontWeight: 600 }}>
+            {t('settings.flipOvershoot')}
+            {osReducesMotion && <BlockedInfoButton effect={t('settings.flipOvershoot')} reason="os" />}
+          </span>
           <ToggleSwitch
             checked={!!flipOvershoot}
             onChange={(v) => useSettingsStore.getState().setFlipOvershoot(v)}
             label={t('settings.flipOvershoot.desc')}
+            disabled={osReducesMotion}
           />
         </div>
 
-        <div style={{ ...field, marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.cardBounce')}</label>
+        <div style={{ ...field, marginBottom: 20, opacity: osReducesMotion ? 0.5 : 1 }}>
+          <span style={{ fontSize: 14, fontWeight: 600 }}>
+            {t('settings.cardBounce')}
+            {osReducesMotion && <BlockedInfoButton effect={t('settings.cardBounce')} reason="os" />}
+          </span>
           <ToggleSwitch
             checked={!!bounce}
             onChange={(v) => useSettingsStore.getState().setBounce(v)}
             label={t('settings.cardBounce')}
+            disabled={osReducesMotion}
           />
         </div>
 
@@ -294,23 +341,29 @@ export default function SettingsOptionsModal({
           </div>
         ))}
 
-        <div style={{ ...field, marginLeft: 16, opacity: cardEffects ? 1 : 0.5, marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.ghostEcho')}</label>
+        <div style={{ ...field, marginLeft: 16, opacity: (!cardEffects || osReducesMotion) ? 0.5 : 1, marginBottom: 20 }}>
+          <span style={{ fontSize: 14, fontWeight: 600 }}>
+            {t('settings.ghostEcho')}
+            {osReducesMotion && <BlockedInfoButton effect={t('settings.ghostEcho')} reason="os" />}
+          </span>
           <ToggleSwitch
             checked={!!ghostEcho}
             onChange={(v) => useSettingsStore.getState().setGhostEcho(v)}
             label={t('settings.ghostEcho')}
-            disabled={!cardEffects}
+            disabled={!cardEffects || osReducesMotion}
           />
         </div>
 
-        <div style={{ ...field, marginLeft: 16, opacity: cardEffects ? 1 : 0.5, marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.ghostTrail')}</label>
+        <div style={{ ...field, marginLeft: 16, opacity: (!cardEffects || osReducesMotion) ? 0.5 : 1, marginBottom: 20 }}>
+          <span style={{ fontSize: 14, fontWeight: 600 }}>
+            {t('settings.ghostTrail')}
+            {osReducesMotion && <BlockedInfoButton effect={t('settings.ghostTrail')} reason="os" />}
+          </span>
           <ToggleSwitch
             checked={!!ghostTrail}
             onChange={(v) => useSettingsStore.getState().setGhostTrail(v)}
             label={t('settings.ghostTrail')}
-            disabled={!cardEffects}
+            disabled={!cardEffects || osReducesMotion}
           />
         </div>
 
@@ -322,12 +375,16 @@ export default function SettingsOptionsModal({
             label={t('settings.winCelebration.desc')}
           />
         </div>
-        <div style={{ ...field, marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.enhancedWin')}</label>
+        <div style={{ ...field, marginBottom: 20, opacity: osReducesMotion ? 0.5 : 1 }}>
+          <span style={{ fontSize: 14, fontWeight: 600 }}>
+            {t('settings.enhancedWin')}
+            {osReducesMotion && <BlockedInfoButton effect={t('settings.enhancedWin')} reason="os" />}
+          </span>
           <ToggleSwitch
             checked={!!winEnhanced}
             onChange={(v) => useSettingsStore.getState().setWinEnhanced(v)}
             label={t('settings.enhancedWin')}
+            disabled={osReducesMotion}
           />
         </div>
 
@@ -365,5 +422,18 @@ export default function SettingsOptionsModal({
         </div>
       </div>
     </div>
+
+      <ConfirmModal
+        open={!!blockedInfo}
+        title={blockedInfo ? `${t('settings.motionBlocked.title')}: ${blockedInfo.effect}` : ''}
+        message={blockedInfo ? t(blockedInfo.reason === 'touch' ? 'settings.motionBlocked.touchMessage' : 'settings.motionBlocked.osMessage') : ''}
+        confirmText={t('common.ok')}
+        hideCancel
+        zIndex={Z.GRANDCHILD}
+        z={Z.GRANDCHILD}
+        onConfirm={() => setBlockedInfo(null)}
+        onCancel={() => setBlockedInfo(null)}
+      />
+    </>
   );
 }
