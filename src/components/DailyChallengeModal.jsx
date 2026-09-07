@@ -8,7 +8,7 @@
 // the device clock. The deal seed for each day is pre-generated and bundled
 // (core/dailyChallenge.seedForDate).
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Crosshair, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
@@ -121,6 +121,38 @@ export default function DailyChallengeModal() {
   const dragStateRef = useRef({ startX: 0, startY: 0, active: false, committed: false, pointerId: null });
   const justSwipedRef = useRef(false);
   const justSwipedTimerRef = useRef(null);
+  // Slide-track state. The body is rendered as a 3-slot flex track
+  // [prev | current | next] and translated horizontally to follow a swipe
+  // and to animate a programmatic step (arrow buttons, keyboard, swipe).
+  //   slideIndex ∈ {-1, 0, 1} — which slot the *current* month occupies.
+  //                        0 = resting, the viewport shows it.
+  //                       -1 = current month has slid left (about to commit
+  //                            a "next" navigation; current sits in the
+  //                            prev slot visually, ready to be replaced).
+  //                       +1 = current month has slid right (about to commit
+  //                            a "prev" navigation).
+  //   dragPx              — live finger offset added on top of slideIndex.
+  //   dragging            — true while a swipe is in progress; used to
+  //                         suppress the CSS transition so the track follows
+  //                         the pointer 1:1.
+  //   suppressTrackAnim   — disables the CSS transition for one commit, used
+  //                         for open-time positioning, for short-drag snap-
+  //                         back, and for the re-center step at the end of a
+  //                         slide (so the swap of viewY/viewM doesn't visibly
+  //                         shift the track).
+  //   slideBump           — counter so the trackTransform memo recomputes
+  //                         when slideIndex changes (refs aren't reactive).
+  const [slideIndex, setSlideIndex] = useState(0);
+  const [suppressTrackAnim, setSuppressTrackAnim] = useState(true);
+  const [slideBump, setSlideBump] = useState(0);
+  const [dragPx, setDragPx] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const slideTimerRef = useRef(null);
+  const suppressTimerRef = useRef(null);
+
+  // Mirrors the 0.3s ease used by EventDetailModal.jsx (line 579). A short
+  // 20 ms slack on the commit timer covers slow frames / subpixel rendering.
+  const SLIDE_MS = 300;
 
   const applySelected = (v) => { selectedRef.current = v; setSelected(v); };
   const applyToday = (v) => { todayRef.current = v; setToday(v); };
@@ -184,6 +216,19 @@ export default function DailyChallengeModal() {
     const ini = utcToYMD(dateToUTC(initial));
     setViewY(ini.y);
     setViewM(ini.m);
+    // Reset the slide track to slot 0 with the transition suppressed, so
+    // the first paint after open lands on the right month without sliding
+    // from a default position. Mirrors EventDetailModal.jsx:181-217.
+    if (suppressTimerRef.current) { clearTimeout(suppressTimerRef.current); suppressTimerRef.current = null; }
+    if (slideTimerRef.current) { clearTimeout(slideTimerRef.current); slideTimerRef.current = null; }
+    setDragPx(0);
+    setSlideIndex(0);
+    setSlideBump((b) => b + 1);
+    setSuppressTrackAnim(true);
+    suppressTimerRef.current = setTimeout(() => {
+      suppressTimerRef.current = null;
+      setSuppressTrackAnim(false);
+    }, 60);
     applySelected(initial);
     initialRef.current = { today: todayStr, selected: initial, usedPreferred };
     // Persist the advanced day (e.g. set after a daily win) so it survives a
@@ -221,8 +266,7 @@ export default function DailyChallengeModal() {
         lastSel !== todayRef.current
       ) {
         const ini = utcToYMD(dateToUTC(lastSel));
-        setViewY(ini.y);
-        setViewM(ini.m);
+        jumpTo(ini.y, ini.m);
         applySelected(lastSel);
       }
     });
@@ -252,11 +296,22 @@ export default function DailyChallengeModal() {
 
   // Clear any pending post-swipe click-suppression timer on unmount so a
   // stale timer can't fire after the modal closes (mirrors the cleanup
-  // EventDetailModal.jsx performs for its own justSwipedTimerRef).
+  // EventDetailModal.jsx performs for its own justSwipedTimerRef). Also
+  // cancels the slide-commit and transition-suppression timers so a half-
+  // finished animation doesn't try to commit a viewY/viewM after the modal
+  // is gone.
   useEffect(() => () => {
     if (justSwipedTimerRef.current) {
       clearTimeout(justSwipedTimerRef.current);
       justSwipedTimerRef.current = null;
+    }
+    if (slideTimerRef.current) {
+      clearTimeout(slideTimerRef.current);
+      slideTimerRef.current = null;
+    }
+    if (suppressTimerRef.current) {
+      clearTimeout(suppressTimerRef.current);
+      suppressTimerRef.current = null;
     }
   }, []);
 
@@ -290,11 +345,12 @@ export default function DailyChallengeModal() {
     }
   };
 
-  // Jump the grid back to today and select it.
+  // Jump the grid back to today and select it. Uses jumpTo so a "today"
+  // tap from a far month doesn't slide across N months — instant, like a
+  // year/month <select> change.
   const onGoToday = () => {
     const ini = utcToYMD(dateToUTC(today));
-    setViewY(ini.y);
-    setViewM(ini.m);
+    jumpTo(ini.y, ini.m);
     applySelected(today);
     userPicked.current = true;
   };
@@ -306,19 +362,78 @@ export default function DailyChallengeModal() {
   const years = listSupportedYears();
   const monthsInYear = Array.from({ length: 12 }, (_, i) => i + 1);
 
-  // Step the viewed month by one, gated by the same canPrev/canNext the
-  // arrow buttons honor so a swipe past the supported window is a no-op.
-  // Shared by the arrow buttons, the swipe gesture, and ArrowLeft/Right.
+  // Step the viewed month by one with a horizontal slide. The two-phase
+  // approach mirrors EventDetailModal.jsx's `positionWithoutAnim` pattern
+  // (line 95): first shift the track by one slot in the chosen direction
+  // and let CSS animate it, then on the next tick commit the new
+  // viewY/viewM, re-center the track, and suppress the brief re-center
+  // transition so the rendered content swap is invisible. Drag offset
+  // is reset so any in-flight finger drag doesn't combine with the slot
+  // shift. The 0.3s slide duration is also used by arrow buttons and
+  // ArrowLeft/Right so the gesture, mouse, and keyboard paths feel the
+  // same. Gated by canPrev/canNext (same as the arrow buttons) so a
+  // swipe or key at the supported-window edge is a no-op.
+  const slideTo = (delta, target) => {
+    if (slideTimerRef.current) clearTimeout(slideTimerRef.current);
+    if (suppressTimerRef.current) clearTimeout(suppressTimerRef.current);
+    setDragPx(0);
+    setSlideIndex(delta);
+    setSuppressTrackAnim(false);
+    slideTimerRef.current = setTimeout(() => {
+      slideTimerRef.current = null;
+      setViewY(target.y);
+      setViewM(target.m);
+      setSlideIndex(0);
+      setSlideBump((b) => b + 1);
+      setSuppressTrackAnim(true);
+      suppressTimerRef.current = setTimeout(() => {
+        suppressTimerRef.current = null;
+        setSuppressTrackAnim(false);
+      }, 60);
+    }, SLIDE_MS + 20);
+  };
+
   const goPrevMonth = () => {
     if (!canPrev) return;
-    setViewM(prev.m);
-    setViewY(prev.y);
+    slideTo(+1, { y: prev.y, m: prev.m });
   };
   const goNextMonth = () => {
     if (!canNext) return;
-    setViewM(next.m);
-    setViewY(next.y);
+    slideTo(-1, { y: next.y, m: next.m });
   };
+
+  // Far jumps from the year/month <select>s skip the slide (the destination
+  // isn't an adjacent slot, so animating across N months would feel laggy).
+  // We still reset the track state and suppress the transition for one
+  // commit so the rendered content swap is instant, matching the open-time
+  // positioning behavior in EventDetailModal.jsx.
+  const jumpTo = (y, m) => {
+    if (!isSupportedYM(y, m)) return;
+    if (slideTimerRef.current) { clearTimeout(slideTimerRef.current); slideTimerRef.current = null; }
+    if (suppressTimerRef.current) { clearTimeout(suppressTimerRef.current); suppressTimerRef.current = null; }
+    setDragPx(0);
+    setSlideIndex(0);
+    setSlideBump((b) => b + 1);
+    setSuppressTrackAnim(true);
+    setViewY(y);
+    setViewM(m);
+    suppressTimerRef.current = setTimeout(() => {
+      suppressTimerRef.current = null;
+      setSuppressTrackAnim(false);
+    }, 60);
+  };
+
+  // trackTransform follows the same translateX(calc(-idx*100% + dragPx))
+  // pattern as EventDetailModal.jsx:485, just with slideIndex (which slot
+  // the current month occupies) instead of the absolute page index. At
+  // rest, slideIndex === 0 and the track is untranslated. slideBump keeps
+  // the memo reactive to slideIndex changes without making the ref itself
+  // part of the dep list.
+  const trackTransform = useMemo(
+    () => `translateX(calc(${-slideIndex * 100}% + ${dragPx}px))`,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [slideIndex, dragPx, slideBump]
+  );
 
   // Fixed swipe threshold (px) on the release. Roughly 12% of a 520 px panel
   // and ~17% of a 360 px mobile viewport — close enough to the events
@@ -350,6 +465,14 @@ export default function DailyChallengeModal() {
     if (!dragStateRef.current.committed && Math.abs(dx) > 10) {
       try { e.currentTarget.setPointerCapture(dragStateRef.current.pointerId); } catch {}
       dragStateRef.current.committed = true;
+      setDragging(true);
+    }
+    if (dragStateRef.current.committed) {
+      // Live-track the finger: the slide track follows the drag offset until
+      // release (matches EventDetailModal.jsx's dragPx pattern). Suppress the
+      // CSS transition while dragging so the motion is 1:1 with the pointer.
+      setSuppressTrackAnim(true);
+      setDragPx(dx);
     }
   };
 
@@ -363,8 +486,20 @@ export default function DailyChallengeModal() {
     if (committed) {
       const releaseX = e?.clientX ?? startX;
       const dx = releaseX - startX;
-      if (dx <= -SWIPE_THRESHOLD_PX) goNextMonth();
-      else if (dx >= SWIPE_THRESHOLD_PX) goPrevMonth();
+      if (dx <= -SWIPE_THRESHOLD_PX) {
+        // Past the threshold going left: commit a "next" navigation. The
+        // current slot will end up in the prev slot (-1), then slideTo
+        // re-centers after the 0.3s transition.
+        goNextMonth();
+      } else if (dx >= SWIPE_THRESHOLD_PX) {
+        goPrevMonth();
+      } else {
+        // Short drag — snap back to the resting slot. Re-enable the
+        // transition, clear dragPx, and clear any slideIndex the in-flight
+        // drag may have left set (none today, but defensive).
+        setSuppressTrackAnim(false);
+        setDragPx(0);
+      }
       // Swallow the synthetic click that the browser fires at the release
       // point — it can land on a day cell and accidentally select it. The
       // 250 ms window matches EventDetailModal.jsx's justSwipedRef guard.
@@ -377,6 +512,7 @@ export default function DailyChallengeModal() {
     }
     dragStateRef.current.active = false;
     dragStateRef.current.committed = false;
+    setDragging(false);
   };
 
   const handlePanelClickCapture = (e) => {
@@ -396,48 +532,104 @@ export default function DailyChallengeModal() {
     else if (e.key === 'ArrowRight') { e.preventDefault(); goNextMonth(); }
   };
 
-  const selectedResult = selected ? results[selected] : null;
+  // Build the day grid for the actual days of a given (y, m). Extracted from
+  // the render body so the 3-slot slide track can render prev/current/next
+  // independently with the same logic.
+  const buildCells = (y, m) => {
+    const out = [];
+    const dim = daysInMonth(y, m);
+    for (let d = 1; d <= dim; d++) {
+      const dateStr = toDateStr(y, m, d);
+      const supported = withinSupported(dateStr);
+      const future = isAfter(dateStr, today);
+      const enabled = supported && !future;
+      const completed = !!results[dateStr];
+      const isToday = dateStr === today;
+      const isSel = dateStr === selected;
 
-  // Build the day grid for the actual days of this month (1..daysInMonth).
-  const cells = [];
-  const dim = daysInMonth(viewY, viewM);
-  for (let d = 1; d <= dim; d++) {
-    const dateStr = toDateStr(viewY, viewM, d);
-    const validDay = true;
-    const supported = withinSupported(dateStr);
-    const future = isAfter(dateStr, today);
-    const enabled = validDay && supported && !future;
-    const completed = !!results[dateStr];
-    const isToday = dateStr === today;
-    const isSel = dateStr === selected;
+      const classes = ['dc-cell'];
+      if (!enabled) classes.push('dc-cell--disabled');
+      if (completed) classes.push('dc-cell--completed');
+      if (isToday) classes.push('dc-cell--today');
+      if (isSel) classes.push('dc-cell--selected');
 
-    const classes = ['dc-cell'];
-    if (!enabled) classes.push('dc-cell--disabled');
-    if (completed) classes.push('dc-cell--completed');
-    if (isToday) classes.push('dc-cell--today');
-    if (isSel) classes.push('dc-cell--selected');
+      if (enabled) {
+        out.push(
+          <button
+            key={d}
+            type="button"
+            className={classes.join(' ')}
+            onClick={() => { userPicked.current = true; applySelected(dateStr); }}
+            aria-pressed={isSel}
+            aria-label={`${t('dailyChallenge.dayAria', { d })}${completed ? t('dailyChallenge.dayCompleted') : ''}${isToday ? t('dailyChallenge.dayToday') : ''}`}
+          >
+            {d}
+          </button>,
+        );
+      } else {
+        out.push(
+          <div key={d} className={classes.join(' ')} aria-hidden="true">
+            {d}
+          </div>,
+        );
+      }
+    }
+    return out;
+  };
 
-    if (enabled) {
-      cells.push(
-        <button
-          key={d}
-          type="button"
-          className={classes.join(' ')}
-          onClick={() => { userPicked.current = true; applySelected(dateStr); }}
-          aria-pressed={isSel}
-          aria-label={`${t('dailyChallenge.dayAria', { d })}${completed ? t('dailyChallenge.dayCompleted') : ''}${isToday ? t('dailyChallenge.dayToday') : ''}`}
-        >
-          {d}
-        </button>,
-      );
-    } else {
-      cells.push(
-        <div key={d} className={classes.join(' ')} aria-hidden="true">
-          {d}
-        </div>,
+  // Side panel for the day currently shown in a given slot. For the prev /
+  // next slots, the day isn't in `selected` (a date from another month) so
+  // they render the empty-state copy. The current slot uses the live
+  // `selected` exactly as before.
+  const renderSidePanel = (slotY, slotM) => {
+    let dateStr = null;
+    if (slotY === viewY && slotM === viewM) dateStr = selected;
+    if (!dateStr) {
+      return (
+        <div style={{ flex: '1 1 220px', minWidth: 200, borderLeft: '1px solid var(--ui-modal-panel-border)', paddingLeft: 16 }}>
+          <h3 style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 700 }}>{t('dailyChallenge.bestResult')}</h3>
+          <div style={{ color: 'var(--ui-modal-panel-fg)', opacity: 0.75 }}>{t('dailyChallenge.selectDay')}</div>
+        </div>
       );
     }
-  }
+    const result = results[dateStr];
+    return (
+      <div style={{ flex: '1 1 220px', minWidth: 200, borderLeft: '1px solid var(--ui-modal-panel-border)', paddingLeft: 16 }}>
+        <h3 style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 700 }}>{t('dailyChallenge.bestResult')}</h3>
+        <div style={{ fontSize: 13, lineHeight: 1.6 }}>
+          <div style={{ marginBottom: 8, fontWeight: 600 }}>{dateStr}</div>
+          <div>{t('dailyChallenge.seed', { seed: result ? result.seed : seedForDate(dateStr) })}</div>
+          <div style={{ display: 'none' }}>{t('dailyChallenge.bestScore', { value: result ? result.bestScore : 0 })}</div>
+          <div>{t('dailyChallenge.bestTime', { value: result ? formatTime(result.bestTimeMs) : formatTime(0) })}</div>
+          <div>{t('dailyChallenge.bestMoves', { value: result ? result.bestMoves : 0 })}</div>
+          <div style={{ opacity: 0.7 }}>
+            {t('dailyChallenge.completedTimes', { count: result ? result.wins : 0 })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // 3-slot body: [prev | current | next]. The track is translated by
+  // `trackTransform` to show the right slot in the viewport. The two outer
+  // slots exist only so the slide has somewhere to animate from/to — they're
+  // aria-hidden so screen readers don't read three months.
+  const prevDims = prev;
+  const nextDims = next;
+  const slotCellStyle = {
+    flex: '0 0 100%',
+    minWidth: 0,
+    display: 'flex',
+    gap: 18,
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
+    padding: '0 4px',
+    boxSizing: 'border-box',
+  };
+  const slotGridWrapStyle = {
+    flex: '1 1 320px',
+    minWidth: 280,
+  };
 
   return (
     <div
@@ -498,7 +690,7 @@ export default function DailyChallengeModal() {
                 value={viewM}
                 onChange={(e) => {
                   const m = Number(e.target.value);
-                  if (isSupportedYM(viewY, m)) setViewM(m);
+                  if (isSupportedYM(viewY, m)) jumpTo(viewY, m);
                 }}
                 style={selectStyle}
               >
@@ -513,7 +705,7 @@ export default function DailyChallengeModal() {
                 value={viewY}
                 onChange={(e) => {
                   const y = Number(e.target.value);
-                  if (isSupportedYM(y, viewM)) setViewY(y);
+                  if (isSupportedYM(y, viewM)) jumpTo(y, viewM);
                 }}
                 style={selectStyle}
               >
@@ -541,28 +733,54 @@ export default function DailyChallengeModal() {
             </button>
           </div>
 
-          {/* Body: calendar grid + side panel */}
-          <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-            <div style={{ flex: '1 1 320px', minWidth: 280 }}>
-              <div style={{ ...gridStyle, minHeight: '214px', alignContent: 'start' }}>{cells}</div>
-            </div>
-
-            <div style={{ flex: '1 1 220px', minWidth: 200, borderLeft: '1px solid var(--ui-modal-panel-border)', paddingLeft: 16 }}>
-              <h3 style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 700 }}>{t('dailyChallenge.bestResult')}</h3>
-              {selected ? (
-                <div style={{ fontSize: 13, lineHeight: 1.6 }}>
-                  <div style={{ marginBottom: 8, fontWeight: 600 }}>{selected}</div>
-                  <div>{t('dailyChallenge.seed', { seed: selectedResult ? selectedResult.seed : seedForDate(selected) })}</div>
-                  <div style={{ display: 'none' }}>{t('dailyChallenge.bestScore', { value: selectedResult ? selectedResult.bestScore : 0 })}</div>
-                  <div>{t('dailyChallenge.bestTime', { value: selectedResult ? formatTime(selectedResult.bestTimeMs) : formatTime(0) })}</div>
-                  <div>{t('dailyChallenge.bestMoves', { value: selectedResult ? selectedResult.bestMoves : 0 })}</div>
-                  <div style={{ opacity: 0.7 }}>
-                    {t('dailyChallenge.completedTimes', { count: selectedResult ? selectedResult.wins : 0 })}
+          {/* Body: calendar grid + side panel, wrapped in a clipped viewport
+              with a 3-slot flex track so swipe / arrow / keyboard can slide
+              the inner content horizontally with a 0.3s ease. The header
+              (above) and footer (below) stay put. */}
+          <div style={{ overflow: 'hidden' }}>
+            <div
+              style={{
+                display: 'flex',
+                transform: trackTransform,
+                transition: dragging || suppressTrackAnim ? 'none' : 'transform 0.3s ease',
+                willChange: 'transform',
+              }}
+            >
+              <div
+                key={`slot-prev-${prevDims.y}-${prevDims.m}`}
+                aria-hidden="true"
+                style={slotCellStyle}
+              >
+                <div style={slotGridWrapStyle}>
+                  <div style={{ ...gridStyle, minHeight: '214px', alignContent: 'start' }}>
+                    {buildCells(prevDims.y, prevDims.m)}
                   </div>
                 </div>
-              ) : (
-                <div style={{ color: 'var(--ui-modal-panel-fg)', opacity: 0.75 }}>{t('dailyChallenge.selectDay')}</div>
-              )}
+                {renderSidePanel(prevDims.y, prevDims.m)}
+              </div>
+              <div
+                key={`slot-cur-${viewY}-${viewM}`}
+                style={slotCellStyle}
+              >
+                <div style={slotGridWrapStyle}>
+                  <div style={{ ...gridStyle, minHeight: '214px', alignContent: 'start' }}>
+                    {buildCells(viewY, viewM)}
+                  </div>
+                </div>
+                {renderSidePanel(viewY, viewM)}
+              </div>
+              <div
+                key={`slot-next-${nextDims.y}-${nextDims.m}`}
+                aria-hidden="true"
+                style={slotCellStyle}
+              >
+                <div style={slotGridWrapStyle}>
+                  <div style={{ ...gridStyle, minHeight: '214px', alignContent: 'start' }}>
+                    {buildCells(nextDims.y, nextDims.m)}
+                  </div>
+                </div>
+                {renderSidePanel(nextDims.y, nextDims.m)}
+              </div>
             </div>
           </div>
 
