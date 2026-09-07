@@ -81,6 +81,11 @@
      from the Completed green and the NEW red. Future themes define both. */
   --ui-badge-progress-bg: #5aa9ff;
   --ui-badge-progress-fg: #0a0d12;
+
+  /* NEW-item pill: darker than --card-text-red (#ff6b6b) so white 11px bold
+     text keeps readable contrast on dark panels. */
+  --ui-badge-new-bg: #b23b3b;
+  --ui-badge-new-fg: #ffffff;
 }
 
 .ui-dark .new-game-attention {
@@ -95,8 +100,10 @@
   100% { box-shadow: 0 0 0 5px rgba(52,214,255,0.26), 0 0 30px rgba(52,214,255,0.68), inset 0 0 14px rgba(52,214,255,0.3); border-color: #fff; }
 }
 
-/* Native dropdown option list: keep text/background readable in the popup. */
-.theme-dark select option {
+/* Native dropdown option list: keep text/background readable in the popup.
+   Scoped to the interface (ui-*) axis, not the board (theme-*) axis, so mixed
+   board/UI combos get the palette matching the UI chrome. */
+.ui-dark select option {
   color: var(--ui-control-fg);
   background: var(--ui-control-bg);
 }
@@ -199,7 +206,7 @@
 }
 
 /* Daily Challenge calendar cells (dark variant). See classic.css for notes. */
-.dc-cell {
+.ui-dark .dc-cell {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -214,37 +221,37 @@
   user-select: none;
 }
 
-.dc-cell--completed {
+.ui-dark .dc-cell--completed {
   background: #1f3d2a;
   border-color: rgba(52, 214, 130, 0.5);
 }
 
-.dc-cell--today {
+.ui-dark .dc-cell--today {
   outline: 3px solid #34d6ff;
   outline-offset: -1px;
 }
 
-.dc-cell--selected {
+.ui-dark .dc-cell--selected {
   background: #34d6ff;
   color: #0a0d12;
   border-color: #1aa3c4;
   box-shadow: 0 0 0 2px rgba(52, 214, 255, 0.35);
 }
 
-.dc-cell--today.dc-cell--selected {
+.ui-dark .dc-cell--today.dc-cell--selected {
   outline: 3px solid #0f5a27;
   outline-offset: -1px;
 }
 
 /* A day that is BOTH selected and already won is visually distinct from a
    selected-but-unwon day: keep the cyan selected fill but add a gold ring. */
-.dc-cell--completed.dc-cell--selected {
+.ui-dark .dc-cell--completed.dc-cell--selected {
   outline: 3px solid #ffd54a;
   outline-offset: -3px;
   box-shadow: 0 0 0 2px rgba(255, 213, 74, 0.5);
 }
 
-.dc-cell--disabled {
+.ui-dark .dc-cell--disabled {
   background: rgba(255, 255, 255, 0.05);
   color: rgba(255, 255, 255, 0.3);
   border-color: rgba(255, 255, 255, 0.08);
@@ -254,17 +261,17 @@
 /* A disabled (unavailable) day must still reveal its played/won or "today"
    marker, so the calendar reads correctly while offline or before the server
    time resolves. These compound rules outrank .dc-cell--disabled. */
-.dc-cell--disabled.dc-cell--completed {
+.ui-dark .dc-cell--disabled.dc-cell--completed {
   background: #1f3d2a;
   border-color: rgba(52, 214, 130, 0.5);
   color: #e6e6e6;
 }
-.dc-cell--disabled.dc-cell--today {
+.ui-dark .dc-cell--disabled.dc-cell--today {
   outline: 3px solid #34d6ff;
   outline-offset: -1px;
 }
 
-.dc-swatch {
+.ui-dark .dc-swatch {
   display: inline-block;
   width: 12px;
   height: 12px;

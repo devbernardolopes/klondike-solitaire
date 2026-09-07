@@ -604,10 +604,12 @@ export default function EventDetailModal() {
                       width: 9,
                       height: 9,
                       padding: 0,
-                      border: i === clampedIndex ? '1px solid var(--ui-modal-fg)' : 'none',
+                      border: i === clampedIndex
+                        ? '1px solid var(--ui-modal-fg)'
+                        : (p.completed || p.unlocked ? 'none' : '1px solid var(--ui-modal-btn-border)'),
                       borderRadius: '50%',
                       cursor: 'pointer',
-                      background: p.completed ? '#2e7d32' : p.unlocked ? 'var(--ui-modal-fg)' : 'rgba(128,128,128,0.5)',
+                      background: p.completed ? '#2e7d32' : p.unlocked ? 'var(--ui-modal-fg)' : 'transparent',
                       opacity: i === clampedIndex ? 1 : 0.55,
                     }}
                   />

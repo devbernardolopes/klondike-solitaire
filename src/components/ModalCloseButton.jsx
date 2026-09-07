@@ -10,8 +10,9 @@ import { useTranslation } from 'react-i18next';
  * @param {object} props
  * @param {() => void} props.onClick
  * @param {string} [props.label]
+ * @param {object} [props.style]  style overrides merged over the theme-driven chrome
  */
-export default function ModalCloseButton({ onClick, label }) {
+export default function ModalCloseButton({ onClick, label, style }) {
   const { t } = useTranslation();
   const displayLabel = label ?? t('common.close');
   return (
@@ -36,6 +37,7 @@ export default function ModalCloseButton({ onClick, label }) {
         cursor: 'pointer',
         padding: 0,
         zIndex: 1,
+        ...style,
       }}
     >
       <X size={18} aria-hidden="true" />

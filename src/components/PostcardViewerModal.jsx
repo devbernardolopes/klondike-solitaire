@@ -220,6 +220,12 @@ export default function PostcardViewerModal({ imageUrl, title, fileName, onClose
     }
   };
 
+  const viewerChrome = {
+    border: '1px solid rgba(255, 255, 255, 0.45)',
+    background: 'rgba(0, 0, 0, 0.55)',
+    color: '#ffffff',
+  };
+
   const chromeBtn = {
     width: 34,
     height: 34,
@@ -233,6 +239,7 @@ export default function PostcardViewerModal({ imageUrl, title, fileName, onClose
     cursor: 'pointer',
     padding: 0,
     zIndex: 2,
+    ...viewerChrome,
   };
 
   return (
@@ -252,7 +259,7 @@ export default function PostcardViewerModal({ imageUrl, title, fileName, onClose
         overflow: 'hidden',
       }}
     >
-      <ModalCloseButton onClick={onClose} />
+      <ModalCloseButton onClick={onClose} style={viewerChrome} />
       <div
         style={{
           position: 'absolute',

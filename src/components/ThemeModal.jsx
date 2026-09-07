@@ -21,6 +21,7 @@ import { getCardBack } from '../render/deck/cardBackRegistry.js';
 import { fetchStoreCatalog } from '../data/storeCatalog.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { previewBackgroundOf } from '../render/themes/backgroundRegistry.js';
+import { INTERFACE_THEMES, isInterfaceTheme, tilePreviewOf } from '../render/themes/interfaceThemes.js';
 import { OVERHANG_BADGE_LIFT, OVERHANG_BADGE_RIGHT } from './modalBadge.js';
 
 const TABS = [
@@ -46,8 +47,8 @@ const NEW_BADGE = {
   fontSize: 11,
   fontWeight: 700,
   lineHeight: 1,
-  color: '#fff',
-  background: 'var(--card-text-red, #d12b3b)',
+  color: 'var(--ui-badge-new-fg, #fff)',
+  background: 'var(--ui-badge-new-bg, var(--card-text-red, #d12b3b))',
   borderRadius: 4,
   padding: '2px 5px',
   pointerEvents: 'none',
@@ -71,8 +72,8 @@ const NEW_BADGE_TAB = {
   fontSize: 11,
   fontWeight: 700,
   lineHeight: 1,
-  color: '#fff',
-  background: 'var(--card-text-red, #d12b3b)',
+  color: 'var(--ui-badge-new-fg, #fff)',
+  background: 'var(--ui-badge-new-bg, var(--card-text-red, #d12b3b))',
   borderRadius: 4,
   padding: '2px 5px',
   pointerEvents: 'none',
@@ -313,10 +314,13 @@ export default function ThemeModal({ open, onClose }) {
     );
   };
 
-  const renderInterfaceTab = () => (
+  const renderInterfaceTab = () => {
+    const effectiveInterface = isInterfaceTheme(interfaceTheme) ? interfaceTheme : 'classic';
+    return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, var(--card-width))', gap: 14, justifyContent: 'center' }}>
-      {FREE_BACKGROUNDS.slice(0, 2).map((name) => {
-        const selected = name === interfaceTheme;
+      {INTERFACE_THEMES.map(({ id: name }) => {
+        const selected = name === effectiveInterface;
+        const preview = tilePreviewOf(name);
         return (
           <button
             key={name}
@@ -332,11 +336,11 @@ export default function ThemeModal({ open, onClose }) {
             style={{
               ...tileBase,
               ...(selected ? selectedBorder : null),
-              background: name === 'classic' ? '#ffffff' : '#2a2f3a',
+              background: preview.background,
               border: selected
                 ? selectedBorder.border
-                : `1px solid ${name === 'classic' ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.3)'}`,
-              color: name === 'classic' ? '#1a1a1a' : '#ffffff',
+                : `1px solid ${preview.border}`,
+              color: preview.color,
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -347,7 +351,8 @@ export default function ThemeModal({ open, onClose }) {
         );
       })}
     </div>
-  );
+    );
+  };
 
   // Default (the active deck's own back) plus any owned card-back overrides,
   // driven by the store catalog so newly-purchased items appear automatically

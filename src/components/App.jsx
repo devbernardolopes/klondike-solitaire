@@ -4,6 +4,7 @@
 
 import '../render/themes/classic.css';
 import '../render/themes/dark.css';
+import '../render/themes/interfaces.css';
 import '../render/themes/felts.css';
 import { applyFeltTexture } from '../render/themes/feltTextures.js';
 // Side-effect imports register the deck renderers with the registry.
@@ -40,6 +41,7 @@ import {
 } from '../sync/sessionPersistence.js';
 import { prefetch as prefetchSeeds } from '../repo/seedRepository.js';
 import { hydrateEventCachesFromDexie } from '../repo/specialEventsRepository.js';
+import { isInterfaceTheme } from '../render/themes/interfaceThemes.js';
 import { hydrateAchievementCache } from '../repo/achievementRepository.js';
 import { hydrateRewardRules, refreshRewardRules } from '../repo/rewardRulesRepository.js';
 
@@ -259,7 +261,7 @@ export default function App() {
 
   return (
     <div
-      className={`theme-${theme} ui-${interfaceTheme}`}
+      className={`theme-${theme} ui-${isInterfaceTheme(interfaceTheme) ? interfaceTheme : 'classic'}`}
       style={{
         minHeight: '100%',
         background: 'var(--felt-color)',
