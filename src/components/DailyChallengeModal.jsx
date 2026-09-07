@@ -323,6 +323,20 @@ export default function DailyChallengeModal() {
     }
   }, [open]);
 
+  // trackTransform follows the same translateX(calc(-idx*100% + dragPx))
+  // pattern as EventDetailModal.jsx:485, just with slideIndex (which slot
+  // the current month occupies) instead of the absolute page index. At
+  // rest, slideIndex === 0 and the track is untranslated. slideBump keeps
+  // the memo reactive to slideIndex changes without making the ref itself
+  // part of the dep list. MUST be declared before the open-gate early
+  // return below — otherwise the closed render skips it and the
+  // open render adds a new hook, tripping React's Rules of Hooks.
+  const trackTransform = useMemo(
+    () => `translateX(calc(${-slideIndex * 100}% + ${dragPx}px))`,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [slideIndex, dragPx, slideBump]
+  );
+
   if (!open) return null;
 
   const onPlay = () => {
@@ -422,18 +436,6 @@ export default function DailyChallengeModal() {
       setSuppressTrackAnim(false);
     }, 60);
   };
-
-  // trackTransform follows the same translateX(calc(-idx*100% + dragPx))
-  // pattern as EventDetailModal.jsx:485, just with slideIndex (which slot
-  // the current month occupies) instead of the absolute page index. At
-  // rest, slideIndex === 0 and the track is untranslated. slideBump keeps
-  // the memo reactive to slideIndex changes without making the ref itself
-  // part of the dep list.
-  const trackTransform = useMemo(
-    () => `translateX(calc(${-slideIndex * 100}% + ${dragPx}px))`,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [slideIndex, dragPx, slideBump]
-  );
 
   // Fixed swipe threshold (px) on the release. Roughly 12% of a 520 px panel
   // and ~17% of a 360 px mobile viewport — close enough to the events
