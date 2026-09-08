@@ -22,6 +22,7 @@ import { Z } from '../utils/modalStack.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { fetchSpecialEvents, getCachedEventsSummarySync, eventStartYear } from '../repo/specialEventsRepository.js';
 import { translateSpecialEvent } from '../i18n/db.js';
+import { loadEventFilters, loadEventFiltersSync, saveEventFilters } from '../db/eventFilters.js';
 
 // Year toggles for the list filter row. Active years combine as OR; an
 // empty selection means "all years". Rows with an unknown start year
@@ -49,8 +50,12 @@ export default function SpecialEventsModal() {
 
   const [events, setEvents] = useState([]);
   const [loaded, setLoaded] = useState(false);
-  const [activeYears, setActiveYears] = useState(() => new Set());
-  const [notCompletedOnly, setNotCompletedOnly] = useState(false);
+  // Filter toggles persist across sessions (Dexie + localStorage mirror in
+  // db/eventFilters.js): the sync seed applies the last-used filter on the
+  // first paint after a reload, and the async load below refines it when
+  // Dexie holds a newer value than the mirror.
+  const [activeYears, setActiveYears] = useState(() => new Set(loadEventFiltersSync().years));
+  const [notCompletedOnly, setNotCompletedOnly] = useState(() => loadEventFiltersSync().notCompletedOnly);
   const scrollRef = useRef(null);
   const contentRef = useRef(null);
   const [scrollMetrics, setScrollMetrics] = useState({ scrollTop: 0, scrollHeight: 0, clientHeight: 0 });
@@ -111,6 +116,19 @@ export default function SpecialEventsModal() {
       .catch(() => setEvents([]))
       .finally(() => setLoaded(true));
   }, [open, eventDetailId]);
+
+  // Refine the persisted filters from Dexie on open, covering environments
+  // where the synchronous localStorage seed was unavailable.
+  useEffect(() => {
+    if (!open) return undefined;
+    let cancelled = false;
+    loadEventFilters().then((f) => {
+      if (cancelled) return;
+      setActiveYears(new Set(f.years));
+      setNotCompletedOnly(f.notCompletedOnly);
+    });
+    return () => { cancelled = true; };
+  }, [open]);
 
   useEffect(() => {
     if (!open) {
@@ -238,12 +256,17 @@ export default function SpecialEventsModal() {
   });
 
   const toggleYear = (year) => {
-    setActiveYears((prev) => {
-      const next = new Set(prev);
-      if (next.has(year)) next.delete(year);
-      else next.add(year);
-      return next;
-    });
+    const next = new Set(activeYears);
+    if (next.has(year)) next.delete(year);
+    else next.add(year);
+    setActiveYears(next);
+    saveEventFilters({ years: [...next], notCompletedOnly }).catch(() => {});
+  };
+
+  const toggleNotCompletedOnly = () => {
+    const next = !notCompletedOnly;
+    setNotCompletedOnly(next);
+    saveEventFilters({ years: [...activeYears], notCompletedOnly: next }).catch(() => {});
   };
 
   // Leaderboard-style toggle chips (LeaderboardModal.jsx's `tabBtn` shape):
@@ -281,7 +304,7 @@ export default function SpecialEventsModal() {
             type="button"
             style={filterBtn(notCompletedOnly)}
             aria-pressed={notCompletedOnly}
-            onClick={() => setNotCompletedOnly((v) => !v)}
+            onClick={toggleNotCompletedOnly}
           >
             {t('specialEvents.filters.notCompleted')}
           </button>
