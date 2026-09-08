@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { compareEventSummaries, eventStartYear, isUpcomingEvent, wonEventDealIdFromQueuedOp } from './specialEventsRepository.js';
+import { compareEventSummaries, eventStartYear, isUpcomingEvent, wonEventDealIdFromQueuedOp, computeKnownSolved, getPendingWonDealIds, patchCachedEventDealSolved, revertOptimisticSolve, setCachedEventDetailSync, clearEventCatalogMemory } from './specialEventsRepository.js';
 import { collectSolvedIds, mergeSolvedIds, findNextUnsolvedDealOnPage, getEventDealProgress } from './specialEventsProgress.js';
 
 const summary = (id, startsAt, title) => ({ id, startsAt, title: title ?? id });
@@ -124,4 +124,32 @@ test('wonEventDealIdFromQueuedOp ignores losses so Game Over never solves a deal
     null,
   );
   assert.equal(wonEventDealIdFromQueuedOp({ type: 'reset_statistics', payload: {} }), null);
+});
+
+test('computeKnownSolved keeps a pending win when server and queue lag the flush', () => {
+  // Post-flush window: queued op is gone, server row not readable yet. The
+  // locally witnessed win must survive so the image slice stays revealed.
+  const known = computeKnownSolved({ serverIds: [], wonQueuedIds: [], optimisticDealIds: [], pendingWonIds: [42], cachedIds: [42] });
+  assert.ok(known.has(42));
+});
+
+test('computeKnownSolved drops an unverifiable cached solve (flushed loss)', () => {
+  const known = computeKnownSolved({ serverIds: [], wonQueuedIds: [], optimisticDealIds: [], pendingWonIds: [], cachedIds: [42] });
+  assert.ok(!known.has(42));
+});
+
+test('computeKnownSolved trusts server, queue, and optimistic ids', () => {
+  assert.ok(computeKnownSolved({ serverIds: [1], cachedIds: [1] }).has(1));
+  assert.ok(computeKnownSolved({ wonQueuedIds: [2], cachedIds: [2] }).has(2));
+  assert.ok(computeKnownSolved({ optimisticDealIds: [3], cachedIds: [3] }).has(3));
+});
+
+test('patch tracks the win as pending until revert drops it', () => {
+  clearEventCatalogMemory();
+  setCachedEventDetailSync(detailWith(new Set()));
+  patchCachedEventDealSolved(4);
+  assert.deepEqual(getPendingWonDealIds(), [4]);
+  revertOptimisticSolve(4);
+  assert.deepEqual(getPendingWonDealIds(), []);
+  clearEventCatalogMemory();
 });

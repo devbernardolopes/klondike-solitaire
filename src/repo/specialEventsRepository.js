@@ -22,6 +22,39 @@ export function wonEventDealIdFromQueuedOp(op) {
   return dealId ?? null;
 }
 
+/**
+ * Deal ids this device has locally witnessed as WON (via
+ * patchCachedEventDealSolved) but the server hasn't confirmed yet. Wins stay
+ * trusted across background refetches — including non-optimistic ones like
+ * kickOffCatalogSync and the post-flush window where the queued op is gone
+ * but event_deal_progress isn't readable yet — so a freshly revealed image
+ * slice can't be hidden again by stale server truth. Losses never enter this
+ * set (recordLoss doesn't patch the cache), so the Game Over freeze path
+ * stays unsolved. Entries are pruned once the server confirms them, or
+ * dropped by revertOptimisticSolve / clearEventCatalogMemory.
+ */
+const pendingWonDealIds = new Set();
+
+/** Copy of locally witnessed not-yet-server-confirmed won deal ids. */
+export function getPendingWonDealIds() {
+  return Array.from(pendingWonDealIds);
+}
+
+/**
+ * Pure merge for the solved-id gate: cached ids are only trusted when
+ * verifiable (server, won queue, explicit optimistic list, or a locally
+ * witnessed pending win). Wins passed explicitly or witnessed locally always
+ * survive, even when the server lags the flush.
+ */
+export function computeKnownSolved({ serverIds = [], wonQueuedIds = [], optimisticDealIds = [], pendingWonIds = [], cachedIds = [] } = {}) {
+  const known = new Set([...optimisticDealIds, ...wonQueuedIds, ...pendingWonIds]);
+  const verifiable = new Set([...serverIds, ...wonQueuedIds, ...optimisticDealIds, ...pendingWonIds]);
+  for (const id of cachedIds) {
+    if (verifiable.has(id)) known.add(id);
+  }
+  return known;
+}
+
 export function getCachedEventDetailSync(eventId) {
   return catalogMemory.get(eventId) ?? null;
 }
@@ -34,6 +67,7 @@ export function setCachedEventDetailSync(detail) {
 /** Drop every in-memory cached event detail (factory-reset cross-device wipe). */
 export function clearEventCatalogMemory() {
   catalogMemory.clear();
+  pendingWonDealIds.clear();
 }
 
 /**
@@ -71,6 +105,7 @@ export function revertOptimisticSolve(dealId) {
   for (const [, detail] of catalogMemory) {
     unset(detail);
   }
+  pendingWonDealIds.delete(dealId);
   (async () => {
     try {
       const rows = await db.eventCatalogCache.toArray();
@@ -104,6 +139,9 @@ export function revertOptimisticSolve(dealId) {
 
 export function patchCachedEventDealSolved(dealId) {
   if (dealId == null) return null;
+  // Locally witnessed win: keep trusting it across background refetches until
+  // the server confirms it (pruned in fetchEventDetail).
+  pendingWonDealIds.add(dealId);
   let patchedId = null;
   for (const [key, detail] of catalogMemory) {
     if (!detail || !Array.isArray(detail.pages)) continue;
@@ -377,6 +415,8 @@ export async function fetchSpecialEvents() {
         }
         // Wins queued on this device but not yet flushed still count as solved
         // here, so the badge updates instantly instead of waiting for sync.
+        // Locally witnessed wins stay counted through the post-flush window
+        // where the queued op is gone but the server row isn't readable yet.
         // Losses also enqueue submit_game_result (p_won:false, with event id
         // for analytics) but must never count as solved.
         try {
@@ -386,6 +426,7 @@ export async function fetchSpecialEvents() {
             if (dealId != null) solvedDealIds.add(dealId);
           }
         } catch {}
+        for (const id of pendingWonDealIds) solvedDealIds.add(id);
       } catch {}
     }
 
@@ -549,7 +590,6 @@ export async function fetchEventDetail(eventId, opts) {
       };
 
       try {
-        const knownSolved = new Set(optimisticDealIds);
         const wonQueuedIds = new Set();
         try {
           const queued = await listQueuedOps();
@@ -558,27 +598,35 @@ export async function fetchEventDetail(eventId, opts) {
             if (dealId != null) wonQueuedIds.add(dealId);
           }
         } catch {}
-        for (const id of wonQueuedIds) knownSolved.add(id);
+        // Server-confirmed pending wins no longer need local trust.
+        for (const id of Array.from(pendingWonDealIds)) {
+          if (solvedDealIds.has(id)) pendingWonDealIds.delete(id);
+        }
         // Local caches may hold solved=true written before losses stopped
         // counting as solved (Game Over freeze path). Only trust cached ids
-        // that are verifiable — present on the server, in the won queue, or
-        // in the explicit optimistic list — so a flushed/queued loss can
-        // never resurrect as an exposed image slice.
-        const verifiable = new Set([...solvedDealIds, ...wonQueuedIds, ...optimisticDealIds]);
+        // that are verifiable — present on the server, in the won queue, in
+        // the explicit optimistic list, or locally witnessed as a win — so a
+        // flushed/queued loss can never resurrect as an exposed image slice,
+        // while a genuine win survives the post-flush window where the queued
+        // op is gone but the server row isn't readable yet.
+        const cachedIds = [];
         const prev = catalogMemory.get(detail.id);
         if (prev) {
-          for (const id of collectSolvedIds(prev)) {
-            if (verifiable.has(id)) knownSolved.add(id);
-          }
+          for (const id of collectSolvedIds(prev)) cachedIds.push(id);
         }
         try {
           const dexieDetail = await getCatalogDetail(detail.id);
           if (dexieDetail) {
-            for (const id of collectSolvedIds(dexieDetail)) {
-              if (verifiable.has(id)) knownSolved.add(id);
-            }
+            for (const id of collectSolvedIds(dexieDetail)) cachedIds.push(id);
           }
         } catch {}
+        const knownSolved = computeKnownSolved({
+          serverIds: [...solvedDealIds],
+          wonQueuedIds: [...wonQueuedIds],
+          optimisticDealIds,
+          pendingWonIds: [...pendingWonDealIds],
+          cachedIds,
+        });
         mergeSolvedIds(detail, knownSolved);
       } catch {}
       catalogMemory.set(detail.id, detail);
