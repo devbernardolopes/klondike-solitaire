@@ -1,5 +1,5 @@
 -- ============================================================
--- Catalog dump — generated 2026-09-07T18:25:55.164Z
+-- Catalog dump — generated 2026-09-08T00:58:52.443Z
 -- Source of truth for scripts/i18n-sync.mjs. Do not edit by hand.
 -- Re-run `npm run catalog:dump` after any dashboard edits.
 -- Idempotent: safe to paste into Supabase SQL editor and re-run.
@@ -10,6 +10,7 @@ INSERT INTO public.special_events (id, title, description) VALUES
   ('festival-of-san-fermin-2026', 'Festival of San Fermín 2026', 'The Festival of San Fermín in Pamplona, Spain, features the famous running of the bulls, traditional processions, and festive gatherings from 6 to 14 July.'),
   ('festivus-2025', 'Festivus 2025', 'Festivus is the secular, anti-commercial holiday popularized by the television series Seinfeld, featuring the aluminum Festivus pole, the airing of grievances, and feats of strength, observed on 23 December.'),
   ('independence-day-2026', 'Independence Day', 'Independence Day commemorates the adoption of the Declaration of Independence with fireworks, patriotic displays, family gatherings, and celebrations of American freedom and history.'),
+  ('japanese-cherry-blossom-2026', 'Japanese Cherry Blossom Season 2026', 'The Japanese Cherry Blossom Season, known as Sakura, celebrates the fleeting beauty of blooming cherry trees with hanami gatherings, picnics under the blossoms, and traditional spring festivities across Japan.'),
   ('la-tomatina-2026', 'La Tomatina', 'La Tomatina is the famous Spanish tomato-throwing festival held in Buñol, where participants engage in a massive, joyful food fight that fills the streets with red pulp and laughter.'),
   ('onam-2026', 'Onam 2026', 'Onam is the major harvest festival of Kerala, marked by intricate floral rangoli (pookalam), traditional boat races, elaborate feasts, and cultural performances that welcome the legendary King Mahabali.'),
   ('st-patricks-day-2026', 'St. Patrick''s Day', 'St. Patrick''s Day commemorates Ireland''s patron saint with parades, green attire, traditional music, and festive gatherings that celebrate Irish heritage and culture worldwide.'),

@@ -288,5 +288,25 @@
         "coinReward": 40
       }
     ]
+  },
+  {
+    "id": "japanese-cherry-blossom-2026",
+    "title": "Japanese Cherry Blossom Season 2026",
+    "description": "The Japanese Cherry Blossom Season, known as Sakura, celebrates the fleeting beauty of blooming cherry trees with hanami gatherings, picnics under the blossoms, and traditional spring festivities across Japan.",
+    "startsAt": "2026-04-01T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "japanese-cherry-blossom-2026/page1.jpg",
+        "coinReward": 50
+      },
+      {
+        "gridSize": 3,
+        "imagePath": "japanese-cherry-blossom-2026/page2.jpg",
+        "coinReward": 100
+      }
+    ]
   }
 ]
