@@ -19,6 +19,7 @@ import { seedForDate } from '../core/dailyChallenge.js';
 import { getUsedRandomSeedsSet, addUsedRandomSeed, clearUsedRandomSeeds } from '../db/usedRandomSeeds.js';
 import { getWinningPool, getDailyMap } from '../repo/seedRepository.js';
 import { fetchAllEventSeeds } from '../repo/specialEventsRepository.js';
+import { saveLastPlayedEvent } from '../db/lastPlayedEvent.js';
 import { enqueueFlip } from '../render/animation/flipBridge.js';
 import { enqueueParticle } from '../render/animation/particleBridge.js';
 import { cancelDrawSlide, cancelAllDrawSlides } from '../render/animation/useStockDrawSlide.js';
@@ -631,6 +632,10 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     useStatsStore.getState().resetStats();
     useUiStore.getState().setCurrentGame('event', null, eventDealId, eventDealNumber ?? null);
     if (eventId) useUiStore.getState().setCurrentEventMeta(eventId, eventTitle, eventDealNumber ?? null);
+    // Remember the last-played event (deal start counts — no solve needed) for
+    // the "Pin Last Played Event" list feature. Fire-and-forget: the deal
+    // must never be blocked by a persistence failure.
+    if (eventId) saveLastPlayedEvent(eventId).catch(() => {});
     runAnimatedDeal(get, set, { seed, kind: 'event', eventDealId, eventDealNumber: eventDealNumber ?? null, eventId, eventTitle });
     return true;
   },

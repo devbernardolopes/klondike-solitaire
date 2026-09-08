@@ -94,6 +94,24 @@ export function keepCoveredSolves(prev, fresh, coverIds) {
 }
 
 /**
+ * Resolve the pinned last-played event for the Special Events list. The pin
+ * is looked up in the UNFILTERED events so it is immune to sort order and
+ * filters, and it is excluded from the rest so it never renders twice. Only
+ * one event is ever pinned; a missing/removed event (or none played yet, or
+ * the toggle off) pins nothing.
+ * @returns {{pinnedEvent:object|null, restVisible:Array}}
+ */
+export function resolvePinnedEvent(events, visibleEvents, { pinEnabled, lastPlayedEventId } = {}) {
+  const pinned = pinEnabled && lastPlayedEventId != null
+    ? (events || []).find((ev) => String(ev?.id) === String(lastPlayedEventId)) ?? null
+    : null;
+  const rest = pinned
+    ? (visibleEvents || []).filter((ev) => String(ev?.id) !== String(pinned.id))
+    : (visibleEvents || []);
+  return { pinnedEvent: pinned, restVisible: rest };
+}
+
+/**
  * Next unsolved deal for the post-win selector, staying on the won deal's
  * page: scan forward (increasing deal number) from the won deal, then wrap
  * around to the page's first deal and keep seeking. Returns null when the

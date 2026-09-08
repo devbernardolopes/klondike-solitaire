@@ -485,6 +485,8 @@
     "motionBlocked.osMessage": "Your operating system is asking apps to reduce motion, so this effect can't play even though it's switched on here. On Windows, turn on Show animations (Settings > Accessibility > Display, or Ease of Access > Display on Windows 10); on macOS turn off Reduce motion; on Android turn off Remove animations. Your saved setting is kept and will take effect once the OS allows motion again.",
     "motionBlocked.title": "Effect unavailable",
     "motionBlocked.touchMessage": "Hover Lift needs a mouse or trackpad pointer. Touch screens can't hover, so this effect isn't available on this device.",
+    "pinLastEvent": "Pin Last Played Event",
+    "pinLastEvent.desc": "Keep the most recently played Special Event pinned to the top of the list",
     "scrollBottom": "Scroll settings to bottom",
     "scrollTop": "Scroll settings to top",
     "sound": "Sound",

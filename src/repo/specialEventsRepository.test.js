@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { compareEventSummaries, eventStartYear, isUpcomingEvent, wonEventDealIdFromQueuedOp, computeKnownSolved, getPendingWonDealIds, patchCachedEventDealSolved, revertOptimisticSolve, setCachedEventDetailSync, clearEventCatalogMemory, applyWinPreservingMerge, hydratePendingWonDealIds } from './specialEventsRepository.js';
-import { collectSolvedIds, mergeSolvedIds, findNextUnsolvedDealOnPage, getEventDealProgress, keepCoveredSolves } from './specialEventsProgress.js';
+import { collectSolvedIds, mergeSolvedIds, findNextUnsolvedDealOnPage, getEventDealProgress, keepCoveredSolves, resolvePinnedEvent } from './specialEventsProgress.js';
 
 const summary = (id, startsAt, title) => ({ id, startsAt, title: title ?? id });
 
@@ -206,4 +206,19 @@ test('hydratePendingWonDealIds resolves empty without IndexedDB', async () => {
   clearEventCatalogMemory();
   assert.deepEqual(await hydratePendingWonDealIds(), []);
   clearEventCatalogMemory();
+});
+
+const pinEvents = () => [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+
+test('resolvePinnedEvent pins from the unfiltered list and excludes it from the rest', () => {
+  // 'b' is filtered out of the visible list but must still pin (and appear once).
+  const { pinnedEvent, restVisible } = resolvePinnedEvent(pinEvents(), [{ id: 'a' }, { id: 'c' }], { pinEnabled: true, lastPlayedEventId: 'b' });
+  assert.equal(pinnedEvent?.id, 'b');
+  assert.deepEqual(restVisible.map((e) => e.id), ['a', 'c']);
+});
+
+test('resolvePinnedEvent pins nothing when toggled off, unplayed, or missing', () => {
+  assert.equal(resolvePinnedEvent(pinEvents(), pinEvents(), { pinEnabled: false, lastPlayedEventId: 'b' }).pinnedEvent, null);
+  assert.equal(resolvePinnedEvent(pinEvents(), pinEvents(), { pinEnabled: true, lastPlayedEventId: null }).pinnedEvent, null);
+  assert.equal(resolvePinnedEvent(pinEvents(), pinEvents(), { pinEnabled: true, lastPlayedEventId: 'gone' }).pinnedEvent, null);
 });

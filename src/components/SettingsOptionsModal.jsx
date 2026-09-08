@@ -68,6 +68,7 @@ export default function SettingsOptionsModal({
   const setSoundVolume = useSoundStore((s) => s.setVolume);
   const coinFly = useSettingsStore((s) => s.coinFly);
   const autoComplete = useSettingsStore((s) => s.autoComplete);
+  const pinLastEvent = useSettingsStore((s) => s.pinLastEvent);
   const centisecondsOn = useSettingsStore((s) => s.centisecondsOn);
   const hoverLift = useSettingsStore((s) => s.hoverLift);
   const flipOvershoot = useSettingsStore((s) => s.flipOvershoot);
@@ -422,6 +423,15 @@ export default function SettingsOptionsModal({
             checked={!!autoComplete}
             onChange={(v) => useSettingsStore.getState().setAutoComplete(v)}
             label={t('settings.autoComplete.desc')}
+          />
+        </div>
+
+        <div style={{ ...field, marginBottom: 20 }}>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.pinLastEvent')}</label>
+          <ToggleSwitch
+            checked={!!pinLastEvent}
+            onChange={(v) => useSettingsStore.getState().setPinLastEvent(v)}
+            label={t('settings.pinLastEvent.desc')}
           />
         </div>
 

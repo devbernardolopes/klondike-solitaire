@@ -12,7 +12,7 @@
 // That's expected and gets replaced in Phase 3, not a bug in this phase.
 
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Pin } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useModalBackdrop } from './modalBackdrop.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
@@ -20,9 +20,12 @@ import { OVERHANG_BADGE_CLEARANCE, OVERHANG_BADGE_LIFT, OVERHANG_BADGE_RIGHT } f
 import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
 import { useUiStore } from '../hooks/useUiStore.js';
+import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { fetchSpecialEvents, getCachedEventsSummarySync, eventStartYear } from '../repo/specialEventsRepository.js';
+import { resolvePinnedEvent } from '../repo/specialEventsProgress.js';
 import { translateSpecialEvent } from '../i18n/db.js';
 import { loadEventFilters, loadEventFiltersSync, saveEventFilters } from '../db/eventFilters.js';
+import { loadLastPlayedEvent, loadLastPlayedEventSync } from '../db/lastPlayedEvent.js';
 
 // Year toggles for the list filter row. Active years combine as OR; an
 // empty selection means "all years". Rows with an unknown start year
@@ -56,6 +59,10 @@ export default function SpecialEventsModal() {
   // Dexie holds a newer value than the mirror.
   const [activeYears, setActiveYears] = useState(() => new Set(loadEventFiltersSync().years));
   const [notCompletedOnly, setNotCompletedOnly] = useState(() => loadEventFiltersSync().notCompletedOnly);
+  // Last-played event id for the pin-to-top feature (deal start counts — no
+  // solve needed). Sync seed for first paint, refined from Dexie on open.
+  const [lastPlayedEventId, setLastPlayedEventId] = useState(() => loadLastPlayedEventSync());
+  const pinLastEvent = useSettingsStore((s) => s.pinLastEvent);
   const scrollRef = useRef(null);
   const contentRef = useRef(null);
   const [scrollMetrics, setScrollMetrics] = useState({ scrollTop: 0, scrollHeight: 0, clientHeight: 0 });
@@ -117,8 +124,9 @@ export default function SpecialEventsModal() {
       .finally(() => setLoaded(true));
   }, [open, eventDetailId]);
 
-  // Refine the persisted filters from Dexie on open, covering environments
-  // where the synchronous localStorage seed was unavailable.
+  // Refine the persisted filters + last-played id from Dexie on open (and
+  // when returning from the detail modal), covering environments where the
+  // synchronous localStorage seed was unavailable.
   useEffect(() => {
     if (!open) return undefined;
     let cancelled = false;
@@ -127,8 +135,12 @@ export default function SpecialEventsModal() {
       setActiveYears(new Set(f.years));
       setNotCompletedOnly(f.notCompletedOnly);
     });
+    loadLastPlayedEvent().then((id) => {
+      if (cancelled) return;
+      setLastPlayedEventId(id);
+    });
     return () => { cancelled = true; };
-  }, [open]);
+  }, [open, eventDetailId]);
 
   useEffect(() => {
     if (!open) {
@@ -218,6 +230,22 @@ export default function SpecialEventsModal() {
     pointerEvents: 'none',
   };
 
+  // Pin indicator: same overhang badge geometry mirrored to the left edge.
+  // Purely visual (pointerEvents none, aria-hidden) — the whole button stays
+  // a single click target.
+  const PIN_BADGE = {
+    position: 'absolute',
+    top: -OVERHANG_BADGE_LIFT,
+    left: OVERHANG_BADGE_RIGHT,
+    display: 'grid',
+    placeItems: 'center',
+    color: '#fff',
+    background: 'var(--ui-badge-progress-bg, #1d6fe0)',
+    borderRadius: 4,
+    padding: 2,
+    pointerEvents: 'none',
+  };
+
   const subtitle = { fontWeight: 400, opacity: 0.8, fontSize: 12, display: 'block', marginTop: 2 };
 
   // Unambiguous calendar date for the availability subtitle: day-first with
@@ -254,6 +282,71 @@ export default function SpecialEventsModal() {
     if (notCompletedOnly && isDone(ev)) return false;
     return true;
   });
+
+  // Pinned last-played event: resolved from the UNFILTERED list so it is
+  // immune to sort order and filters, and always renders first. Only one
+  // event is ever pinned; a missing/removed event (or none played yet, or
+  // the toggle off) pins nothing.
+  const { pinnedEvent, restVisible } = resolvePinnedEvent(events, visibleEvents, { pinEnabled: pinLastEvent, lastPlayedEventId });
+
+  const renderEventButton = (ev, pinned) => {
+    const pct = progressPercent(ev);
+    const done = isDone(ev);
+    const showProgress = !done && pct != null && pct > 0;
+    // RLS only exposes teasers starting within 7 days, so any
+    // future-dated row is an upcoming teaser: shown but disabled.
+    // The flag fallback covers legacy cached rows predating it.
+    const upcoming = ev.isUpcoming ?? (ev.startsAt ? Date.parse(ev.startsAt) > Date.now() : false);
+    const availableDate = ev.totalPages === 0 ? formatEventDate(ev.startsAt) : null;
+    // Started events show the same subtitle line as teasers, but
+    // with the "Started on" wording; the totals line below it is
+    // hidden for teasers (their pages/deals stay RLS-hidden, so
+    // the counts would misleadingly read zero).
+    const startedDate = !upcoming ? formatEventDate(ev.startsAt) : null;
+    const showTotals = !upcoming && (ev.totalPages ?? 0) > 0;
+    return (
+      <button
+        key={ev.id}
+        type="button"
+        style={upcoming ? { ...btn, opacity: 0.6, cursor: 'not-allowed' } : btn}
+        disabled={upcoming}
+        aria-disabled={upcoming || undefined}
+        onClick={upcoming ? undefined : () => setDetail(ev.id)}
+      >
+        {ev.title}
+        {pinned && (
+          <span style={PIN_BADGE} aria-hidden="true">
+            <Pin size={14} strokeWidth={2.5} aria-hidden="true" />
+          </span>
+        )}
+        {upcoming
+          ? null
+          : done
+          ? <span style={COMPLETED_BADGE}>{t('specialEvents.completed')}</span>
+          : showProgress && <span style={PROGRESS_BADGE} aria-label={t('specialEvents.progress.percentAria', { percent: pct })}>{`${pct}%`}</span>}
+        {upcoming ? (
+          <span style={subtitle}>
+            {availableDate
+              ? t('specialEvents.availableFrom', { date: availableDate })
+              : t('specialEvents.progress.comingSoon')}
+          </span>
+        ) : (
+          <>
+            {startedDate && (
+              <span style={subtitle}>
+                {t('specialEvents.startedOn', { date: startedDate })}
+              </span>
+            )}
+            {showTotals && (
+              <span style={subtitle}>
+                {t('specialEvents.dealsAndPrize', { count: ev.totalDeals ?? 0, coins: ev.totalCoins ?? 0 })}
+              </span>
+            )}
+          </>
+        )}
+      </button>
+    );
+  };
 
   const toggleYear = (year) => {
     const next = new Set(activeYears);
@@ -312,63 +405,12 @@ export default function SpecialEventsModal() {
         <div style={{ position: 'relative', flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div ref={scrollRef} className="modal-body-scroll" style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', paddingTop: OVERHANG_BADGE_LIFT + OVERHANG_BADGE_CLEARANCE, paddingBottom: 12, boxSizing: 'border-box' }}>
         <div ref={contentRef}>
-        {loaded && visibleEvents.length === 0 ? (
+        {loaded && pinnedEvent == null && visibleEvents.length === 0 ? (
           <p style={{ textAlign: 'center', opacity: 0.7, padding: '24px 0' }}>{t('specialEvents.noEvents')}</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {visibleEvents.map((ev) => {
-              const pct = progressPercent(ev);
-              const done = isDone(ev);
-              const showProgress = !done && pct != null && pct > 0;
-              // RLS only exposes teasers starting within 7 days, so any
-              // future-dated row is an upcoming teaser: shown but disabled.
-              // The flag fallback covers legacy cached rows predating it.
-              const upcoming = ev.isUpcoming ?? (ev.startsAt ? Date.parse(ev.startsAt) > Date.now() : false);
-              const availableDate = ev.totalPages === 0 ? formatEventDate(ev.startsAt) : null;
-              // Started events show the same subtitle line as teasers, but
-              // with the "Started on" wording; the totals line below it is
-              // hidden for teasers (their pages/deals stay RLS-hidden, so
-              // the counts would misleadingly read zero).
-              const startedDate = !upcoming ? formatEventDate(ev.startsAt) : null;
-              const showTotals = !upcoming && (ev.totalPages ?? 0) > 0;
-              return (
-                <button
-                  key={ev.id}
-                  type="button"
-                  style={upcoming ? { ...btn, opacity: 0.6, cursor: 'not-allowed' } : btn}
-                  disabled={upcoming}
-                  aria-disabled={upcoming || undefined}
-                  onClick={upcoming ? undefined : () => setDetail(ev.id)}
-                >
-                  {ev.title}
-                  {upcoming
-                    ? null
-                    : done
-                    ? <span style={COMPLETED_BADGE}>{t('specialEvents.completed')}</span>
-                    : showProgress && <span style={PROGRESS_BADGE} aria-label={t('specialEvents.progress.percentAria', { percent: pct })}>{`${pct}%`}</span>}
-                  {upcoming ? (
-                    <span style={subtitle}>
-                      {availableDate
-                        ? t('specialEvents.availableFrom', { date: availableDate })
-                        : t('specialEvents.progress.comingSoon')}
-                    </span>
-                  ) : (
-                    <>
-                      {startedDate && (
-                        <span style={subtitle}>
-                          {t('specialEvents.startedOn', { date: startedDate })}
-                        </span>
-                      )}
-                      {showTotals && (
-                        <span style={subtitle}>
-                          {t('specialEvents.dealsAndPrize', { count: ev.totalDeals ?? 0, coins: ev.totalCoins ?? 0 })}
-                        </span>
-                      )}
-                    </>
-                  )}
-                </button>
-              );
-            })}
+            {pinnedEvent && renderEventButton(pinnedEvent, true)}
+            {restVisible.map((ev) => renderEventButton(ev, false))}
           </div>
         )}
         </div>

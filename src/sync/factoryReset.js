@@ -24,6 +24,7 @@ import { clearSeedCache } from '../db/seedCache.js';
 import { clearActiveSession } from '../db/activeSession.js';
 import { clearQueuedOps } from '../db/syncQueue.js';
 import { clearAllSeenDissolve } from '../db/eventDissolveSeen.js';
+import { clearLastPlayedEvent } from '../db/lastPlayedEvent.js';
 import { cancelAllSolves } from '../core/solverClient.js';
 import { clearEventCatalogMemory } from '../repo/specialEventsRepository.js';
 import { clearAchievementCache } from '../repo/achievementRepository.js';
@@ -44,6 +45,7 @@ const LS_PROGRESS_PREFIXES = [
 const LS_PROGRESS_KEYS = [
   'klondike:dailyLastSelection',
   'klondike:dissolveSeen',
+  'klondike:specialEventsLastPlayed',
 ];
 
 export function clearProgressLocalStorage() {
@@ -117,6 +119,14 @@ export async function wipeLocalUserData() {
   // Seen badges reference wiped owned items / achievements; prefs stay.
   await setSetting('seenThemeItemIds', []);
   await setSetting('seenAchievementIds', []);
+  // Last-played event pin is progress, not a display pref — it must not
+  // survive the wipe (the toggle itself stays).
+  try {
+    await db.settings.delete('specialEventsLastPlayed');
+  } catch {}
+  try {
+    clearLastPlayedEvent();
+  } catch {}
   clearProgressLocalStorage();
 }
 
