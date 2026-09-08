@@ -308,5 +308,80 @@
         "coinReward": 100
       }
     ]
+  },
+  {
+    "id": "songkran-2026",
+    "title": "Songkran 2026",
+    "description": "Songkran is Thailand's traditional New Year festival, famous for joyful water celebrations, temple visits, traditional rituals, family gatherings, and vibrant street festivities.",
+    "startsAt": "2026-04-13T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "songkran-2026/page1.jpg",
+        "coinReward": 50
+      },
+      {
+        "gridSize": 3,
+        "imagePath": "songkran-2026/page2.jpg",
+        "coinReward": 100
+      },
+      {
+        "gridSize": 4,
+        "imagePath": "songkran-2026/page3.jpg",
+        "coinReward": 200
+      }
+    ]
+  },
+  {
+    "id": "las-fallas-2026",
+    "title": "Las Fallas 2026",
+    "description": "Las Fallas is Valencia's spectacular spring festival, celebrated with enormous satirical sculptures, fireworks, marching bands, traditional costumes, street festivities, and the dramatic burning of the fallas.",
+    "startsAt": "2026-03-15T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "las-fallas-2026/page1.jpg",
+        "coinReward": 50
+      },
+      {
+        "gridSize": 3,
+        "imagePath": "las-fallas-2026/page2.jpg",
+        "coinReward": 100
+      },
+      {
+        "gridSize": 4,
+        "imagePath": "las-fallas-2026/page3.jpg",
+        "coinReward": 200
+      }
+    ]
+  },
+  {
+    "id": "towel-day-2026",
+    "title": "Towel Day 2026",
+    "description": "Towel Day is an annual celebration of Douglas Adams and The Hitchhiker's Guide to the Galaxy, when fans around the world carry towels in tribute to one of the series' most memorable ideas.",
+    "startsAt": "2026-05-25T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "towel-day-2026/page1.jpg",
+        "coinReward": 50
+      },
+      {
+        "gridSize": 3,
+        "imagePath": "towel-day-2026/page2.jpg",
+        "coinReward": 100
+      },
+      {
+        "gridSize": 4,
+        "imagePath": "towel-day-2026/page3.jpg",
+        "coinReward": 200
+      }
+    ]
   }
 ]
