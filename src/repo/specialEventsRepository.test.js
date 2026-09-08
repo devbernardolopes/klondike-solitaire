@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { compareEventSummaries, eventStartYear, isUpcomingEvent, wonEventDealIdFromQueuedOp, computeKnownSolved, getPendingWonDealIds, patchCachedEventDealSolved, revertOptimisticSolve, setCachedEventDetailSync, clearEventCatalogMemory } from './specialEventsRepository.js';
+import { compareEventSummaries, eventStartYear, isUpcomingEvent, wonEventDealIdFromQueuedOp, computeKnownSolved, getPendingWonDealIds, patchCachedEventDealSolved, revertOptimisticSolve, setCachedEventDetailSync, clearEventCatalogMemory, applyWinPreservingMerge } from './specialEventsRepository.js';
 import { collectSolvedIds, mergeSolvedIds, findNextUnsolvedDealOnPage, getEventDealProgress } from './specialEventsProgress.js';
 
 const summary = (id, startsAt, title) => ({ id, startsAt, title: title ?? id });
@@ -151,5 +151,32 @@ test('patch tracks the win as pending until revert drops it', () => {
   assert.deepEqual(getPendingWonDealIds(), [4]);
   revertOptimisticSolve(4);
   assert.deepEqual(getPendingWonDealIds(), []);
+  clearEventCatalogMemory();
+});
+
+test('applyWinPreservingMerge keeps a just-won deal solved on a stale fallback row', () => {
+  clearEventCatalogMemory();
+  setCachedEventDetailSync(detailWith(new Set()));
+  patchCachedEventDealSolved(4);
+  const stale = detailWith(new Set());
+  applyWinPreservingMerge(stale, { wonQueuedIds: [], optimisticDealIds: [] });
+  assert.deepEqual(stale.pages[0].deals.map((d) => d.solved), [false, false, false, true]);
+  clearEventCatalogMemory();
+});
+
+test('applyWinPreservingMerge applies queued and optimistic wins to a stale row', () => {
+  clearEventCatalogMemory();
+  setCachedEventDetailSync(detailWith(new Set()));
+  const stale = detailWith(new Set());
+  applyWinPreservingMerge(stale, { wonQueuedIds: [2], optimisticDealIds: [3] });
+  assert.deepEqual(stale.pages[0].deals.map((d) => d.solved), [false, true, true, false]);
+  clearEventCatalogMemory();
+});
+
+test('applyWinPreservingMerge never strips an already-solved fallback row', () => {
+  clearEventCatalogMemory();
+  const solved = detailWith(new Set([1]));
+  applyWinPreservingMerge(solved, { wonQueuedIds: [], optimisticDealIds: [] });
+  assert.deepEqual(solved.pages[0].deals.map((d) => d.solved), [true, false, false, false]);
   clearEventCatalogMemory();
 });

@@ -74,6 +74,11 @@ export default function EventDetailModal() {
   // modal and optimistic fetch rely on it), so without this every reopen would
   // re-apply the advance and clobber a manual replay selection.
   const advancedForWonRef = useRef(null);
+  // Generation counter for detail fetches: overlapping refreshes (open-time
+  // fetch, sync-flushed, visibilitychange) resolve in any order, so a stale
+  // response must never overwrite newer state (e.g. a slow fallback hiding
+  // a just-revealed image slice that a newer fetch already confirmed).
+  const fetchGenRef = useRef(0);
   // Open postcard viewer for a completed page: { imageUrl, title, fileName }.
   const [postcard, setPostcard] = useState(null);
 
@@ -150,9 +155,11 @@ export default function EventDetailModal() {
   useEffect(() => {
     if (!open || !eventId) return;
     const refresh = () => {
+      const gen = ++fetchGenRef.current;
       const optimisticId = useUiStore.getState().winSummary?.eventDealId ?? null;
       fetchEventDetail(eventId, { optimisticDealIds: optimisticId != null ? [optimisticId] : [] })
         .then((fresh) => {
+          if (gen !== fetchGenRef.current) return;
           if (!fresh) return;
           setDetail((prev) => (prev && !detailsDiffer(prev, fresh) ? prev : fresh));
         })
@@ -223,10 +230,12 @@ export default function EventDetailModal() {
     const cached = getCachedEventDetailSync(eventId);
     if (cached) {
       {
+        const gen = ++fetchGenRef.current;
         const optimisticId = useUiStore.getState().winSummary?.eventDealId ?? null;
         const optimisticDealIds = optimisticId != null ? [optimisticId] : [];
         fetchEventDetail(eventId, { optimisticDealIds })
         .then((fresh) => {
+          if (gen !== fetchGenRef.current) return;
           if (!fresh) return;
           const patched = fresh;
           if (!detailsDiffer(cached, patched)) return;
@@ -255,11 +264,14 @@ export default function EventDetailModal() {
       return;
     }
     {
+      const gen = ++fetchGenRef.current;
       const optimisticId = useUiStore.getState().winSummary?.eventDealId ?? null;
       const optimisticDealIds = optimisticId != null ? [optimisticId] : [];
       fetchEventDetail(eventId, { optimisticDealIds })
       .then((d) => {
+        if (gen !== fetchGenRef.current) return;
         const patched = d;
+        if (!patched) return;
         setDetail(patched);
         if (patched && patched.pages.length > 0) {
           const lastPage = loadLastViewedPageSync(eventId);
@@ -287,7 +299,10 @@ export default function EventDetailModal() {
           positionWithoutAnim(0);
         }
       })
-      .catch(() => setDetail(null))
+      .catch(() => {
+        if (gen !== fetchGenRef.current) return;
+        setDetail(null);
+      })
       .finally(() => setLoaded(true));
     }
   }, [open, eventId]);

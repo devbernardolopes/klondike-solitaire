@@ -40,6 +40,37 @@ export function getPendingWonDealIds() {
   return Array.from(pendingWonDealIds);
 }
 
+/** Won event deal ids still sitting in the offline outbox (unflushed wins). */
+async function listWonQueuedDealIds() {
+  const ids = new Set();
+  try {
+    const queued = await listQueuedOps();
+    for (const op of queued) {
+      const dealId = wonEventDealIdFromQueuedOp(op);
+      if (dealId != null) ids.add(dealId);
+    }
+  } catch {}
+  return ids;
+}
+
+/**
+ * Offline/error merge for a stale cached detail: trust the row as-is (it
+ * already reflects the last converged sync) and union locally witnessed wins
+ * (in-memory solved flags, still-queued wins, pending wins, explicit
+ * optimistic ids). Never strips — with no server truth, convergence must
+ * wait for the next online fetch.
+ */
+export function applyWinPreservingMerge(cached, { wonQueuedIds = [], optimisticDealIds = [] } = {}) {
+  if (!cached) return cached;
+  if (Array.isArray(cached.pages)) assignDealNumbers(cached.pages);
+  const prev = catalogMemory.get(cached.id);
+  if (prev) {
+    mergeSolvedIds(cached, collectSolvedIds(prev));
+  }
+  mergeSolvedIds(cached, new Set([...wonQueuedIds, ...pendingWonDealIds, ...optimisticDealIds]));
+  return cached;
+}
+
 /**
  * Pure merge for the solved-id gate: cached ids are only trusted when
  * verifiable (server, won queue, explicit optimistic list, or a locally
@@ -419,13 +450,7 @@ export async function fetchSpecialEvents() {
         // where the queued op is gone but the server row isn't readable yet.
         // Losses also enqueue submit_game_result (p_won:false, with event id
         // for analytics) but must never count as solved.
-        try {
-          const queued = await listQueuedOps();
-          for (const op of queued) {
-            const dealId = wonEventDealIdFromQueuedOp(op);
-            if (dealId != null) solvedDealIds.add(dealId);
-          }
-        } catch {}
+        for (const id of await listWonQueuedDealIds()) solvedDealIds.add(id);
         for (const id of pendingWonDealIds) solvedDealIds.add(id);
       } catch {}
     }
@@ -590,14 +615,7 @@ export async function fetchEventDetail(eventId, opts) {
       };
 
       try {
-        const wonQueuedIds = new Set();
-        try {
-          const queued = await listQueuedOps();
-          for (const op of queued) {
-            const dealId = wonEventDealIdFromQueuedOp(op);
-            if (dealId != null) wonQueuedIds.add(dealId);
-          }
-        } catch {}
+        const wonQueuedIds = await listWonQueuedDealIds();
         // Server-confirmed pending wins no longer need local trust.
         for (const id of Array.from(pendingWonDealIds)) {
           if (solvedDealIds.has(id)) pendingWonDealIds.delete(id);
@@ -638,12 +656,18 @@ export async function fetchEventDetail(eventId, opts) {
     } catch {}
   }
 
+  // Offline/error fallback: the Supabase block above threw, so there is no
+  // server truth to converge to. Trust the Dexie row as-is (it already
+  // reflects the last converged sync, including other devices' wins) and
+  // union locally witnessed wins (pending, queued, or explicit optimistic),
+  // so a just-won deal survives even when the Dexie optimistic put hasn't
+  // landed yet and the server is unreachable.
+  const wonQueuedIds = await listWonQueuedDealIds();
   const cached = await getCatalogDetail(eventId);
   if (cached) {
-    // Dexie rows cached before this release lack dealNumber — derive it so
-    // the grid + label still show global N while offline.
-    if (Array.isArray(cached.pages)) assignDealNumbers(cached.pages);
+    applyWinPreservingMerge(cached, { wonQueuedIds: [...wonQueuedIds], optimisticDealIds });
     catalogMemory.set(eventId, cached);
+    saveCatalogDetail(cached).catch(() => {});
   }
   return cached;
 }
