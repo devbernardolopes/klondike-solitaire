@@ -377,9 +377,11 @@ export default function DailyChallengeModal() {
   };
 
   // Ensure the selection lives in (y, m): keep it when it already does,
-  // otherwise select today (if visible) or the first playable day. Marks
-  // the choice as user-picked so background today-refreshes don't override
-  // an explicit navigation.
+  // otherwise select today (if visible) or the first playable day. When
+  // the month has no playable day at all, clear the selection so nothing
+  // is highlighted and the Play button disables. Marks the choice as
+  // user-picked so background today-refreshes don't override an explicit
+  // navigation.
   const ensureSelectedInMonth = (y, m) => {
     const cur = selectedRef.current;
     if (cur) {
@@ -388,10 +390,8 @@ export default function DailyChallengeModal() {
       if (cy === y && cm === m) return;
     }
     const pick = pickDayForMonth(y, m, todayRef.current);
-    if (pick) {
-      applySelected(pick);
-      userPicked.current = true;
-    }
+    applySelected(pick);
+    userPicked.current = true;
   };
 
   // Jump the grid back to today and select it. Uses jumpTo so a "today"
