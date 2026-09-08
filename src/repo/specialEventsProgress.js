@@ -65,6 +65,35 @@ export function mergeSolvedIds(detail, solvedIds) {
 }
 
 /**
+ * One-way latch for covered deals: restore `solved=true` from the previous
+ * detail for deals in `coverIds` that a fresh fetch reports unsolved. A
+ * covered-but-unconfirmed win (still pending locally or still queued) must
+ * survive any single stale server read; only an uncovering fetch (server
+ * confirmed elsewhere, queue drained, pending pruned — e.g. a rejected win
+ * after revertOptimisticSolve) may show it unsolved. Never strips.
+ */
+export function keepCoveredSolves(prev, fresh, coverIds) {
+  if (!prev || !fresh || !coverIds || coverIds.size === 0) return fresh;
+  const prevSolved = collectSolvedIds(prev);
+  let patched = false;
+  for (const p of fresh.pages || []) {
+    for (const d of p.deals || []) {
+      if (!d.solved && coverIds.has(d.id) && prevSolved.has(d.id)) {
+        d.solved = true;
+        patched = true;
+      }
+    }
+  }
+  if (patched) {
+    recomputeUnlocks(fresh);
+    try {
+      if (typeof console !== 'undefined' && console.debug) console.debug('[events] kept covered deal solved over stale fetch');
+    } catch {}
+  }
+  return fresh;
+}
+
+/**
  * Next unsolved deal for the post-win selector, staying on the won deal's
  * page: scan forward (increasing deal number) from the won deal, then wrap
  * around to the page's first deal and keep seeking. Returns null when the

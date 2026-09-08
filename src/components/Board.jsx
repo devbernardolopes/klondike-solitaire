@@ -275,7 +275,10 @@ export default function Board() {
       // can persist the day's best result below.
       const uiState = useUiStore.getState();
       const replaySpec = useGameStore.getState().replaySpec;
-      const gameKind = uiState.currentGameKind;
+      // Fall back to the reload-surviving replaySpec kind (same as recordLoss):
+      // UI state can be reset by navigation while a game is in progress, and a
+      // lost kind would silently null the event attribution below.
+      const gameKind = uiState.currentGameKind ?? replaySpec?.kind ?? null;
       const dailyDate = uiState.currentDailyDate;
       const gameState = useGameStore.getState().state;
       const effectiveEventDealId = uiState.currentEventDealId ?? replaySpec?.eventDealId ?? null;

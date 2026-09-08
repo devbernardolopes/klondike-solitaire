@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabaseClient.js';
-import { db } from '../db/schema.js';
+import { db, getSetting, setSetting } from '../db/schema.js';
 import { saveCatalogDetail, getCatalogDetail, deleteCatalogDetail, deleteImageBlob } from '../db/eventCache.js';
 import { ensureImageCached, warmImageCache } from '../utils/eventImageCache.js';
 import { collectSolvedIds, mergeSolvedIds, getEventDealProgress } from './specialEventsProgress.js';
@@ -35,13 +35,40 @@ export function wonEventDealIdFromQueuedOp(op) {
  */
 const pendingWonDealIds = new Set();
 
+/** Dexie `settings` key holding the durable copy of the pending-wins set. */
+const PENDING_WINS_KEY = 'pendingEventWonDealIds';
+
 /** Copy of locally witnessed not-yet-server-confirmed won deal ids. */
 export function getPendingWonDealIds() {
   return Array.from(pendingWonDealIds);
 }
 
+/** Write-through the memory set to Dexie (fire-and-forget, never throws). */
+function persistPendingWins() {
+  try {
+    setSetting(PENDING_WINS_KEY, Array.from(pendingWonDealIds)).catch(() => {});
+  } catch {}
+}
+
+/**
+ * Restore witnessed-but-unconfirmed wins after a reload or in a fresh tab.
+ * The memory set alone can't cover those windows, and without it a stale
+ * server read could hide a just-revealed image slice.
+ */
+export async function hydratePendingWonDealIds() {
+  try {
+    const ids = await getSetting(PENDING_WINS_KEY, []);
+    if (Array.isArray(ids)) {
+      for (const id of ids) {
+        if (id != null) pendingWonDealIds.add(id);
+      }
+    }
+  } catch {}
+  return getPendingWonDealIds();
+}
+
 /** Won event deal ids still sitting in the offline outbox (unflushed wins). */
-async function listWonQueuedDealIds() {
+export async function listWonQueuedDealIds() {
   const ids = new Set();
   try {
     const queued = await listQueuedOps();
@@ -99,6 +126,7 @@ export function setCachedEventDetailSync(detail) {
 export function clearEventCatalogMemory() {
   catalogMemory.clear();
   pendingWonDealIds.clear();
+  persistPendingWins();
 }
 
 /**
@@ -137,6 +165,7 @@ export function revertOptimisticSolve(dealId) {
     unset(detail);
   }
   pendingWonDealIds.delete(dealId);
+  persistPendingWins();
   (async () => {
     try {
       const rows = await db.eventCatalogCache.toArray();
@@ -171,8 +200,10 @@ export function revertOptimisticSolve(dealId) {
 export function patchCachedEventDealSolved(dealId) {
   if (dealId == null) return null;
   // Locally witnessed win: keep trusting it across background refetches until
-  // the server confirms it (pruned in fetchEventDetail).
+  // the server confirms it (pruned in fetchEventDetail). Persisted to Dexie
+  // so the cover survives reloads and fresh tabs.
   pendingWonDealIds.add(dealId);
+  persistPendingWins();
   let patchedId = null;
   for (const [key, detail] of catalogMemory) {
     if (!detail || !Array.isArray(detail.pages)) continue;
@@ -251,6 +282,9 @@ export function getCachedEventsSummarySync() {
 }
 
 export async function hydrateEventCachesFromDexie() {
+  try {
+    await hydratePendingWonDealIds();
+  } catch {}
   try {
     const rows = await db.eventCatalogCache.toArray();
     for (const r of rows) {
@@ -617,9 +651,14 @@ export async function fetchEventDetail(eventId, opts) {
       try {
         const wonQueuedIds = await listWonQueuedDealIds();
         // Server-confirmed pending wins no longer need local trust.
+        let pruned = false;
         for (const id of Array.from(pendingWonDealIds)) {
-          if (solvedDealIds.has(id)) pendingWonDealIds.delete(id);
+          if (solvedDealIds.has(id)) {
+            pendingWonDealIds.delete(id);
+            pruned = true;
+          }
         }
+        if (pruned) persistPendingWins();
         // Local caches may hold solved=true written before losses stopped
         // counting as solved (Game Over freeze path). Only trust cached ids
         // that are verifiable — present on the server, in the won queue, in

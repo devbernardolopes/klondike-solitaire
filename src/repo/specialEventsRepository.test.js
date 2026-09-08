@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { compareEventSummaries, eventStartYear, isUpcomingEvent, wonEventDealIdFromQueuedOp, computeKnownSolved, getPendingWonDealIds, patchCachedEventDealSolved, revertOptimisticSolve, setCachedEventDetailSync, clearEventCatalogMemory, applyWinPreservingMerge } from './specialEventsRepository.js';
-import { collectSolvedIds, mergeSolvedIds, findNextUnsolvedDealOnPage, getEventDealProgress } from './specialEventsProgress.js';
+import { compareEventSummaries, eventStartYear, isUpcomingEvent, wonEventDealIdFromQueuedOp, computeKnownSolved, getPendingWonDealIds, patchCachedEventDealSolved, revertOptimisticSolve, setCachedEventDetailSync, clearEventCatalogMemory, applyWinPreservingMerge, hydratePendingWonDealIds } from './specialEventsRepository.js';
+import { collectSolvedIds, mergeSolvedIds, findNextUnsolvedDealOnPage, getEventDealProgress, keepCoveredSolves } from './specialEventsProgress.js';
 
 const summary = (id, startsAt, title) => ({ id, startsAt, title: title ?? id });
 
@@ -178,5 +178,32 @@ test('applyWinPreservingMerge never strips an already-solved fallback row', () =
   const solved = detailWith(new Set([1]));
   applyWinPreservingMerge(solved, { wonQueuedIds: [], optimisticDealIds: [] });
   assert.deepEqual(solved.pages[0].deals.map((d) => d.solved), [true, false, false, false]);
+  clearEventCatalogMemory();
+});
+
+test('keepCoveredSolves restores a covered win a stale fetch reports unsolved', () => {
+  const prev = detailWith(new Set([4]));
+  const fresh = detailWith(new Set());
+  keepCoveredSolves(prev, fresh, new Set([4]));
+  assert.deepEqual(fresh.pages[0].deals.map((d) => d.solved), [false, false, false, true]);
+});
+
+test('keepCoveredSolves lets an uncovered unsolve through (rejected win)', () => {
+  const prev = detailWith(new Set([4]));
+  const fresh = detailWith(new Set());
+  keepCoveredSolves(prev, fresh, new Set());
+  assert.deepEqual(fresh.pages[0].deals.map((d) => d.solved), [false, false, false, false]);
+});
+
+test('keepCoveredSolves never strips solves the fresh fetch already has', () => {
+  const prev = detailWith(new Set());
+  const fresh = detailWith(new Set([1]));
+  keepCoveredSolves(prev, fresh, new Set([4]));
+  assert.deepEqual(fresh.pages[0].deals.map((d) => d.solved), [true, false, false, false]);
+});
+
+test('hydratePendingWonDealIds resolves empty without IndexedDB', async () => {
+  clearEventCatalogMemory();
+  assert.deepEqual(await hydratePendingWonDealIds(), []);
   clearEventCatalogMemory();
 });

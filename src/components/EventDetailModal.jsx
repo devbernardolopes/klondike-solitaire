@@ -23,14 +23,32 @@ import { Z } from '../utils/modalStack.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
-import { fetchEventDetail, getCachedEventDetailSync, resolveInitialPageIndex, detailsDiffer } from '../repo/specialEventsRepository.js';
-import { findNextUnsolvedDealOnPage } from '../repo/specialEventsProgress.js';
+import { fetchEventDetail, getCachedEventDetailSync, resolveInitialPageIndex, detailsDiffer, getPendingWonDealIds, listWonQueuedDealIds } from '../repo/specialEventsRepository.js';
+import { findNextUnsolvedDealOnPage, keepCoveredSolves } from '../repo/specialEventsProgress.js';
 import { loadEventSelectionSync, saveEventSelection, loadLastViewedPageSync, saveLastViewedPage } from '../db/eventSelection.js';
 import EventDealGrid from './EventDealGrid.jsx';
 import PostcardViewerModal from './PostcardViewerModal.jsx';
 import { eventImageUrl } from '../utils/eventImage.js';
 
 const SWIPE_THRESHOLD_RATIO = 0.2; // fraction of viewport width to trigger a page change
+
+// Deals whose solved state must survive a single stale fetch: locally
+// witnessed wins (pending, durable across reloads) plus still-queued wins.
+// Deliberately NOT the sticky winSummary id: after a server-rejected win
+// (revertOptimisticSolve clears pending and drains the queue) an unsolve
+// must be allowed through.
+async function loadSolveCover() {
+  const cover = new Set();
+  try {
+    for (const id of getPendingWonDealIds()) {
+      if (id != null) cover.add(id);
+    }
+    for (const id of await listWonQueuedDealIds()) {
+      if (id != null) cover.add(id);
+    }
+  } catch {}
+  return cover;
+}
 
 export default function EventDetailModal() {
   const { t } = useTranslation();
@@ -158,10 +176,16 @@ export default function EventDetailModal() {
       const gen = ++fetchGenRef.current;
       const optimisticId = useUiStore.getState().winSummary?.eventDealId ?? null;
       fetchEventDetail(eventId, { optimisticDealIds: optimisticId != null ? [optimisticId] : [] })
-        .then((fresh) => {
+        .then(async (fresh) => {
           if (gen !== fetchGenRef.current) return;
           if (!fresh) return;
-          setDetail((prev) => (prev && !detailsDiffer(prev, fresh) ? prev : fresh));
+          const cover = await loadSolveCover();
+          if (gen !== fetchGenRef.current) return;
+          setDetail((prev) => {
+            if (!prev) return fresh;
+            keepCoveredSolves(prev, fresh, cover);
+            return detailsDiffer(prev, fresh) ? fresh : prev;
+          });
         })
         .catch(() => {});
     };
@@ -234,12 +258,18 @@ export default function EventDetailModal() {
         const optimisticId = useUiStore.getState().winSummary?.eventDealId ?? null;
         const optimisticDealIds = optimisticId != null ? [optimisticId] : [];
         fetchEventDetail(eventId, { optimisticDealIds })
-        .then((fresh) => {
+        .then(async (fresh) => {
           if (gen !== fetchGenRef.current) return;
           if (!fresh) return;
+          const cover = await loadSolveCover();
+          if (gen !== fetchGenRef.current) return;
           const patched = fresh;
-          if (!detailsDiffer(cached, patched)) return;
-          setDetail(patched);
+          setDetail((prev) => {
+            const base = prev ?? cached;
+            keepCoveredSolves(base, patched, cover);
+            if (!detailsDiffer(base, patched)) return prev ?? patched;
+            return patched;
+          });
           setSelectedDealIdByPage((prev) => {
             const next = { ...prev };
             let changed = false;
