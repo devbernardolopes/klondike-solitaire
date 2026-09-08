@@ -279,11 +279,12 @@ function CardViewBase({ card, from, zIndex = 0, hidden = false, onAutoMove, hard
       aria-label={containerAriaLabel}
       aria-pressed={selected}
     >
-      {/* Wobble wrapper: dedicated inner node for the idle GSAP x-drift so it
-          never collides with the outer [data-card] transforms (dnd-kit drag,
-          shake, Flip). No handlers here — interaction stays on the outer node
-          so the effect can never block input. */}
-      <div ref={wobbleRef} data-wobble={card.id} style={{ willChange: wobbleEnabled ? 'transform' : undefined }}>
+      {/* Wobble wrapper: dedicated inner node for the idle GSAP rocking tilt
+          so it never collides with the outer [data-card] transforms (dnd-kit
+          drag, shake, Flip). The center pivot keeps the card tilting in place.
+          No handlers here — interaction stays on the outer node so the effect
+          can never block input. */}
+      <div ref={wobbleRef} data-wobble={card.id} style={{ willChange: wobbleEnabled ? 'transform' : undefined, transformOrigin: 'center center' }}>
         <CardFace card={card} zIndex={zIndex} innerRef={flipRef} ariaLabel={cardAria} faceDownLabel={faceDownLabel} />
       </div>
     </div>

@@ -67,7 +67,7 @@ export function MotionDebugPanel() {
     scale: { value: MOTION.hoverLift.scale, min: 0.95, max: 1.1, step: 0.01, onChange: (v) => (MOTION.hoverLift.scale = v) },
   });
   useControls('wobble', {
-    maxX: { value: MOTION.wobble.maxX, min: 0, max: 8, step: 0.5, onChange: (v) => (MOTION.wobble.maxX = v) },
+    maxRotation: { value: MOTION.wobble.maxRotation, min: 0, max: 8, step: 0.1, onChange: (v) => (MOTION.wobble.maxRotation = v) },
     durationMin: { value: MOTION.wobble.durationMin, min: 0.4, max: 5, step: 0.1, onChange: (v) => (MOTION.wobble.durationMin = v) },
     durationMax: { value: MOTION.wobble.durationMax, min: 0.4, max: 6, step: 0.1, onChange: (v) => (MOTION.wobble.durationMax = v) },
   });

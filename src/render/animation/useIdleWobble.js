@@ -1,8 +1,9 @@
 // render/animation/useIdleWobble.js
-// "Wobbly Cards" idle effect: a continuous, subtle, per-card horizontal drift
-// for resting face-up tableau cards. GSAP loop (not CSS) so each card gets an
-// individual random phase, amplitude, and leg speed, and so cancellation is
-// synchronous (kill + clearProps) the instant any interaction owns the card.
+// "Wobbly Cards" idle effect: a continuous, subtle, per-card rocking tilt
+// (pure rotation around the card center) for resting face-up tableau cards.
+// GSAP loop (not CSS) so each card gets an individual random phase, amplitude,
+// and leg speed, and so cancellation is synchronous (kill + clearProps) the
+// instant any interaction owns the card.
 //
 // Transform isolation: the tween targets a dedicated inner wrapper
 // (`[data-wobble]` in CardView), NEVER the outer `[data-card]` node owned by
@@ -26,7 +27,7 @@ function rand(min, max) {
 /**
  * Synchronously cancel a card's idle wobble (pointerdown, drag start, shake,
  * slide). Kills the GSAP tween WITHOUT firing its onComplete chain, then
- * clears the inline x so no residual offset collides with drag/Flip/shake.
+ * clears the inline transform so no residual tilt collides with drag/Flip/shake.
  * Safe to call when no wobble is running (no-op).
  * @param {string} cardId
  */
@@ -54,12 +55,12 @@ export function killAllWobbles() {
 
 function readCfg() {
   const cfg = MOTION.wobble || {};
-  const maxX = Math.max(0, cfg.maxX ?? 3);
+  const maxRotation = Math.max(0, cfg.maxRotation ?? 1.5);
   let durationMin = cfg.durationMin ?? 1.6;
   let durationMax = cfg.durationMax ?? 3.2;
   if (!(durationMin > 0)) durationMin = 0.4;
   if (!(durationMax >= durationMin)) durationMax = durationMin;
-  return { maxX, durationMin, durationMax, ease: cfg.ease ?? 'sine.inOut' };
+  return { maxRotation, durationMin, durationMax, ease: cfg.ease ?? 'sine.inOut' };
 }
 
 /**
@@ -80,24 +81,25 @@ export function useIdleWobble(ref, enabled, cardId) {
       return undefined;
     }
     const cfg = readCfg();
-    if (cfg.maxX <= 0) return undefined;
+    if (cfg.maxRotation <= 0) return undefined;
     // A previous loop for this card (e.g. remount race) is replaced.
     killWobble(cardId);
-    // Desync cards: each starts from a random offset after a random pause so
-    // the tableau never sways in unison.
-    gsap.set(node, { x: rand(-cfg.maxX, cfg.maxX) });
+    // Desync cards: each starts from a random tilt after a random pause so
+    // the tableau never rocks in unison. The pivot is pinned to the card
+    // center so the card tilts in place instead of orbiting.
+    gsap.set(node, { rotation: rand(-cfg.maxRotation, cfg.maxRotation), transformOrigin: '50% 50%' });
     const state = { tween: null, dead: false };
     const swing = () => {
       if (state.dead || !enabledRef.current) return;
       // Re-read the preset per swing so the Leva debug panel retunes live.
       const live = readCfg();
-      if (live.maxX <= 0) return;
+      if (live.maxRotation <= 0) return;
       try {
         const el = ref.current;
         if (!el || !el.isConnected) return;
       } catch {}
       state.tween = gsap.to(node, {
-        x: rand(-live.maxX, live.maxX),
+        rotation: rand(-live.maxRotation, live.maxRotation),
         duration: rand(live.durationMin, live.durationMax),
         ease: live.ease,
         overwrite: 'auto',
