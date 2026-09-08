@@ -57,6 +57,7 @@ const DEFAULTS = {
   cardShake: true,
   centisecondsOn: true,
   hoverLift: true,
+  wobble: false,
   flipOvershoot: true,
   coinFly: true,
   autoComplete: true,
@@ -92,6 +93,7 @@ const LS_KEYS = {
   cardShake: 'klondike:cardShake',
   centisecondsOn: 'klondike:centisecondsOn',
   hoverLift: 'klondike:hoverLift',
+  wobble: 'klondike:wobble',
   flipOvershoot: 'klondike:flipOvershoot',
   coinFly: 'klondike:coinFly',
   autoComplete: 'klondike:autoComplete',
@@ -160,6 +162,7 @@ export const useSettingsStore = create((set, get) => ({
   cardShake: readLS(LS_KEYS.cardShake, DEFAULTS.cardShake),
   centisecondsOn: readLS(LS_KEYS.centisecondsOn, DEFAULTS.centisecondsOn),
   hoverLift: readLS(LS_KEYS.hoverLift, DEFAULTS.hoverLift),
+  wobble: readLS(LS_KEYS.wobble, DEFAULTS.wobble),
   flipOvershoot: readLS(LS_KEYS.flipOvershoot, DEFAULTS.flipOvershoot),
   coinFly: readLS(LS_KEYS.coinFly, DEFAULTS.coinFly),
   autoComplete: readLS(LS_KEYS.autoComplete, DEFAULTS.autoComplete),
@@ -180,7 +183,7 @@ export const useSettingsStore = create((set, get) => ({
       'language', 'theme', 'interfaceTheme', 'deck', 'cardBack', 'handedness',
       'highlightCard', 'particles', 'cardEffects', 'tableTexture', 'boardFrame',
       'bounce', 'ghostEcho', 'ghostTrail', 'shimmer', 'uncover', 'winEnhanced', 'winCascade',
-      'hoverGlow', 'cardShake', 'centisecondsOn', 'hoverLift', 'flipOvershoot', 'coinFly', 'autoComplete', 'pinLastEvent', 'seenThemeItemIds', 'seenAchievementIds', 'themeModalTab',
+      'hoverGlow', 'cardShake', 'centisecondsOn', 'hoverLift', 'wobble', 'flipOvershoot', 'coinFly', 'autoComplete', 'pinLastEvent', 'seenThemeItemIds', 'seenAchievementIds', 'themeModalTab',
     ];
     const SETTING_DEFAULTS = {
       theme: DEFAULTS.theme,
@@ -204,6 +207,7 @@ export const useSettingsStore = create((set, get) => ({
       cardShake: DEFAULTS.cardShake,
       centisecondsOn: DEFAULTS.centisecondsOn,
       hoverLift: DEFAULTS.hoverLift,
+      wobble: DEFAULTS.wobble,
       flipOvershoot: DEFAULTS.flipOvershoot,
       coinFly: DEFAULTS.coinFly,
       autoComplete: DEFAULTS.autoComplete,
@@ -212,7 +216,7 @@ export const useSettingsStore = create((set, get) => ({
       seenAchievementIds: [],
       themeModalTab: 'background',
     };
-    const [language, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostEcho, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, cardShake, centisecondsOn, hoverLift, flipOvershoot, coinFly, autoComplete, pinLastEvent, seenThemeItemIdsArr, seenAchievementIdsArr, themeModalTab] = await getSettings(SETTING_KEYS, SETTING_DEFAULTS);
+    const [language, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostEcho, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, cardShake, centisecondsOn, hoverLift, wobble, flipOvershoot, coinFly, autoComplete, pinLastEvent, seenThemeItemIdsArr, seenAchievementIdsArr, themeModalTab] = await getSettings(SETTING_KEYS, SETTING_DEFAULTS);
     // Use the LS read for language as a last-resort fallback for the language
     // key (the per-key default above is a static DEFAULT_LOCALE; the LS version
     // may have detected the system locale on a previous session).
@@ -247,6 +251,7 @@ export const useSettingsStore = create((set, get) => ({
         ['cardShake', cardShake],
         ['centisecondsOn', centisecondsOn],
         ['hoverLift', hoverLift],
+        ['wobble', wobble],
         ['flipOvershoot', flipOvershoot],
         ['coinFly', coinFly],
         ['autoComplete', autoComplete],
@@ -268,7 +273,7 @@ export const useSettingsStore = create((set, get) => ({
       if (i18n.language !== normalizedLang) await i18n.changeLanguage(normalizedLang);
       try { document.documentElement.lang = normalizedLang; } catch {}
     } catch {}
-    set({ language: normalizedLang, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostEcho, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, cardShake, centisecondsOn, hoverLift, flipOvershoot, coinFly, autoComplete, pinLastEvent, seenThemeItemIds: seenThemeIds, seenAchievementIds: seenAchievementIds, themeModalTab, loaded: true });
+    set({ language: normalizedLang, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostEcho, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, cardShake, centisecondsOn, hoverLift, wobble, flipOvershoot, coinFly, autoComplete, pinLastEvent, seenThemeItemIds: seenThemeIds, seenAchievementIds: seenAchievementIds, themeModalTab, loaded: true });
   },
 
   /**
@@ -389,6 +394,7 @@ export const useSettingsStore = create((set, get) => ({
   setCardShake: (cardShake) => { set({ cardShake }); setSetting('cardShake', cardShake); writeLS(LS_KEYS.cardShake, cardShake); },
   setCentisecondsOn: (centisecondsOn) => { set({ centisecondsOn }); setSetting('centisecondsOn', centisecondsOn); writeLS(LS_KEYS.centisecondsOn, centisecondsOn); },
   setHoverLift: (hoverLift) => { set({ hoverLift }); setSetting('hoverLift', hoverLift); writeLS(LS_KEYS.hoverLift, hoverLift); },
+  setWobble: (wobble) => { set({ wobble }); setSetting('wobble', wobble); writeLS(LS_KEYS.wobble, wobble); },
   setFlipOvershoot: (flipOvershoot) => { set({ flipOvershoot }); setSetting('flipOvershoot', flipOvershoot); writeLS(LS_KEYS.flipOvershoot, flipOvershoot); },
   setCoinFly: (coinFly) => { set({ coinFly }); setSetting('coinFly', coinFly); writeLS(LS_KEYS.coinFly, coinFly); },
   setAutoComplete: (autoComplete) => { set({ autoComplete }); setSetting('autoComplete', autoComplete); writeLS(LS_KEYS.autoComplete, autoComplete); },

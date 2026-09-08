@@ -71,6 +71,7 @@ export default function SettingsOptionsModal({
   const pinLastEvent = useSettingsStore((s) => s.pinLastEvent);
   const centisecondsOn = useSettingsStore((s) => s.centisecondsOn);
   const hoverLift = useSettingsStore((s) => s.hoverLift);
+  const wobble = useSettingsStore((s) => s.wobble);
   const flipOvershoot = useSettingsStore((s) => s.flipOvershoot);
   const osReducesMotion = useReducedMotion();
   const hoverCapable = useHoverCapable();
@@ -413,6 +414,19 @@ export default function SettingsOptionsModal({
             checked={!!ghostTrail}
             onChange={(v) => useSettingsStore.getState().setGhostTrail(v)}
             label={t('settings.ghostTrail')}
+            disabled={!cardEffects || osReducesMotion}
+          />
+        </div>
+
+        <div style={{ ...field, marginLeft: 16, opacity: (!cardEffects || osReducesMotion) ? 0.5 : 1, marginBottom: 20 }}>
+          <span style={{ fontSize: 14, fontWeight: 600 }}>
+            {t('settings.wobblyCards')}
+            {osReducesMotion && <BlockedInfoButton effect={t('settings.wobblyCards')} reason="os" />}
+          </span>
+          <ToggleSwitch
+            checked={!!wobble}
+            onChange={(v) => useSettingsStore.getState().setWobble(v)}
+            label={t('settings.wobblyCards.desc')}
             disabled={!cardEffects || osReducesMotion}
           />
         </div>

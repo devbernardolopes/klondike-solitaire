@@ -495,7 +495,9 @@
     "title": "Settings",
     "uncoverSparkle": "Uncover Sparkle",
     "winCelebration": "Win Celebration",
-    "winCelebration.desc": "Falling Cards on Win"
+    "winCelebration.desc": "Falling Cards on Win",
+    "wobblyCards": "Wobbly Cards",
+    "wobblyCards.desc": "Subtle idle sway for resting face-up tableau cards"
   },
   "specialEvents": {
     "availableFrom": "Disponible à partir du {{date}}",

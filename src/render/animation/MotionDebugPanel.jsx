@@ -66,6 +66,11 @@ export function MotionDebugPanel() {
     y: { value: MOTION.hoverLift.y, min: -10, max: 10, step: 0.5, onChange: (v) => (MOTION.hoverLift.y = v) },
     scale: { value: MOTION.hoverLift.scale, min: 0.95, max: 1.1, step: 0.01, onChange: (v) => (MOTION.hoverLift.scale = v) },
   });
+  useControls('wobble', {
+    maxX: { value: MOTION.wobble.maxX, min: 0, max: 8, step: 0.5, onChange: (v) => (MOTION.wobble.maxX = v) },
+    durationMin: { value: MOTION.wobble.durationMin, min: 0.4, max: 5, step: 0.1, onChange: (v) => (MOTION.wobble.durationMin = v) },
+    durationMax: { value: MOTION.wobble.durationMax, min: 0.4, max: 6, step: 0.1, onChange: (v) => (MOTION.wobble.durationMax = v) },
+  });
   useControls('bounce', {
     duration: { value: MOTION.bounce.duration, min: 0.05, max: 0.6, step: 0.01, onChange: (v) => (MOTION.bounce.duration = v) },
     scale: { value: MOTION.bounce.scale, min: 1, max: 1.15, step: 0.01, onChange: (v) => (MOTION.bounce.scale = v) },

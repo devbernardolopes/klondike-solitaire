@@ -2,6 +2,7 @@ import { gsap } from './gsapSetup.js';
 import { MOTION } from './motion.js';
 import { useUiStore } from '../../hooks/useUiStore.js';
 import { useSettingsStore } from '../../hooks/useSettingsStore.js';
+import { killWobble } from './useIdleWobble.js';
 
 // "No valid move" feedback: a short horizontal jitter on the card that decays
 // back to rest. On finish we clear the inline transform so it never collides
@@ -43,6 +44,10 @@ export function playCardShake(node) {
     /* settings store unavailable — fall through and play */
   }
   const ui = useUiStore.getState();
+  // Idle wobble lives on an inner wrapper (no transform collision), but a
+  // shaking card must still read as "not still" — kill it synchronously so
+  // the declarative shouldWobble gate never overlaps a shake by a frame.
+  killWobble(cardId);
   ui.addShaking(cardId);
   // Synchronous hover-lift kill for the first frame: the declarative
   // `data-shaking` in CardView (driven by the same shakingCards flag) arrives

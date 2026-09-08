@@ -4,6 +4,7 @@
 // readers. Not part of core/GameState and not persisted.
 
 import { create } from 'zustand';
+import { killWobble } from '../render/animation/useIdleWobble.js';
 
 // Module-level registry of transition-completion callbacks, keyed by transition
 // id. The animation layer calls endTransition(tid) once a move's tween finishes;
@@ -231,8 +232,14 @@ export const useUiStore = create((set, get) => ({
    * @param {string[]} cardIds  cards physically in flight
    * @param {string[]} locs  destination pile locators made busy
    */
-  beginTransition: (tid, cardIds, locs) =>
-    set((s) => {
+  beginTransition: (tid, cardIds, locs) => {
+    // Idle wobble owns an inner wrapper transform; a card entering flight must
+    // stop wobbling in the same synchronous tick the lock is taken (not a
+    // commit later), so the move tween starts from a true rest position.
+    try {
+      for (const id of cardIds || []) killWobble(id);
+    } catch {}
+    return set((s) => {
       const cards = new Set(s.animatingCards);
       const locsSet = new Set(s.animatingLocs);
       cardIds.forEach((id) => cards.add(id));
@@ -242,7 +249,8 @@ export const useUiStore = create((set, get) => ({
         animatingLocs: locsSet,
         activeTransitions: { ...s.activeTransitions, [tid]: { cards: new Set(cardIds), locs: new Set(locs) } },
       };
-    }),
+    });
+  },
 
   /**
    * Release the cards/locators reserved by a finished transition. Recomputes

@@ -1,10 +1,13 @@
-import { memo, useMemo, useRef } from 'react';
+import { memo, useMemo, useRef, useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { useTranslation } from 'react-i18next';
 import { useCardFaceFlip } from '../render/animation/useCardFaceFlip.js';
 import { playCardShake } from '../render/animation/playCardShake.js';
+import { useIdleWobble, killWobble } from '../render/animation/useIdleWobble.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
+import { isReducedMotion } from '../hooks/useReducedMotion.js';
+import { shouldWobble } from './shouldWobble.js';
 import { getDeck } from '../render/deck/deckRegistry.js';
 import { getCardBack } from '../render/deck/cardBackRegistry.js';
 import { playSfx } from '../audio/index.js';
@@ -137,6 +140,30 @@ function CardViewBase({ card, from, zIndex = 0, hidden = false, onAutoMove, hard
 
   const flipRef = useRef(null);
   useCardFaceFlip(flipRef, card.faceUp);
+  const wobbleRef = useRef(null);
+  const [isHovered, setIsHovered] = useState(false);
+  const cardEffects = useSettingsStore((s) => s.cardEffects);
+  const wobbleOn = useSettingsStore((s) => s.wobble);
+  const hoverLiftOn = useSettingsStore((s) => s.hoverLift);
+  const isDragging = useUiStore((s) => s.isDragging);
+  const fullLock = useUiStore((s) => s.fullLock);
+  const wobbleEnabled = shouldWobble({
+    cardEffects,
+    wobble: wobbleOn,
+    faceUp: card.faceUp,
+    isTableau: typeof from === 'string' && from.startsWith('tableau'),
+    isAnimating,
+    isSliding,
+    isShaking,
+    isDragging,
+    isHovered,
+    hoverLiftOn,
+    isHidden: hidden,
+    won,
+    fullLock,
+    reducedMotion: isReducedMotion(),
+  });
+  useIdleWobble(wobbleRef, wobbleEnabled, card.id);
 
   const downPos = useRef(null);
 
@@ -146,8 +173,23 @@ function CardViewBase({ card, from, zIndex = 0, hidden = false, onAutoMove, hard
 
   const handlePointerDown = (e) => {
     if (e.button !== 0) return;
+    // Synchronous wobble kill: the drag / auto-move owns the card from this
+    // instant, a full React commit before `isDragging` flips `enabled` off.
+    killWobble(card.id);
     listeners?.onPointerDown?.(e);
     downPos.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+    // Yield to Hover Lift immediately when it is enabled; the declarative
+    // `enabled=false` path arrives after the commit.
+    try {
+      if (useSettingsStore.getState().hoverLift) killWobble(card.id);
+    } catch {}
+  };
+  const handleMouseLeave = () => {
+    setIsHovered(false);
   };
 
   const handlePointerUp = (e) => {
@@ -186,6 +228,7 @@ function CardViewBase({ card, from, zIndex = 0, hidden = false, onAutoMove, hard
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       clearSelection();
+      killWobble(card.id);
       if (isAnimating) return;
       if (isSliding || isShaking) {
         const ok = onAutoMove(from, card.id);
@@ -211,6 +254,8 @@ function CardViewBase({ card, from, zIndex = 0, hidden = false, onAutoMove, hard
       {...attributes}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       onFocus={handleFocus}
       onKeyDown={handleKeyDown}
       tabIndex={card.faceUp && !locked ? 0 : -1}
@@ -234,7 +279,13 @@ function CardViewBase({ card, from, zIndex = 0, hidden = false, onAutoMove, hard
       aria-label={containerAriaLabel}
       aria-pressed={selected}
     >
-      <CardFace card={card} zIndex={zIndex} innerRef={flipRef} ariaLabel={cardAria} faceDownLabel={faceDownLabel} />
+      {/* Wobble wrapper: dedicated inner node for the idle GSAP x-drift so it
+          never collides with the outer [data-card] transforms (dnd-kit drag,
+          shake, Flip). No handlers here — interaction stays on the outer node
+          so the effect can never block input. */}
+      <div ref={wobbleRef} data-wobble={card.id} style={{ willChange: wobbleEnabled ? 'transform' : undefined }}>
+        <CardFace card={card} zIndex={zIndex} innerRef={flipRef} ariaLabel={cardAria} faceDownLabel={faceDownLabel} />
+      </div>
     </div>
   );
 }

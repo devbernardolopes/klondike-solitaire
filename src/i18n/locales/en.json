@@ -524,6 +524,8 @@
     "foundationParticles": "Foundation Particles",
     "ghostEcho": "Ghost Echo",
     "ghostTrail": "Ghost Trail",
+    "wobblyCards": "Wobbly Cards",
+    "wobblyCards.desc": "Subtle idle sway for resting face-up tableau cards",
     "hand": "Hand",
     "hand.left": "Left",
     "hand.right": "Right",

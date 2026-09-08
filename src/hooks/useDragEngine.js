@@ -21,6 +21,7 @@ import { useGameStore } from './useGameStore.js';
 import { useUiStore } from './useUiStore.js';
 import { getTableauRun } from '../core/rules.js';
 import { spawnDragRunSegments, endDrag } from '../render/animation/ghostTrail.js';
+import { killWobble } from '../render/animation/useIdleWobble.js';
 import { audioEngine } from '../audio/AudioEngine.js';
 import { TABLEAU_LAYOUT } from '../render/layout/tableauLayout.js';
 
@@ -151,6 +152,11 @@ export function useDragEngine() {
     }
     // Lift the full run for tableau sources; a single card elsewhere.
     const run = from.startsWith('tableau') ? getTableauRun(pile, cardId) : [pile[idx]];
+    // The whole lifted run leaves rest immediately — kill every member's idle
+    // wobble now (only the grabbed card saw a pointerdown).
+    try {
+      for (const c of run || []) killWobble(c.id);
+    } catch {}
     setActiveRun(run);
     // Cache the fan spacing for the duration of the drag (used by onDragMove
     // to offset the trail rect for cards behind the leader). Only meaningful

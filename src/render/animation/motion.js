@@ -144,6 +144,14 @@ export const MOTION = {
   // in classic.css; kept here so MotionDebugPanel can tune. Wire to JS if needed.
   hoverLift: { y: -4, scale: 1.02, duration: 0.15, ease: 'power2.out' },
 
+  // Idle wobble for resting tableau cards ("Wobbly Cards"). A continuous,
+  // subtle, per-card horizontal drift applied to a dedicated inner wrapper
+  // (never the [data-card] node owned by dnd-kit / shake / Flip). maxX is the
+  // peak horizontal displacement (px, ±); durationMin/Max bound the per-leg
+  // speed (s, randomized per card and per swing); ease shapes the acceleration
+  // within each leg. Gated by cardEffects && wobble && !prefers-reduced-motion.
+  wobble: { maxX: 3, durationMin: 1.6, durationMax: 3.2, ease: 'sine.inOut' },
+
   // Landing bounce on move/auto (single-card only). Independent of the `move`
   // slide so translation stays power3.out while bounce alone may use back.out
   // for a subtle pop. The pop is applied AT the moment of landing
