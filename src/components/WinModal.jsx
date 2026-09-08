@@ -34,6 +34,7 @@ export default function WinModal() {
   const setDailyChallengeDialogOpen = useUiStore((s) => s.setDailyChallengeDialogOpen);
   const setDailyChallengeOrigin = useUiStore((s) => s.setDailyChallengeOrigin);
   const setSpecialEventsOpen = useUiStore((s) => s.setSpecialEventsOpen);
+  const setSpecialEventsOrigin = useUiStore((s) => s.setSpecialEventsOrigin);
   const setEventDetailOpen = useUiStore((s) => s.setEventDetailOpen);
   const dealNewGame = useGameStore((s) => s.dealNewGame);
   const replayGame = useGameStore((s) => s.replayGame);
@@ -211,6 +212,7 @@ export default function WinModal() {
   };
   const onReturnEvent = () => {
     closeWinDialog();
+    setSpecialEventsOrigin('win');
     setSpecialEventsOpen(true);
     setEventDetailOpen(eventId ?? useUiStore.getState().currentEventId);
   };

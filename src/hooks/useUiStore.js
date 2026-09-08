@@ -309,6 +309,12 @@ export const useUiStore = create((set, get) => ({
 
   specialEventsOpen: false,
   eventDetailId: null,
+  // Records what opened the Special Events list so dismissal can return to
+  // the right place (mirrors dailyChallengeOrigin):
+  //   - 'newgame' → closing returns to the New Game picker beneath it
+  //   - 'win'     → closing leaves no modal (the Win modal already dismissed)
+  //   - null      → default, no return
+  specialEventsOrigin: null, // 'newgame' | 'win' | null
 
   // Daily Challenge calendar modal: month/year navigation + per-day status and
   // a "Play" button that starts the selected day's deal. `dailyChallengeOrigin`
@@ -392,6 +398,9 @@ export const useUiStore = create((set, get) => ({
     get().dismissNoHintsBanner();
     set({ eventDetailId: id });
   },
+
+  /** Set which surface opened the Special Events list. */
+  setSpecialEventsOrigin: (origin) => set({ specialEventsOrigin: origin }),
 
   /** Show/hide the Daily Challenge calendar modal. */
   setDailyChallengeDialogOpen: (open) => {

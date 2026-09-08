@@ -35,8 +35,17 @@ export default function SpecialEventsModal() {
   const setDetail = useUiStore((s) => s.setEventDetailOpen);
   const eventDetailId = useUiStore((s) => s.eventDetailId);
 
-  const backdrop = useModalBackdrop(() => setOpen(false));
-  useModalEscape({ open, onClose: () => setOpen(false), id: 'events', z: Z.CHILD });
+  // Dismiss returns to the New Game picker only when opened from it (mirrors
+  // DailyChallengeModal.jsx's dailyChallengeOrigin handling).
+  const onDismiss = () => {
+    setOpen(false);
+    if (useUiStore.getState().specialEventsOrigin === 'newgame') {
+      useUiStore.getState().setNewGameDialogOpen(true);
+    }
+  };
+
+  const backdrop = useModalBackdrop(onDismiss);
+  useModalEscape({ open, onClose: onDismiss, id: 'events', z: Z.CHILD });
 
   const [events, setEvents] = useState([]);
   const [loaded, setLoaded] = useState(false);
@@ -255,7 +264,7 @@ export default function SpecialEventsModal() {
     <div role="dialog" aria-modal="true" aria-label={t('specialEvents.title')} {...backdrop} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3100, padding: 16 }}>
       <div style={panel}>
         <h2 style={{ margin: '0 0 14px', fontSize: 20, fontWeight: 800, textAlign: 'center', paddingRight: 36 }}>{t('specialEvents.title')}</h2>
-        <ModalCloseButton onClick={() => setOpen(false)} />
+        <ModalCloseButton onClick={onDismiss} />
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
           {YEAR_FILTERS.map((year) => (
             <button

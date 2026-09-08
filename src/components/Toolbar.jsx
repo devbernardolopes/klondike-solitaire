@@ -302,6 +302,7 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   }, [setNewGameDialogOpen, setDailyChallengeOrigin, setDailyChallengeDialogOpen]);
   const onSpecialEvents = useCallback(() => {
     setNewGameDialogOpen(false);
+    useUiStore.getState().setSpecialEventsOrigin('newgame');
     useUiStore.getState().setSpecialEventsOpen(true);
   }, [setNewGameDialogOpen]);
   const onSeedConfirm = useCallback((seed) => {
