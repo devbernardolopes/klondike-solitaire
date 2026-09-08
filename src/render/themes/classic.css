@@ -364,6 +364,11 @@
   outline: 3px solid #1a7f37;
   outline-offset: -1px;
 }
+.ui-classic .dc-cell--disabled.dc-cell--selected {
+  background: #1a7f37;
+  color: #ffffff;
+  border-color: #14632b;
+}
 
 /* Small color swatches used in the legend beneath the grid. */
 .ui-classic .dc-swatch {

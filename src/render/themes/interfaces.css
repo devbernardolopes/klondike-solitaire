@@ -94,6 +94,11 @@
   outline: 3px solid #ffd54a;
   outline-offset: -1px;
 }
+.ui-hc-dark .dc-cell--disabled.dc-cell--selected {
+  background: #ffd54a;
+  color: #000000;
+  border-color: #ffd54a;
+}
 
 .ui-hc-dark .dc-swatch {
   display: inline-block;
@@ -194,6 +199,11 @@
   outline: 3px solid #003da5;
   outline-offset: -1px;
 }
+.ui-hc-light .dc-cell--disabled.dc-cell--selected {
+  background: #003da5;
+  color: #ffffff;
+  border-color: #002a73;
+}
 
 .ui-hc-light .dc-swatch {
   display: inline-block;
@@ -293,6 +303,11 @@
 .ui-pastel .dc-cell--disabled.dc-cell--today {
   outline: 3px solid #7c5cbf;
   outline-offset: -1px;
+}
+.ui-pastel .dc-cell--disabled.dc-cell--selected {
+  background: #7c5cbf;
+  color: #ffffff;
+  border-color: #5f4396;
 }
 
 .ui-pastel .dc-swatch {
@@ -400,6 +415,11 @@
 .ui-arcade .dc-cell--disabled.dc-cell--today {
   outline: 3px solid #ff2df8;
   outline-offset: -1px;
+}
+.ui-arcade .dc-cell--disabled.dc-cell--selected {
+  background: #00e5ff;
+  color: #0b0e1a;
+  border-color: #00b3cc;
 }
 
 .ui-arcade .dc-swatch {

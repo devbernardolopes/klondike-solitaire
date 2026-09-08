@@ -278,6 +278,11 @@
   outline: 3px solid #34d6ff;
   outline-offset: -1px;
 }
+.ui-dark .dc-cell--disabled.dc-cell--selected {
+  background: #34d6ff;
+  color: #0a0d12;
+  border-color: #1aa3c4;
+}
 
 .ui-dark .dc-swatch {
   display: inline-block;

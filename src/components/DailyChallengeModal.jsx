@@ -106,6 +106,7 @@ export default function DailyChallengeModal() {
   const setNewGameOpen = useUiStore((s) => s.setNewGameDialogOpen);
 
   const panelRef = useRef(null);
+  const viewportRef = useRef(null);
   const userPicked = useRef(false);
   // Mirror of `selected` / `today` (state) for reads inside async callbacks
   // without re-running effects; and the open-time {today, selected, usedPreferred}
@@ -114,23 +115,22 @@ export default function DailyChallengeModal() {
   const selectedRef = useRef(null);
   const todayRef = useRef(fallbackDate);
   const initialRef = useRef({ today: null, selected: null, usedPreferred: false });
-  // Horizontal-swipe gesture state. Mirrors the pattern in
-  // EventDetailModal.jsx — we don't have a translated track, so the live
-  // drag is invisible and only the release decides whether to advance the
-  // viewed month.
-  const dragStateRef = useRef({ startX: 0, startY: 0, active: false, committed: false, pointerId: null });
+  // Horizontal-swipe gesture state. Mirrors EventDetailModal.jsx.
+  const SWIPE_THRESHOLD_RATIO = 0.2;
+  const dragStateRef = useRef({ startX: 0, startY: 0, width: 1, active: false, committed: false, pointerId: null });
   const justSwipedRef = useRef(false);
   const justSwipedTimerRef = useRef(null);
   // Slide-track state. The body is rendered as a 3-slot flex track
   // [prev | current | next] and translated horizontally to follow a swipe
   // and to animate a programmatic step (arrow buttons, keyboard, swipe).
-  //   slideIndex ∈ {-1, 0, 1} — which slot the *current* month occupies.
-  //                        0 = resting, the viewport shows it.
-  //                       -1 = current month has slid left (about to commit
-  //                            a "next" navigation; current sits in the
-  //                            prev slot visually, ready to be replaced).
-  //                       +1 = current month has slid right (about to commit
-  //                            a "prev" navigation).
+  // The resting transform is -100% (the middle slot). slideIndex shifts
+  // around that base:
+  //   slideIndex ∈ {-1, 0, 1}
+  //                        0 = resting, the viewport shows the current month.
+  //                       +1 = slid left one slot (about to commit a "next"
+  //                            navigation; the viewport shows the next month).
+  //                       -1 = slid right one slot (about to commit a "prev"
+  //                            navigation; the viewport shows the prev month).
   //   dragPx              — live finger offset added on top of slideIndex.
   //   dragging            — true while a swipe is in progress; used to
   //                         suppress the CSS transition so the track follows
@@ -324,15 +324,13 @@ export default function DailyChallengeModal() {
   }, [open]);
 
   // trackTransform follows the same translateX(calc(-idx*100% + dragPx))
-  // pattern as EventDetailModal.jsx:485, just with slideIndex (which slot
-  // the current month occupies) instead of the absolute page index. At
-  // rest, slideIndex === 0 and the track is untranslated. slideBump keeps
-  // the memo reactive to slideIndex changes without making the ref itself
-  // part of the dep list. MUST be declared before the open-gate early
-  // return below — otherwise the closed render skips it and the
-  // open render adds a new hook, tripping React's Rules of Hooks.
+  // pattern as EventDetailModal.jsx, shifted by the -100% resting base so
+  // the middle slot (the current month) is visible at rest. MUST be
+  // declared before the open-gate early return below — otherwise the closed
+  // render skips it and the open render adds a new hook, tripping React's
+  // Rules of Hooks.
   const trackTransform = useMemo(
-    () => `translateX(calc(${-slideIndex * 100}% + ${dragPx}px))`,
+    () => `translateX(calc(${-(1 + slideIndex) * 100}% + ${dragPx}px))`,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [slideIndex, dragPx, slideBump]
   );
@@ -359,14 +357,56 @@ export default function DailyChallengeModal() {
     }
   };
 
+  // Pick the day to select when landing on (y, m): today when the target
+  // month is today's month and today is playable, otherwise the first
+  // playable day of the month. Returns null when the month has no playable
+  // day (should not happen for supported months, but defensive).
+  const pickDayForMonth = (y, m, todayStr) => {
+    const t = todayStr ?? todayRef.current;
+    if (t) {
+      const ty = Number(String(t).slice(0, 4));
+      const tm = Number(String(t).slice(5, 7));
+      if (ty === y && tm === m && withinSupported(t) && !isAfter(t, todayRef.current ?? t)) return t;
+    }
+    const dim = daysInMonth(y, m);
+    for (let d = 1; d <= dim; d++) {
+      const ds = toDateStr(y, m, d);
+      if (withinSupported(ds) && !isAfter(ds, todayRef.current ?? ds)) return ds;
+    }
+    return null;
+  };
+
+  // Ensure the selection lives in (y, m): keep it when it already does,
+  // otherwise select today (if visible) or the first playable day. Marks
+  // the choice as user-picked so background today-refreshes don't override
+  // an explicit navigation.
+  const ensureSelectedInMonth = (y, m) => {
+    const cur = selectedRef.current;
+    if (cur) {
+      const cy = Number(String(cur).slice(0, 4));
+      const cm = Number(String(cur).slice(5, 7));
+      if (cy === y && cm === m) return;
+    }
+    const pick = pickDayForMonth(y, m, todayRef.current);
+    if (pick) {
+      applySelected(pick);
+      userPicked.current = true;
+    }
+  };
+
   // Jump the grid back to today and select it. Uses jumpTo so a "today"
   // tap from a far month doesn't slide across N months — instant, like a
   // year/month <select> change.
   const onGoToday = () => {
-    const ini = utcToYMD(dateToUTC(today));
+    const todayStr = todayRef.current ?? today;
+    const ini = utcToYMD(dateToUTC(todayStr));
     jumpTo(ini.y, ini.m);
-    applySelected(today);
-    userPicked.current = true;
+    if (withinSupported(todayStr)) {
+      applySelected(todayStr);
+      userPicked.current = true;
+    } else {
+      ensureSelectedInMonth(ini.y, ini.m);
+    }
   };
 
   const prev = addMonths(viewY, viewM, -1);
@@ -377,16 +417,16 @@ export default function DailyChallengeModal() {
   const monthsInYear = Array.from({ length: 12 }, (_, i) => i + 1);
 
   // Step the viewed month by one with a horizontal slide. The two-phase
-  // approach mirrors EventDetailModal.jsx's `positionWithoutAnim` pattern
-  // (line 95): first shift the track by one slot in the chosen direction
-  // and let CSS animate it, then on the next tick commit the new
-  // viewY/viewM, re-center the track, and suppress the brief re-center
-  // transition so the rendered content swap is invisible. Drag offset
-  // is reset so any in-flight finger drag doesn't combine with the slot
-  // shift. The 0.3s slide duration is also used by arrow buttons and
-  // ArrowLeft/Right so the gesture, mouse, and keyboard paths feel the
-  // same. Gated by canPrev/canNext (same as the arrow buttons) so a
-  // swipe or key at the supported-window edge is a no-op.
+  // approach mirrors EventDetailModal.jsx's `positionWithoutAnim` pattern:
+  // first shift the track by one slot in the chosen direction and let the
+  // 0.3s ease animate it (drag offset is cleared in the same commit so the
+  // transition runs from the finger position to the target slot, exactly
+  // like the events modal), then commit the new viewY/viewM, re-center the
+  // track, and suppress the brief re-center transition so the content swap
+  // is invisible. Gated by canPrev/canNext so a swipe or key at the
+  // supported-window edge is a no-op. A leftward finger drag (dx < 0)
+  // reveals the next month (track moves left to -200%); a rightward drag
+  // reveals the previous month (track moves right to 0%).
   const slideTo = (delta, target) => {
     if (slideTimerRef.current) clearTimeout(slideTimerRef.current);
     if (suppressTimerRef.current) clearTimeout(suppressTimerRef.current);
@@ -400,6 +440,7 @@ export default function DailyChallengeModal() {
       setSlideIndex(0);
       setSlideBump((b) => b + 1);
       setSuppressTrackAnim(true);
+      ensureSelectedInMonth(target.y, target.m);
       suppressTimerRef.current = setTimeout(() => {
         suppressTimerRef.current = null;
         setSuppressTrackAnim(false);
@@ -409,11 +450,11 @@ export default function DailyChallengeModal() {
 
   const goPrevMonth = () => {
     if (!canPrev) return;
-    slideTo(+1, { y: prev.y, m: prev.m });
+    slideTo(-1, { y: prev.y, m: prev.m });
   };
   const goNextMonth = () => {
     if (!canNext) return;
-    slideTo(-1, { y: next.y, m: next.m });
+    slideTo(+1, { y: next.y, m: next.m });
   };
 
   // Far jumps from the year/month <select>s skip the slide (the destination
@@ -431,35 +472,35 @@ export default function DailyChallengeModal() {
     setSuppressTrackAnim(true);
     setViewY(y);
     setViewM(m);
+    ensureSelectedInMonth(y, m);
     suppressTimerRef.current = setTimeout(() => {
       suppressTimerRef.current = null;
       setSuppressTrackAnim(false);
     }, 60);
   };
 
-  // Fixed swipe threshold (px) on the release. Roughly 12% of a 520 px panel
-  // and ~17% of a 360 px mobile viewport — close enough to the events
-  // modal's 20% ratio feel without needing a width ref. Direction is the
-  // player's finger: a leftward drag (dx < 0) advances to the next month,
-  // matching the right-to-left reading order and the right-pointing arrow.
-  const SWIPE_THRESHOLD_PX = 60;
-
-  const onPanelPointerDown = (e) => {
+  // Swipe threshold mirrors EventDetailModal.jsx: 20% of the viewport width.
+  // Direction is the player's finger: a leftward drag (dx < 0) advances to
+  // the next month, matching the right-pointing arrow.
+  const onViewportPointerDown = (e) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
-    // Don't hijack drags that begin on a real control — those have their
-    // own click/keyboard behavior (day cells select, dropdowns open, etc.).
+    // Don't hijack the month/year dropdowns — those have their own native
+    // open/keyboard behavior. Day cells are intentionally NOT excluded: a
+    // tap still selects via click, while a drag becomes a month swipe (the
+    // post-swipe click-suppression below swallows the accidental select).
     const tag = e.target?.tagName;
-    if (tag === 'BUTTON' || tag === 'SELECT' || tag === 'OPTION') return;
+    if (tag === 'SELECT' || tag === 'OPTION') return;
     dragStateRef.current = {
       startX: e.clientX,
       startY: e.clientY,
+      width: viewportRef.current?.clientWidth || 1,
       active: true,
       committed: false,
       pointerId: e.pointerId,
     };
   };
 
-  const onPanelPointerMove = (e) => {
+  const onViewportPointerMove = (e) => {
     if (!dragStateRef.current.active) return;
     const dx = e.clientX - dragStateRef.current.startX;
     const dy = e.clientY - dragStateRef.current.startY;
@@ -473,14 +514,16 @@ export default function DailyChallengeModal() {
       // Live-track the finger: the slide track follows the drag offset until
       // release (matches EventDetailModal.jsx's dragPx pattern). Suppress the
       // CSS transition while dragging so the motion is 1:1 with the pointer.
+      // The -100% resting base lives in trackTransform; dragPx is just the
+      // finger offset on top of it.
       setSuppressTrackAnim(true);
       setDragPx(dx);
     }
   };
 
-  const endDrag = (e) => {
+  const endViewportDrag = (e) => {
     if (!dragStateRef.current.active) return;
-    const { committed, pointerId, startX } = dragStateRef.current;
+    const { committed, pointerId, startX, width } = dragStateRef.current;
     if (committed && e?.currentTarget && typeof e.currentTarget.hasPointerCapture === 'function'
       && e.currentTarget.hasPointerCapture(pointerId)) {
       try { e.currentTarget.releasePointerCapture(pointerId); } catch {}
@@ -488,17 +531,14 @@ export default function DailyChallengeModal() {
     if (committed) {
       const releaseX = e?.clientX ?? startX;
       const dx = releaseX - startX;
-      if (dx <= -SWIPE_THRESHOLD_PX) {
-        // Past the threshold going left: commit a "next" navigation. The
-        // current slot will end up in the prev slot (-1), then slideTo
-        // re-centers after the 0.3s transition.
+      const threshold = (width || 1) * SWIPE_THRESHOLD_RATIO;
+      if (dx <= -threshold) {
         goNextMonth();
-      } else if (dx >= SWIPE_THRESHOLD_PX) {
+      } else if (dx >= threshold) {
         goPrevMonth();
       } else {
         // Short drag — snap back to the resting slot. Re-enable the
-        // transition, clear dragPx, and clear any slideIndex the in-flight
-        // drag may have left set (none today, but defensive).
+        // transition and clear dragPx so the track eases back to -100%.
         setSuppressTrackAnim(false);
         setDragPx(0);
       }
@@ -517,7 +557,7 @@ export default function DailyChallengeModal() {
     setDragging(false);
   };
 
-  const handlePanelClickCapture = (e) => {
+  const handleViewportClickCapture = (e) => {
     if (justSwipedRef.current) {
       e.stopPropagation();
       e.preventDefault();
@@ -654,11 +694,6 @@ export default function DailyChallengeModal() {
         ref={panelRef}
         tabIndex={-1}
         onKeyDown={onPanelKeyDown}
-        onPointerDown={onPanelPointerDown}
-        onPointerMove={onPanelPointerMove}
-        onPointerUp={endDrag}
-        onPointerCancel={endDrag}
-        onClickCapture={handlePanelClickCapture}
         style={panel}
       >
         <h2 style={{ margin: '0 0 14px', fontSize: 20, fontWeight: 800, textAlign: 'center', paddingRight: 36 }}>
@@ -707,7 +742,15 @@ export default function DailyChallengeModal() {
                 value={viewY}
                 onChange={(e) => {
                   const y = Number(e.target.value);
-                  if (isSupportedYM(y, viewM)) jumpTo(y, viewM);
+                  if (isSupportedYM(y, viewM)) { jumpTo(y, viewM); return; }
+                  // Edge year where the current month is unsupported (e.g.
+                  // anchor/end year): clamp to the nearest supported month
+                  // in that year instead of silently doing nothing.
+                  const supported = monthsInYear.filter((m) => isSupportedYM(y, m));
+                  if (supported.length > 0) {
+                    const clamped = viewM < supported[0] ? supported[0] : supported[supported.length - 1];
+                    jumpTo(y, clamped);
+                  }
                 }}
                 style={selectStyle}
               >
@@ -738,8 +781,18 @@ export default function DailyChallengeModal() {
           {/* Body: calendar grid + side panel, wrapped in a clipped viewport
               with a 3-slot flex track so swipe / arrow / keyboard can slide
               the inner content horizontally with a 0.3s ease. The header
-              (above) and footer (below) stay put. */}
-          <div style={{ overflow: 'hidden' }}>
+              (above) and footer (below) stay put. Swipe handlers live on
+              this viewport (like EventDetailModal.jsx) so a drag starting
+              anywhere on the body — including day cells — is captured. */}
+          <div
+            ref={viewportRef}
+            onPointerDown={onViewportPointerDown}
+            onPointerMove={onViewportPointerMove}
+            onPointerUp={endViewportDrag}
+            onPointerCancel={endViewportDrag}
+            onClickCapture={handleViewportClickCapture}
+            style={{ overflow: 'hidden', touchAction: 'pan-y' }}
+          >
             <div
               style={{
                 display: 'flex',
