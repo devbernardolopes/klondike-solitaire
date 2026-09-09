@@ -1,10 +1,11 @@
 -- ============================================================
--- Catalog dump — generated 2026-09-09T20:11:54.557Z
+-- Catalog dump — generated 2026-09-09T20:49:56.231Z
 -- Source of truth for scripts/i18n-sync.mjs. Do not edit by hand.
 -- Re-run `npm run catalog:dump` after any dashboard edits.
 -- Idempotent: safe to paste into Supabase SQL editor and re-run.
 -- ============================================================
 INSERT INTO public.special_events (id, title, description) VALUES
+  ('carnival-of-venice-2026', 'Carnival of Venice 2026', 'The Carnival of Venice is a spectacular Italian celebration famous for elaborate masks, ornate costumes, grand balls, street performances, and the timeless atmosphere of Venice.'),
   ('day-of-the-dead-2026', 'Day of the Dead', 'Día de los Muertos is a vibrant Mexican tradition that honors deceased loved ones with colorful ofrendas, marigolds, sugar skulls, and festive gatherings that celebrate life and memory.'),
   ('dragon-boat-festival-2026', 'Dragon Boat Festival 2026', 'The Dragon Boat Festival commemorates the poet Qu Yuan with competitive dragon boat races, sticky rice dumplings (zongzi), and traditional rituals across China and East Asian communities.'),
   ('festival-of-san-fermin-2026', 'Festival of San Fermín 2026', 'The Festival of San Fermín in Pamplona, Spain, features the famous running of the bulls, traditional processions, and festive gatherings from 6 to 14 July.'),

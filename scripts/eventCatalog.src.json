@@ -413,5 +413,30 @@
         "coinReward": 300
       }
     ]
+  },
+  {
+    "id": "carnival-of-venice-2026",
+    "title": "Carnival of Venice 2026",
+    "description": "The Carnival of Venice is a spectacular Italian celebration famous for elaborate masks, ornate costumes, grand balls, street performances, and the timeless atmosphere of Venice.",
+    "startsAt": "2026-01-31T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "carnival-of-venice-2026/page1.jpg",
+        "coinReward": 50
+      },
+      {
+        "gridSize": 3,
+        "imagePath": "carnival-of-venice-2026/page2.jpg",
+        "coinReward": 100
+      },
+      {
+        "gridSize": 4,
+        "imagePath": "carnival-of-venice-2026/page3.jpg",
+        "coinReward": 200
+      }
+    ]
   }
 ]
