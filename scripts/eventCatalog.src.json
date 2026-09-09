@@ -383,5 +383,35 @@
         "coinReward": 200
       }
     ]
+  },
+  {
+    "id": "world-bee-day-2026",
+    "title": "World Bee Day 2026",
+    "description": "World Bee Day raises awareness of bees and other pollinators, celebrating their vital role in ecosystems, agriculture, biodiversity, and food security while encouraging their protection and conservation.",
+    "startsAt": "2026-05-20T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "world-bee-day-2026/page1.jpg",
+        "coinReward": 50
+      },
+      {
+        "gridSize": 3,
+        "imagePath": "world-bee-day-2026/page2.jpg",
+        "coinReward": 100
+      },
+      {
+        "gridSize": 4,
+        "imagePath": "world-bee-day-2026/page3.jpg",
+        "coinReward": 200
+      },
+      {
+        "gridSize": 5,
+        "imagePath": "world-bee-day-2026/page4.jpg",
+        "coinReward": 300
+      }
+    ]
   }
 ]

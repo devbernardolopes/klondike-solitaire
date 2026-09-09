@@ -1,5 +1,5 @@
 -- ============================================================
--- Catalog dump — generated 2026-09-08T03:03:13.529Z
+-- Catalog dump — generated 2026-09-09T20:11:54.557Z
 -- Source of truth for scripts/i18n-sync.mjs. Do not edit by hand.
 -- Re-run `npm run catalog:dump` after any dashboard edits.
 -- Idempotent: safe to paste into Supabase SQL editor and re-run.
@@ -21,6 +21,7 @@ INSERT INTO public.special_events (id, title, description) VALUES
   ('test-event-2026', 'Test Event 2026', 'Tolkien Day honors the life and works of J. R. R. Tolkien, inviting readers to explore the rich landscapes, languages, and epic tales of Middle-earth through literature and shared appreciation.'),
   ('tolkien-day-2026', 'Tolkien Day 2026', 'Tolkien Day honors the life and works of J. R. R. Tolkien, inviting readers to explore the rich landscapes, languages, and epic tales of Middle-earth through literature and shared appreciation.'),
   ('towel-day-2026', 'Towel Day 2026', 'Towel Day is an annual celebration of Douglas Adams and The Hitchhiker''s Guide to the Galaxy, when fans around the world carry towels in tribute to one of the series'' most memorable ideas.'),
+  ('world-bee-day-2026', 'World Bee Day 2026', 'World Bee Day raises awareness of bees and other pollinators, celebrating their vital role in ecosystems, agriculture, biodiversity, and food security while encouraging their protection and conservation.'),
   ('world-goth-day-2026-2', 'World Goth Day 2026', 'World Goth Day 2026 is an international celebration of goth subculture, encompassing its distinctive music, fashion, art, and community expression observed each year on 22 May.'),
   ('world-rock-day-2026', 'World Rock Day 2026', 'The World Rock Day honors the enduring legacy of rock music, its pioneering artists, and the cultural impact of the genre celebrated around the anniversary of the historic Live Aid concerts.')
 ON CONFLICT (id) DO UPDATE SET
