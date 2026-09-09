@@ -6,7 +6,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { HelpCircle } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
@@ -376,22 +375,14 @@ export default function SettingsModal({
             >
               {t('mainMenu.advanced')}
             </button>
-          </div>
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
             <button
               type="button"
               aria-label={t('mainMenu.help')}
               title={t('mainMenu.help')}
-              style={{
-                ...btn,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '8px 10px',
-              }}
+              style={{ ...btn, width: '100%' }}
               onClick={() => useUiStore.getState().setHelpDialogOpen(true)}
             >
-              <HelpCircle size={18} aria-hidden="true" />
+              {t('mainMenu.helpButton')}
             </button>
           </div>
 

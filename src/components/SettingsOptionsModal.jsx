@@ -1,5 +1,5 @@
 // components/SettingsOptionsModal.jsx
-// "Settings" sub-modal reached from the Main Menu. Holds the Hand, Highlight
+// "Settings" sub-modal reached from the Main Menu. Holds the Handedness, Highlight
 // Card, and Foundation Particles preferences. Mirrors the visual chrome and
 // dismissal behavior (close button top-right, Escape / outside-tap to close, and
 // tapping its own trigger while open) of ThemeModal.jsx / SettingsModal.jsx.
@@ -14,8 +14,6 @@ import ConfirmModal from './ConfirmModal.jsx';
 import ToggleSwitch from './ToggleSwitch.jsx';
 import { useReducedMotion } from '../hooks/useReducedMotion.js';
 import { useHoverCapable } from '../hooks/useHoverCapable.js';
-import { useAuthStore } from '../hooks/useAuthStore.js';
-import { supabase } from '../lib/supabaseClient.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { useSoundStore } from '../store/useSoundStore.js';
 import { useTranslation } from 'react-i18next';
@@ -48,8 +46,6 @@ export default function SettingsOptionsModal({
   const backdrop = useModalBackdrop(onClose);
   const { t } = useTranslation();
   const language = useSettingsStore((s) => s.language);
-  const leaderboardVisible = useAuthStore((s) => s.leaderboardVisible);
-  const setLeaderboardVisible = useAuthStore((s) => s.setLeaderboardVisible);
   const cardEffects = useSettingsStore((s) => s.cardEffects);
   const bounce = useSettingsStore((s) => s.bounce);
   const ghostEcho = useSettingsStore((s) => s.ghostEcho);
@@ -68,7 +64,6 @@ export default function SettingsOptionsModal({
   const setSoundVolume = useSoundStore((s) => s.setVolume);
   const coinFly = useSettingsStore((s) => s.coinFly);
   const autoComplete = useSettingsStore((s) => s.autoComplete);
-  const pinLastEvent = useSettingsStore((s) => s.pinLastEvent);
   const centisecondsOn = useSettingsStore((s) => s.centisecondsOn);
   const hoverLift = useSettingsStore((s) => s.hoverLift);
   const wobble = useSettingsStore((s) => s.wobble);
@@ -240,33 +235,6 @@ export default function SettingsOptionsModal({
           </select>
         </div>
 
-        <div style={{ ...field, marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.highlightCard')}</label>
-          <ToggleSwitch
-            checked={!!highlightCard}
-            onChange={onHighlightCardChange}
-            label={t('settings.highlightCard')}
-          />
-        </div>
-
-        <div style={{ ...field, marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.foundationParticles')}</label>
-          <ToggleSwitch
-            checked={!!particles}
-            onChange={onParticlesChange}
-            label={t('settings.foundationParticles')}
-          />
-        </div>
-
-        <div style={{ ...field, marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.cardShake')}</label>
-          <ToggleSwitch
-            checked={!!cardShake}
-            onChange={(v) => useSettingsStore.getState().setCardShake(v)}
-            label={t('settings.cardShake')}
-          />
-        </div>
-
         {/* Sound toggle + volume slider. The toggle is ALWAYS shown and
             ALWAYS togglable regardless of device capability (unlike
             reduced-motion-gated effects) — there is no reliable OS-level
@@ -306,6 +274,51 @@ export default function SettingsOptionsModal({
           />
         </div>
 
+        <div style={{ ...field, marginBottom: 20 }}>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.centiseconds')}</label>
+          <ToggleSwitch
+            checked={!!centisecondsOn}
+            onChange={(v) => useSettingsStore.getState().setCentisecondsOn(v)}
+            label={t('settings.centiseconds.desc')}
+          />
+        </div>
+
+        <div style={{ ...field, marginBottom: 20 }}>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.autoComplete')}</label>
+          <ToggleSwitch
+            checked={!!autoComplete}
+            onChange={(v) => useSettingsStore.getState().setAutoComplete(v)}
+            label={t('settings.autoComplete.desc')}
+          />
+        </div>
+
+        <div style={{ ...field, marginBottom: 20 }}>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.highlightCard')}</label>
+          <ToggleSwitch
+            checked={!!highlightCard}
+            onChange={onHighlightCardChange}
+            label={t('settings.highlightCard')}
+          />
+        </div>
+
+        <div style={{ ...field, marginBottom: 20 }}>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.foundationParticles')}</label>
+          <ToggleSwitch
+            checked={!!particles}
+            onChange={onParticlesChange}
+            label={t('settings.foundationParticles')}
+          />
+        </div>
+
+        <div style={{ ...field, marginBottom: 20 }}>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.cardShake')}</label>
+          <ToggleSwitch
+            checked={!!cardShake}
+            onChange={(v) => useSettingsStore.getState().setCardShake(v)}
+            label={t('settings.cardShake')}
+          />
+        </div>
+
         <div style={{ ...field, marginBottom: 20, opacity: osReducesMotion ? 0.5 : 1 }}>
           <span style={{ fontSize: 14, fontWeight: 600 }}>
             {t('settings.coinFly')}
@@ -316,15 +329,6 @@ export default function SettingsOptionsModal({
             onChange={(v) => useSettingsStore.getState().setCoinFly(v)}
             label={t('settings.coinFly.desc')}
             disabled={osReducesMotion}
-          />
-        </div>
-
-        <div style={{ ...field, marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.centiseconds')}</label>
-          <ToggleSwitch
-            checked={!!centisecondsOn}
-            onChange={(v) => useSettingsStore.getState().setCentisecondsOn(v)}
-            label={t('settings.centiseconds.desc')}
           />
         </div>
 
@@ -432,24 +436,6 @@ export default function SettingsOptionsModal({
         </div>
 
         <div style={{ ...field, marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.autoComplete')}</label>
-          <ToggleSwitch
-            checked={!!autoComplete}
-            onChange={(v) => useSettingsStore.getState().setAutoComplete(v)}
-            label={t('settings.autoComplete.desc')}
-          />
-        </div>
-
-        <div style={{ ...field, marginBottom: 20 }}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.pinLastEvent')}</label>
-          <ToggleSwitch
-            checked={!!pinLastEvent}
-            onChange={(v) => useSettingsStore.getState().setPinLastEvent(v)}
-            label={t('settings.pinLastEvent.desc')}
-          />
-        </div>
-
-        <div style={{ ...field, marginBottom: 20 }}>
           <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.winCelebration')}</label>
           <ToggleSwitch
             checked={!!winCascade}
@@ -479,22 +465,12 @@ export default function SettingsOptionsModal({
           />
         </div>
 
-        <div style={{ ...field, marginBottom: 20 }}>
+        <div style={{ ...field, marginBottom: 0 }}>
           <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.boardFrame')}</label>
           <ToggleSwitch
             checked={!!boardFrame}
             onChange={(v) => useSettingsStore.getState().setBoardFrame(v)}
             label={t('settings.boardFrame')}
-          />
-        </div>
-
-        <div style={{ ...field, marginBottom: 0 }}>
-          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.appearLeaderboard')}</label>
-          <ToggleSwitch
-            checked={!!leaderboardVisible}
-            onChange={(v) => setLeaderboardVisible(v)}
-            label={t('settings.appearLeaderboard')}
-            disabled={!supabase}
           />
         </div>
         </div>

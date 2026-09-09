@@ -16,8 +16,11 @@ import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
+import ToggleSwitch from './ToggleSwitch.jsx';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useUiStore } from '../hooks/useUiStore.js';
+import { useSettingsStore } from '../hooks/useSettingsStore.js';
+import { useAuthStore } from '../hooks/useAuthStore.js';
 import { getCachedEventDetailSync } from '../repo/specialEventsRepository.js';
 import { deal } from '../core/dealer.js';
 import { buildSolvitaireText } from '../core/solvitaire.js';
@@ -112,6 +115,13 @@ export default function AdvancedModal({ open, onClose }) {
   const currentEventDealNumber = useUiStore((s) => s.currentEventDealNumber);
   const currentEventId = useUiStore((s) => s.currentEventId);
   const hasDeal = Array.isArray(tableau) && tableau.some((p) => p.length > 0);
+  // Preference toggles relocated here from the Settings modal. Same store
+  // subscriptions and setters — no persistence changes: pinLastEvent is a
+  // Dexie-backed useSettingsStore key, leaderboardVisible an optimistic
+  // Supabase-RPC value in useAuthStore.
+  const pinLastEvent = useSettingsStore((s) => s.pinLastEvent);
+  const leaderboardVisible = useAuthStore((s) => s.leaderboardVisible);
+  const setLeaderboardVisible = useAuthStore((s) => s.setLeaderboardVisible);
 
   const lastLabelTap = useRef(null);
   const onLabelActivate = useCallback((e) => {
@@ -268,6 +278,13 @@ export default function AdvancedModal({ open, onClose }) {
     gap: 10,
   };
 
+  const field = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  };
+
   return (
     <>
       <div
@@ -369,6 +386,24 @@ export default function AdvancedModal({ open, onClose }) {
                 ) : (
                   <span aria-hidden="true">{'\u00A0'}</span>
                 )}
+              </div>
+              <div style={{ ...field, margin: '0 0 10px', opacity: blocked ? 0.5 : 1 }}>
+                <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.pinLastEvent')}</label>
+                <ToggleSwitch
+                  checked={!!pinLastEvent}
+                  onChange={(v) => useSettingsStore.getState().setPinLastEvent(v)}
+                  label={t('settings.pinLastEvent.desc')}
+                  disabled={blocked}
+                />
+              </div>
+              <div style={{ ...field, margin: '0 0 12px', opacity: (blocked || !supabase) ? 0.5 : 1 }}>
+                <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.appearLeaderboard')}</label>
+                <ToggleSwitch
+                  checked={!!leaderboardVisible}
+                  onChange={(v) => setLeaderboardVisible(v)}
+                  label={t('settings.appearLeaderboard')}
+                  disabled={blocked || !supabase}
+                />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <button
