@@ -341,6 +341,33 @@ export default function DailyChallengeModal() {
     [slideIndex, dragPx, slideBump]
   );
 
+  // Vertical mouse wheel steps months (down → next, up → prev) through the
+  // same slideTo path as arrows/drag. MUST stay above the open-gate early
+  // return below (Rules of Hooks: the closed render skips everything past
+  // it). Native non-passive listener — React's onWheel can't preventDefault
+  // — following PostcardViewerModal.jsx. The cooldown covers the 0.3s slide
+  // so one notch moves exactly one month; a wheel during an active drag is
+  // ignored. Edge months are no-ops via the canPrev/canNext gates inside
+  // goPrevMonth/goNextMonth (read through navRef, assigned below).
+  useEffect(() => {
+    if (!open) return undefined;
+    const el = viewportRef.current;
+    if (!el) return undefined;
+    const onWheel = (e) => {
+      if (dragStateRef.current.active) return;
+      const dy = e.deltaY;
+      if (!dy || Number.isNaN(dy)) return;
+      const now = Date.now();
+      if (now - wheelLockRef.current < 350) return;
+      e.preventDefault();
+      wheelLockRef.current = now;
+      if (dy > 0) navRef.current.next();
+      else navRef.current.prev();
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [open]);
+
   if (!open) return null;
 
   const onPlay = () => {
@@ -463,31 +490,6 @@ export default function DailyChallengeModal() {
     slideTo(+1, { y: next.y, m: next.m });
   };
   navRef.current = { prev: goPrevMonth, next: goNextMonth };
-
-  // Vertical mouse wheel steps months (down → next, up → prev) through the
-  // same slideTo path as arrows/drag. Native non-passive listener — React's
-  // onWheel can't preventDefault — following PostcardViewerModal.jsx. The
-  // cooldown covers the 0.3s slide so one notch moves exactly one month; a
-  // wheel during an active drag is ignored. Edge months are no-ops via the
-  // canPrev/canNext gates inside goPrevMonth/goNextMonth.
-  useEffect(() => {
-    if (!open) return undefined;
-    const el = viewportRef.current;
-    if (!el) return undefined;
-    const onWheel = (e) => {
-      if (dragStateRef.current.active) return;
-      const dy = e.deltaY;
-      if (!dy || Number.isNaN(dy)) return;
-      const now = Date.now();
-      if (now - wheelLockRef.current < 350) return;
-      e.preventDefault();
-      wheelLockRef.current = now;
-      if (dy > 0) navRef.current.next();
-      else navRef.current.prev();
-    };
-    el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
-  }, [open]);
 
   // Far jumps from the year/month <select>s skip the slide (the destination
   // isn't an adjacent slot, so animating across N months would feel laggy).
