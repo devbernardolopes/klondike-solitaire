@@ -124,12 +124,12 @@ export const MOTION = {
 
   // Tableau uncover sparkle: star burst when face-down flips face-up via reveal.
   uncover: {
-    count: 10,
-    radius: 55,
-    size: 18,
-    duration: 1.0,
-    ease: 'power2.out',
-    spin: 70,
+    count: 6,
+    radius: 64,
+    size: 32,
+    duration: 1.25,
+    ease: 'power3.out',
+    spin: 128,
   },
 
   // Card flip shimmer: specular sweep after flip lands. Keep glint brief
@@ -250,12 +250,12 @@ export const MOTION = {
   // Modal entrance: panel grows from fromScale/fromOpacity to toScale/toOpacity.
   // back.out(1.7) gives slight overshoot pop; swap to power3.out for calm.
   modalEnter: {
-    fromScale: 0.1,
+    fromScale: 0.05,
     toScale: 1,
     fromOpacity: 0,
     toOpacity: 1,
     duration: 0.75,
-    ease: 'back.out(1.7)',
+    ease: 'back.out(1.8)',
   },
 };
 
