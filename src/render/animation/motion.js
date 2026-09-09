@@ -151,7 +151,7 @@ export const MOTION = {
   // bound the per-leg speed (s, randomized per card and per swing); ease shapes
   // the acceleration within each leg. Gated by cardEffects && wobble &&
   // !prefers-reduced-motion.
-  wobble: { maxRotation: 1.5, durationMin: 0.55, durationMax: 0.75, ease: 'sine.inOut' },
+  wobble: { maxRotation: 1.5, durationMin: 0.15, durationMax: 0.35, ease: 'sine.inOut' },
 
   // Landing bounce on move/auto (single-card only). Independent of the `move`
   // slide so translation stays power3.out while bounce alone may use back.out
