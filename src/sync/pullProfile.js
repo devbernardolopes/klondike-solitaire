@@ -15,6 +15,7 @@
 
 import { supabase } from '../lib/supabaseClient.js';
 import { db } from '../db/schema.js';
+import { mergeDailyResults } from '../db/dailyResults.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
 import { useSeedStore } from '../hooks/useSeedStore.js';
@@ -81,9 +82,13 @@ export async function pullRemoteProfile() {
     .from('daily_results')
     .select('date, seed, best_score, best_time_ms, best_moves, wins');
   if (dailyError) throw dailyError;
-  await db.dailyResults.clear();
-  await db.dailyResults.bulkPut(
-    dailyRows.map((d) => ({
+  // Merge, never strip: a local-only row is a win this device witnessed but
+  // the server hasn't confirmed yet (submit still queued or the pull raced
+  // the flush) — replacing Dexie with server truth here used to unmark a
+  // just-won day until the next pull. Server rejections bypass this: they go
+  // through applyRejectedWin, which deletes/restores the Dexie row directly.
+  const mergedDaily = mergeDailyResults(
+    (dailyRows || []).map((d) => ({
       date: d.date,
       seed: d.seed,
       bestScore: d.best_score,
@@ -91,7 +96,10 @@ export async function pullRemoteProfile() {
       bestMoves: d.best_moves,
       wins: d.wins,
     })),
+    await db.dailyResults.toArray(),
   );
+  await db.dailyResults.clear();
+  await db.dailyResults.bulkPut(mergedDaily);
 
   // Refresh in-memory state so the UI reflects the pull immediately.
   await useStatisticsStore.getState().init();

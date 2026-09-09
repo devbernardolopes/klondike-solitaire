@@ -64,3 +64,48 @@ export async function saveDailyResult(date, { seed, score, timeMs, moves }) {
   await db.dailyResults.put(next);
   return next;
 }
+
+/**
+ * Merge server-pulled daily rows with local Dexie rows for a profile pull.
+ * Pure (no I/O) so it is unit-testable in isolation.
+ *
+ * Never strips: a local-only row is a win this device witnessed but the
+ * server hasn't confirmed yet (the submit is still queued or the pull raced
+ * the flush), so it must survive the pull — mirroring the events-side
+ * applyWinPreservingMerge/keepCoveredSolves rule that a stale read can't
+ * hide a locally-witnessed win. Server rows always survive (cross-device
+ * truth). Dates present on both sides fold bests the same way the server
+ * upsert does (score max, time/moves min, wins max, seed prefer local).
+ * Explicit server rejections don't go through here: applyRejectedWin already
+ * deletes/restores the Dexie row, so a rejected win is simply absent locally.
+ * @param {Array<DailyResult>} serverRows
+ * @param {Array<DailyResult>} localRows
+ * @returns {Array<DailyResult>} merged rows, one per date
+ */
+export function mergeDailyResults(serverRows, localRows) {
+  const merged = new Map();
+  for (const r of serverRows || []) {
+    if (r && r.date != null) merged.set(r.date, { ...r });
+  }
+  for (const local of localRows || []) {
+    if (!local || local.date == null) continue;
+    const server = merged.get(local.date);
+    if (!server) {
+      merged.set(local.date, { ...local });
+      continue;
+    }
+    merged.set(local.date, {
+      ...server,
+      seed: local.seed ?? server.seed,
+      bestScore: Math.max(server.bestScore ?? 0, local.bestScore ?? 0),
+      bestTimeMs: server.bestTimeMs == null
+        ? local.bestTimeMs
+        : local.bestTimeMs == null ? server.bestTimeMs : Math.min(server.bestTimeMs, local.bestTimeMs),
+      bestMoves: server.bestMoves == null
+        ? local.bestMoves
+        : local.bestMoves == null ? server.bestMoves : Math.min(server.bestMoves, local.bestMoves),
+      wins: Math.max(server.wins || 0, local.wins || 0),
+    });
+  }
+  return Array.from(merged.values());
+}

@@ -322,11 +322,25 @@ export default function DailyChallengeModal() {
   }, []);
 
   // Pull the linked account's latest progress when the calendar opens, so
-  // completion marks / bests reflect what another device has done.
+  // completion marks / bests reflect what another device has done. Re-reads
+  // the results afterward: the pull may converge cross-device rows after the
+  // open-time refill above already resolved.
   useEffect(() => {
-    if (open && !useAuthStore.getState().isAnonymous) {
-      pullRemoteProfile().catch((e) => console.error('Daily Challenge profile pull failed', e));
-    }
+    if (!open || useAuthStore.getState().isAnonymous) return undefined;
+    let cancelled = false;
+    pullRemoteProfile()
+      .then(async () => {
+        if (cancelled) return;
+        try {
+          const rows = await loadAllDailyResults();
+          if (cancelled) return;
+          const map = {};
+          rows.forEach((r) => { map[r.date] = r; });
+          setResults(map);
+        } catch {}
+      })
+      .catch((e) => console.error('Daily Challenge profile pull failed', e));
+    return () => { cancelled = true; };
   }, [open]);
 
   // trackTransform follows the same translateX(calc(-idx*100% + dragPx))
