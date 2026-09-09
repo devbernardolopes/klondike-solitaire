@@ -5,8 +5,16 @@ import { eventImageUrl, onEventImageError } from '../utils/eventImage.js';
 import { hasSeenDissolve, markSeenDissolve } from '../db/eventDissolveSeen.js';
 
 const SELECTED_OUTLINE = 'var(--ui-accent, var(--ui-modal-fg))';
+// Accent ring marking the deal currently being played. Colors stay in var()s
+// so every interface theme is covered with no per-theme code; only
+// brightness pulses. The inset band guarantees visibility on perimeter
+// tiles (the grid clips overflow); the outer halo adds glow where there is
+// room. Static under prefers-reduced-motion (the inline box-shadow below
+// always applies).
+const ACTIVE_RING = 'var(--ui-accent, var(--ui-modal-fg))';
+const ACTIVE_SHADOW = `inset 0 0 0 2px ${ACTIVE_RING}, 0 0 14px ${ACTIVE_RING}`;
 
-function SolvedTile({ deal, imageUrl, gridSize, posX, posY, isSelected, disabled, onSelectDeal, locked }) {
+function SolvedTile({ deal, imageUrl, gridSize, posX, posY, isSelected, isActive, disabled, onSelectDeal, locked }) {
   const ref = useRef(null);
   const shouldDissolve = deal.solved && !hasSeenDissolve(deal.id);
   // Global Deal N across the event's pages (1-4 on page 1, 5-8 on page 2, …).
@@ -81,8 +89,9 @@ function SolvedTile({ deal, imageUrl, gridSize, posX, posY, isSelected, disabled
       key={deal.id}
       role="button"
       tabIndex={disabled ? -1 : 0}
-      aria-label={`Deal ${dealLabel} — solved`}
+      aria-label={`Deal ${dealLabel} — solved${isActive ? ' — currently being played' : ''}`}
       aria-pressed={isSelected}
+      aria-current={isActive || undefined}
       onClick={() => { if (!disabled) onSelectDeal(deal); }}
       onKeyDown={(e) => {
         if (disabled) return;
@@ -92,6 +101,7 @@ function SolvedTile({ deal, imageUrl, gridSize, posX, posY, isSelected, disabled
         }
       }}
       ref={shouldDissolve ? ref : null}
+      className={isActive ? 'event-active-deal' : undefined}
       style={{
         position: 'relative',
         backgroundImage: `url(${imageUrl})`,
@@ -100,6 +110,7 @@ function SolvedTile({ deal, imageUrl, gridSize, posX, posY, isSelected, disabled
         cursor: disabled ? 'default' : 'pointer',
         outline: isSelected ? `3px solid ${SELECTED_OUTLINE}` : 'none',
         outlineOffset: isSelected ? '-3px' : 0,
+        boxShadow: isActive ? ACTIVE_SHADOW : 'none',
       }}
     >
       <span
@@ -131,11 +142,19 @@ function SolvedTile({ deal, imageUrl, gridSize, posX, posY, isSelected, disabled
   );
 }
 
-export default function EventDealGrid({ page, onSelectDeal, selectedDealId, disabled, locked }) {
+export default function EventDealGrid({ page, onSelectDeal, selectedDealId, activeDealId, disabled, locked }) {
   const { gridSize, imagePath, deals } = page;
   const imageUrl = eventImageUrl(imagePath);
 
   return (
+    <>
+      <style>{`@keyframes eventActivePulse {
+        0%, 100% { filter: brightness(1); }
+        50% { filter: brightness(1.18); }
+      }
+      @media (prefers-reduced-motion: no-preference) {
+        .event-active-deal { animation: eventActivePulse 1.6s ease-in-out infinite; }
+      }`}</style>
     <div
       style={{
         display: 'grid',
@@ -157,6 +176,9 @@ export default function EventDealGrid({ page, onSelectDeal, selectedDealId, disa
         const col = index % gridSize;
         const posX = gridSize === 1 ? 0 : (col / (gridSize - 1)) * 100;
         const posY = gridSize === 1 ? 0 : (row / (gridSize - 1)) * 100;
+        // The deal currently being played elsewhere on the board. Distinct
+        // from the tile selection (inset outline): an outer glow ring.
+        const isActive = activeDealId != null && deal.id === activeDealId;
 
         if (locked) {
           if (deal.solved) {
@@ -187,17 +209,19 @@ export default function EventDealGrid({ page, onSelectDeal, selectedDealId, disa
         const dealLabel = deal.dealNumber ?? deal.position;
 
         if (deal.solved) {
-          return <SolvedTile key={deal.id} deal={deal} imageUrl={imageUrl} gridSize={gridSize} posX={posX} posY={posY} isSelected={isSelected} disabled={disabled} onSelectDeal={onSelectDeal} />;
+          return <SolvedTile key={deal.id} deal={deal} imageUrl={imageUrl} gridSize={gridSize} posX={posX} posY={posY} isSelected={isSelected} isActive={isActive} disabled={disabled} onSelectDeal={onSelectDeal} />;
         }
 
         return (
           <button
             key={deal.id}
             type="button"
-            aria-label={`Play deal ${dealLabel}`}
+            aria-label={`Play deal ${dealLabel}${isActive ? ' — currently being played' : ''}`}
             aria-pressed={isSelected}
+            aria-current={isActive || undefined}
             disabled={disabled}
             onClick={() => onSelectDeal(deal)}
+            className={isActive ? 'event-active-deal' : undefined}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -211,6 +235,7 @@ export default function EventDealGrid({ page, onSelectDeal, selectedDealId, disa
               opacity: disabled ? 0.6 : 1,
               outline: isSelected ? `3px solid ${SELECTED_OUTLINE}` : 'none',
               outlineOffset: isSelected ? '-3px' : 0,
+              boxShadow: isActive ? ACTIVE_SHADOW : 'none',
             }}
           >
             {dealLabel}
@@ -218,5 +243,6 @@ export default function EventDealGrid({ page, onSelectDeal, selectedDealId, disa
         );
       })}
     </div>
+    </>
   );
 }

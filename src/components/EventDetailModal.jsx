@@ -82,6 +82,16 @@ export default function EventDetailModal() {
   // True when the just-won event deal was already solved before this win (a
   // replay) — the selector then stays on it instead of advancing.
   const justWonReplayed = useUiStore((s) => s.winSummary?.eventDealReplayed ?? false);
+  // The deal currently being played on the board (live subscription so the
+  // glow follows if the game changes while open). Only marks a tile when
+  // this modal shows the same event; cleared automatically whenever any
+  // other deal type starts.
+  const activeGameKind = useUiStore((s) => s.currentGameKind);
+  const activeEventId = useUiStore((s) => s.currentEventId);
+  const activeEventDealId = useUiStore((s) => s.currentEventDealId);
+  const activeDealId = activeGameKind === 'event' && activeEventId === eventId
+    ? activeEventDealId
+    : null;
 
   const viewportRef = useRef(null);
   const panelRef = useRef(null);
@@ -669,6 +679,7 @@ export default function EventDetailModal() {
                         onSelectDeal={onSelectDeal}
                         onShowPostcard={onShowPostcard}
                         selectedDealId={selectedDealIdByPage[String(p.pageNumber)] ?? null}
+                        activeDealId={activeDealId}
                       />
                     </div>
                   ))}
@@ -803,7 +814,7 @@ function EventDescription({ title, text }) {
   );
 }
 
-function PageContent({ page, onSelectDeal, onShowPostcard, selectedDealId }) {
+function PageContent({ page, onSelectDeal, onShowPostcard, selectedDealId, activeDealId }) {
   const { t } = useTranslation();
   if (page.deals.length === 0) {
     return (
@@ -820,6 +831,7 @@ function PageContent({ page, onSelectDeal, onShowPostcard, selectedDealId }) {
         locked={!page.unlocked}
         onSelectDeal={(deal) => onSelectDeal(deal, page)}
         selectedDealId={selectedDealId}
+        activeDealId={activeDealId}
       />
 
       {page.unlocked && page.completed && (
