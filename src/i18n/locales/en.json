@@ -19,12 +19,21 @@
     "done.message": "Factory reset complete. Refresh the page to start fresh.",
     "errors.failed": "Factory reset failed. Please try again.",
     "errors.offline": "Sync service is unavailable (offline?). Your local progress was wiped; reconnect and retry to wipe the server copy too.",
-    "errors.timeout": "The server did not respond in time. Your local progress was wiped; refresh and retry to confirm the server copy is wiped too.",
+    "errors.timeout": "The server did not respond in time. Your local progress was wiped; refresh and retry to wipe the server copy too.",
     "factoryReset": "Factory Reset",
     "refresh": "Refresh page",
     "retry": "Retry",
     "title": "Advanced",
     "working": "Resetting…"
+  },
+  "awards": {
+    "empty": "No awards yet — win games and complete event pages to fill these shelves.",
+    "loading": "Loading…",
+    "nextPage": "Next page",
+    "pageAria": "Page {{current}} of {{total}}",
+    "postcardLabel": "{{title}}, page {{page}}",
+    "prevPage": "Previous page",
+    "title": "Awards"
   },
   "board": {
     "autoCompleting": "Auto-completing to foundations",
@@ -454,6 +463,7 @@
     "advanced": "Advanced",
     "announce.snapshotExported": "Board snapshot exported",
     "announce.solvitaireExported": "Solvitaire deal exported",
+    "awards": "Awards",
     "export": "Export",
     "help": "Keyboard shortcuts",
     "helpButton": "Help",

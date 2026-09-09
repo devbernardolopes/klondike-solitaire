@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { compareEventSummaries, eventStartYear, isUpcomingEvent, wonEventDealIdFromQueuedOp, computeKnownSolved, getPendingWonDealIds, patchCachedEventDealSolved, revertOptimisticSolve, setCachedEventDetailSync, clearEventCatalogMemory, applyWinPreservingMerge, hydratePendingWonDealIds } from './specialEventsRepository.js';
+import { compareEventSummaries, eventStartYear, isUpcomingEvent, wonEventDealIdFromQueuedOp, computeKnownSolved, getPendingWonDealIds, patchCachedEventDealSolved, revertOptimisticSolve, setCachedEventDetailSync, clearEventCatalogMemory, applyWinPreservingMerge, hydratePendingWonDealIds, indexPageCompletion } from './specialEventsRepository.js';
 import { collectSolvedIds, mergeSolvedIds, findNextUnsolvedDealOnPage, getEventDealProgress, keepCoveredSolves, resolvePinnedEvent, didWinCompleteEventPage } from './specialEventsProgress.js';
 
 const summary = (id, startsAt, title) => ({ id, startsAt, title: title ?? id });
@@ -251,4 +251,24 @@ test('didWinCompleteEventPage is false for a zero-reward page', () => {
 test('didWinCompleteEventPage is false for unknown deals and empty input', () => {
   assert.deepEqual(didWinCompleteEventPage(pageDetailWith(new Set([1, 2, 3])), 99), { completed: false, coinReward: 0 });
   assert.deepEqual(didWinCompleteEventPage(null, 4), { completed: false, coinReward: 0 });
+});
+
+test('indexPageCompletion maps page ids to unlock timestamps', () => {
+  const map = indexPageCompletion([
+    { page_id: 7, completed_at: '2026-09-01T10:00:00Z' },
+    { page_id: 9, completed_at: null },
+  ]);
+  assert.equal(map.get(7), '2026-09-01T10:00:00Z');
+  assert.equal(map.get(9), null);
+  assert.equal(map.has(10), false);
+});
+
+test('indexPageCompletion tolerates empty input and keeps the first row per page', () => {
+  assert.equal(indexPageCompletion(null).size, 0);
+  const map = indexPageCompletion([
+    { page_id: 7, completed_at: '2026-09-01T10:00:00Z' },
+    { page_id: 7, completed_at: '2026-09-02T10:00:00Z' },
+    null,
+  ]);
+  assert.equal(map.get(7), '2026-09-01T10:00:00Z');
 });

@@ -25,6 +25,7 @@ import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { useAchievementEventsStore } from '../hooks/useAchievementEventsStore.js';
 import ThemeModal from './ThemeModal.jsx';
 import AchievementsModal from './AchievementsModal.jsx';
+import AwardsModal from './AwardsModal.jsx';
 import LeaderboardModal from './LeaderboardModal.jsx';
 import StoreModal from './StoreModal.jsx';
 import SettingsOptionsModal from './SettingsOptionsModal.jsx';
@@ -66,6 +67,7 @@ export default function SettingsModal({
   const profileReady = useAuthStore((s) => s.profileReady);
   const [signOutConfirmOpen, setSignOutConfirmOpen] = useState(false);
   const [achievementsOpen, setAchievementsOpen] = useState(false);
+  const [awardsOpen, setAwardsOpen] = useState(false);
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const [storeOpen, setStoreOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
@@ -371,6 +373,13 @@ export default function SettingsModal({
             <button
               type="button"
               style={{ ...btn, width: '100%' }}
+              onClick={() => setAwardsOpen(true)}
+            >
+              {t('mainMenu.awards')}
+            </button>
+            <button
+              type="button"
+              style={{ ...btn, width: '100%' }}
               onClick={() => setAdvancedOpen(true)}
             >
               {t('mainMenu.advanced')}
@@ -531,6 +540,11 @@ export default function SettingsModal({
       <AchievementsModal
         open={achievementsOpen}
         onClose={() => setAchievementsOpen(false)}
+      />
+
+      <AwardsModal
+        open={awardsOpen}
+        onClose={() => setAwardsOpen(false)}
       />
 
       <LeaderboardModal

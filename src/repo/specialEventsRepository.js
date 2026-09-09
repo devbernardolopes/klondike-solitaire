@@ -113,6 +113,23 @@ export function computeKnownSolved({ serverIds = [], wonQueuedIds = [], optimist
   return known;
 }
 
+/**
+ * Index event_page_progress rows by page id to their unlock timestamp.
+ * Pure (no I/O) for unit testing. First row wins per page; missing
+ * timestamps normalize to null.
+ * @param {Array<{page_id:number, completed_at:string|null}>} progressRows
+ * @returns {Map<number, string|null>}
+ */
+export function indexPageCompletion(progressRows) {
+  const map = new Map();
+  for (const r of progressRows || []) {
+    if (r && r.page_id != null && !map.has(r.page_id)) {
+      map.set(r.page_id, r.completed_at ?? null);
+    }
+  }
+  return map;
+}
+
 export function getCachedEventDetailSync(eventId) {
   return catalogMemory.get(eventId) ?? null;
 }
@@ -587,16 +604,21 @@ export async function fetchEventDetail(eventId, opts) {
       const sortedPages = pagesErr ? [] : (pages || []).slice().sort((a, b) => a.page_number - b.page_number);
 
       let completedIds = new Set();
+      let completionByPage = new Map();
       const dealsByPage = new Map();
       if (sortedPages.length > 0) {
         const pageIds = sortedPages.map((p) => p.id);
         const [{ data: progress, error: progressErr }, dealsRes] = await Promise.all([
-          supabase.from('event_page_progress').select('page_id').in('page_id', pageIds),
+          supabase.from('event_page_progress').select('page_id, completed_at').in('page_id', pageIds),
           // deal_number exists post-migration 029; fall back to the legacy
           // column list on a DB that hasn't been migrated yet.
           supabase.from('special_event_deals').select('id, page_id, position, seed, deal_number').in('page_id', pageIds).order('position'),
         ]);
         completedIds = new Set((progressErr ? [] : progress || []).map((r) => r.page_id));
+        // Unlock timestamps for the Awards showcase (page.completedAt below).
+        // Cached details fetched before this column was selected simply carry
+        // undefined until the next online fetch converges them.
+        completionByPage = indexPageCompletion(progressErr ? [] : progress);
 
         let dealRows = [];
         if (dealsRes.error && /deal_number/i.test(dealsRes.error.message || '')) {
@@ -633,6 +655,10 @@ export async function fetchEventDetail(eventId, opts) {
           imagePath: p.image_path,
           coinReward: p.coin_reward,
           completed,
+          // ISO timestamp of the postcard unlock (event_page_progress
+          // completed_at) for the Awards showcase ordering; null when the
+          // page isn't completed (or the cached detail predates the column).
+          completedAt: completed ? (completionByPage.get(p.id) ?? null) : null,
           unlocked,
           deals,
         };
