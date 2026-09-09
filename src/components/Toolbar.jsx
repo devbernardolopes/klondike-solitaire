@@ -15,7 +15,6 @@ import SettingsModal from './SettingsModal.jsx';
 import SeedInputModal from './SeedInputModal.jsx';
 import DailyChallengeModal from './DailyChallengeModal.jsx';
 import { formatTimeClock } from '../utils/formatTime.js';
-import { getCachedEventDetailSync } from '../repo/specialEventsRepository.js';
 import { visibleCoins } from './coinFlyDisplay.js';
 
 const UNDO_HOLD_DELAY_MS = 400;
@@ -84,30 +83,6 @@ function useElapsed() {
 }
 
 /**
- * Resolve the event-sequential Deal N for the top-left mode label. Prefers the
- * number carried on the deal itself; falls back to the in-memory cached event
- * detail (covers sessions restored from a pre-number replaySpec, where the
- * deal id survived but the number did not). Returns '…' when unknown so the
- * localized "Special Event, Deal N (seed)" shape still renders.
- * @param {string|null} eventId
- * @param {number|null} dealId
- * @param {number|null} dealNumber
- */
-function resolveEventDealNumber(eventId, dealId, dealNumber) {
-  if (dealNumber != null) return dealNumber;
-  try {
-    if (eventId && dealId != null) {
-      const detail = getCachedEventDetailSync(eventId);
-      for (const p of detail?.pages || []) {
-        const found = (p.deals || []).find((d) => d.id === dealId);
-        if (found && found.dealNumber != null) return found.dealNumber;
-      }
-    }
-  } catch {}
-  return '…';
-}
-
-/**
  * @param {object} props
  * @param {string} props.theme    active theme name
  * @param {(t: string) => void} props.onThemeChange
@@ -136,11 +111,6 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
 
   const newGameDialogOpen = useUiStore((s) => s.newGameDialogOpen);
   const setNewGameDialogOpen = useUiStore((s) => s.setNewGameDialogOpen);
-  const currentGameKind = useUiStore((s) => s.currentGameKind);
-  const currentDailyDate = useUiStore((s) => s.currentDailyDate);
-  const currentEventDealId = useUiStore((s) => s.currentEventDealId);
-  const currentEventDealNumber = useUiStore((s) => s.currentEventDealNumber);
-  const currentEventId = useUiStore((s) => s.currentEventId);
   const setDailyChallengeDialogOpen = useUiStore((s) => s.setDailyChallengeDialogOpen);
   const setDailyChallengeOrigin = useUiStore((s) => s.setDailyChallengeOrigin);
   const settingsDialogOpen = useUiStore((s) => s.settingsDialogOpen);
@@ -156,7 +126,6 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const newGameNeedsAttention = !anyModalOpen && !autoCompleting && (won || isOver);
 
   // Game session stats (moves / score) + live elapsed time for the HUD.
-  const gameState = useGameStore((s) => s.state);
   const moves = useStatsStore((s) => s.moves);
   const score = useStatsStore((s) => s.score);
 
@@ -316,29 +285,6 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
     setSeedInputDialogOpen(false);
   }, [setSeedInputDialogOpen]);
 
-  // Double-click / double-tap the top-left seed label to open the "Enter Seed"
-  // dialog. A pointer-based detector (mirroring Board's double-tap logic) makes
-  // touch taps work too, since browsers don't synthesize dblclick for touch.
-  const SEED_LABEL_DOUBLE_MS = 300;
-  const SEED_LABEL_DOUBLE_DIST = 24;
-  const lastLabelTap = useRef(null);
-  const onLabelActivate = useCallback((e) => {
-    if (e.button !== undefined && e.button !== 0) return;
-    if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
-    const now = Date.now();
-    const tap = { x: e.clientX ?? 0, y: e.clientY ?? 0, t: now };
-    const prev = lastLabelTap.current;
-    lastLabelTap.current = tap;
-    if (
-      prev &&
-      now - prev.t < SEED_LABEL_DOUBLE_MS &&
-      Math.hypot(tap.x - prev.x, tap.y - prev.y) < SEED_LABEL_DOUBLE_DIST
-    ) {
-      lastLabelTap.current = null;
-      setSeedInputDialogOpen(true);
-    }
-  }, [setSeedInputDialogOpen]);
-
   const btn = {
     padding: '6px 10px',
     borderRadius: 6,
@@ -421,52 +367,6 @@ function ElapsedClock() {
           width: '100%',
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <span
-            role="button"
-            tabIndex={0}
-            title={t('toolbar.seedHint')}
-            onDoubleClick={onLabelActivate}
-            onPointerUp={onLabelActivate}
-            onKeyDown={onLabelActivate}
-            style={{
-              color: '#fff',
-              fontSize: 13,
-              userSelect: 'none',
-              cursor: 'pointer',
-              outline: 'none',
-            }}
-          >
-            <span style={{ visibility: bootstrapReady && currentGameKind ? 'visible' : 'hidden' }}>
-            {currentGameKind === 'daily'
-              ? t('toolbar.dailyChallenge', { date: currentDailyDate, seed: gameState.seed })
-              : currentGameKind === 'random'
-                ? t('toolbar.random', { seed: gameState.seed })
-                : currentGameKind === 'event'
-                  ? t('toolbar.specialEvent', { dealNumber: resolveEventDealNumber(currentEventId, currentEventDealId, currentEventDealNumber), seed: gameState.seed })
-                : t('toolbar.winningDeal', { seed: gameState.seed })}
-            </span>
-          </span>
-          <span
-            style={{
-              color: '#fff',
-              fontSize: 13,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              userSelect: 'none',
-            }}
-          >
-            <span style={{ visibility: 'hidden' }} aria-hidden="true"><CoinsIcon size={14} /> 0</span>
-          </span>
-        </div>
-
         <div
           style={{
             display: 'flex',

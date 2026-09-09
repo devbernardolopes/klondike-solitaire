@@ -25,7 +25,9 @@ export default function SeedInputModal({ open, onConfirm, onCancel }) {
   const inputRef = useRef(null);
   const backdrop = useModalBackdrop(onCancel);
 
-  useModalEscape({ open, onClose: onCancel, id: 'seed', z: Z.BASE });
+  // Stacked at GRANDCHILD so it paints above the Advanced modal (CHILD)
+  // when opened from the deal label there, and Escape targets it first.
+  useModalEscape({ open, onClose: onCancel, id: 'seed', z: Z.GRANDCHILD });
 
   const [value, setValue] = useState('');
   const [error, setError] = useState('');
@@ -114,7 +116,7 @@ export default function SeedInputModal({ open, onConfirm, onCancel }) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 3000,
+        zIndex: Z.GRANDCHILD,
         padding: 16,
       }}
     >
