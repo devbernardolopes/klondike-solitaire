@@ -19,7 +19,7 @@ import { useUiStore } from '../hooks/useUiStore.js';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
-import { pullRemoteProfile } from '../sync/pullProfile.js';
+import { pullRemoteProfile, pullDailyResults } from '../sync/pullProfile.js';
 import {
   listSupportedYears,
   isSupportedYM,
@@ -112,6 +112,9 @@ export default function DailyChallengeModal() {
   // Latest month-step callbacks for the wheel listener (attached once per
   // open, so it reads through this ref instead of stale closures).
   const navRef = useRef({ prev: () => {}, next: () => {} });
+  // Trailing-debounce timer for month-navigation refreshes, so rapid
+  // stepping collapses to a single fetch. Cleared on unmount/close.
+  const navRefreshTimerRef = useRef(null);
   const userPicked = useRef(false);
   // Mirror of `selected` / `today` (state) for reads inside async callbacks
   // without re-running effects; and the open-time {today, selected, usedPreferred}
@@ -311,6 +314,10 @@ export default function DailyChallengeModal() {
       clearTimeout(justSwipedTimerRef.current);
       justSwipedTimerRef.current = null;
     }
+    if (navRefreshTimerRef.current) {
+      clearTimeout(navRefreshTimerRef.current);
+      navRefreshTimerRef.current = null;
+    }
     if (slideTimerRef.current) {
       clearTimeout(slideTimerRef.current);
       slideTimerRef.current = null;
@@ -341,6 +348,51 @@ export default function DailyChallengeModal() {
       })
       .catch((e) => console.error('Daily Challenge profile pull failed', e));
     return () => { cancelled = true; };
+  }, [open]);
+
+  // Lightweight daily-only refresh for while-open triggers (tab refocus,
+  // own-device flush, month navigation). Skips anonymous sessions (local-only
+  // data, nothing cross-device to converge) and fails silent offline,
+  // mirroring the events modals.
+  const refreshDaily = () => {
+    if (useAuthStore.getState().isAnonymous) return;
+    pullDailyResults()
+      .then((rows) => {
+        const map = {};
+        (rows || []).forEach((r) => { map[r.date] = r; });
+        setResults(map);
+      })
+      .catch(() => {});
+  };
+
+  // Trailing debounce so rapid month stepping collapses to a single fetch.
+  const scheduleNavRefresh = () => {
+    if (navRefreshTimerRef.current) clearTimeout(navRefreshTimerRef.current);
+    navRefreshTimerRef.current = setTimeout(() => {
+      navRefreshTimerRef.current = null;
+      refreshDaily();
+    }, 1200);
+  };
+
+  // While-open live refresh (mirrors SpecialEventsModal/EventDetailModal):
+  // own-device queue flushes and tab refocus converge cross-device solves
+  // without polling and without reopening the modal.
+  useEffect(() => {
+    if (!open) return undefined;
+    const onFlushed = () => refreshDaily();
+    const onVisible = () => {
+      if (!document.hidden) refreshDaily();
+    };
+    window.addEventListener('sync-flushed', onFlushed);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('sync-flushed', onFlushed);
+      document.removeEventListener('visibilitychange', onVisible);
+      if (navRefreshTimerRef.current) {
+        clearTimeout(navRefreshTimerRef.current);
+        navRefreshTimerRef.current = null;
+      }
+    };
   }, [open]);
 
   // trackTransform follows the same translateX(calc(-idx*100% + dragPx))
@@ -488,6 +540,9 @@ export default function DailyChallengeModal() {
       setSlideBump((b) => b + 1);
       setSuppressTrackAnim(true);
       ensureSelectedInMonth(target.y, target.m);
+      // Converge cross-device solves after landing on the new month
+      // (debounced: rapid stepping collapses to one fetch).
+      scheduleNavRefresh();
       suppressTimerRef.current = setTimeout(() => {
         suppressTimerRef.current = null;
         setSuppressTrackAnim(false);
@@ -521,6 +576,8 @@ export default function DailyChallengeModal() {
     setViewY(y);
     setViewM(m);
     ensureSelectedInMonth(y, m);
+    // Converge cross-device solves after a far jump (debounced like slides).
+    scheduleNavRefresh();
     suppressTimerRef.current = setTimeout(() => {
       suppressTimerRef.current = null;
       setSuppressTrackAnim(false);
