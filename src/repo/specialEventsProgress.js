@@ -94,6 +94,29 @@ export function keepCoveredSolves(prev, fresh, coverIds) {
 }
 
 /**
+ * Did THIS win complete its event page? Inspects the PRE-win detail snapshot:
+ * true when the won deal is still unsolved there, every other deal on its
+ * page is already solved, and the page carries a coin reward. Callers must
+ * read the snapshot before patching the cache (same spot as the replay
+ * check) and additionally gate on `!eventDealReplayed`. Pure and testable.
+ * @returns {{completed:boolean, coinReward:number}}
+ */
+export function didWinCompleteEventPage(detail, dealId) {
+  const none = { completed: false, coinReward: 0 };
+  if (!detail || !Array.isArray(detail.pages) || dealId == null) return none;
+  const page = detail.pages.find((p) => (p.deals || []).some((d) => d.id === dealId));
+  if (!page) return none;
+  const deals = page.deals || [];
+  const won = deals.find((d) => d.id === dealId);
+  if (!won || won.solved) return none;
+  const othersSolved = deals.every((d) => d.id === dealId || d.solved);
+  if (!othersSolved) return none;
+  const coinReward = Number(page.coinReward) || 0;
+  if (coinReward <= 0) return none;
+  return { completed: true, coinReward };
+}
+
+/**
  * Resolve the pinned last-played event for the Special Events list. The pin
  * is looked up in the UNFILTERED events so it is immune to sort order and
  * filters, and it is excluded from the rest so it never renders twice. Only

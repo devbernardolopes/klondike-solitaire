@@ -27,6 +27,7 @@ import { getAutoFireSolveOptions } from '../core/solver.js';
 import { playSfx } from '../audio/index.js';
 import { useTranslation } from 'react-i18next';
 import { getCachedEventDetailSync } from '../repo/specialEventsRepository.js';
+import { didWinCompleteEventPage } from '../repo/specialEventsProgress.js';
 import { formatTimeClock } from '../utils/formatTime.js';
 import Pile from './Pile.jsx';
 import { CardFace, cardAriaString } from './CardView.jsx';
@@ -291,6 +292,13 @@ export default function Board() {
       const eventDealReplayed = wonEventDetail
         ? (wonEventDetail.pages || []).some((p) => (p.deals || []).some((d) => d.id === effectiveEventDealId && d.solved))
         : false;
+      // Page-completion bonus: read BEFORE recordWin patches the cache, so a
+      // win that solves the last unsolved deal of a rewarded page is detected
+      // exactly once. Replays never qualify (deal already solved above).
+      const pageCompletion = gameKind === 'event' && !eventDealReplayed && wonEventDetail && effectiveEventDealId != null
+        ? didWinCompleteEventPage(wonEventDetail, effectiveEventDealId)
+        : { completed: false, coinReward: 0 };
+      const pageBonus = pageCompletion.completed ? pageCompletion.coinReward : 0;
       const winSummary = {
         score,
         timeMs: durationMs,
@@ -327,7 +335,7 @@ export default function Board() {
       } catch {
         coinReward = null;
       }
-      const coinTotal = coinReward ? coinReward.total : WIN_COIN_REWARD;
+      const coinTotal = (coinReward ? coinReward.total : WIN_COIN_REWARD) + pageBonus;
       // Arm the win coin-flight display mask BEFORE recordWin's optimistic
       // +10 lands, capturing the pre-win balance so the Toolbar can count up
       // +1 per coin landing instead of flashing the full amount early.
@@ -351,11 +359,19 @@ export default function Board() {
         /* arming is best-effort; a failure just means the instant +10 shows */
       }
       useToastStore.getState().push({
-        name: t('toasts.coinsAwarded.title', { count: coinTotal }),
-        description: t('toasts.coinsAwarded.desc', { count: coinTotal }),
+        name: t('toasts.coinsAwarded.title', { count: coinTotal - pageBonus }),
+        description: t('toasts.coinsAwarded.desc', { count: coinTotal - pageBonus }),
         icon: 'coins',
         priority: TOAST_PRIORITY.COINS,
       });
+      if (pageBonus > 0) {
+        useToastStore.getState().push({
+          name: t('toasts.pageBonus.title', { count: pageBonus }),
+          description: t('toasts.pageBonus.desc', { count: pageBonus }),
+          icon: 'coins',
+          priority: TOAST_PRIORITY.COINS,
+        });
+      }
       if (nextStreak > (prev.bestStreak || 0)) {
         useToastStore.getState().push({
           name: t('toasts.newBestStreak.title', {count: nextStreak}),
@@ -393,6 +409,7 @@ export default function Board() {
         eventId: gameKind === 'event' ? effectiveEventId : null,
         eventDealReplayed: gameKind === 'event' ? eventDealReplayed : false,
         coinTotal,
+        pageBonus: gameKind === 'event' ? pageBonus : 0,
         achievementTelemetry,
       });
       // If this was a Winning Deal (it carries a pool seed), remember the seed

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { compareEventSummaries, eventStartYear, isUpcomingEvent, wonEventDealIdFromQueuedOp, computeKnownSolved, getPendingWonDealIds, patchCachedEventDealSolved, revertOptimisticSolve, setCachedEventDetailSync, clearEventCatalogMemory, applyWinPreservingMerge, hydratePendingWonDealIds } from './specialEventsRepository.js';
-import { collectSolvedIds, mergeSolvedIds, findNextUnsolvedDealOnPage, getEventDealProgress, keepCoveredSolves, resolvePinnedEvent } from './specialEventsProgress.js';
+import { collectSolvedIds, mergeSolvedIds, findNextUnsolvedDealOnPage, getEventDealProgress, keepCoveredSolves, resolvePinnedEvent, didWinCompleteEventPage } from './specialEventsProgress.js';
 
 const summary = (id, startsAt, title) => ({ id, startsAt, title: title ?? id });
 
@@ -221,4 +221,34 @@ test('resolvePinnedEvent pins nothing when toggled off, unplayed, or missing', (
   assert.equal(resolvePinnedEvent(pinEvents(), pinEvents(), { pinEnabled: false, lastPlayedEventId: 'b' }).pinnedEvent, null);
   assert.equal(resolvePinnedEvent(pinEvents(), pinEvents(), { pinEnabled: true, lastPlayedEventId: null }).pinnedEvent, null);
   assert.equal(resolvePinnedEvent(pinEvents(), pinEvents(), { pinEnabled: true, lastPlayedEventId: 'gone' }).pinnedEvent, null);
+});
+
+const pageDetailWith = (solvedIds, coinReward = 25) => ({
+  id: 'evt',
+  pages: [{
+    id: 1, pageNumber: 1, gridSize: 2, imagePath: 'p.jpg', coinReward,
+    completed: false, unlocked: true,
+    deals: [1, 2, 3, 4].map((id, i) => ({ id, position: i + 1, seed: 100 + id, solved: solvedIds.has(id) })),
+  }],
+});
+
+test('didWinCompleteEventPage detects the last unsolved deal completing a rewarded page', () => {
+  assert.deepEqual(didWinCompleteEventPage(pageDetailWith(new Set([1, 2, 3])), 4), { completed: true, coinReward: 25 });
+});
+
+test('didWinCompleteEventPage is false for a non-final deal', () => {
+  assert.deepEqual(didWinCompleteEventPage(pageDetailWith(new Set([1])), 2), { completed: false, coinReward: 0 });
+});
+
+test('didWinCompleteEventPage is false when the deal is already solved (replay)', () => {
+  assert.deepEqual(didWinCompleteEventPage(pageDetailWith(new Set([1, 2, 3, 4])), 4), { completed: false, coinReward: 0 });
+});
+
+test('didWinCompleteEventPage is false for a zero-reward page', () => {
+  assert.deepEqual(didWinCompleteEventPage(pageDetailWith(new Set([1, 2, 3]), 0), 4), { completed: false, coinReward: 0 });
+});
+
+test('didWinCompleteEventPage is false for unknown deals and empty input', () => {
+  assert.deepEqual(didWinCompleteEventPage(pageDetailWith(new Set([1, 2, 3])), 99), { completed: false, coinReward: 0 });
+  assert.deepEqual(didWinCompleteEventPage(null, 4), { completed: false, coinReward: 0 });
 });

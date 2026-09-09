@@ -648,7 +648,9 @@
     "newBestStreak.desc": "You've won {{count}} game(s) in a row — new personal record.",
     "newBestStreak.title": "New Best Streak: {{count}}!",
     "newBestTime.desc": "You beat your record — {{secs}}s",
-    "newBestTime.title": "New Best Time!"
+    "newBestTime.title": "New Best Time!",
+    "pageBonus.desc": "Page bonus added to your balance.",
+    "pageBonus.title": "+{{count}} Coins — Page Complete!"
   },
   "toolbar": {
     "announce.newGame": "New game: seed {{seed}}",

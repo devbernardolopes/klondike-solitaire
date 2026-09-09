@@ -15,7 +15,7 @@ import i18n from '../i18n/index.js';
 import { computeReward } from '../core/coinRewards.js';
 import { getRewardConfigSync } from '../repo/rewardRulesRepository.js';
 import { refreshLimitRules } from '../repo/limitRulesRepository.js';
-import { clearWinSnapshot } from '../db/winSnapshots.js';
+import { clearWinSnapshot, getWinSnapshot } from '../db/winSnapshots.js';
 import { formatTime } from '../utils/formatTime.js';
 
 /**
@@ -76,7 +76,23 @@ export const operations = {
         },
         getRewardConfigSync(),
       ).total;
-      const delta = serverTotal - expected;
+      // Page-completion bonus: the server awards it separately (profile bump
+      // + event_progress.page_coins_awarded) while the win-time UI folded it
+      // into the optimistic total. Add both sides only when the ack carries
+      // the page term — duplicate-delivery acks have neither coins_* nor
+      // event_progress by design and stay skipped. The win snapshot holds
+      // this client's prediction (0 when none was shown).
+      let serverWithPage = serverTotal;
+      let expectedWithPage = expected;
+      const serverPage = data?.event_progress?.page_coins_awarded;
+      if (Number.isFinite(serverPage)) {
+        serverWithPage += serverPage;
+        try {
+          const snap = await getWinSnapshot(payload?.p_game_id);
+          expectedWithPage += Number(snap?.pageBonus) || 0;
+        } catch {}
+      }
+      const delta = serverWithPage - expectedWithPage;
       if (delta !== 0) {
         useAuthStore.getState().addCoinsOptimistic(delta);
       }

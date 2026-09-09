@@ -57,11 +57,12 @@ export const useStatisticsStore = create((set, get) => ({
    * Statistics modal updates live. eventDealReplayed is true when the won
    * event deal was already solved (a replay) — the deal selector then stays
    * in place instead of advancing to the next unsolved deal on the page.
-   * @param {{score:number, timeMs:number, moves:number, undos:number,
-   *   seed?:number, gameKind?:'winning'|'random'|'daily'|'event', dailyDate?:string|null,
-   *   eventDealId?:number|null, eventId?:string|null, eventDealReplayed?:boolean}} win
-   */
-  recordWin: async ({ score, timeMs, moves, undos, seed, gameKind, dailyDate, eventDealId, eventId, eventDealReplayed, coinTotal, achievementTelemetry }) => {
+    * @param {{score:number, timeMs:number, moves:number, undos:number,
+    *   seed?:number, gameKind?:'winning'|'random'|'daily'|'event', dailyDate?:string|null,
+    *   eventDealId?:number|null, eventId?:string|null, eventDealReplayed?:boolean,
+    *   pageBonus?:number}} win
+    */
+  recordWin: async ({ score, timeMs, moves, undos, seed, gameKind, dailyDate, eventDealId, eventId, eventDealReplayed, coinTotal, pageBonus, achievementTelemetry }) => {
     // Snapshot the pre-win row (plus the side effects below) keyed by gameId
     // so a server-rejected optimistic win (over-limit) can be rolled back
     // exactly in applyRejectedWin. Best-effort: a snapshot failure must never
@@ -92,6 +93,10 @@ export const useStatisticsStore = create((set, get) => ({
           dailyDate: gameKind === 'daily' ? (dailyDate ?? null) : null,
           prevDaily,
           eventDealId: gameKind === 'event' ? (eventDealId ?? null) : null,
+          // Predicted page-completion bonus (0 when none): lets the flush
+          // reconcile compare against the same optimistic total the win-time
+          // UI displayed (deal award + page bonus).
+          pageBonus: gameKind === 'event' ? (Number(pageBonus) || 0) : 0,
         });
       } catch {}
     }
