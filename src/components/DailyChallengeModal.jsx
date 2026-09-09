@@ -107,6 +107,11 @@ export default function DailyChallengeModal() {
 
   const panelRef = useRef(null);
   const viewportRef = useRef(null);
+  // Cooldown timestamp for wheel navigation: one notch/flick = one month.
+  const wheelLockRef = useRef(0);
+  // Latest month-step callbacks for the wheel listener (attached once per
+  // open, so it reads through this ref instead of stale closures).
+  const navRef = useRef({ prev: () => {}, next: () => {} });
   const userPicked = useRef(false);
   // Mirror of `selected` / `today` (state) for reads inside async callbacks
   // without re-running effects; and the open-time {today, selected, usedPreferred}
@@ -115,7 +120,8 @@ export default function DailyChallengeModal() {
   const selectedRef = useRef(null);
   const todayRef = useRef(fallbackDate);
   const initialRef = useRef({ today: null, selected: null, usedPreferred: false });
-  // Horizontal-swipe gesture state. Mirrors EventDetailModal.jsx.
+  // Horizontal-swipe gesture state. Mirrors EventDetailModal.jsx. Vertical
+  // wheel navigation is handled by a separate native listener (see below).
   const SWIPE_THRESHOLD_RATIO = 0.2;
   const dragStateRef = useRef({ startX: 0, startY: 0, width: 1, active: false, committed: false, pointerId: null });
   const justSwipedRef = useRef(false);
@@ -423,7 +429,7 @@ export default function DailyChallengeModal() {
   // transition runs from the finger position to the target slot, exactly
   // like the events modal), then commit the new viewY/viewM, re-center the
   // track, and suppress the brief re-center transition so the content swap
-  // is invisible. Gated by canPrev/canNext so a swipe or key at the
+  // is invisible. Gated by canPrev/canNext so a swipe, wheel, or key at the
   // supported-window edge is a no-op. A leftward finger drag (dx < 0)
   // reveals the next month (track moves left to -200%); a rightward drag
   // reveals the previous month (track moves right to 0%).
@@ -456,6 +462,32 @@ export default function DailyChallengeModal() {
     if (!canNext) return;
     slideTo(+1, { y: next.y, m: next.m });
   };
+  navRef.current = { prev: goPrevMonth, next: goNextMonth };
+
+  // Vertical mouse wheel steps months (down → next, up → prev) through the
+  // same slideTo path as arrows/drag. Native non-passive listener — React's
+  // onWheel can't preventDefault — following PostcardViewerModal.jsx. The
+  // cooldown covers the 0.3s slide so one notch moves exactly one month; a
+  // wheel during an active drag is ignored. Edge months are no-ops via the
+  // canPrev/canNext gates inside goPrevMonth/goNextMonth.
+  useEffect(() => {
+    if (!open) return undefined;
+    const el = viewportRef.current;
+    if (!el) return undefined;
+    const onWheel = (e) => {
+      if (dragStateRef.current.active) return;
+      const dy = e.deltaY;
+      if (!dy || Number.isNaN(dy)) return;
+      const now = Date.now();
+      if (now - wheelLockRef.current < 350) return;
+      e.preventDefault();
+      wheelLockRef.current = now;
+      if (dy > 0) navRef.current.next();
+      else navRef.current.prev();
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [open]);
 
   // Far jumps from the year/month <select>s skip the slide (the destination
   // isn't an adjacent slot, so animating across N months would feel laggy).
@@ -779,7 +811,7 @@ export default function DailyChallengeModal() {
           </div>
 
           {/* Body: calendar grid + side panel, wrapped in a clipped viewport
-              with a 3-slot flex track so swipe / arrow / keyboard can slide
+              with a 3-slot flex track so swipe / wheel / arrow / keyboard can slide
               the inner content horizontally with a 0.3s ease. The header
               (above) and footer (below) stay put. Swipe handlers live on
               this viewport (like EventDetailModal.jsx) so a drag starting

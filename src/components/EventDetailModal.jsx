@@ -2,8 +2,8 @@
 // Page carousel for a single Special Event. Renders each page's reveal grid
 // (EventDealGrid) for unlocked/completed pages, and a locked placeholder for
 // pages not yet reached, browsable via arrow buttons, horizontal swipe/drag,
-// or the dot indicators — all pages are always browsable, only PLAYING a
-// locked page's deals is blocked.
+// the dot indicators, or the vertical mouse wheel — all pages are always
+// browsable, only PLAYING a locked page's deals is blocked.
 //
 // Clicking a cell SELECTS that tile (a 3px accent outline); a footer "Play"
 // button is what actually starts the game. The selection is persisted in
@@ -18,6 +18,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToastStore } from '../hooks/useToastStore.js';
 import { useModalBackdrop } from './modalBackdrop.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
+import ConfirmModal from './ConfirmModal.jsx';
 import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
 import { useUiStore } from '../hooks/useUiStore.js';
@@ -85,6 +86,11 @@ export default function EventDetailModal() {
   const viewportRef = useRef(null);
   const panelRef = useRef(null);
   const dragStateRef = useRef({ startX: 0, startY: 0, width: 1, active: false });
+  // Cooldown timestamp for wheel navigation: one notch/flick = one page.
+  const wheelLockRef = useRef(0);
+  // Latest page-step callbacks for the wheel listener (attached once per
+  // open, so it reads through this ref instead of stale closures).
+  const navRef = useRef({ prev: () => {}, next: () => {} });
   const justSwipedRef = useRef(false);
   const justSwipedTimerRef = useRef(null);
   // One-shot guard so the post-win auto-advance (findNextUnsolvedDealOnPage) applies
@@ -463,11 +469,45 @@ export default function EventDetailModal() {
   };
   const goPrev = () => goTo(clampedIndex - 1);
   const goNext = () => goTo(clampedIndex + 1);
+  navRef.current = { prev: goPrev, next: goNext };
 
   const onKeyDown = (e) => {
     if (e.key === 'ArrowLeft') goPrev();
     else if (e.key === 'ArrowRight') goNext();
   };
+
+  // Vertical mouse wheel turns pages (down → next, up → prev) through the
+  // same goTo path as arrows/drag. Native non-passive listener — React's
+  // onWheel can't preventDefault — following PostcardViewerModal.jsx. The
+  // cooldown covers the 0.3s slide so one notch moves exactly one page; a
+  // wheel during an active drag is ignored. If the panel itself can still
+  // scroll further in the wheel direction (tiny-viewport safety net),
+  // native scrolling wins and no navigation happens.
+  useEffect(() => {
+    if (!open) return undefined;
+    const el = viewportRef.current;
+    if (!el) return undefined;
+    const onWheel = (e) => {
+      if (pages.length < 2) return;
+      if (dragStateRef.current.active) return;
+      const dy = e.deltaY;
+      if (!dy || Number.isNaN(dy)) return;
+      const now = Date.now();
+      if (now - wheelLockRef.current < 350) return;
+      const panel = panelRef.current;
+      if (panel && panel.scrollHeight > panel.clientHeight + 1) {
+        const canDown = panel.scrollTop + panel.clientHeight < panel.scrollHeight - 1;
+        const canUp = panel.scrollTop > 1;
+        if ((dy > 0 && canDown) || (dy < 0 && canUp)) return;
+      }
+      e.preventDefault();
+      wheelLockRef.current = now;
+      if (dy > 0) navRef.current.next();
+      else navRef.current.prev();
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [open, pages.length]);
 
   const onPointerDown = (e) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -591,7 +631,7 @@ export default function EventDetailModal() {
         <ModalCloseButton onClick={close} />
         <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 800, textAlign: 'center', paddingTop: 2 }}>{detail?.title || (loaded ? 'Event' : '')}</h2>
         {detail?.description && (
-          <p style={{ margin: '0 0 14px', textAlign: 'center', fontSize: 13, opacity: 0.75 }}>{detail.description}</p>
+          <EventDescription title={detail.title} text={detail.description} />
         )}
 
         {loaded && pages.length === 0 && (
@@ -600,7 +640,7 @@ export default function EventDetailModal() {
 
         {pages.length > 0 && (
           <>
-            <div style={{ position: 'relative', marginTop: 8 }}>
+            <div style={{ position: 'relative', marginTop: 4 }}>
               {pages.length > 1 && clampedIndex > 0 && (
                 <button type="button" aria-label="Previous page" onClick={goPrev} style={{ ...arrowBtn(false), left: -6 }}>
                   <ChevronLeft size={20} />
@@ -619,7 +659,7 @@ export default function EventDetailModal() {
                 onPointerUp={endDrag}
                 onPointerCancel={endDrag}
                 onClickCapture={handleViewportClickCapture}
-                style={{ overflow: 'hidden', touchAction: 'pan-y', minHeight: 400 }}
+                style={{ overflow: 'hidden', touchAction: 'pan-y', minHeight: 340 }}
               >
                 <div style={{ display: 'flex', transform: trackTransform, transition: dragging || suppressTrackAnim ? 'none' : 'transform 0.3s ease' }}>
                   {pages.map((p) => (
@@ -637,7 +677,7 @@ export default function EventDetailModal() {
             </div>
 
             {pages.length > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 7, marginTop: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 7, marginTop: 10 }}>
                 {pages.map((p, i) => (
                   <button
                     key={p.id}
@@ -662,7 +702,7 @@ export default function EventDetailModal() {
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 14 }}>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 10 }}>
               <button
                 type="button"
                 disabled={!canPlay}
@@ -689,6 +729,76 @@ export default function EventDetailModal() {
           onClose={() => setPostcard(null)}
         />
       )}
+    </>
+  );
+}
+
+function EventDescription({ title, text }) {
+  const { t } = useTranslation();
+  const textRef = useRef(null);
+  const [clamped, setClamped] = useState(false);
+  const [showFull, setShowFull] = useState(false);
+
+  // Detect whether the 2-line clamp actually cut text, so the expand
+  // affordance (pointer cursor, button role, full-text dialog) only appears
+  // when there is more to read. Re-measure whenever the text changes.
+  useLayoutEffect(() => {
+    const el = textRef.current;
+    if (!el) return;
+    try {
+      setClamped(el.scrollHeight > el.clientHeight + 1);
+    } catch {
+      setClamped(false);
+    }
+  }, [text]);
+
+  const openFull = () => {
+    if (clamped) setShowFull(true);
+  };
+  const closeFull = () => setShowFull(false);
+
+  return (
+    <>
+      <p
+        ref={textRef}
+        role={clamped ? 'button' : undefined}
+        tabIndex={clamped ? 0 : undefined}
+        aria-label={clamped ? t('eventDetail.descriptionExpand') : undefined}
+        title={clamped ? t('eventDetail.descriptionExpand') : undefined}
+        onClick={openFull}
+        onKeyDown={(e) => {
+          if (!clamped) return;
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openFull();
+          }
+        }}
+        style={{
+          margin: '0 0 10px',
+          textAlign: 'center',
+          fontSize: 13,
+          opacity: 0.75,
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+          cursor: clamped ? 'pointer' : 'default',
+          outline: 'none',
+        }}
+      >
+        {text}
+      </p>
+      <ConfirmModal
+        open={showFull}
+        zIndex={Z.GRANDCHILD}
+        z={Z.GRANDCHILD}
+        title={title}
+        message={text}
+        confirmText={t('common.close')}
+        hideCancel
+        onConfirm={closeFull}
+        onCancel={closeFull}
+      />
     </>
   );
 }

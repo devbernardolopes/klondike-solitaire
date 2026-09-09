@@ -362,6 +362,7 @@
     "coinReward": "+{{coins}} coins on completion",
     "dealBlocked": "Couldn't start that deal — please try again.",
     "dealsSoon": "Deals coming soon",
+    "descriptionExpand": "Show full event description",
     "downloadPostcard": "Download postcard",
     "gridInfo": "{{grid}}×{{grid}} grid — {{count}} deal(s)",
     "gridInfo_one": "{{grid}}×{{grid}} grid — {{count}} deal",
