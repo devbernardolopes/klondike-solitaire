@@ -560,7 +560,8 @@
     "random": "Random ({{seed}})",
     "score": "Score",
     "seedHint": "Double-click to enter a specific seed",
-    "specialEvent": "Special Event, Deal {{dealNumber}} ({{seed}})",
+    "specialEvent": "{{eventTitle}}, Deal {{dealNumber}} ({{seed}})",
+    "specialEventUnknown": "Special Event, Deal {{dealNumber}} ({{seed}})",
     "time": "Time",
     "undo": "Undo",
     "winningDeal": "Winning Deal ({{seed}})"

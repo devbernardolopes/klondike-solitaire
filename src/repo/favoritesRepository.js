@@ -30,6 +30,7 @@ export function serverRowToFavoriteEntry(row) {
     eventId: row.event_id ?? null,
     favoritedAt: row.created_at,
     eventTitle: null,
+    eventDealNumber: null,
     pending: false,
   };
 }
@@ -51,6 +52,15 @@ export function mergeFavorites(serverRows, localRows, queuedOps) {
   const ops = (queuedOps ?? []).filter(
     (op) => op?.type === 'add_favorite' || op?.type === 'remove_favorite',
   );
+  // Index the local mirror: a queued re-add (remove then add) rebuilds its
+  // row from scratch, so previously resolved display data (event title +
+  // deal number) is recovered here instead of waiting for a re-resolve.
+  const localBySeed = new Map();
+  for (const local of localRows ?? []) {
+    if (local != null && local.seed != null && !localBySeed.has(local.seed)) {
+      localBySeed.set(local.seed, local);
+    }
+  }
   // Net queued effect per seed (last write wins, mirroring the outbox
   // dedupeKey collapse) for the local-fold decision below.
   const net = new Map();
@@ -60,14 +70,16 @@ export function mergeFavorites(serverRows, localRows, queuedOps) {
     if (op.type === 'add_favorite') {
       const p = op.payload ?? {};
       const prev = bySeed.get(seed);
+      const mirrored = localBySeed.get(seed);
       bySeed.set(seed, {
         seed,
-        gameKind: p.game_kind ?? prev?.gameKind ?? 'winning',
-        dailyDate: p.daily_date ?? prev?.dailyDate ?? null,
-        eventDealId: p.event_deal_id ?? prev?.eventDealId ?? null,
-        eventId: p.event_id ?? prev?.eventId ?? null,
-        favoritedAt: prev?.favoritedAt ?? new Date(op.createdAt ?? Date.now()).toISOString(),
-        eventTitle: prev?.eventTitle ?? null,
+        gameKind: p.game_kind ?? prev?.gameKind ?? mirrored?.gameKind ?? 'winning',
+        dailyDate: p.daily_date ?? prev?.dailyDate ?? mirrored?.dailyDate ?? null,
+        eventDealId: p.event_deal_id ?? prev?.eventDealId ?? mirrored?.eventDealId ?? null,
+        eventId: p.event_id ?? prev?.eventId ?? mirrored?.eventId ?? null,
+        favoritedAt: prev?.favoritedAt ?? mirrored?.favoritedAt ?? new Date(op.createdAt ?? Date.now()).toISOString(),
+        eventTitle: prev?.eventTitle ?? mirrored?.eventTitle ?? null,
+        eventDealNumber: prev?.eventDealNumber ?? mirrored?.eventDealNumber ?? null,
         pending: true,
       });
       net.set(seed, 'add');

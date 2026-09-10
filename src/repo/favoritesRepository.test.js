@@ -20,6 +20,8 @@ test('serverRowToFavoriteEntry maps a favorite_deals row', () => {
   assert.equal(entry.seed, 111);
   assert.equal(entry.gameKind, 'winning');
   assert.equal(entry.favoritedAt, '2026-09-01T10:00:00.000Z');
+  assert.equal(entry.eventTitle, null);
+  assert.equal(entry.eventDealNumber, null);
   assert.equal(entry.pending, false);
 });
 
@@ -89,4 +91,36 @@ test('mergeFavorites strips local-only rows the server does not confirm', () => 
 test('mergeFavorites handles empty inputs', () => {
   assert.deepEqual(mergeFavorites([], [], []), []);
   assert.deepEqual(mergeFavorites(null, null, null), []);
+});
+
+test('mergeFavorites carries a resolved title+number through a queued re-add', () => {
+  const server = [{
+    seed: 666,
+    game_kind: 'event',
+    daily_date: null,
+    event_deal_id: 9,
+    event_id: 'ev9',
+    created_at: '2026-09-06T00:00:00.000Z',
+  }];
+  // First merge resolves nothing by itself, so simulate a resolved row as
+  // the local mirror would hold it after resolveEventTitles ran.
+  const local = [{
+    seed: 666,
+    gameKind: 'event',
+    dailyDate: null,
+    eventDealId: 9,
+    eventId: 'ev9',
+    favoritedAt: '2026-09-06T00:00:00.000Z',
+    eventTitle: 'Autumn Cup',
+    eventDealNumber: 4,
+  }];
+  const ops = [
+    { id: 8, type: 'remove_favorite', payload: { seed: 666 }, createdAt: 1788300001000 },
+    { id: 9, type: 'add_favorite', payload: { seed: 666, game_kind: 'event', event_deal_id: 9, event_id: 'ev9' }, createdAt: 1788300002000 },
+  ];
+  const merged = mergeFavorites(server, local, ops);
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0].eventTitle, 'Autumn Cup');
+  assert.equal(merged[0].eventDealNumber, 4);
+  assert.equal(merged[0].pending, true);
 });

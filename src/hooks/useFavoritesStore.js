@@ -41,6 +41,10 @@ function toMirrorRow(entry) {
     eventDealId: entry.eventDealId ?? null,
     eventId: entry.eventId ?? null,
     favoritedAt: entry.favoritedAt,
+    // Cached display data so offline rows still show the resolved event
+    // title + deal number; re-resolved from the server on every refresh.
+    eventTitle: entry.eventTitle ?? null,
+    eventDealNumber: entry.eventDealNumber ?? null,
   };
 }
 

@@ -14,6 +14,7 @@ import { Z } from '../utils/modalStack.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
 import { formatTime } from '../utils/formatTime.js';
 import { formatHistoryDate } from '../utils/formatHistoryDate.js';
+import { eventDealTitle } from '../utils/eventDealTitle.js';
 
 /**
  * @param {object} props
@@ -73,8 +74,7 @@ export default function HistoryDetailModal({ entry, open, onClose }) {
     return time ? `${date} ${time}` : date;
   };
 
-  const kindLabel = entry.eventTitle
-    ?? (entry.gameKind ? t(`history.kinds.${entry.gameKind}`, { defaultValue: entry.gameKind }) : t('history.kinds.unknown'));
+  const kindLabel = eventDealTitle(entry, t);
 
   const rows = [
     [t('history.detail.result'), entry.won ? t('history.won') : t('history.lost')],

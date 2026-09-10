@@ -24,6 +24,7 @@ import HistoryDetailModal from './HistoryDetailModal.jsx';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { formatTime } from '../utils/formatTime.js';
 import { formatHistoryDate } from '../utils/formatHistoryDate.js';
+import { eventDealTitle } from '../utils/eventDealTitle.js';
 import {
   HISTORY_PAGE_SIZE,
   fetchHistoryCount,
@@ -39,8 +40,7 @@ function HistoryRow({ entry, onOpen }) {
   const [focus, setFocus] = useState(false);
   const active = hover || focus;
 
-  const kindLabel = entry.eventTitle
-    ?? (entry.gameKind ? t(`history.kinds.${entry.gameKind}`, { defaultValue: entry.gameKind }) : t('history.kinds.unknown'));
+  const kindLabel = eventDealTitle(entry, t);
 
   const dateLabel = formatHistoryDate(entry.createdAt, i18n.language) ?? '';
 

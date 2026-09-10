@@ -20,6 +20,8 @@ import { db } from './schema.js';
  * @property {number|null} eventDealId  special_event_deals.id when gameKind === 'event'
  * @property {string|null} eventId    special_events.id when gameKind === 'event'
  * @property {string} favoritedAt     ISO timestamp when favorited (server created_at after pull)
+ * @property {string|null} [eventTitle]  cached resolved event title (offline display; re-resolved on pull)
+ * @property {number|null} [eventDealNumber]  cached event-sequential Deal N (same lifecycle as eventTitle)
  */
 
 /** All locally-mirrored favorites. @returns {Promise<FavoriteDeal[]>} */

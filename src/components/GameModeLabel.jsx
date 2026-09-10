@@ -1,5 +1,5 @@
 // components/GameModeLabel.jsx
-// Shared game-mode deal label (e.g. "Special Event, Deal 4 (123444555)").
+// Shared game-mode deal label (e.g. "Autumn Cup, Deal 4 (123444555)").
 // Rendered in the Advanced modal and mirrored on the main game screen footer.
 // Show rule and double-click/tap rule are identical in both places by design:
 // visible whenever `currentGameKind` is set (nbsp placeholder otherwise), and a
@@ -51,6 +51,7 @@ export default function GameModeLabel({ variant = 'modal' }) {
   const currentEventDealId = useUiStore((s) => s.currentEventDealId);
   const currentEventDealNumber = useUiStore((s) => s.currentEventDealNumber);
   const currentEventId = useUiStore((s) => s.currentEventId);
+  const currentEventTitle = useUiStore((s) => s.currentEventTitle);
 
   const lastLabelTap = useRef(null);
   const onLabelActivate = useCallback((e) => {
@@ -71,6 +72,22 @@ export default function GameModeLabel({ variant = 'modal' }) {
   }, []);
 
   if (!currentGameKind) return <span aria-hidden="true">{'\u00A0'}</span>;
+
+  // Event deals are labeled with the event's own name ("Autumn Cup, Deal 4
+  // (seed)"). The title rides the deal itself (setCurrentEventMeta); restored
+  // sessions fall back to the cached event detail. Only when neither knows
+  // the name does the generic "Special Event" shape render.
+  let eventTitle = currentEventTitle;
+  if (currentGameKind === 'event' && !eventTitle) {
+    try {
+      eventTitle = getCachedEventDetailSync(currentEventId)?.title ?? null;
+    } catch {
+      eventTitle = null;
+    }
+  }
+  const dealNumber = currentGameKind === 'event'
+    ? resolveEventDealNumber(currentEventId, currentEventDealId, currentEventDealNumber)
+    : null;
 
   return (
     <span
@@ -110,7 +127,9 @@ export default function GameModeLabel({ variant = 'modal' }) {
         : currentGameKind === 'random'
           ? t('toolbar.random', { seed })
           : currentGameKind === 'event'
-            ? t('toolbar.specialEvent', { dealNumber: resolveEventDealNumber(currentEventId, currentEventDealId, currentEventDealNumber), seed })
+            ? (eventTitle
+              ? t('toolbar.specialEvent', { eventTitle, dealNumber, seed })
+              : t('toolbar.specialEventUnknown', { dealNumber, seed }))
             : t('toolbar.winningDeal', { seed })}
     </span>
   );

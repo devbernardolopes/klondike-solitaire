@@ -70,6 +70,7 @@ export function queuedOpToHistoryEntry(op) {
     aceIdsToFoundation: [],
     moveLog: typeof p.p_move_log === 'string' ? p.p_move_log : null,
     eventTitle: null,
+    eventDealNumber: null,
     createdAt: new Date(op?.createdAt ?? Date.now()).toISOString(),
     pending: true,
   };
@@ -105,6 +106,7 @@ export function serverRowToHistoryEntry(row) {
     // keep pages light; playback fetches it per-game via fetchMoveLog).
     moveLog: typeof row.move_log === 'string' ? row.move_log : null,
     eventTitle: null,
+    eventDealNumber: null,
     createdAt: row.created_at,
     pending: false,
   };
@@ -131,11 +133,12 @@ export function mergeHistoryEntries(serverEntries, queuedOps) {
 }
 
 /**
- * Resolve event titles for event-kind entries by seed, batched. Mutates the
- * passed entries in place (sets eventTitle) and returns the seed→title map.
- * Best-effort: any failure leaves titles null (generic "event" label).
+ * Resolve event titles + deal numbers for event-kind entries by seed,
+ * batched. Mutates the passed entries in place (sets eventTitle and
+ * eventDealNumber) and returns the seed→{title, dealNumber} map.
+ * Best-effort: any failure leaves titles/numbers null (generic labels).
  * @param {object[]} entries
- * @returns {Promise<Record<string, string|null>>}
+ * @returns {Promise<Record<string, {title: string|null, dealNumber: number|null}>>}
  */
 export async function resolveEventTitles(entries) {
   const seeds = [
@@ -149,7 +152,7 @@ export async function resolveEventTitles(entries) {
   try {
     const { data: deals, error: dealsError } = await supabase
       .from('special_event_deals')
-      .select('seed, page_id')
+      .select('seed, page_id, deal_number')
       .in('seed', seeds);
     if (dealsError || !deals?.length) return {};
     const pageIds = [...new Set(deals.map((d) => d.page_id))];
@@ -166,18 +169,22 @@ export async function resolveEventTitles(entries) {
       .in('id', eventIds);
     if (eventsError || !events?.length) return {};
     const eventToTitle = new Map(events.map((e) => [e.id, e.title]));
-    const seedToTitle = {};
+    const seedToEvent = {};
     for (const deal of deals) {
       const eventId = pageToEvent.get(deal.page_id);
       const title = eventId != null ? (eventToTitle.get(eventId) ?? null) : null;
-      if (seedToTitle[deal.seed] == null) seedToTitle[deal.seed] = title;
+      if (seedToEvent[deal.seed] == null) {
+        seedToEvent[deal.seed] = { title, dealNumber: deal.deal_number ?? null };
+      }
     }
     for (const entry of entries) {
       if (entry.gameKind === 'event' && entry.seed != null && !entry.eventTitle) {
-        entry.eventTitle = seedToTitle[entry.seed] ?? null;
+        const resolved = seedToEvent[entry.seed];
+        entry.eventTitle = resolved?.title ?? null;
+        entry.eventDealNumber = resolved?.dealNumber ?? null;
       }
     }
-    return seedToTitle;
+    return seedToEvent;
   } catch {
     return {};
   }

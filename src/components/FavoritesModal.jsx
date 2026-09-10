@@ -24,13 +24,7 @@ import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useFavoritesStore } from '../hooks/useFavoritesStore.js';
 import { formatHistoryDate } from '../utils/formatHistoryDate.js';
-
-// Same title rule as the History modal: resolved event title, else the
-// localized deal-kind label. Shared by rows and the play confirmation.
-function favoriteTitle(entry, t) {
-  return entry.eventTitle
-    ?? (entry.gameKind ? t(`history.kinds.${entry.gameKind}`, { defaultValue: entry.gameKind }) : t('history.kinds.unknown'));
-}
+import { eventDealTitle } from '../utils/eventDealTitle.js';
 
 function FavoriteRow({ entry, onPlay, onUnfavorite }) {
   const { t, i18n } = useTranslation();
@@ -38,7 +32,7 @@ function FavoriteRow({ entry, onPlay, onUnfavorite }) {
   const [focus, setFocus] = useState(false);
   const active = hover || focus;
 
-  const kindLabel = favoriteTitle(entry, t);
+  const kindLabel = eventDealTitle(entry, t);
 
   const dateLabel = formatHistoryDate(entry.favoritedAt, i18n.language) ?? '';
 
@@ -365,7 +359,7 @@ export default function FavoritesModal({ open, onClose }) {
       <ConfirmModal
         open={pendingPlay != null}
         title={t('favorites.playTitle')}
-        message={pendingPlay ? t('favorites.playMessage', { title: favoriteTitle(pendingPlay, t) }) : ''}
+        message={pendingPlay ? t('favorites.playMessage', { title: eventDealTitle(pendingPlay, t) }) : ''}
         confirmText={t('favorites.playConfirm')}
         onConfirm={confirmPlay}
         onCancel={() => setPendingPlay(null)}

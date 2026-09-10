@@ -459,6 +459,7 @@
     "detail.undos": "Undos",
     "detail.yes": "Yes",
     "empty": "No games played yet.",
+    "eventDeal": "{{title}}, Deal {{dealNumber}}",
     "kinds.daily": "Daily Challenge",
     "kinds.event": "Special Event",
     "kinds.random": "Random Deal",
@@ -732,7 +733,8 @@
     "random": "Random ({{seed}})",
     "score": "Score",
     "seedHint": "Double-click to enter a specific seed",
-    "specialEvent": "Special Event, Deal {{dealNumber}} ({{seed}})",
+    "specialEvent": "{{eventTitle}}, Deal {{dealNumber}} ({{seed}})",
+    "specialEventUnknown": "Special Event, Deal {{dealNumber}} ({{seed}})",
     "time": "Time",
     "undo": "Undo",
     "winningDeal": "Winning Deal ({{seed}})"
