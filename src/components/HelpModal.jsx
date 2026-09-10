@@ -1,11 +1,13 @@
 // components/HelpModal.jsx
-// Keyboard-shortcuts help dialog. Rendered on top of the Settings modal (higher
+// Help dialog (keyboard shortcuts + mouse/touch controls). Rendered on top of
+// the Settings modal (higher
 // zIndex) so the user can review available shortcuts without leaving settings.
 // Mirrors the visual chrome (theme CSS variables, panel/backdrop styling,
 // focus-on-open, Escape/backdrop-to-close) of SettingsModal / StatisticsModal.
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
@@ -19,6 +21,8 @@ import ModalCloseButton from './ModalCloseButton.jsx';
 export default function HelpModal({ open, onClose }) {
   const { t } = useTranslation();
   const dialogRef = useRef(null);
+  const scrollRef = useRef(null);
+  const [scrollMetrics, setScrollMetrics] = useState({ scrollTop: 0, scrollHeight: 0, clientHeight: 0 });
   const backdrop = useModalBackdrop(onClose);
 
   // Read the close handler via a ref so this effect runs once per open (depends
@@ -28,6 +32,26 @@ export default function HelpModal({ open, onClose }) {
   useEffect(() => {
     if (!open) return;
     dialogRef.current?.focus();
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      setScrollMetrics({ scrollTop: 0, scrollHeight: 0, clientHeight: 0 });
+      return undefined;
+    }
+    const element = scrollRef.current;
+    if (!element) return undefined;
+    const update = () => setScrollMetrics({ scrollTop: element.scrollTop, scrollHeight: element.scrollHeight, clientHeight: element.clientHeight });
+    element.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    update();
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(update) : null;
+    observer?.observe(element);
+    return () => {
+      element.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+      observer?.disconnect();
+    };
   }, [open]);
 
   if (!open) return null;
@@ -53,9 +77,14 @@ export default function HelpModal({ open, onClose }) {
     padding: '20px 22px',
     width: 'min(90vw, 380px)',
     maxWidth: '100%',
-    maxHeight: 'min(80vh, 560px)',
-    overflowY: 'auto',
+    maxHeight: '85vh',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
   };
+  const showScrollUp = scrollMetrics.scrollTop > 0;
+  const showScrollDown = scrollMetrics.scrollTop + scrollMetrics.clientHeight < scrollMetrics.scrollHeight - 1;
+  const scrollButton = { position: 'absolute', left: '50%', transform: 'translateX(-50%)', width: 34, height: 28, display: 'grid', placeItems: 'center', padding: 0, border: '1px solid var(--ui-modal-panel-border)', borderRadius: 999, background: 'color-mix(in srgb, var(--ui-modal-panel-bg) 82%, transparent)', color: 'var(--ui-modal-panel-fg)', boxShadow: '0 2px 8px rgba(0,0,0,0.22)', backdropFilter: 'blur(4px)', cursor: 'pointer', zIndex: 1 };
 
   const subtitle = {
     margin: '0 0 8px',
@@ -113,6 +142,8 @@ export default function HelpModal({ open, onClose }) {
         </h2>
         <ModalCloseButton onClick={onClose} />
 
+        <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
+        <div ref={scrollRef} className="modal-body-scroll" style={{ height: '100%' }}>
         <h3 style={subtitle}>{t('help.subtitleKeyboard')}</h3>
         <div style={{ marginBottom: 16 }}>
           {shortcuts.map(({ keys, action }) => (
@@ -144,6 +175,10 @@ export default function HelpModal({ open, onClose }) {
               <span style={{ fontSize: 14, flex: 1 }}>{text}</span>
             </div>
           ))}
+        </div>
+        </div>
+        {showScrollUp && <button type="button" aria-label={t('help.scrollTop')} onClick={() => scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })} style={{ ...scrollButton, top: 8 }}><ChevronUp size={18} strokeWidth={2.5} aria-hidden="true" /></button>}
+        {showScrollDown && <button type="button" aria-label={t('help.scrollBottom')} onClick={() => { const element = scrollRef.current; element?.scrollTo({ top: element.scrollHeight, behavior: 'smooth' }); }} style={{ ...scrollButton, bottom: 8 }}><ChevronDown size={18} strokeWidth={2.5} aria-hidden="true" /></button>}
         </div>
       </div>
     </div>

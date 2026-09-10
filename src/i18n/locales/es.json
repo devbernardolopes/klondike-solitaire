@@ -382,6 +382,8 @@
     "mouse.autoMove": "Single-click / tap a face-up card to auto-move it (foundations first)",
     "mouse.dragDrop": "Drag & drop cards to move them; grabbing a face-up tableau card lifts the whole valid run",
     "mouse.stock": "Click / tap the stock to draw; click the empty stock (↻) to recycle the waste",
+    "scrollBottom": "Scroll help to bottom",
+    "scrollTop": "Scroll help to top",
     "subtitleKeyboard": "Keyboard Shortcuts",
     "subtitleMouse": "Mouse/Touch Controls",
     "title": "Help"
