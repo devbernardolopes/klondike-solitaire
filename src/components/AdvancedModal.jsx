@@ -9,7 +9,7 @@
 // no Escape, no X) and shows a spinner; a timeout bounds the wait. On success
 // a "Refresh page" button is offered (recommended) alongside Close.
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useModalBackdrop } from './modalBackdrop.js';
 import { useModalEscape } from '../hooks/useModalEscape.js';
@@ -17,11 +17,11 @@ import { Z } from '../utils/modalStack.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
 import ToggleSwitch from './ToggleSwitch.jsx';
+import GameModeLabel from './GameModeLabel.jsx';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
-import { getCachedEventDetailSync } from '../repo/specialEventsRepository.js';
 import { deal } from '../core/dealer.js';
 import { buildSolvitaireText } from '../core/solvitaire.js';
 import { buildSnapshotText, snapshotModeToken } from '../core/snapshot.js';
@@ -59,37 +59,6 @@ function withTimeout(promise, ms) {
 }
 
 /**
- * Resolve the event-sequential Deal N for the deal label. Prefers the number
- * carried on the deal itself; falls back to the in-memory cached event detail
- * (covers sessions restored from a pre-number replaySpec, where the deal id
- * survived but the number did not). Returns '…' when unknown so the localized
- * "Special Event, Deal N (seed)" shape still renders.
- * @param {string|null} eventId
- * @param {number|null} dealId
- * @param {number|null} dealNumber
- */
-function resolveEventDealNumber(eventId, dealId, dealNumber) {
-  if (dealNumber != null) return dealNumber;
-  try {
-    if (eventId && dealId != null) {
-      const detail = getCachedEventDetailSync(eventId);
-      for (const p of detail?.pages || []) {
-        const found = (p.deals || []).find((d) => d.id === dealId);
-        if (found && found.dealNumber != null) return found.dealNumber;
-      }
-    }
-  } catch {}
-  return '…';
-}
-
-// Double-click / double-tap detector for the deal label to open the
-// "Enter Seed" dialog. A pointer-based detector (mirroring Board's double-tap
-// logic) makes touch taps work too, since browsers don't synthesize dblclick
-// for touch.
-const SEED_LABEL_DOUBLE_MS = 300;
-const SEED_LABEL_DOUBLE_DIST = 24;
-
-/**
  * @param {object} props
  * @param {boolean} props.open
  * @param {() => void} props.onClose
@@ -103,17 +72,7 @@ export default function AdvancedModal({ open, onClose }) {
   const [errorMsg, setErrorMsg] = useState(null);
   const blocked = phase === 'working';
 
-  // Live deal identity for the label at the top: hook subscriptions (not
-  // getState snapshots) so session restore after reload pops the label in
-  // while the modal is already open. `currentGameKind` is null until a deal
-  // exists or the persisted session is restored.
-  const seed = useGameStore((s) => s.state.seed);
   const tableau = useGameStore((s) => s.state.tableau);
-  const currentGameKind = useUiStore((s) => s.currentGameKind);
-  const currentDailyDate = useUiStore((s) => s.currentDailyDate);
-  const currentEventDealId = useUiStore((s) => s.currentEventDealId);
-  const currentEventDealNumber = useUiStore((s) => s.currentEventDealNumber);
-  const currentEventId = useUiStore((s) => s.currentEventId);
   const hasDeal = Array.isArray(tableau) && tableau.some((p) => p.length > 0);
   // Preference toggles relocated here from the Settings modal. Same store
   // subscriptions and setters — no persistence changes: pinLastEvent is a
@@ -122,24 +81,6 @@ export default function AdvancedModal({ open, onClose }) {
   const pinLastEvent = useSettingsStore((s) => s.pinLastEvent);
   const leaderboardVisible = useAuthStore((s) => s.leaderboardVisible);
   const setLeaderboardVisible = useAuthStore((s) => s.setLeaderboardVisible);
-
-  const lastLabelTap = useRef(null);
-  const onLabelActivate = useCallback((e) => {
-    if (e.button !== undefined && e.button !== 0) return;
-    if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
-    const now = Date.now();
-    const tap = { x: e.clientX ?? 0, y: e.clientY ?? 0, t: now };
-    const prev = lastLabelTap.current;
-    lastLabelTap.current = tap;
-    if (
-      prev &&
-      now - prev.t < SEED_LABEL_DOUBLE_MS &&
-      Math.hypot(tap.x - prev.x, tap.y - prev.y) < SEED_LABEL_DOUBLE_DIST
-    ) {
-      lastLabelTap.current = null;
-      useUiStore.getState().setSeedInputDialogOpen(true);
-    }
-  }, []);
 
   useModalEscape({ open, onClose, id: 'advanced', z: Z.CHILD, enabled: !blocked });
 
@@ -359,33 +300,7 @@ export default function AdvancedModal({ open, onClose }) {
           ) : (
             <>
               <div style={{ textAlign: 'center', margin: '0 0 12px', minHeight: 20 }}>
-                {currentGameKind ? (
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    title={t('toolbar.seedHint')}
-                    onDoubleClick={onLabelActivate}
-                    onPointerUp={onLabelActivate}
-                    onKeyDown={onLabelActivate}
-                    style={{
-                      fontSize: 13,
-                      fontWeight: 600,
-                      userSelect: 'none',
-                      cursor: 'pointer',
-                      outline: 'none',
-                    }}
-                  >
-                    {currentGameKind === 'daily'
-                      ? t('toolbar.dailyChallenge', { date: currentDailyDate, seed })
-                      : currentGameKind === 'random'
-                        ? t('toolbar.random', { seed })
-                        : currentGameKind === 'event'
-                          ? t('toolbar.specialEvent', { dealNumber: resolveEventDealNumber(currentEventId, currentEventDealId, currentEventDealNumber), seed })
-                          : t('toolbar.winningDeal', { seed })}
-                  </span>
-                ) : (
-                  <span aria-hidden="true">{'\u00A0'}</span>
-                )}
+                <GameModeLabel variant="modal" />
               </div>
               <div style={{ ...field, margin: '0 0 10px', opacity: blocked ? 0.5 : 1 }}>
                 <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.pinLastEvent')}</label>

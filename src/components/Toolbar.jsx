@@ -14,6 +14,7 @@ import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { isWon } from '../core/winDetection.js';
 import NewGameModal from './NewGameModal.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
+import GameModeLabel from './GameModeLabel.jsx';
 import SettingsModal from './SettingsModal.jsx';
 import SeedInputModal from './SeedInputModal.jsx';
 import DailyChallengeModal from './DailyChallengeModal.jsx';
@@ -334,7 +335,7 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
     padding: 10,
   };
 
-  // Bottom-left cluster, left-to-right: [Main Menu] [New Game].
+  // Bottom-left cluster: [New Game] only (Main Menu lives top-right).
   // Each is fixed-bottom and ~40px wide with a 12px gap (FAB_GAP), matching the
   // Hint/Undo spacing on the bottom-right.
   const FAB_WIDTH = 40;
@@ -428,6 +429,27 @@ function ElapsedClock() {
               <Heart size={22} fill={isCurrentFavorite ? '#e5484d' : 'none'} aria-hidden="true" />
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => setSettingsDialogOpen(true)}
+            aria-label={t('mainMenu.title')}
+            title={t('mainMenu.title')}
+            style={{
+              position: 'absolute',
+              right: 0,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              pointerEvents: 'auto',
+              background: 'none',
+              border: 'none',
+              padding: 8,
+              cursor: 'pointer',
+              color: '#fff',
+              opacity: 0.85,
+            }}
+          >
+            <Menu size={22} aria-hidden="true" />
+          </button>
           <div style={{ ...hudColStyle, display: 'none' }}>
             <span style={hudLabelStyle}>{t('toolbar.score')}</span>
             <span style={hudValueStyle}>{score}</span>
@@ -446,18 +468,22 @@ function ElapsedClock() {
         </div>
       </div>
 
-      <button
-        style={{ ...fab, left: fabLeft(0) }}
-        aria-label={t('mainMenu.title')}
-        title={t('mainMenu.title')}
-        onClick={() => setSettingsDialogOpen(true)}
+      <div
+        style={{
+          position: 'fixed',
+          left: 16,
+          bottom: 68,
+          zIndex: 50,
+          maxWidth: '60vw',
+          pointerEvents: 'auto',
+        }}
       >
-        <Menu size={20} />
-      </button>
+        <GameModeLabel variant="hud" />
+      </div>
 
       <button
         className={newGameNeedsAttention ? 'new-game-attention' : undefined}
-        style={{ ...fab, left: fabLeft(1) }}
+        style={{ ...fab, left: fabLeft(0) }}
         aria-label={t('toolbar.newGame')}
         title={t('toolbar.newGame.title')}
         onClick={() => setNewGameDialogOpen(true)}
