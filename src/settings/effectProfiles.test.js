@@ -26,14 +26,14 @@ test('default snapshot matches the requested baseline', () => {
     cardEffects: true,
     shimmer: true,
     hoverGlow: true,
-    ghostTrail: true,
+    ghostTrail: false,
     winEnhanced: true,
     tableTexture: true,
     highlightCard: false,
     flipOvershoot: false,
     bounce: false,
     uncover: false,
-    ghostEcho: false,
+    ghostEcho: true,
     wobble: false,
     winCascade: false,
     boardFrame: false,
@@ -60,13 +60,20 @@ test('essential disables exactly its five keys against default', () => {
   }
 });
 
-test('showcase enables exactly its eight keys against default', () => {
+test('showcase enables exactly its nine keys against default', () => {
   const { showcase } = EFFECT_PROFILES;
-  for (const k of ['highlightCard', 'flipOvershoot', 'bounce', 'uncover', 'ghostEcho', 'wobble', 'winCascade', 'boardFrame']) {
+  for (const k of ['highlightCard', 'flipOvershoot', 'bounce', 'uncover', 'ghostEcho', 'ghostTrail', 'wobble', 'winCascade', 'boardFrame']) {
     assert.equal(showcase[k], true);
   }
   for (const k of EFFECT_PROFILE_KEYS) {
     if (showcase[k] !== true) assert.equal(showcase[k], DEFAULT_EFFECT_SNAPSHOT[k]);
+  }
+});
+
+test('default and essential have ghost echo on and ghost trail off', () => {
+  for (const id of ['default', 'essential']) {
+    assert.equal(EFFECT_PROFILES[id].ghostEcho, true);
+    assert.equal(EFFECT_PROFILES[id].ghostTrail, false);
   }
 });
 
