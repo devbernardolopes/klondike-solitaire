@@ -17,88 +17,93 @@ Page/grid-aware SQL authoring via `scripts/generateEventSeeds.mjs` (migration 02
 
 See the **Seed Generation** section below for the generation workflow.
 
+## Deal algorithm
+
+Every deal starts from a `uint32` seed (`0..2**32-1`). The seed drives a
+Mulberry32 PRNG through a Fisher–Yates shuffle of the standard 52-card deck
+(`src/core/Deck.js`), then `src/core/dealer.js` deals tableau `1+2+…+7` (last
+card face-up) with the remaining 24 as stock. Same seed → same deal, on every
+device.
+
+Curated seeds (winning pool, daily, special events) are pre-verified solvable:
+each seed is kept only after a solver actually plays it out to 52/52
+foundations, so the pool never contains false positives. Random Shuffle deals
+pick `Math.floor(Math.random() * 2**32)` via `src/core/randomSeed.js`, rejecting
+every curated seed plus every previously dealt random seed, so they never repeat
+another mode.
+
+## Solver
+
+Bounded depth-first search with memoization (`src/core/solver.js` at runtime,
+`scripts/lib/seedSolver.mjs` offline — same rules, same verdicts). States are
+hashed (`stock|waste|foundations|tableau`) to prune draw/recycle cycles;
+foundation moves are tried first, then tableau runs, then draw/recycle. Budgets
+(`maxNodes`/`maxMs`) bound the search: it returns a winning move list, `null`
+(space exhausted — proven dead end), or timeout (unknown, never treated as
+dead). The UI runs it in a Web Worker (`src/core/solverClient.js`) so the board
+never blocks.
+
 ## Seed Generation
 
-All seed types use the real core move engine to guarantee accurate solvability verification. Generated seeds are globally unique across all game modes.
+Uniqueness comes from exclusion, not ranges: every generator starts from the
+shared set in `scripts/lib/seedRegistry.mjs`
+(`solvableSeeds.json` + `dailyChallenge.json` + `eventSeeds.sql`, local files
+only), so **run order no longer matters**. Verify any time with:
+
+```bash
+npm run seeds:check
+```
+
+This is blocking: it runs as part of `npm test` and fails on any cross-mode
+reuse or internal duplicate.
 
 ### Winning Deal Seeds
-Generate the main solvable pool using the `generateSolvablePool.mjs` script:
 
 ```bash
-node scripts/generateSolvablePool.mjs
+npm run winning:regenerate -- --dry-run --count 50   # preview, writes nothing
+npm run winning:regenerate -- --count 2000 --skip-db  # write JSON only
+npm run winning:regenerate -- --count 2000            # + upsert winning_seeds (needs SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY)
 ```
 
-**Environment variables (optional):**
-- `SEED_RANGE_START`: Starting seed for the scan (default: 0)
-- `SEED_RANGE_END`: Ending seed for the scan (default: 50000)
-- `TARGET_POOL_SIZE`: Target number of seeds to generate (default: 2000)
-- `OUT_PATH`: Custom output path for the seed pool
-- `SOLVER_PATH`: Path to the KlondikeSolver binary for faster generation
-
-**Features:**
-- Resume capability via `solvableSeeds.meta.json`
-- Fast binary path when KlondikeSolver is available
-- Fallback to embedded pure-JS solver
-- Guarantees no false positives (only false negatives possible)
+Starting point is `cyrb53("winning-pool-v2")`, then `base,+1,-1,+2,-2…`,
+solver-verified, excluding every daily + event seed. Replaces the pool
+wholesale (old pool seeds are released).
 
 ### Daily Challenge Seeds
-Generate bundled daily seeds using the `generateDaily.mjs` script:
 
 ```bash
-node scripts/generateDaily.mjs
+node scripts/generateDaily.mjs            # full run -> src/data/dailyChallenge.json
+node scripts/generateDaily.mjs --smoke    # stub solver self-check, no writes to data dir
 ```
 
-**Environment variables (optional):**
-- `DAILY_ANCHOR`: Starting date for daily seeds (default: "2026-01-01")
-- `DAILY_WINDOW_YEARS`: Duration in years for daily seeds (default: 5)
-- `DAILY_LIMIT`: Number of daily seeds to generate (unlimited by default)
-- `SOLVER_PATH`: Path to the KlondikeSolver binary for faster generation
+One seed per date from `DAILY_ANCHOR` (`2026-01-01`) over `DAILY_WINDOW_YEARS`
+(`5`); each date hashes (`cyrb53(date)`) and walks outward to the nearest
+solvable seed outside the global set.
 
-**Features:**
-- Incremental generation preserves existing seeds
-- Global uniqueness across all seed types
-- Support for smoke testing with `--smoke` flag
-- Customizable output directory with `--out <path>`
-
-### Special Event SQL Authoring
-Generate page/grid-aware SQL for Supabase migration 022 using the `generateEventSeeds.mjs` script:
+### Special Event Seeds
 
 ```bash
-node scripts/generateEventSeeds.mjs --catalog scripts/eventCatalog.src.json --out eventSeeds.sql
+node scripts/generateEventSeeds.mjs --catalog scripts/eventCatalog.src.json --out scripts/eventSeeds.sql
+node scripts/generateEventSeeds.mjs --smoke    # stub solver self-check
+node scripts/event:new                         # interactive wizard (catalog + locales + SQL + optional DB)
 ```
 
-**Environment variables (optional):**
-- `SOLVER_PATH`: Path to the KlondikeSolver binary for faster generation (defaults to embedded JS solver)
-- `--smoke`: Run a fast validation mode with a stub solver (useful for CI)
-- `--resume`: Resume from previously generated SQL, skipping already-authored pages
+Each page hashes (`cyrb53("<eventId>:page<N>")`) and fills `gridSize²`
+solver-verified seeds. Output is migration-022 SQL
+(`unnest(array[position…])`, `deal_number` event-sequential) — paste into
+Supabase Dashboard → SQL Editor. `--resume` skips already-authored pages;
+re-runs without it still exclude old event seeds.
 
-**Features:**
-- Reads `scripts/eventCatalog.src.json` which describes events with pages (gridSize, imagePath, coinReward)
-- Emits SQL INSERTs for `special_events`, `special_event_pages`, and `special_event_deals` following the migration 022 authoring template
-- Positions are row-major: position 1 = top-left, gridSize² = bottom-right
-- `--resume` flag supports incremental authoring by tracking previously generated seed positions
-- All generated seeds are verified solvable via the embedded JS solver or KlondikeSolver binary
+### Publishing
 
-**Output example** (first few lines):
-```sql
--- Special Event deal seeds — auto-generated by scripts/generateEventSeeds.mjs
--- Generated: 2026-01-15T...
--- Solver: embedded JS fallback
--- Positions are row-major: position 1 = top-left, gridSize² = bottom-right.
--- Paste into: Supabase Dashboard > SQL Editor > Run
--- ============================================================
-
-insert into special_events (id, title, description, starts_at, game_kind, sort_order)
-values ('christmas-2026', 'Christmas 2026', 'A festive three-page collection.', '2026-12-18T00:00:00Z', 'draw-1', 10);
-
-insert into special_event_pages (event_id, page_number, grid_size, image_path, coin_reward)
-values ('christmas-2026', 1, 2, 'christmas-2026/page1.png', 50),
-       ('christmas-2026', 2, 3, 'christmas-2026/page2.png', 100);
-
-insert into special_event_deals (page_id, "position", seed)
-select id, unnest(array[1,2,3,4]), unnest(array[111111,222222,333333,444444]::bigint[])
-from special_event_pages where event_id = 'christmas-2026' and page_number = 1;
+```bash
+node scripts/pushSeeds.mjs --dry-run   # report counts, no writes
+node scripts/pushSeeds.mjs             # upsert winning_seeds + daily_seeds
 ```
+
+Events are published via the SQL file above, not `pushSeeds.mjs`. The app reads
+live Supabase tables first (`src/repo/seedRepository.js`) with the bundled JSON
+as offline fallback.
 
 ## Build & Run
 

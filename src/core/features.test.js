@@ -14,6 +14,7 @@ import {
   fillSeeds,
 } from '../../scripts/lib/seedHelpers.mjs';
 import { dailyDateList, buildUsedSet } from '../../scripts/generateDaily.mjs';
+import { buildGlobalUsedSet, findOverlaps } from '../../scripts/lib/seedRegistry.mjs';
 import { seedForDate, isDateBundled, listBundledDates, getDailyAnchor } from '../core/dailyChallenge.js';
 
 test('cyrb53 is deterministic, 32-bit, and input-sensitive', () => {
@@ -52,9 +53,21 @@ test('dailyDateList spans a full year and is stable (UTC)', () => {
   assert.equal(list2.length, 365);
 });
 
-test('buildUsedSet aggregates pool + daily without throwing on missing files', () => {
+test('buildUsedSet aggregates every mode (winning + daily + events), order-independent', () => {
   const used = buildUsedSet();
   assert.ok(used instanceof Set);
+  const global = buildGlobalUsedSet();
+  assert.deepEqual([...used].sort((a, b) => a - b), [...global.used].sort((a, b) => a - b));
+  // When the event SQL exists, its seeds must be in the set.
+  const here = dirname(fileURLToPath(import.meta.url));
+  const sqlPath = join(here, '..', '..', 'scripts', 'eventSeeds.sql');
+  if (existsSync(sqlPath)) {
+    assert.ok(global.counts.events > 0, 'expected event seeds in global set');
+  }
+});
+
+test('findOverlaps reports no cross-mode seed reuse', () => {
+  assert.deepEqual(findOverlaps(), []);
 });
 
 test('daily loader reflects the bundled data file', () => {

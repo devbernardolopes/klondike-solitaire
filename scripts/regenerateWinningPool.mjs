@@ -28,8 +28,9 @@ import { createInterface } from 'node:readline/promises';
 import { execFileSync } from 'node:child_process';
 import { createClient } from '@supabase/supabase-js';
 
-import { findSolverBinary } from './generateSolvablePool.mjs';
+import { findSolverBinary } from './lib/seedSolver.mjs';
 import { cyrb53, fillSeeds, solveBatch, loadJson } from './lib/seedHelpers.mjs';
+import { buildGlobalUsedSet } from './lib/seedRegistry.mjs';
 import { parseExistingDeals } from './generateEventSeeds.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -107,27 +108,26 @@ Sequence: exclusion set (daily + events) -> solver-verified fill -> validate
   -> test run.`);
 }
 
-// ---- Exclusion set (daily + events; old pool deliberately excluded) ----
+// ---- Exclusion set (every mode except the old pool, which is replaced) ----
 
-function buildExclusionSet() {
-  const used = new Set();
-  let dailyCount = 0;
-  let eventCount = 0;
-  const daily = loadJson(DAILY_PATH, null);
-  const seeds = (daily && daily.seeds) || {};
-  for (const k of Object.keys(seeds)) {
-    const v = seeds[k];
-    if (typeof v === 'number') {
-      used.add(v >>> 0);
-      dailyCount++;
+function buildExclusionSet({ poolPath = POOL_PATH, dailyPath = DAILY_PATH, eventSqlPath = EVENT_SQL_PATH } = {}) {
+  // Start from the shared global set (winning + daily + events), then release
+  // the old pool: it is replaced wholesale, so only daily + events constrain
+  // the new pool. Path defaults stay in sync via the registry.
+  const { used } = buildGlobalUsedSet({ poolPath, dailyPath, eventSqlPath });
+  const oldPool = loadJson(poolPath, []);
+  if (Array.isArray(oldPool)) {
+    for (const v of oldPool) {
+      if (typeof v === 'number') used.delete(v >>> 0);
     }
   }
-  if (existsSync(EVENT_SQL_PATH)) {
-    const parsed = parseExistingDeals(readFileSync(EVENT_SQL_PATH, 'utf8'));
-    for (const s of parsed.usedSeeds) {
-      used.add(s >>> 0);
-      eventCount++;
-    }
+  let dailyCount = 0;
+  const daily = loadJson(dailyPath, null);
+  const seeds = (daily && daily.seeds) || {};
+  for (const k of Object.keys(seeds)) if (typeof seeds[k] === 'number') dailyCount++;
+  let eventCount = 0;
+  if (existsSync(eventSqlPath)) {
+    eventCount = parseExistingDeals(readFileSync(eventSqlPath, 'utf8')).usedSeeds.size;
   }
   return { used, dailyCount, eventCount };
 }

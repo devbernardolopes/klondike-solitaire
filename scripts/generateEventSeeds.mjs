@@ -41,7 +41,7 @@ import { writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { findSolverBinary } from './generateSolvablePool.mjs';
+import { findSolverBinary } from './lib/seedSolver.mjs';
 import { cyrb53, fillSeeds, solveBatch, loadJson } from './lib/seedHelpers.mjs';
 import { buildUsedSet } from './generateDaily.mjs';
 
@@ -284,8 +284,9 @@ function main() {
     process.exit(1);
   }
 
-  // Build exclusion set from pool + daily + existing SQL seeds (if resuming).
-  const used = buildUsedSet();
+  // Build exclusion set from every mode (winning pool + daily + existing
+  // event SQL). Order-independent: run order no longer matters.
+  const used = buildUsedSet({ eventSqlPath: outPath });
   let seenPages = null;
   let preservedBlocks = null;
   if (resume && existsSync(outPath)) {

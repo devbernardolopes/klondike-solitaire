@@ -1,14 +1,15 @@
 {
   "name": "klondike-solitaire",
   "private": true,
-  "version": "0.0.621",
+  "version": "0.0.622",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint .",
-    "test": "node --test && node scripts/i18n-sync.mjs --check",
+    "test": "node --test && node scripts/i18n-sync.mjs --check && npm run seeds:check",
+    "seeds:check": "node scripts/checkSeeds.mjs",
     "event:new": "node scripts/createSpecialEvent.mjs",
     "winning:regenerate": "node scripts/regenerateWinningPool.mjs",
     "catalog:dump": "node scripts/dump-catalog.mjs",

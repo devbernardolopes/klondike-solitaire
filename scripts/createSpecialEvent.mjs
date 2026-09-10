@@ -8,7 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 import { generateAll, parseExistingDeals } from './generateEventSeeds.mjs';
 import { solveBatch } from './lib/seedHelpers.mjs';
 import { buildUsedSet } from './generateDaily.mjs';
-import { findSolverBinary } from './generateSolvablePool.mjs';
+import { findSolverBinary } from './lib/seedSolver.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
@@ -404,7 +404,7 @@ async function main() {
     writeFileSync(opts.catalog, JSON.stringify(catalog, null, 2) + '\n');
     console.error(`Catalog updated: ${opts.catalog}`);
 
-    const used = buildUsedSet();
+    const used = buildUsedSet({ eventSqlPath: opts.out });
     let seenPages = null;
     let preservedBlocks = null;
     if (existsSync(opts.out)) {

@@ -1,78 +1,27 @@
-// scripts/generateSolvablePool.mjs
+// scripts/lib/seedSolver.mjs
 //
-// ⚠️ NOT part of `npm run dev` / `npm run build`. This is a manual maintenance
-// script to (re)generate `src/data/solvableSeeds.json` — a static, pre-verified
-// pool of solvable game seeds the app bundles. Run it occasionally to grow the
-// pool:
+// Shared offline solver plumbing (extracted from the retired
+// generateSolvablePool.mjs). Pure computational helpers — no generation
+// orchestration, no main().
 //
-//     node scripts/generateSolvablePool.mjs
+// Imported by: seedHelpers.mjs (re-export), generateDaily.mjs,
+//              generateEventSeeds.mjs, regenerateWinningPool.mjs,
+//              createSpecialEvent.mjs, core/features.test.js
 //
-// It requires the `KlondikeSolver` binary (ShootMe/Klondike-Solver) for the fast
-// path. Point it at the binary via the `SOLVER_PATH` env var, or have it on
-// `PATH`. When the binary is NOT available, it falls back to an embedded,
-// self-contained pure-JS solver that reuses the REAL core move engine (so its
-// verdicts are faithful to the actual game). The JS fallback only marks a seed
-// "solvable" when it has actually reached a full win, so the committed pool
-// never contains false positives — it may miss some solvable deals (false
-// negatives), but those are simply skipped.
-//
-// Supports RESUME: it remembers how far it has scanned in
-// `src/data/solvableSeeds.meta.json` and continues from there on the next run,
-// so you can grow the pool across multiple invocations.
 
-import { writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { writeFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 
-import { buildStandardDeck, shuffle } from '../src/core/Deck.js';
-import { deal } from '../src/core/dealer.js';
-import { canMoveToTableau, canMoveToFoundation, getTableauRun, DEST_ORDER } from '../src/core/rules.js';
+import { buildStandardDeck, shuffle } from '../../src/core/Deck.js';
+import { deal } from '../../src/core/dealer.js';
+import { canMoveToTableau, canMoveToFoundation, getTableauRun, DEST_ORDER } from '../../src/core/rules.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = join(__dirname, '..', 'src', 'data');
-const POOL_PATH = join(DATA_DIR, 'solvableSeeds.json');
-const META_PATH = join(DATA_DIR, 'solvableSeeds.meta.json');
+const DATA_DIR = join(__dirname, '..', '..', 'src', 'data');
 
-// ---- Tunable constants -----------------------------------------------------
-const SEED_RANGE_START = Number(process.env.SEED_RANGE_START ?? 0);
-const SEED_RANGE_END = Number(process.env.SEED_RANGE_END ?? 50000); // scanning stops early once TARGET reached
-const TARGET_POOL_SIZE = Number(process.env.TARGET_POOL_SIZE ?? 2000);
-const STATE_CAP = Number(process.env.STATE_CAP ?? 4000); // max states explored per seed by the JS fallback
-const OUT_PATH = process.env.OUT_PATH ?? POOL_PATH;
 const SUIT_TO_DIGIT = { clubs: '1', diamonds: '2', hearts: '3', spades: '4' };
-
-// ---- Seed pool persistence (resume support) --------------------------------
-function loadPool() {
-  return loadPoolFrom(POOL_PATH);
-}
-
-function loadPoolFrom(path) {
-  if (!existsSync(path)) return [];
-  try {
-    const arr = JSON.parse(readFileSync(path, 'utf8'));
-    return Array.isArray(arr) ? arr : [];
-  } catch {
-    return [];
-  }
-}
-
-function loadScanCursor() {
-  if (!existsSync(META_PATH)) return SEED_RANGE_START;
-  try {
-    const meta = JSON.parse(readFileSync(META_PATH, 'utf8'));
-    return typeof meta.scannedUpTo === 'number' ? meta.scannedUpTo : SEED_RANGE_START;
-  } catch {
-    return SEED_RANGE_START;
-  }
-}
-
-function saveProgress(pool, scannedUpTo) {
-  writeFileSync(OUT_PATH, JSON.stringify([...new Set(pool)].sort((a, b) => a - b)) + '\n');
-  if (OUT_PATH === POOL_PATH) {
-    writeFileSync(META_PATH, JSON.stringify({ scannedUpTo }) + '\n');
-  }
-}
 
 // ---- Binary (KlondikeSolver) fast path --------------------------------------
 function findSolverBinary() {
@@ -219,7 +168,7 @@ function genMoves(st, prune = false) {
         // Prune: relocating a whole run onto an empty column exposes nothing.
         if (prune && !loc.startsWith('foundation') && dest.length === 0) {
           if (j === 0) continue; // entire column moved to empty — pointless
-    if (st.up[pile[j - 1]]) continue; // nothing new exposed beneath
+          if (st.up[pile[j - 1]]) continue; // nothing new exposed beneath
         }
         moves.push({ type: 'moveCards', from, to: loc, j });
       }
@@ -326,13 +275,19 @@ function scoreMove(st, m) {
   return 0;
 }
 
+// STATE_CAP bounds the offline search per seed (env-overridable for tests).
+function stateCap() {
+  return Number(process.env.STATE_CAP ?? 4000);
+}
+
 // Returns true iff a full win (all 52 cards in foundations) is actually reached
 // within STATE_CAP enqueued states. Returns false if unsolved / cap exceeded.
 function solveState(st) {
+  const cap = stateCap();
   const visited = new Set([keyOf(st)]);
   const stack = [st];
   while (stack.length) {
-    if (visited.size > STATE_CAP) return false;
+    if (visited.size > cap) return false;
     const s = stack.pop();
     if (foundationTotal(s) === 52) return true;
     const moves = genMoves(s, true);
@@ -355,48 +310,4 @@ function solveWithJs(seed) {
   return solveState(toCompact(deal({ seed })));
 }
 
-// ---- Main loop -------------------------------------------------------------
-function main() {
-  const binary = findSolverBinary();
-  console.log(binary ? `KlondikeSolver found: ${binary}` : 'KlondikeSolver not found — using embedded JS fallback solver.');
-
-  // Env-driven disjoint range (used for parallel runs): scan [START, END]
-  // fresh, writing to OUT_PATH. Otherwise use the resume-based default scan.
-  const useEnvRange = process.env.SEED_RANGE_START !== undefined || process.env.SEED_RANGE_END !== undefined;
-
-  const pool = useEnvRange ? loadPoolFrom(OUT_PATH) : loadPool();
-  let cursor = useEnvRange ? SEED_RANGE_START : Math.max(loadScanCursor(), SEED_RANGE_START);
-  const end = SEED_RANGE_END;
-
-  console.log(`Pool has ${pool.length} seeds. Scanning ${cursor}..${end}. Target ${TARGET_POOL_SIZE}. Out: ${OUT_PATH}`);
-
-  const batchSeeds = [];
-  while (cursor <= end && pool.length < TARGET_POOL_SIZE) {
-    batchSeeds.push(cursor);
-    if (batchSeeds.length >= 200) {
-      const solved = binary ? solveWithBinary(batchSeeds) : batchSeeds.filter((s) => solveWithJs(s));
-      for (const s of solved) if (!pool.includes(s)) pool.push(s);
-      console.log(`${cursor} / ${end} checked, ${pool.length} solvable so far.`);
-      saveProgress(pool, cursor);
-      batchSeeds.length = 0;
-    }
-    cursor++;
-  }
-
-  // Flush any remainder.
-  if (batchSeeds.length) {
-    const solved = binary ? solveWithBinary(batchSeeds) : batchSeeds.filter((s) => solveWithJs(s));
-    for (const s of solved) if (!pool.includes(s)) pool.push(s);
-    console.log(`${cursor} / ${end} checked, ${pool.length} solvable so far.`);
-  }
-  saveProgress(pool, cursor);
-  console.log(`Done. Pool size: ${pool.length}. Written to ${OUT_PATH}`);
-}
-
-// Only auto-run when executed directly (so the solver functions can be imported
-// for testing without kicking off the full scan).
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  main();
-}
-
-export { solveWithJs, solveWithBinary, findSolverBinary, genMoves, deckStringForSeed, solveState, toCompact, applyCompact, foundationTotal, keyOf, SEED_RANGE_END };
+export { solveWithJs, solveWithBinary, findSolverBinary, genMoves, deckStringForSeed, solveState, toCompact, applyCompact, foundationTotal, keyOf };

@@ -1,8 +1,9 @@
 // scripts/generateDaily.mjs
 //
 // Generate Daily Challenge seeds as pre-verified, globally UNIQUE solvable
-// seeds, excluding the winning-deal pool. Reuses the real solver plumbing
-// from generateSolvablePool.mjs so verdicts match the actual game (draw-1
+// seeds, excluding every other mode (winning pool + special events) via the
+// shared seedRegistry. Reuses the real solver plumbing
+// from lib/seedSolver.mjs so verdicts match the actual game (draw-1
 // Klondike).
 //
 //   node scripts/generateDaily.mjs            # full run -> src/data/dailyChallenge.json
@@ -11,17 +12,16 @@
 // Env: SOLVER_PATH (or a KlondikeSolver binary on PATH) selects the fast binary
 // path; otherwise the embedded pure-JS solver is used (correct but slow).
 
-import { writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { findSolverBinary } from './generateSolvablePool.mjs';
+import { findSolverBinary } from './lib/seedSolver.mjs';
 import { cyrb53, fillSeeds, solveBatch } from './lib/seedHelpers.mjs';
+import { buildGlobalUsedSet } from './lib/seedRegistry.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, '..', 'src', 'data');
-const DAILY_PATH = join(DATA_DIR, 'dailyChallenge.json');
-const POOL_PATH = join(DATA_DIR, 'solvableSeeds.json');
 const DAILY_META = join(DATA_DIR, 'dailyChallenge.meta.json');
 
 const ANCHOR = process.env.DAILY_ANCHOR || '2026-01-01';
@@ -45,21 +45,11 @@ export function dailyDateList(anchor, windowYears) {
   return out;
 }
 
-// Build the global exclusion set from pool + existing daily seeds.
-export function buildUsedSet({ poolPath = POOL_PATH, dailyPath = DAILY_PATH } = {}) {
-  const used = new Set();
-  const addAll = (path, pick) => {
-    if (!existsSync(path)) return;
-    try {
-      const doc = JSON.parse(readFileSync(path, 'utf8'));
-      for (const v of pick(doc)) used.add(v);
-    } catch {
-      /* ignore malformed files */
-    }
-  };
-  addAll(poolPath, (d) => (Array.isArray(d) ? d : []));
-  addAll(dailyPath, (d) => Object.values((d && d.seeds) || {}));
-  return used;
+// Build the global exclusion set from every mode (winning pool + daily +
+// special-event SQL). Order-independent: every generator starts from the same
+// set, so run order no longer matters. Local files only (offline-friendly).
+export function buildUsedSet({ poolPath, dailyPath, eventSqlPath } = {}) {
+  return buildGlobalUsedSet({ poolPath, dailyPath, eventSqlPath }).used;
 }
 
 // ---- Core generation routine ------------------------------------------------

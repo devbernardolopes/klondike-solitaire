@@ -1,15 +1,15 @@
 // scripts/lib/seedHelpers.mjs
 //
 // Shared solver plumbing for offline seed-generation scripts (daily
-// challenge, special events). Pure computational helpers — no file-path
+// challenge, special events, winning pool). Pure computational helpers — no file-path
 // constants, no generation orchestration, no main().
 //
 // Imported by: generateDaily.mjs, generateEventSeeds.mjs,
-//              core/features.test.js (via the individual scripts)
+//              regenerateWinningPool.mjs, core/features.test.js
 //
 
 import { readFileSync, existsSync } from 'node:fs';
-import { solveWithJs, solveWithBinary } from '../generateSolvablePool.mjs';
+import { solveWithJs, solveWithBinary } from './seedSolver.mjs';
 
 // ---- Pure helpers (exported for unit testing) ------------------------------
 
