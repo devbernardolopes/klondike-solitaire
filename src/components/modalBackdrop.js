@@ -61,28 +61,46 @@ function swallowNextBackdropClick() {
   swallowTimer = setTimeout(disarm, DISMISS_SWALLOW_MS);
 }
 
+// A gesture that begins while the modal is non-dismissable (e.g. a Win-modal
+// tap landing on the backdrop through the still-animating, pointer-through
+// panel) must never close it, even if the modal becomes dismissable before
+// lift-off — so dismissability is captured at pointerdown, not pointerup.
+
 /**
  * @param {() => void} onClose  invoked when a real outside click is detected
+ * @param {() => boolean} [isDismissable]  defaults to always dismissable;
+ *   pass e.g. `() => !entering` for modals with a non-interactive entrance
  * @returns {{ onPointerDown: (e: PointerEvent) => void, onPointerUp: (e: PointerEvent) => void }}
  */
-export function useModalBackdrop(onClose) {
+export function useModalBackdrop(onClose, isDismissable) {
   const downTarget = useRef(null);
+  const downDismissable = useRef(false);
 
   const onPointerDown = (e) => {
     if (e.button !== 0) return;
     downTarget.current = e.target;
+    try {
+      downDismissable.current = isDismissable ? isDismissable() : true;
+    } catch {
+      downDismissable.current = true;
+    }
   };
 
   const onPointerUp = (e) => {
     if (e.button !== 0) return;
     const backdrop = e.currentTarget;
-    if (downTarget.current === backdrop && e.target === backdrop) {
+    let upDismissable = true;
+    try {
+      upDismissable = isDismissable ? isDismissable() : true;
+    } catch {}
+    if (downDismissable.current && upDismissable && downTarget.current === backdrop && e.target === backdrop) {
       onClose();
       // Swallow the stray synthesized click that would otherwise land on the
       // trigger underneath the backdrop and instantly re-open this modal.
       swallowNextBackdropClick();
     }
     downTarget.current = null;
+    downDismissable.current = false;
   };
 
   return { onPointerDown, onPointerUp };

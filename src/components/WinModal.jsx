@@ -124,16 +124,17 @@ export default function WinModal() {
 
   // Entrance animation: the panel grows from a tiny centered size to full size.
   // While it is still animating (`entering`), the modal must not be dismissable
-  // or interactable — so both the backdrop close and Escape are gated, and the
-  // panel itself blocks pointer/keyboard input (and is aria-hidden). Focus only
-  // moves to the panel once the entrance completes.
+  // — so both the backdrop close and Escape are gated. The panel itself stays
+  // interactive throughout (taps land on the real buttons and just work) and
+  // is aria-hidden until the entrance completes. Focus only moves to the panel
+  // once the entrance completes.
   const entering = useModalEnter({
     panelRef,
     open: winDialogOpen,
     onEnterDone: launchCoinFlight,
   });
 
-  const backdrop = useModalBackdrop(entering ? () => {} : closeWinDialog);
+  const backdrop = useModalBackdrop(closeWinDialog, () => !entering);
 
   // NOTE: there is deliberately NO close/unmount cleanup that cancels the
   // flight or ends the mask — a live flight survives modal dismissal and
@@ -239,7 +240,11 @@ export default function WinModal() {
     maxWidth: '100%',
     outline: 'none',
     transformOrigin: 'center center',
-    pointerEvents: entering ? 'none' : 'auto',
+    // Always interactive: mid-entrance taps land on the real buttons and just
+    // work. Dismissal itself stays gated (backdrop gate above + Escape below),
+    // so a tap that begins outside can never close, even if the entrance ends
+    // mid-gesture.
+    pointerEvents: 'auto',
   };
 
   // Column header: "Current" and "Best" sit above the two value columns.
