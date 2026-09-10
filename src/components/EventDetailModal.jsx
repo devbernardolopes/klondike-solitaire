@@ -89,7 +89,11 @@ export default function EventDetailModal() {
   const activeGameKind = useUiStore((s) => s.currentGameKind);
   const activeEventId = useUiStore((s) => s.currentEventId);
   const activeEventDealId = useUiStore((s) => s.currentEventDealId);
-  const activeDealId = activeGameKind === 'event' && activeEventId === eventId
+  // No glow once the deal reached an end state: a win pins endTime
+  // (stopTimer), a hard limit sets isOver (freeze). A dealt-but-unstarted
+  // deal still glows — it hasn't ended.
+  const sessionLive = useStatsStore((s) => s.endTime === null && !s.isOver);
+  const activeDealId = sessionLive && activeGameKind === 'event' && activeEventId === eventId
     ? activeEventDealId
     : null;
 
