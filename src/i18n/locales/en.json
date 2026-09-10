@@ -403,7 +403,13 @@
     "keys.hints": "Show hints",
     "keys.newGame": "New game",
     "keys.undo": "Undo",
-    "title": "Keyboard Shortcuts"
+    "mouse.autoComplete": "Double-click / double-tap any empty board space (not on a card) to auto-complete to the foundations",
+    "mouse.autoMove": "Single-click / tap a face-up card to auto-move it (foundations first)",
+    "mouse.dragDrop": "Drag & drop cards to move them; grabbing a face-up tableau card lifts the whole valid run",
+    "mouse.stock": "Click / tap the stock to draw; click the empty stock (↻) to recycle the waste",
+    "subtitleKeyboard": "Keyboard Shortcuts",
+    "subtitleMouse": "Mouse/Touch Controls",
+    "title": "Help"
   },
   "history": {
     "detail.date": "Played",

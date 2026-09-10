@@ -53,6 +53,14 @@ export default function HelpModal({ open, onClose }) {
     padding: '20px 22px',
     width: 'min(90vw, 380px)',
     maxWidth: '100%',
+    maxHeight: 'min(80vh, 560px)',
+    overflowY: 'auto',
+  };
+
+  const subtitle = {
+    margin: '0 0 8px',
+    fontSize: 14,
+    fontWeight: 700,
   };
 
   const row = {
@@ -71,6 +79,13 @@ export default function HelpModal({ open, onClose }) {
     { keys: 'A', action: t('help.keys.autoComplete') },
     { keys: 'H', action: t('help.keys.hints') },
     { keys: 'Enter / Space', action: t('help.keys.autoMove') },
+  ];
+
+  const mouseControls = [
+    t('help.mouse.autoMove'),
+    t('help.mouse.dragDrop'),
+    t('help.mouse.stock'),
+    t('help.mouse.autoComplete'),
   ];
 
   return (
@@ -98,7 +113,8 @@ export default function HelpModal({ open, onClose }) {
         </h2>
         <ModalCloseButton onClick={onClose} />
 
-        <div>
+        <h3 style={subtitle}>{t('help.subtitleKeyboard')}</h3>
+        <div style={{ marginBottom: 16 }}>
           {shortcuts.map(({ keys, action }) => (
             <div key={keys} style={row}>
               <kbd
@@ -117,6 +133,15 @@ export default function HelpModal({ open, onClose }) {
                 {keys}
               </kbd>
               <span style={{ fontSize: 14, textAlign: 'right', flex: 1 }}>{action}</span>
+            </div>
+          ))}
+        </div>
+
+        <h3 style={subtitle}>{t('help.subtitleMouse')}</h3>
+        <div>
+          {mouseControls.map((text) => (
+            <div key={text} style={{ ...row, justifyContent: 'flex-start' }}>
+              <span style={{ fontSize: 14, flex: 1 }}>{text}</span>
             </div>
           ))}
         </div>
