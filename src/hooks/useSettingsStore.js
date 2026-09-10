@@ -41,27 +41,28 @@ const DEFAULTS = {
   deck: 'procedural',
   cardBack: 'default',
   handedness: 'right',
-  highlightCard: true,
+  highlightCard: false,
   particles: true,
   cardEffects: true,
   tableTexture: true,
-  boardFrame: true,
-  bounce: true,
-  ghostEcho: true,
+  boardFrame: false,
+  bounce: false,
+  ghostEcho: false,
   ghostTrail: true,
   shimmer: true,
-  uncover: true,
+  uncover: false,
   winEnhanced: true,
-  winCascade: true,
+  winCascade: false,
   hoverGlow: true,
   cardShake: true,
-  centisecondsOn: true,
+  centisecondsOn: false,
   hoverLift: true,
   wobble: false,
-  flipOvershoot: true,
+  flipOvershoot: false,
   coinFly: true,
   autoComplete: true,
   pinLastEvent: true,
+  effectProfile: 'default',
 };
 
 // Synchronous mirrors of the settings that affect first paint (theme + board
@@ -98,6 +99,7 @@ const LS_KEYS = {
   coinFly: 'klondike:coinFly',
   autoComplete: 'klondike:autoComplete',
   pinLastEvent: 'klondike:pinLastEvent',
+  effectProfile: 'klondike:effectProfile',
 };
 
 function readLanguageLS() {
@@ -167,6 +169,7 @@ export const useSettingsStore = create((set, get) => ({
   coinFly: readLS(LS_KEYS.coinFly, DEFAULTS.coinFly),
   autoComplete: readLS(LS_KEYS.autoComplete, DEFAULTS.autoComplete),
   pinLastEvent: readLS(LS_KEYS.pinLastEvent, DEFAULTS.pinLastEvent),
+  effectProfile: readLS(LS_KEYS.effectProfile, DEFAULTS.effectProfile),
   seenThemeItemIds: new Set(),
   seenAchievementIds: new Set(),
   themeModalTab: 'interface',
@@ -183,7 +186,7 @@ export const useSettingsStore = create((set, get) => ({
       'language', 'theme', 'interfaceTheme', 'deck', 'cardBack', 'handedness',
       'highlightCard', 'particles', 'cardEffects', 'tableTexture', 'boardFrame',
       'bounce', 'ghostEcho', 'ghostTrail', 'shimmer', 'uncover', 'winEnhanced', 'winCascade',
-      'hoverGlow', 'cardShake', 'centisecondsOn', 'hoverLift', 'wobble', 'flipOvershoot', 'coinFly', 'autoComplete', 'pinLastEvent', 'seenThemeItemIds', 'seenAchievementIds', 'themeModalTab',
+      'hoverGlow', 'cardShake', 'centisecondsOn', 'hoverLift', 'wobble', 'flipOvershoot', 'coinFly', 'autoComplete', 'pinLastEvent', 'effectProfile', 'seenThemeItemIds', 'seenAchievementIds', 'themeModalTab',
     ];
     const SETTING_DEFAULTS = {
       theme: DEFAULTS.theme,
@@ -212,11 +215,12 @@ export const useSettingsStore = create((set, get) => ({
       coinFly: DEFAULTS.coinFly,
       autoComplete: DEFAULTS.autoComplete,
       pinLastEvent: DEFAULTS.pinLastEvent,
+      effectProfile: DEFAULTS.effectProfile,
       seenThemeItemIds: [],
       seenAchievementIds: [],
       themeModalTab: 'background',
     };
-    const [language, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostEcho, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, cardShake, centisecondsOn, hoverLift, wobble, flipOvershoot, coinFly, autoComplete, pinLastEvent, seenThemeItemIdsArr, seenAchievementIdsArr, themeModalTab] = await getSettings(SETTING_KEYS, SETTING_DEFAULTS);
+    const [language, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostEcho, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, cardShake, centisecondsOn, hoverLift, wobble, flipOvershoot, coinFly, autoComplete, pinLastEvent, effectProfile, seenThemeItemIdsArr, seenAchievementIdsArr, themeModalTab] = await getSettings(SETTING_KEYS, SETTING_DEFAULTS);
     // Use the LS read for language as a last-resort fallback for the language
     // key (the per-key default above is a static DEFAULT_LOCALE; the LS version
     // may have detected the system locale on a previous session).
@@ -256,6 +260,7 @@ export const useSettingsStore = create((set, get) => ({
         ['coinFly', coinFly],
         ['autoComplete', autoComplete],
         ['pinLastEvent', pinLastEvent],
+        ['effectProfile', effectProfile],
       ];
       // Unconditional write: the in-memory value is the source of truth
       // (either just loaded from Dexie or the in-code DEFAULTS). Skipping
@@ -273,7 +278,7 @@ export const useSettingsStore = create((set, get) => ({
       if (i18n.language !== normalizedLang) await i18n.changeLanguage(normalizedLang);
       try { document.documentElement.lang = normalizedLang; } catch {}
     } catch {}
-    set({ language: normalizedLang, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostEcho, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, cardShake, centisecondsOn, hoverLift, wobble, flipOvershoot, coinFly, autoComplete, pinLastEvent, seenThemeItemIds: seenThemeIds, seenAchievementIds: seenAchievementIds, themeModalTab, loaded: true });
+    set({ language: normalizedLang, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostEcho, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, cardShake, centisecondsOn, hoverLift, wobble, flipOvershoot, coinFly, autoComplete, pinLastEvent, effectProfile: effectProfile ?? DEFAULTS.effectProfile, seenThemeItemIds: seenThemeIds, seenAchievementIds: seenAchievementIds, themeModalTab, loaded: true });
   },
 
   /**
@@ -399,6 +404,7 @@ export const useSettingsStore = create((set, get) => ({
   setCoinFly: (coinFly) => { set({ coinFly }); setSetting('coinFly', coinFly); writeLS(LS_KEYS.coinFly, coinFly); },
   setAutoComplete: (autoComplete) => { set({ autoComplete }); setSetting('autoComplete', autoComplete); writeLS(LS_KEYS.autoComplete, autoComplete); },
   setPinLastEvent: (pinLastEvent) => { set({ pinLastEvent }); setSetting('pinLastEvent', pinLastEvent); writeLS(LS_KEYS.pinLastEvent, pinLastEvent); },
+  setEffectProfile: (effectProfile) => { set({ effectProfile }); setSetting('effectProfile', effectProfile); writeLS(LS_KEYS.effectProfile, effectProfile); },
 
   /**
    * Persist the last-selected Theme modal tab so re-opening restores it.

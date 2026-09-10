@@ -21,7 +21,7 @@ const LS_KEY_VOLUME = 'klondike:soundVolume';
 
 const DEFAULTS = {
   enabled: true,
-  volume: 0.7,
+  volume: 0.75,
 };
 
 function readLSBool(key, fallback) {

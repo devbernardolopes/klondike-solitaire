@@ -16,6 +16,7 @@ import { useReducedMotion } from '../hooks/useReducedMotion.js';
 import { useHoverCapable } from '../hooks/useHoverCapable.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { useSoundStore } from '../store/useSoundStore.js';
+import { EFFECT_PROFILES, resolveProfileId } from '../settings/effectProfiles.js';
 import { useTranslation } from 'react-i18next';
 
 /**
@@ -68,9 +69,69 @@ export default function SettingsOptionsModal({
   const hoverLift = useSettingsStore((s) => s.hoverLift);
   const wobble = useSettingsStore((s) => s.wobble);
   const flipOvershoot = useSettingsStore((s) => s.flipOvershoot);
+  const effectProfile = useSettingsStore((s) => s.effectProfile);
   const osReducesMotion = useReducedMotion();
   const hoverCapable = useHoverCapable();
   const [blockedInfo, setBlockedInfo] = useState(null);
+
+  // Live snapshot of the profile-managed keys (highlightCard/particles arrive
+  // via props from the parents). The dropdown always shows the resolved id, so
+  // any manual toggle immediately flips it to Custom.
+  const effectSnapshot = {
+    particles: !!particles,
+    cardShake: !!cardShake,
+    coinFly: !!coinFly,
+    hoverLift: !!hoverLift,
+    cardEffects: !!cardEffects,
+    shimmer: !!shimmer,
+    hoverGlow: !!hoverGlow,
+    ghostTrail: !!ghostTrail,
+    winEnhanced: !!winEnhanced,
+    tableTexture: !!tableTexture,
+    highlightCard: !!highlightCard,
+    flipOvershoot: !!flipOvershoot,
+    bounce: !!bounce,
+    uncover: !!uncover,
+    ghostEcho: !!ghostEcho,
+    wobble: !!wobble,
+    winCascade: !!winCascade,
+    boardFrame: !!boardFrame,
+  };
+  const resolvedProfile = resolveProfileId(effectSnapshot);
+
+  // Persist the resolved id so the choice survives reloads. Converges: after
+  // an apply, stored === resolved (no-op); after a manual toggle they differ
+  // and the stored id follows the toggles to 'custom' (or a newly-matched
+  // named profile).
+  useEffect(() => {
+    if (!open) return;
+    if (effectProfile !== resolvedProfile) useSettingsStore.getState().setEffectProfile(resolvedProfile);
+  }, [open, effectProfile, resolvedProfile]);
+
+  const applyEffectProfile = (id) => {
+    const snap = EFFECT_PROFILES[id];
+    if (!snap) return;
+    onHighlightCardChange(snap.highlightCard);
+    onParticlesChange(snap.particles);
+    const s = useSettingsStore.getState();
+    s.setCardEffects(snap.cardEffects);
+    s.setCardShake(snap.cardShake);
+    s.setCoinFly(snap.coinFly);
+    s.setHoverLift(snap.hoverLift);
+    s.setFlipOvershoot(snap.flipOvershoot);
+    s.setBounce(snap.bounce);
+    s.setShimmer(snap.shimmer);
+    s.setUncover(snap.uncover);
+    s.setHoverGlow(snap.hoverGlow);
+    s.setGhostEcho(snap.ghostEcho);
+    s.setGhostTrail(snap.ghostTrail);
+    s.setWobble(snap.wobble);
+    s.setWinCascade(snap.winCascade);
+    s.setWinEnhanced(snap.winEnhanced);
+    s.setTableTexture(snap.tableTexture);
+    s.setBoardFrame(snap.boardFrame);
+    s.setEffectProfile(id);
+  };
 
   useModalEscape({ open, onClose, id: 'settings-options', z: Z.CHILD });
 
@@ -290,6 +351,24 @@ export default function SettingsOptionsModal({
             onChange={(v) => useSettingsStore.getState().setAutoComplete(v)}
             label={t('settings.autoComplete.desc')}
           />
+        </div>
+
+        <div style={{ ...field, marginBottom: 20 }}>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.effectProfile')}</label>
+          <select
+            value={resolvedProfile}
+            onChange={(e) => applyEffectProfile(e.target.value)}
+            style={selectStyle}
+            aria-label={t('settings.effectProfile')}
+          >
+            <option value="default">{t('settings.effectProfile.options.default')}</option>
+            <option value="calm">{t('settings.effectProfile.options.calm')}</option>
+            <option value="essential">{t('settings.effectProfile.options.essential')}</option>
+            <option value="showcase">{t('settings.effectProfile.options.showcase')}</option>
+            {resolvedProfile === 'custom' && (
+              <option value="custom">{t('settings.effectProfile.options.custom')}</option>
+            )}
+          </select>
         </div>
 
         <div style={{ ...field, marginBottom: 20 }}>
