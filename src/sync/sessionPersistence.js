@@ -67,6 +67,11 @@ function buildPayload() {
     achievement_telemetry: stats.achievementTelemetry,
     start_time: stats.startTime,
     paused_accum_ms: stats.pausedAccumMs,
+    // Append-only move recording (deal → game end) so a reload mid-deal
+    // keeps the log prefix for the eventual game_results move_log.
+    // Local-Dexie only: the Supabase game_sessions mirror has no column
+    // for it (cross-device resume restarts the log).
+    move_log: game.moveLog ?? [],
   };
 }
 
@@ -75,8 +80,8 @@ function buildPayload() {
 function saveSession() {
   try {
     const p = buildPayload();
-    const { board_state, replay_spec, moves, score, undos, achievement_telemetry, start_time, paused_accum_ms } = p;
-    saveActiveSession({ boardState: board_state, replaySpec: replay_spec, moves, score, undos, achievementTelemetry: achievement_telemetry, startTime: start_time, pausedAccumMs: paused_accum_ms });
+    const { board_state, replay_spec, moves, score, undos, achievement_telemetry, start_time, paused_accum_ms, move_log } = p;
+    saveActiveSession({ boardState: board_state, replaySpec: replay_spec, moves, score, undos, achievementTelemetry: achievement_telemetry, startTime: start_time, pausedAccumMs: paused_accum_ms, moveLog: move_log ?? [] });
     // Coalesce bursts into a single remote upsert.
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
@@ -209,8 +214,9 @@ function applyRestore(row, savedAtMs) {
   const basePaused = row.pausedAccumMs ?? row.paused_accum_ms ?? 0;
   const pausedAccumMs =
     startTime === null ? basePaused : basePaused + Math.max(0, Date.now() - savedAtMs);
+  const moveLog = row.moveLog ?? row.move_log ?? [];
 
-  useGameStore.setState({ state: boardState, replaySpec });
+  useGameStore.setState({ state: boardState, replaySpec, moveLog });
   useUiStore.getState().setCurrentGame(restoredKind, restoredDate, restoredEventDealId, restoredEventDealNumber);
   if (restoredKind === 'event' && restoredEventId) {
     useUiStore.getState().setCurrentEventMeta(restoredEventId, restoredEventTitle, restoredEventDealNumber);
@@ -241,7 +247,7 @@ function applyRestore(row, savedAtMs) {
   // Mirror the restored row back into local Dexie so subsequent closes restore
   // from the fast path (and the elapsed-gap baseline resets to now).
   try {
-    saveActiveSession({ boardState, replaySpec, moves, score, undos, achievementTelemetry, startTime, pausedAccumMs });
+    saveActiveSession({ boardState, replaySpec, moves, score, undos, achievementTelemetry, startTime, pausedAccumMs, moveLog });
   } catch {
     /* non-fatal */
   }

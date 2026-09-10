@@ -21,6 +21,7 @@ const KEY = 'current';
  * @param {Object} row.achievementTelemetry
  * @param {number|null} row.startTime
  * @param {number} row.pausedAccumMs
+ * @param {string[]} [row.moveLog]  append-only move recording (deal → game end)
  * @returns {Promise<void>}
  */
 export async function saveActiveSession(row) {

@@ -6,6 +6,7 @@ import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { deal } from '../core/dealer.js';
 import { applyMove, undo as coreUndo } from '../core/moveEngine.js';
+import { formatMove, formatUndo } from '../core/moveLog.js';
 import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, wouldGreedyComplete, DEST_ORDER } from '../core/rules.js';
 import { isWon } from '../core/winDetection.js';
 import { solveAsync, cancelAllSolves, STALE } from '../core/solverClient.js';
@@ -181,7 +182,7 @@ function runAnimatedDeal(get, set, { seed, order, deck, kind, date, eventDealId,
     eventId,
     eventTitle,
   };
-  set({ state: preDeal, autoMoveState: {}, replaySpec, lastActionMeta: { type: 'draw' } });
+  set({ state: preDeal, autoMoveState: {}, replaySpec, lastActionMeta: { type: 'draw' }, moveLog: [] });
   requestAnimationFrame(() => {
     cancelAutoComplete(set);
     const next = deal({ order: usedDeck });
@@ -262,6 +263,7 @@ function gap(delay) {
 // step loop never outruns the visuals — even across a tab blur/refocus.
 function applyAutoStep(get, set, move) {
   const cur = get().state;
+  const logLine = formatMove(cur, move);
   const next = applyMove(cur, move);
   // The winning solver sequence mixes moveCards / draw / recycle moves. draw and
   // recycle descriptors carry no cardIds/to, so derive the animated card ids and
@@ -290,7 +292,12 @@ function applyAutoStep(get, set, move) {
   // still derived from the real move.type to avoid the undefined-cardIds crash.
   const tid = captureFlip('auto', animIds);
   useUiStore.getState().beginTransition(tid, animIds, destLocs);
-  set({ state: next, autoMoveState: {}, lastActionMeta: { type: 'auto' } });
+  set({
+    state: next,
+    autoMoveState: {},
+    lastActionMeta: { type: 'auto' },
+    ...(logLine ? { moveLog: [...(get().moveLog ?? []), logLine] } : null),
+  });
   // Burst particles when an auto step lands a card on a foundation (covers both
   // the greedy peel and every step of the solver win sequence).
   if (move.type === 'moveCards' && move.to.startsWith('foundation')) {
@@ -509,6 +516,13 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
   // UI-only bookkeeping tagging the kind of transition last applied, so the
   // animation layer can pick the right motion config. Not part of core/GameState.
   lastActionMeta: { type: 'move' },
+  // Append-only human-readable recording of every board-configuration step
+  // (draw / recycle / moveCards lines + 'U' undo markers), from deal to game
+  // end. Separate from core moveHistory (which pops on undo) so the full
+  // sequence survives for the game_results move_log + future playback.
+  // Reset on every deal (see runAnimatedDeal); persisted mid-game via
+  // sync/sessionPersistence so a reload keeps the prefix.
+  moveLog: [],
 
   /**
    * Deal a fresh game. `mode` selects the dealing strategy:
@@ -793,8 +807,13 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     const drawnId = state.stock[state.stock.length - 1].id;
     const tid = captureFlip('draw', [drawnId]);
     useUiStore.getState().beginTransition(tid, [drawnId], ['stock', 'waste']);
+    const logLine = formatMove(state, { type: 'draw' });
     const next = applyMove(state, { type: 'draw' });
-    set({ state: next, lastActionMeta: { type: 'draw' } });
+    set({
+      state: next,
+      lastActionMeta: { type: 'draw' },
+      ...(logLine ? { moveLog: [...(get().moveLog ?? []), logLine] } : null),
+    });
     useUiStore.getState().clearHints();
     useStatsStore.getState().startTimerIfValid(state);
     useStatsStore.getState().addMoves(1);
@@ -821,7 +840,12 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     useStatsStore.getState().recordRecycle();
     const tid = captureFlip('recycle', movingIds);
     useUiStore.getState().beginTransition(tid, movingIds, ['stock', 'waste']);
-    set({ state: applyMove(state, { type: 'recycle' }), lastActionMeta: { type: 'recycle' } });
+    const logLine = formatMove(state, { type: 'recycle' });
+    set({
+      state: applyMove(state, { type: 'recycle' }),
+      lastActionMeta: { type: 'recycle' },
+      ...(logLine ? { moveLog: [...(get().moveLog ?? []), logLine] } : null),
+    });
     evaluateDeadEnd(get, set, get().state);
     useUiStore.getState().clearHints();
     useStatsStore.getState().startTimerIfValid(state);
@@ -901,6 +925,8 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     });
 
     const next = applyMove(state, { type: 'moveCards', from, to, cardIds: moveIds });
+    const logLine = formatMove(state, { type: 'moveCards', from, to, cardIds: moveIds });
+    const logPatch = logLine ? { moveLog: [...(get().moveLog ?? []), logLine] } : null;
     useStatsStore.getState().recordMove({ from, to, card: movingCard });
     // Burst particles from the foundation the card just reached (manual drag and
     // tap auto-move both land here). The animation layer reads this after commit.
@@ -912,7 +938,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     // (that would make the real card jump back and re-slide). Just snap it into
     // the destination and skip the animating lock so the next move is immediate.
     if (opts.metaType === 'drag') {
-      set({ state: next, lastActionMeta: { type: 'move' } });
+      set({ state: next, lastActionMeta: { type: 'move' }, ...logPatch });
       shouldFireUncoverSparkle({
         moveRecord: next.moveHistory[next.moveHistory.length - 1],
         actionType: 'move',
@@ -926,7 +952,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     }
     const tid = captureFlip(opts.metaType ?? 'move', moveIds);
     useUiStore.getState().beginTransition(tid, moveIds, [to]);
-    set({ state: next, lastActionMeta: { type: opts.metaType ?? 'move' } });
+    set({ state: next, lastActionMeta: { type: opts.metaType ?? 'move' }, ...logPatch });
     shouldFireUncoverSparkle({
       moveRecord: next.moveHistory[next.moveHistory.length - 1],
       actionType: 'move',
@@ -1000,7 +1026,12 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
       tid = captureFlip('undo', undoIds);
       useUiStore.getState().beginTransition(tid, undoIds, undoDest);
     }
-    set({ state: next, autoMoveState: {}, lastActionMeta: { type: 'undo' } });
+    set({
+      state: next,
+      autoMoveState: {},
+      lastActionMeta: { type: 'undo' },
+      moveLog: [...(get().moveLog ?? []), formatUndo()],
+    });
     evaluateDeadEnd(get, set, next);
     useUiStore.getState().clearHints();
     useStatsStore.getState().addMoves(1);

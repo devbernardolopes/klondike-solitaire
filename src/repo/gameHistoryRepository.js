@@ -49,8 +49,7 @@ const HISTORY_COLUMNS = [
  */
 export function queuedOpToHistoryEntry(op) {
   const p = op?.payload ?? {};
-  return {
-    key: `pending-${op?.id ?? Math.random()}`,
+  return {    key: `pending-${op?.id ?? Math.random()}`,
     gameId: p.p_game_id ?? null,
     won: Boolean(p.p_won),
     moves: p.p_moves ?? null,
@@ -69,6 +68,7 @@ export function queuedOpToHistoryEntry(op) {
     aceCollectorEligible: p.p_ace_collector_eligible ?? true,
     acesToFoundation: p.p_aces_to_foundation ?? 0,
     aceIdsToFoundation: [],
+    moveLog: typeof p.p_move_log === 'string' ? p.p_move_log : null,
     eventTitle: null,
     createdAt: new Date(op?.createdAt ?? Date.now()).toISOString(),
     pending: true,
@@ -101,6 +101,9 @@ export function serverRowToHistoryEntry(row) {
     aceCollectorEligible: row.ace_collector_eligible ?? true,
     acesToFoundation: row.aces_to_foundation ?? 0,
     aceIdsToFoundation: Array.isArray(row.ace_ids_to_foundation) ? row.ace_ids_to_foundation : [],
+    // Only present when the caller selected move_log (list reads skip it to
+    // keep pages light; playback fetches it per-game via fetchMoveLog).
+    moveLog: typeof row.move_log === 'string' ? row.move_log : null,
     eventTitle: null,
     createdAt: row.created_at,
     pending: false,
@@ -178,6 +181,40 @@ export async function resolveEventTitles(entries) {
   } catch {
     return {};
   }
+}
+
+/**
+ * Fetch one game's move recording for the deferred playback feature.
+ * Single-row select by the idempotency key (not part of list reads, which
+ * skip move_log to keep pages light). Pending (not yet flushed) results
+ * resolve from the local outbox first.
+ * @param {string} gameId
+ * @returns {Promise<{ moveLog: string|null, pending: boolean }>}
+ */
+export async function fetchMoveLog(gameId) {
+  if (gameId == null) return { moveLog: null, pending: false };
+  try {
+    const ops = await listQueuedOps();
+    const queued = (ops ?? []).find(
+      (op) => op?.type === 'submit_game_result' && op?.payload?.p_game_id === gameId,
+    );
+    if (queued && typeof queued.payload?.p_move_log === 'string') {
+      return { moveLog: queued.payload.p_move_log, pending: true };
+    }
+  } catch {
+    /* outbox unreadable — fall through to server */
+  }
+  if (!supabase) throw new Error('offline');
+  const { data, error } = await supabase
+    .from('game_results')
+    .select('move_log')
+    .eq('game_id', gameId)
+    .maybeSingle();
+  if (error) throw error;
+  return {
+    moveLog: typeof data?.move_log === 'string' ? data.move_log : null,
+    pending: false,
+  };
 }
 
 /**

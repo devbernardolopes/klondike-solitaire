@@ -411,6 +411,7 @@ export default function Board() {
         coinTotal,
         pageBonus: gameKind === 'event' ? pageBonus : 0,
         achievementTelemetry,
+        moveLog: useGameStore.getState().moveLog ?? [],
       });
       // If this was a Winning Deal (it carries a pool seed), remember the seed
       // so it isn't re-dealt until the whole pool has been won. Daily/Event

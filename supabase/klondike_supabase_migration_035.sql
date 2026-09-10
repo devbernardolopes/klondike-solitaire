@@ -1,38 +1,26 @@
--- Canonical submit_game_result definition. The schema changes and reset RPC
--- are applied by klondike_supabase_migration_018.sql. This revision (paired
--- with migration_022.sql) adds p_event_deal_id: when a win comes from a
--- Special Events grid cell, the client passes that deal's id and this
--- function atomically (1) marks the deal solved, (2) if that was the deal
--- that completed its page, awards the page's coin bonus exactly once, and
--- (3) if that was the page that completed the event, flags the event as
--- fully solved exactly once (for the deferred prize feature). All three
--- steps are idempotent via on-conflict-do-nothing, on top of the existing
--- game_id dedup guard at the top of the function.
+-- ============================================================
+-- Klondike Solitaire — Supabase migration 035 (deal recording)
+-- Paste into: Supabase Dashboard > SQL Editor > New query > Run
+-- ============================================================
+-- Stores the compact human-readable move recording (one step per line:
+-- D / R / U / "Ah W->F1" / "7h,6s,5h T3->T6", see src/core/moveLog.js)
+-- verbatim on game_results.move_log, associated 1:1 with the finished
+-- game for the deferred playback feature. Facts-only like the rest of
+-- the payload: never judged, never affects coins / limits / achievements
+-- / streaks / daily / event progress. Recorded on wins AND losses
+-- (abandoned deals finalize as losses, so their partial log is kept).
 --
--- Revision paired with migration_032.sql: the per-win coin reward is no
--- longer the `v_coins_awarded := 10` literal. Coins are derived server-side
--- from the admin-settable coin_reward_rules / coin_reward_settings tables
--- (per-kind base + speed/move bonuses, daily rate cap, plausibility floors
--- that pay 0 + flag instead of raising). The RPC accepts FACTS only
--- (kind/moves/duration) — never an amount — and returns a coins_* breakdown
--- the client uses to reconcile its optimistic display. Signature unchanged.
---
--- The event page bonus (coin_reward on special_event_pages) still applies to
--- event deals same as any other win — on top of the computed base+bonuses.
---
--- Revision paired with migration_033.sql: claimed wins are judged against
--- the admin-settable game_limit_rules / game_limit_settings tables. An
--- over-limit win is REJECTED — recorded as a loss with no win credit
--- (no streak/bests/coins/achievements/seed/daily/event progress), flagged
--- in game_limit_flags, and reported via limit_rejected + the authoritative
--- limits so the client rolls back its optimistic win. Signature unchanged.
---
--- Revision paired with migration_035.sql: deal recording. A new trailing
--- p_move_log (TEXT, nullable) carries the compact human-readable move log
--- (one step per line: D / R / U / "Ah W->F1" / "7h,6s,5h T3->T6", see
--- src/core/moveLog.js) stored verbatim on game_results.move_log for the
--- deferred playback feature. Facts-only like the rest: never judged, never
--- affects coins/limits/achievements; recorded on wins AND losses.
+-- Client impact: submit_game_result gains ONE trailing nullable arg
+-- (p_move_log TEXT, default null) — old queued payloads without it still
+-- flush. History list reads intentionally do NOT select move_log (up to
+-- ~10KB x 25 rows per page); playback fetches one row by game_id.
+-- ============================================================
+
+-- ------------------------------------------------------------
+-- 1. Recording column (nullable: pre-035 rows + empty games stay null)
+-- ------------------------------------------------------------
+alter table public.game_results
+  add column if not exists move_log text;
 
 drop function if exists public.submit_game_result(
   boolean, integer, integer, integer, integer, bigint, text, date, uuid,
@@ -440,3 +428,14 @@ grant execute on function public.submit_game_result(
   boolean, boolean, integer, integer, integer, integer, boolean, boolean,
   integer, jsonb, bigint, text
 ) to authenticated;
+-- ============================================================
+-- Testing note (run as the table owner / service role):
+--   -- log lands on the row:
+--   select public.submit_game_result(true, 120, 240000, 0, 0, 1, 'winning',
+--     null, '00000000-0000-0000-0000-000000000035', false, false, 0, 0, 0, 0,
+--     true, true, 0, '[]', null, 'D' || chr(10) || 'Ah W->F1');
+--   select game_id, won, move_log from public.game_results
+--     where game_id = '00000000-0000-0000-0000-000000000035';
+--   -- old clients (no p_move_log) still flush:
+--   select public.submit_game_result(false, 12, 30000);
+-- ============================================================

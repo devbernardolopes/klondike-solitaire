@@ -117,6 +117,36 @@ test('serverRowToHistoryEntry defaults non-array ace ids to []', () => {
   assert.deepEqual(entry.aceIdsToFoundation, []);
 });
 
+test('queuedOpToHistoryEntry carries the move recording when present', () => {
+  const withLog = queuedOpToHistoryEntry({
+    id: 10,
+    type: 'submit_game_result',
+    payload: { p_won: true, p_game_id: 'g-log', p_move_log: 'D\nAh W->F1' },
+    createdAt: 1700000000000,
+  });
+  assert.equal(withLog.moveLog, 'D\nAh W->F1');
+  const withoutLog = queuedOpToHistoryEntry({
+    id: 11,
+    type: 'submit_game_result',
+    payload: { p_won: false, p_game_id: 'g-nolog' },
+    createdAt: 1700000000000,
+  });
+  assert.equal(withoutLog.moveLog, null);
+});
+
+test('serverRowToHistoryEntry carries move_log only when selected', () => {
+  const withLog = serverRowToHistoryEntry({
+    id: 'r1', game_id: 'g1', won: true, moves: 5, duration_ms: 1000,
+    move_log: 'D\nU', created_at: '2026-01-01T00:00:00Z',
+  });
+  assert.equal(withLog.moveLog, 'D\nU');
+  const listRow = serverRowToHistoryEntry({
+    id: 'r2', game_id: 'g2', won: false, moves: 3, duration_ms: 500,
+    created_at: '2026-01-01T00:00:00Z',
+  });
+  assert.equal(listRow.moveLog, null);
+});
+
 test('mergeHistoryEntries puts pending first, newest first', () => {
   const server = [{ key: 'server-1', gameId: 'g1', createdAt: '2026-01-01T00:00:00Z' }];
   const ops = [

@@ -5,6 +5,7 @@
 
 import { create } from 'zustand';
 import { loadStats, addWin, addGamePlayed, recordLoss as dbRecordLoss, removeWin, resetStats, saveStats } from '../db/stats.js';
+import { serializeMoveLog } from '../core/moveLog.js';
 import { getDailyResult } from '../db/dailyResults.js';
 import { getWinSnapshot, saveWinSnapshot, clearWinSnapshot } from '../db/winSnapshots.js';
 import { useSeedStore } from './useSeedStore.js';
@@ -59,10 +60,10 @@ export const useStatisticsStore = create((set, get) => ({
    * in place instead of advancing to the next unsolved deal on the page.
     * @param {{score:number, timeMs:number, moves:number, undos:number,
     *   seed?:number, gameKind?:'winning'|'random'|'daily'|'event', dailyDate?:string|null,
-    *   eventDealId?:number|null, eventId?:string|null, eventDealReplayed?:boolean,
-    *   pageBonus?:number}} win
-    */
-  recordWin: async ({ score, timeMs, moves, undos, seed, gameKind, dailyDate, eventDealId, eventId, eventDealReplayed, coinTotal, pageBonus, achievementTelemetry }) => {
+   *   eventDealId?:number|null, eventId?:string|null, eventDealReplayed?:boolean,
+   *   pageBonus?:number, moveLog?:string[]}} win
+   */
+  recordWin: async ({ score, timeMs, moves, undos, seed, gameKind, dailyDate, eventDealId, eventId, eventDealReplayed, coinTotal, pageBonus, achievementTelemetry, moveLog }) => {
     // Snapshot the pre-win row (plus the side effects below) keyed by gameId
     // so a server-rejected optimistic win (over-limit) can be rolled back
     // exactly in applyRejectedWin. Best-effort: a snapshot failure must never
@@ -124,6 +125,7 @@ export const useStatisticsStore = create((set, get) => ({
       p_foundation_first_eligible: achievementTelemetry?.foundationFirstEligible ?? true,
       p_ace_collector_eligible: achievementTelemetry?.aceCollectorEligible ?? true,
       p_aces_to_foundation: achievementTelemetry?.aceIdsToFoundation?.length ?? 0,
+      p_move_log: serializeMoveLog(moveLog),
     });
     // Optimistic local coin bump for instant UI feedback, using the
     // prospective total computed from the cached reward config (Board passes
@@ -243,6 +245,7 @@ recordLoss: async () => {
       p_aces_to_foundation: telemetry?.aceIdsToFoundation?.length ?? 0,
       p_ace_ids_to_foundation: telemetry?.aceIdsToFoundation ?? [],
       p_event_deal_id: gameKind === 'event' ? (ui.currentEventDealId ?? gameStore.replaySpec?.eventDealId ?? null) : null,
+      p_move_log: serializeMoveLog(gameStore.moveLog),
     });
   },
 
