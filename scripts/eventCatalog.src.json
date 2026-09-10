@@ -463,5 +463,30 @@
         "coinReward": 200
       }
     ]
+  },
+  {
+    "id": "up-helly-aa-2026",
+    "title": "Up Helly Aa 2026",
+    "description": "Up Helly Aa is Shetland's spectacular Viking-themed fire festival, featuring torchlit processions, elaborate Viking costumes, music, and the ceremonial burning of a replica Viking longship.",
+    "startsAt": "2026-01-27T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 4,
+        "imagePath": "up-helly-aa-2026/page1.jpg",
+        "coinReward": 200
+      },
+      {
+        "gridSize": 5,
+        "imagePath": "up-helly-aa-2026/page2.jpg",
+        "coinReward": 300
+      },
+      {
+        "gridSize": 6,
+        "imagePath": "up-helly-aa-2026/page3.jpg",
+        "coinReward": 500
+      }
+    ]
   }
 ]
