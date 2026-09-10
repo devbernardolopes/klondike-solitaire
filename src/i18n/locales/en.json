@@ -337,6 +337,10 @@
       "carnival-of-venice-2026": {
         "title": "Carnival of Venice 2026",
         "description": "The Carnival of Venice is a spectacular Italian celebration famous for elaborate masks, ornate costumes, grand balls, street performances, and the timeless atmosphere of Venice."
+      },
+      "burning-man-2026": {
+        "title": "Burning Man 2026",
+        "description": "Burning Man is a temporary gathering in Nevada's Black Rock Desert centered on community, radical self-expression, participation, art, and the creation of a vast temporary city on the playa."
       }
     },
     "storeItems": {
