@@ -6,6 +6,12 @@
 // rows resolve their event title by seed, batched per page. Rows open
 // HistoryDetailModal on top (Z.GRANDCHILD). Scroll chrome (metrics effect +
 // up/down pills) mirrors AchievementsModal.jsx. Reached only from Settings.
+//
+// Stale-while-revalidate: background refreshes (tab-return flush, account
+// activity) keep already-loaded rows visible and swap in fresh data after
+// the fetch resolves — the "Loading…" state only ever shows on a cold boot
+// with an empty list. A non-scrolling footer below the scrollport shows the
+// server-side total (cheap head count) even when not all pages are loaded.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -17,8 +23,10 @@ import ModalCloseButton from './ModalCloseButton.jsx';
 import HistoryDetailModal from './HistoryDetailModal.jsx';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { formatTime } from '../utils/formatTime.js';
+import { formatHistoryDate } from '../utils/formatHistoryDate.js';
 import {
   HISTORY_PAGE_SIZE,
+  fetchHistoryCount,
   fetchHistoryPage,
   listPendingResultOps,
   mergeHistoryEntries,
@@ -26,7 +34,7 @@ import {
 } from '../repo/gameHistoryRepository.js';
 
 function HistoryRow({ entry, onOpen }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [hover, setHover] = useState(false);
   const [focus, setFocus] = useState(false);
   const active = hover || focus;
@@ -34,11 +42,7 @@ function HistoryRow({ entry, onOpen }) {
   const kindLabel = entry.eventTitle
     ?? (entry.gameKind ? t(`history.kinds.${entry.gameKind}`, { defaultValue: entry.gameKind }) : t('history.kinds.unknown'));
 
-  const dateLabel = (() => {
-    const d = new Date(entry.createdAt);
-    if (Number.isNaN(d.getTime())) return '';
-    return d.toLocaleDateString();
-  })();
+  const dateLabel = formatHistoryDate(entry.createdAt, i18n.language) ?? '';
 
   const meta = [
     dateLabel,
@@ -114,11 +118,20 @@ export default function HistoryModal({ open, onClose }) {
   const userId = useAuthStore((s) => s.userId);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState(null);
+  const [totalCount, setTotalCount] = useState(null);
   const [offline, setOffline] = useState(false);
   const [selected, setSelected] = useState(null);
   const [scrollMetrics, setScrollMetrics] = useState({ scrollTop: 0, scrollHeight: 0, clientHeight: 0 });
+  // Stale-while-revalidate guards: background refreshes must never wipe the
+  // visible list, and concurrent triggers (sync-flushed + userId change)
+  // collapse into one in-flight fetch instead of spamming the database.
+  const refreshingRef = useRef(false);
+  const entriesRef = useRef([]);
+  entriesRef.current = entries;
+  const loadedUserIdRef = useRef(null);
 
   useModalEscape({ open, onClose, id: 'history', z: Z.CHILD });
 
@@ -158,17 +171,34 @@ export default function HistoryModal({ open, onClose }) {
       window.removeEventListener('resize', updateScrollMetrics);
       resizeObserver?.disconnect();
     };
-  }, [open, loading, loadingMore, entries]);
+  }, [open, loading, refreshing, loadingMore, entries]);
 
-  const loadFirstPage = useCallback(async (cancelledRef) => {
-    setLoading(true);
-    setOffline(false);
-    setEntries([]);
-    setNextCursor(null);
+  // Stale-while-revalidate: the first load for an empty list shows the
+  // full "Loading…" state; every later fetch (tab-return flush, account
+  // activity) keeps the already-loaded rows on screen and swaps in the
+  // fresh page + total only after it resolves — no flashing. Cursor and
+  // total are only overwritten on success, so a failed background fetch
+  // leaves the list, the Load-more button, and the footer untouched.
+  // Pass { cold: true } when the identity changed (account switch) so the
+  // previous user's rows are never shown as another user's history.
+  const loadFirstPage = useCallback(async (cancelledRef, opts = {}) => {
+    if (refreshingRef.current) return;
+    const isCold = opts.cold === true || entriesRef.current.length === 0;
+    if (isCold) {
+      setLoading(true);
+      setOffline(false);
+      setEntries([]);
+      setNextCursor(null);
+      if (opts.cold === true) setTotalCount(null);
+    } else {
+      refreshingRef.current = true;
+      setRefreshing(true);
+    }
     try {
-      const [pendingOps, page] = await Promise.all([
+      const [pendingOps, page, count] = await Promise.all([
         listPendingResultOps(),
         fetchHistoryPage({ limit: HISTORY_PAGE_SIZE }),
+        fetchHistoryCount(),
       ]);
       if (cancelledRef.current) return;
       const merged = mergeHistoryEntries(page.entries, pendingOps);
@@ -176,8 +206,11 @@ export default function HistoryModal({ open, onClose }) {
       if (cancelledRef.current) return;
       setEntries(merged);
       setNextCursor(page.nextCursor);
+      if (count != null) setTotalCount(count);
+      if (!isCold) setOffline(false);
     } catch {
       if (cancelledRef.current) return;
+      if (!isCold) return;
       // Offline / unauthenticated: fall back to pending rows only, if any.
       const pendingOps = await listPendingResultOps();
       if (cancelledRef.current) return;
@@ -187,14 +220,22 @@ export default function HistoryModal({ open, onClose }) {
       setEntries(merged);
       setOffline(merged.length === 0);
     } finally {
-      if (!cancelledRef.current) setLoading(false);
+      refreshingRef.current = false;
+      if (!cancelledRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, []);
 
   useEffect(() => {
     if (!open) return;
     const cancelledRef = { current: false };
-    loadFirstPage(cancelledRef);
+    // A different signed-in identity must never see the previous user's
+    // cached rows: force a cold load that clears first.
+    const cold = loadedUserIdRef.current !== userId;
+    loadedUserIdRef.current = userId;
+    loadFirstPage(cancelledRef, cold ? { cold: true } : undefined);
     return () => {
       cancelledRef.current = true;
     };
@@ -220,7 +261,10 @@ export default function HistoryModal({ open, onClose }) {
     if (!nextCursor || loadingMore) return;
     setLoadingMore(true);
     try {
-      const page = await fetchHistoryPage({ ...nextCursor, limit: HISTORY_PAGE_SIZE });
+      const [page, count] = await Promise.all([
+        fetchHistoryPage({ ...nextCursor, limit: HISTORY_PAGE_SIZE }),
+        fetchHistoryCount(),
+      ]);
       const withTitles = [...page.entries];
       await resolveEventTitles(withTitles);
       setEntries((prev) => {
@@ -228,6 +272,7 @@ export default function HistoryModal({ open, onClose }) {
         return [...prev, ...withTitles.filter((e) => !seen.has(e.key))];
       });
       setNextCursor(page.nextCursor);
+      if (count != null) setTotalCount(count);
     } catch {
       // Keep existing rows; the button stays so the user can retry.
     } finally {
@@ -236,6 +281,10 @@ export default function HistoryModal({ open, onClose }) {
   }, [nextCursor, loadingMore]);
 
   if (!open) return null;
+
+  // Cold boot shows the full Loading state; background refreshes keep the
+  // rows mounted and signal via the footer instead.
+  const showColdLoading = loading && entries.length === 0;
 
   const panel = {
     position: 'relative',
@@ -299,9 +348,9 @@ export default function HistoryModal({ open, onClose }) {
 
           <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
             <div ref={scrollRef} className="modal-body-scroll" style={{ height: '100%' }}>
-              {loading ? (
+              {showColdLoading ? (
                 <div style={{ opacity: 0.8, fontSize: 14, marginBottom: 16 }}>{t('history.loading')}</div>
-              ) : offline ? (
+              ) : offline && entries.length === 0 ? (
                 <div style={{ opacity: 0.8, fontSize: 14, marginBottom: 16 }}>{t('history.offline')}</div>
               ) : entries.length === 0 ? (
                 <div style={{ opacity: 0.8, fontSize: 14, marginBottom: 16 }}>{t('history.empty')}</div>
@@ -357,6 +406,28 @@ export default function HistoryModal({ open, onClose }) {
                 <ChevronDown size={18} strokeWidth={2.5} aria-hidden="true" />
               </button>
             )}
+          </div>
+
+          <div
+            aria-live="polite"
+            style={{
+              marginTop: 12,
+              paddingTop: 10,
+              borderTop: '1px solid var(--ui-modal-panel-border)',
+              fontSize: 13,
+              opacity: 0.8,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 8,
+            }}
+          >
+            <span>
+              {totalCount != null
+                ? t('history.total', { count: totalCount })
+                : t('history.totalUnknown')}
+            </span>
+            {refreshing && <span>{t('history.refreshing')}</span>}
           </div>
         </div>
       </div>

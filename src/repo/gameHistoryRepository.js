@@ -215,6 +215,26 @@ export async function fetchHistoryPage(cursor = {}) {
 }
 
 /**
+ * Fetch the caller's total game_results row count (RLS-scoped to the caller
+ * via game_results_select_own). Cheap head query — no rows transferred.
+ * Never throws: offline/unauthenticated yields null so the footer can show
+ * an unknown total instead of flashing.
+ * @returns {Promise<number|null>}
+ */
+export async function fetchHistoryCount() {
+  if (!supabase) return null;
+  try {
+    const { count, error } = await supabase
+      .from('game_results')
+      .select('id', { count: 'exact', head: true });
+    if (error) return null;
+    return typeof count === 'number' ? count : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * List locally queued (not yet flushed) submit_game_result ops for the
  * pending-rows merge. Never throws — offline/empty outbox yields [].
  * @returns {Promise<object[]>}

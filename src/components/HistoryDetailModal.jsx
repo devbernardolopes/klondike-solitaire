@@ -13,6 +13,7 @@ import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
 import { formatTime } from '../utils/formatTime.js';
+import { formatHistoryDate } from '../utils/formatHistoryDate.js';
 
 /**
  * @param {object} props
@@ -21,7 +22,7 @@ import { formatTime } from '../utils/formatTime.js';
  * @param {() => void} props.onClose
  */
 export default function HistoryDetailModal({ entry, open, onClose }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const dialogRef = useRef(null);
   const backdrop = useModalBackdrop(onClose);
 
@@ -60,9 +61,16 @@ export default function HistoryDetailModal({ entry, open, onClose }) {
   const value = { fontWeight: 600, textAlign: 'right' };
 
   const formatDateTime = (iso) => {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return '';
-    return `${d.toLocaleDateString()} ${d.toLocaleTimeString()}`;
+    const date = formatHistoryDate(iso, i18n.language);
+    if (date == null) return '';
+    let time = '';
+    try {
+      const d = new Date(iso);
+      if (!Number.isNaN(d.getTime())) time = d.toLocaleTimeString(i18n.language || 'en');
+    } catch {
+      time = '';
+    }
+    return time ? `${date} ${time}` : date;
   };
 
   const kindLabel = entry.eventTitle

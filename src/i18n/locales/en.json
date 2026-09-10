@@ -448,10 +448,13 @@
     "na": "—",
     "offline": "History is unavailable while offline.",
     "pending": "Pending",
+    "refreshing": "Updating…",
     "row.moves": "{{count}} moves",
     "scrollBottom": "Scroll history to bottom",
     "scrollTop": "Scroll history to top",
     "title": "History",
+    "total": "Total: {{count}} games",
+    "totalUnknown": "Total: —",
     "won": "Won"
   },
   "leaderboard": {
