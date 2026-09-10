@@ -564,6 +564,29 @@ export async function fetchAllEventSeeds() {
 }
 
 /**
+ * One event deal by id ({ id, seed, pageId } or null when missing /
+ * RLS-hidden / unreachable). Used to verify a favorited event deal still
+ * exists before replaying it as an event deal — a stale favorite falls
+ * back to the identical shuffle as a plain deal. Never throws.
+ * @param {number} dealId
+ * @returns {Promise<{id:number, seed:number, pageId:number}|null>}
+ */
+export async function fetchEventDeal(dealId) {
+  if (dealId == null || !supabase) return null;
+  try {
+    const { data, error } = await supabase
+      .from('special_event_deals')
+      .select('id, seed, page_id')
+      .eq('id', dealId)
+      .maybeSingle();
+    if (error || !data) return null;
+    return { id: data.id, seed: data.seed, pageId: data.page_id };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * One event's full page list with per-page lock/completed state resolved,
  * and each page's deals with per-deal solved state (needed to render the
  * reveal grid — an unsolved deal shows its numbered button, a solved one is

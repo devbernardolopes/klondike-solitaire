@@ -12,7 +12,7 @@ Locally the project is here: `C:\Dev\klondike-solitaire\klondike-solitaire`.
 
 - Vite + React 18 (JavaScript, **not** TypeScript)
 - Tailwind CSS v4 (`@tailwindcss/vite` plugin)
-- Zustand for state (seven stores — see below)
+- Zustand for state (eight stores — see below)
 - `@dnd-kit/core` + `@dnd-kit/sortable` for drag-and-drop
 - Dexie.js for local persistence (settings/stats/played-seeds/daily results wired; `games` history table defined, `saveGame()` not yet called)
 - `@supabase/supabase-js` — Supabase client wired for **anonymous auth** (`lib/supabaseClient.js` + `hooks/useAuthStore.js`); intended backend for leaderboards + achievements (not yet used there)
@@ -128,7 +128,9 @@ the post-win "New Game" button.
 
 `dealNewGame` draws a solvable seed from `solvablePool` but excludes seeds already present in
 `useSeedStore.playedSeeds` (won Winning-Deal seeds). `dealDaily(date)` deals the bundled daily
-seed; `replayGame()` re-deals the exact current seed.
+seed; `replayGame()` re-deals the exact current seed. `dealFavorite(fav)` replays a favorite in
+its stored mode (daily via `dealDaily`, live event deal via `dealSpecialEventDeal`, otherwise
+the same seed as a plain deal; stale event deals fall back to Winning kind with a toast).
 
 `moveCard` validates via `core/rules.js` (single top card, or a full valid tableau run via
 `getTableauRun`) and ignores illegal moves. `autoMove` cycles a clicked card's destination
@@ -178,6 +180,19 @@ recorded at that moment. `reset` zeroes everything. Loaded via `init()`; updated
 In-memory mirror of the set of **won Winning-Deal seeds** so `dealNewGame` can exclude them
 synchronously. `addPlayedSeed(seed)` records a win; `resetPlayed()` clears. Intentionally
 separate from `stats` so a statistics reset never clears seed history.
+
+### `src/hooks/useFavoritesStore.js` (persisted, Dexie `favoriteDeals` + Supabase)
+
+Favorited deals keyed by seed (seeds are globally unique across modes — see
+`scripts/lib/seedRegistry.mjs` + `core/randomSeed.js`). Local-first mirror of
+`favorite_deals` (migration 034): `favorite()`/`unfavorite()` write Dexie
+immediately and enqueue converging outbox ops (`add_favorite`/`remove_favorite`,
+last-write-wins per seed via `dedupeKey`), `refresh()` pulls the server snapshot
+and replaces the mirror via `mergeFavorites` (queued ops re-applied, so unflushed
+changes survive a pull). `favoriteCurrent()` favorites the dealt game from its
+`replaySpec`; `favUserId` guard cold-loads on identity change; `reset()` + mirror
+clear on sign-out. Drives the HUD heart (`Toolbar.jsx`) and `FavoritesModal.jsx`;
+replay goes through `useGameStore.dealFavorite()`.
 
 ### `src/hooks/useAuthStore.js` (Supabase auth)
 

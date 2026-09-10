@@ -3,14 +3,17 @@
 
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Undo2, Menu, Lightbulb, Coins as CoinsIcon } from 'lucide-react';
+import { Plus, Undo2, Menu, Lightbulb, Coins as CoinsIcon, Heart } from 'lucide-react';
 import { useGameStore } from '../hooks/useGameStore.js';
+import { useFavoritesStore } from '../hooks/useFavoritesStore.js';
 import { useUiStore, isAnyModalOpen, whenTransitionDone } from '../hooks/useUiStore.js';
+import { Z } from '../utils/modalStack.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { isWon } from '../core/winDetection.js';
 import NewGameModal from './NewGameModal.jsx';
+import ConfirmModal from './ConfirmModal.jsx';
 import SettingsModal from './SettingsModal.jsx';
 import SeedInputModal from './SeedInputModal.jsx';
 import DailyChallengeModal from './DailyChallengeModal.jsx';
@@ -128,6 +131,30 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   // Game session stats (moves / score) + live elapsed time for the HUD.
   const moves = useStatsStore((s) => s.moves);
   const score = useStatsStore((s) => s.score);
+
+  // HUD favorite toggle: reflects whether the currently-dealt game is
+  // favorited. Toggling on favorites immediately; toggling off asks for
+  // confirmation first (same confirm as the Favorites modal row toggle).
+  const currentSeed = useGameStore((s) => s.replaySpec?.seed ?? null);
+  const favorites = useFavoritesStore((s) => s.favorites);
+  const isCurrentFavorite = currentSeed != null && favorites.some((f) => f.seed === currentSeed);
+  const [unfavoriteConfirmOpen, setUnfavoriteConfirmOpen] = useState(false);
+  const onFavoriteHudClick = useCallback(() => {
+    if (currentSeed == null) return;
+    if (useFavoritesStore.getState().isFavorite(currentSeed)) {
+      setUnfavoriteConfirmOpen(true);
+    } else {
+      useFavoritesStore.getState().favoriteCurrent().catch(() => {});
+    }
+  }, [currentSeed]);
+  const onConfirmHudUnfavorite = useCallback(async () => {
+    setUnfavoriteConfirmOpen(false);
+    const seed = useGameStore.getState().replaySpec?.seed ?? null;
+    if (seed == null) return;
+    try {
+      await useFavoritesStore.getState().unfavorite(seed);
+    } catch {}
+  }, []);
 
   // The session locks (won, a hard limit hit, or a winning auto-complete in
   // progress) — disable undo/hint and surface the Game Over dialog when a limit
@@ -374,8 +401,33 @@ function ElapsedClock() {
             gap: 'clamp(14px, 4vw, 80px)',
             alignItems: 'flex-start',
             pointerEvents: 'none',
+            position: 'relative',
           }}
         >
+          {currentSeed != null && (
+            <button
+              type="button"
+              onClick={onFavoriteHudClick}
+              aria-label={isCurrentFavorite ? t('favorites.unfavoriteAction') : t('favorites.favoriteAction')}
+              title={isCurrentFavorite ? t('favorites.unfavoriteAction') : t('favorites.favoriteAction')}
+              aria-pressed={isCurrentFavorite}
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                pointerEvents: 'auto',
+                background: 'none',
+                border: 'none',
+                padding: 8,
+                cursor: 'pointer',
+                color: isCurrentFavorite ? '#e5484d' : '#fff',
+                opacity: isCurrentFavorite ? 1 : 0.85,
+              }}
+            >
+              <Heart size={22} fill={isCurrentFavorite ? '#e5484d' : 'none'} aria-hidden="true" />
+            </button>
+          )}
           <div style={{ ...hudColStyle, display: 'none' }}>
             <span style={hudLabelStyle}>{t('toolbar.score')}</span>
             <span style={hudValueStyle}>{score}</span>
@@ -456,6 +508,18 @@ function ElapsedClock() {
         open={seedInputDialogOpen}
         onConfirm={onSeedConfirm}
         onCancel={onSeedCancel}
+      />
+
+      <ConfirmModal
+        open={unfavoriteConfirmOpen}
+        title={t('favorites.unfavoriteTitle')}
+        message={t('favorites.unfavoriteMessage')}
+        confirmText={t('favorites.unfavoriteConfirm')}
+        cancelText={t('favorites.unfavoriteCancel')}
+        onConfirm={onConfirmHudUnfavorite}
+        onCancel={() => setUnfavoriteConfirmOpen(false)}
+        zIndex={3200}
+        z={Z.GRANDCHILD}
       />
 
       <SettingsModal

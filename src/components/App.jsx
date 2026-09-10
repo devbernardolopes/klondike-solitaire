@@ -19,6 +19,7 @@ import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
 import { useSeedStore } from '../hooks/useSeedStore.js';
+import { useFavoritesStore } from '../hooks/useFavoritesStore.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { initUsedRandomSeeds } from '../db/usedRandomSeeds.js';
 import { startSyncEngine } from '../sync/syncEngine.js';
@@ -63,6 +64,7 @@ export default function App() {
   const init = useSettingsStore((s) => s.init);
   const initStats = useStatisticsStore((s) => s.init);
   const initSeeds = useSeedStore((s) => s.init);
+  const initFavorites = useFavoritesStore((s) => s.init);
   const state = useGameStore((s) => s.state);
   const linkConflict = useAuthStore((s) => s.linkConflict);
   const { t } = useTranslation();
@@ -86,6 +88,7 @@ export default function App() {
       init();
       initStats();
       initSeeds();
+      initFavorites();
       // Hydrate the sound preferences from Dexie so the toggle + volume
       // slider in Settings reflect the saved value from a previous session.
       useSoundStore.getState().init();
@@ -120,7 +123,7 @@ export default function App() {
       if (cleanupToastBridge) cleanupToastBridge();
       if (cleanupSession) cleanupSession();
     };
-  }, [init, initStats, initSeeds]);
+  }, [init, initStats, initSeeds, initFavorites]);
 
   const tableTexture = useSettingsStore((s) => s.tableTexture);
   const cardEffects = useSettingsStore((s) => s.cardEffects);

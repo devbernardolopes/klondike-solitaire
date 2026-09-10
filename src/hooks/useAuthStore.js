@@ -265,6 +265,13 @@ export const useAuthStore = create((set, get) => ({
     await resetStats();
     await savePlayedSeeds([]);
     await db.dailyResults.clear();
+    await db.favoriteDeals.clear();
+    // Lazy import: useFavoritesStore pulls a syncEngine chain that closes a
+    // static cycle back to this module.
+    try {
+      const { useFavoritesStore } = await import('./useFavoritesStore.js');
+      useFavoritesStore.getState().reset();
+    } catch {}
     set({ coins: 0, displayName: null });
     await supabase.auth.signOut();
     await get().init();

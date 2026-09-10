@@ -11,6 +11,7 @@ import { useUiStore } from '../hooks/useUiStore.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
 import { useSeedStore } from '../hooks/useSeedStore.js';
+import { useFavoritesStore } from '../hooks/useFavoritesStore.js';
 import ToggleSwitch from './ToggleSwitch.jsx';
 import ModalCloseButton from './ModalCloseButton.jsx';
 import { OVERHANG_BADGE_LIFT, OVERHANG_BADGE_RIGHT } from './modalBadge.js';
@@ -31,6 +32,7 @@ import StoreModal from './StoreModal.jsx';
 import SettingsOptionsModal from './SettingsOptionsModal.jsx';
 import StatisticsModal from './StatisticsModal.jsx';
 import HistoryModal from './HistoryModal.jsx';
+import FavoritesModal from './FavoritesModal.jsx';
 import AdvancedModal from './AdvancedModal.jsx';
 import pkg from '../../package.json';
 
@@ -74,6 +76,7 @@ export default function SettingsModal({
   const [settingsOptionsOpen, setSettingsOptionsOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [favoritesOpen, setFavoritesOpen] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
@@ -121,6 +124,7 @@ export default function SettingsModal({
     await useAuthStore.getState().signOut();
     await useStatisticsStore.getState().init();
     await useSeedStore.getState().init();
+    await useFavoritesStore.getState().init();
   };
 
   // Keep the latest close handler in a ref so the open-effect can depend only on
@@ -136,8 +140,8 @@ export default function SettingsModal({
   }, [open]);
 
   // SettingsModal stays mounted (returns null when closed) so its local sub-modal
-  // flags (Theme / Achievements / Leaderboard / Store / Stats / History / Advanced)
-  // persist across open/close.
+  // flags (Theme / Achievements / Leaderboard / Store / Stats / History /
+  // Favorites / Advanced) persist across open/close.
   // Clear them whenever the Main Menu is dismissed so reopening it never
   // resurfaces a stale child modal.
   useEffect(() => {
@@ -146,6 +150,7 @@ export default function SettingsModal({
       setSettingsOptionsOpen(false);
       setStatsOpen(false);
       setHistoryOpen(false);
+      setFavoritesOpen(false);
       setAdvancedOpen(false);
       setAchievementsOpen(false);
       setLeaderboardOpen(false);
@@ -342,6 +347,13 @@ export default function SettingsModal({
               onClick={() => setHistoryOpen(true)}
             >
               {t('mainMenu.history')}
+            </button>
+            <button
+              type="button"
+              style={{ ...btn, width: '100%' }}
+              onClick={() => setFavoritesOpen(true)}
+            >
+              {t('mainMenu.favorites')}
             </button>
             <button
               type="button"
@@ -581,6 +593,11 @@ export default function SettingsModal({
       <HistoryModal
         open={historyOpen}
         onClose={() => setHistoryOpen(false)}
+      />
+
+      <FavoritesModal
+        open={favoritesOpen}
+        onClose={() => setFavoritesOpen(false)}
       />
 
       <AdvancedModal

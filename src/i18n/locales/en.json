@@ -400,6 +400,26 @@
     "title": "Event",
     "unlockHint": "Complete the previous page to unlock"
   },
+  "favorites": {
+    "empty": "No favorites yet. Tap the heart at the top of the screen to favorite the current deal.",
+    "eventGone": {
+      "desc": "That event deal is no longer available, so the same shuffle was dealt as a plain game instead.",
+      "title": "Event deal unavailable"
+    },
+    "favoriteAction": "Favorite this deal",
+    "loading": "Loading…",
+    "refreshing": "Updating…",
+    "scrollBottom": "Scroll favorites to bottom",
+    "scrollTop": "Scroll favorites to top",
+    "title": "Favorites",
+    "total": "Total: {{count}} favorites",
+    "unfavorite": "Unfavorite {{title}}",
+    "unfavoriteAction": "Unfavorite this deal",
+    "unfavoriteCancel": "Keep",
+    "unfavoriteConfirm": "Unfavorite",
+    "unfavoriteMessage": "Remove this deal from your favorites? You can favorite it again later.",
+    "unfavoriteTitle": "Unfavorite this deal?"
+  },
   "help": {
     "keys.autoComplete": "Auto-complete to foundations",
     "keys.autoMove": "Auto-move the focused card",
@@ -480,6 +500,7 @@
     "announce.solvitaireExported": "Solvitaire deal exported",
     "awards": "Awards",
     "export": "Export",
+    "favorites": "Favorites",
     "help": "Keyboard shortcuts",
     "helpButton": "Help",
     "history": "History",

@@ -18,7 +18,7 @@ import { randomUnusedSeed, knownSeedCount, buildKnownSet } from '../core/randomS
 import { seedForDate } from '../core/dailyChallenge.js';
 import { getUsedRandomSeedsSet, addUsedRandomSeed, clearUsedRandomSeeds } from '../db/usedRandomSeeds.js';
 import { getWinningPool, getDailyMap } from '../repo/seedRepository.js';
-import { fetchAllEventSeeds } from '../repo/specialEventsRepository.js';
+import { fetchAllEventSeeds, fetchEventDeal } from '../repo/specialEventsRepository.js';
 import { saveLastPlayedEvent } from '../db/lastPlayedEvent.js';
 import { enqueueFlip } from '../render/animation/flipBridge.js';
 import { enqueueParticle } from '../render/animation/particleBridge.js';
@@ -35,6 +35,7 @@ import { useUiStore, whenTransitionDone, warnDealBlocked } from './useUiStore.js
 import { useStatsStore } from './useStatsStore.js';
 import { useStatisticsStore } from './useStatisticsStore.js';
 import { useSeedStore } from './useSeedStore.js';
+import { useToastStore, TOAST_PRIORITY } from './useToastStore.js';
 
 // Capture the current on-screen rect of the cards being moved by this step
 // (given via `animIds`) before the state change, so the render-layer hook can
@@ -637,6 +638,59 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
     // must never be blocked by a persistence failure.
     if (eventId) saveLastPlayedEvent(eventId).catch(() => {});
     runAnimatedDeal(get, set, { seed, kind: 'event', eventDealId, eventDealNumber: eventDealNumber ?? null, eventId, eventTitle });
+    return true;
+  },
+
+  /**
+   * Deal a favorited deal, restoring its exact mode: daily favorites replay
+   * through dealDaily (daily results intact), live event favorites through
+   * dealSpecialEventDeal (event progress intact), everything else as the
+   * identical shuffle of its stored kind. An event favorite whose deal no
+   * longer exists (event ended / deals rotated) falls back to the same
+   * seed as a plain Winning deal — the layout is a pure function of the
+   * seed — with a toast explaining why. Entry point for the Favorites
+   * modal; callers route through startDealOrConfirm so an in-progress game
+   * shows the discard confirmation exactly like a New Game attempt.
+   *
+   * @param {object} fav  favorite entry ({ seed, gameKind, dailyDate, eventDealId, eventId, eventTitle })
+   * @returns {Promise<boolean>} whether the game was dealt
+   */
+  dealFavorite: async (fav) => {
+    if (!fav || fav.seed == null) return false;
+    if (fav.gameKind === 'daily' && fav.dailyDate) {
+      return get().dealDaily(fav.dailyDate);
+    }
+    if (fav.gameKind === 'event' && fav.eventDealId != null) {
+      let live = null;
+      try {
+        live = await fetchEventDeal(fav.eventDealId);
+      } catch {
+        live = null;
+      }
+      if (live && live.seed === fav.seed) {
+        return get().dealSpecialEventDeal(fav.seed, fav.eventDealId, fav.eventId ?? null, fav.eventTitle ?? null, null);
+      }
+      try {
+        useToastStore.getState().push({
+          name: i18n.t('favorites.eventGone.title'),
+          description: i18n.t('favorites.eventGone.desc'),
+          priority: TOAST_PRIORITY.DEFAULT,
+        });
+      } catch {}
+    }
+    const kind = fav.gameKind === 'random' ? 'random' : 'winning';
+    useUiStore.getState().dismissNoHintsBanner();
+    cancelAutoComplete(set);
+    await useStatisticsStore.getState().finalizeGame();
+    useUiStore.getState().setNoMovesDialogOpen(false);
+    useUiStore.getState().clearHints();
+    cancelWinCascade();
+    dropStaleDealLocks(get);
+    if (useUiStore.getState().animatingCards.size + useUiStore.getState().slidingCards.size > 0) { warnDealBlocked('dealFavorite'); return false; }
+    useUiStore.getState().setLastNewGameMode(kind);
+    useStatsStore.getState().resetStats();
+    useUiStore.getState().setCurrentGame(kind);
+    runAnimatedDeal(get, set, { seed: fav.seed, kind });
     return true;
   },
 

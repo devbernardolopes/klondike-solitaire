@@ -8,6 +8,7 @@
 // pipe; later steps add the real stats/seed/daily/state operations here.
 
 import { supabase } from '../lib/supabaseClient.js';
+import { pushFavorite, pushUnfavorite } from '../repo/favoritesRepository.js';
 import { useAchievementEventsStore } from '../hooks/useAchievementEventsStore.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { useToastStore, TOAST_PRIORITY } from '../hooks/useToastStore.js';
@@ -183,5 +184,16 @@ export const operations = {
       .eq('user_id', userId)
       .eq('device_id', payload.device_id);
     if (error) throw error;
+  },
+
+  // Mirror a favorite to Supabase. The local Dexie row is written
+  // synchronously by the caller; this converges the server on flush.
+  add_favorite: async (payload) => {
+    await pushFavorite(payload ?? {});
+  },
+
+  // Mirror an unfavorite to Supabase (same local-first contract as above).
+  remove_favorite: async (payload) => {
+    await pushUnfavorite(payload?.seed);
   },
 };

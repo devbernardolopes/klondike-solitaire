@@ -192,7 +192,11 @@ db.version(13).stores({
 // game_limit_settings snapshot the hard game-over limits enforce from) and
 // `winSnapshots` (pre-win stats snapshots keyed by gameId, so a
 // server-rejected optimistic win can be rolled back exactly).
-db.version(14).stores({
+// v15 adds the `favoriteDeals` table: the local mirror of Supabase
+// favorite_deals (one row per favorited seed) so offline players keep
+// their Favorites list. Synced via the offline-first outbox
+// (add_favorite / remove_favorite ops); the server is authoritative.
+db.version(15).stores({
   games: '++id, startedAt, finishedAt, won, durationMs',
   settings: 'key',
   stats: 'key',
@@ -210,6 +214,7 @@ db.version(14).stores({
   rewardRules: 'key',
   limitRules: 'key',
   winSnapshots: 'gameId',
+  favoriteDeals: 'seed',
 });
 
 /**
