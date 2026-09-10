@@ -8,7 +8,8 @@
 // Data comes from useFavoritesStore (local-first Dexie mirror converging
 // with Supabase via the outbox). Refreshes are stale-while-revalidate:
 // background pulls (open, sync-flushed) never wipe the visible list.
-// Clicking an entry starts the deal through the New-Game confirm gate.
+// Clicking an entry asks for confirmation naming the deal (then deals
+// through the New-Game confirm gate when a game is in progress).
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,16 +25,20 @@ import { useGameStore } from '../hooks/useGameStore.js';
 import { useFavoritesStore } from '../hooks/useFavoritesStore.js';
 import { formatHistoryDate } from '../utils/formatHistoryDate.js';
 
+// Same title rule as the History modal: resolved event title, else the
+// localized deal-kind label. Shared by rows and the play confirmation.
+function favoriteTitle(entry, t) {
+  return entry.eventTitle
+    ?? (entry.gameKind ? t(`history.kinds.${entry.gameKind}`, { defaultValue: entry.gameKind }) : t('history.kinds.unknown'));
+}
+
 function FavoriteRow({ entry, onPlay, onUnfavorite }) {
   const { t, i18n } = useTranslation();
   const [hover, setHover] = useState(false);
   const [focus, setFocus] = useState(false);
   const active = hover || focus;
 
-  // Same title rule as the History modal: resolved event title, else the
-  // localized deal-kind label.
-  const kindLabel = entry.eventTitle
-    ?? (entry.gameKind ? t(`history.kinds.${entry.gameKind}`, { defaultValue: entry.gameKind }) : t('history.kinds.unknown'));
+  const kindLabel = favoriteTitle(entry, t);
 
   const dateLabel = formatHistoryDate(entry.favoritedAt, i18n.language) ?? '';
 
@@ -109,6 +114,7 @@ export default function FavoritesModal({ open, onClose }) {
   const refreshing = useFavoritesStore((s) => s.refreshing);
   const dealFavorite = useGameStore((s) => s.dealFavorite);
   const [pendingUnfavorite, setPendingUnfavorite] = useState(null);
+  const [pendingPlay, setPendingPlay] = useState(null);
   const [scrollMetrics, setScrollMetrics] = useState({ scrollTop: 0, scrollHeight: 0, clientHeight: 0 });
 
   useModalEscape({ open, onClose, id: 'favorites', z: Z.CHILD });
@@ -170,13 +176,33 @@ export default function FavoritesModal({ open, onClose }) {
 
   // Same gate as every New-Game entry point: an in-progress game is stashed
   // behind the "discard current game?" confirmation (which records a loss
-  // on confirm); otherwise the favorite deals immediately.
+  // on confirm). Otherwise a "play this favorite?" confirmation names the
+  // deal first — the favorite only deals after an explicit Play.
   const playFavorite = useCallback((entry) => {
+    if (useStatsStore.getState().isInProgress()) {
+      useUiStore.getState().setPendingStartDeal(() => {
+        onClose();
+        useUiStore.getState().setSettingsDialogOpen(false);
+        dealFavorite(entry);
+      });
+      useUiStore.getState().setConfirmNewGameDialogOpen(true);
+      onClose();
+    } else {
+      setPendingPlay(entry);
+    }
+  }, [onClose, dealFavorite]);
+
+  const confirmPlay = useCallback(() => {
+    const entry = pendingPlay;
+    setPendingPlay(null);
+    if (!entry) return;
     const action = () => {
       onClose();
       useUiStore.getState().setSettingsDialogOpen(false);
       dealFavorite(entry);
     };
+    // Defensive: if a game somehow started while the confirm was up, fall
+    // back to the discard-confirmation gate instead of dealing over it.
     if (useStatsStore.getState().isInProgress()) {
       useUiStore.getState().setPendingStartDeal(action);
       useUiStore.getState().setConfirmNewGameDialogOpen(true);
@@ -184,7 +210,7 @@ export default function FavoritesModal({ open, onClose }) {
     } else {
       action();
     }
-  }, [onClose, dealFavorite]);
+  }, [pendingPlay, onClose, dealFavorite]);
 
   const confirmUnfavorite = useCallback(async () => {
     const entry = pendingUnfavorite;
@@ -332,6 +358,17 @@ export default function FavoritesModal({ open, onClose }) {
         cancelText={t('favorites.unfavoriteCancel')}
         onConfirm={confirmUnfavorite}
         onCancel={() => setPendingUnfavorite(null)}
+        zIndex={3200}
+        z={Z.GRANDCHILD}
+      />
+
+      <ConfirmModal
+        open={pendingPlay != null}
+        title={t('favorites.playTitle')}
+        message={pendingPlay ? t('favorites.playMessage', { title: favoriteTitle(pendingPlay, t) }) : ''}
+        confirmText={t('favorites.playConfirm')}
+        onConfirm={confirmPlay}
+        onCancel={() => setPendingPlay(null)}
         zIndex={3200}
         z={Z.GRANDCHILD}
       />
