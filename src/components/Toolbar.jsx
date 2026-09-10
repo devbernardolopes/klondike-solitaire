@@ -108,6 +108,7 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const showHints = useGameStore((s) => s.showHints);
   const canUndo = useGameStore((s) => s.canUndo());
   const autoCompleting = useGameStore((s) => s.autoCompleting);
+  const playbackActive = useUiStore((s) => s.playbackActive);
   const won = useGameStore((s) => isWon(s.state));
   const isOver = useStatsStore((s) => s.isOver);
   const startTime = useStatsStore((s) => s.startTime);
@@ -141,13 +142,13 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const isCurrentFavorite = currentSeed != null && favorites.some((f) => f.seed === currentSeed);
   const [unfavoriteConfirmOpen, setUnfavoriteConfirmOpen] = useState(false);
   const onFavoriteHudClick = useCallback(() => {
-    if (currentSeed == null) return;
+    if (playbackActive || currentSeed == null) return;
     if (useFavoritesStore.getState().isFavorite(currentSeed)) {
       setUnfavoriteConfirmOpen(true);
     } else {
       useFavoritesStore.getState().favoriteCurrent().catch(() => {});
     }
-  }, [currentSeed]);
+  }, [currentSeed, playbackActive]);
   const onConfirmHudUnfavorite = useCallback(async () => {
     setUnfavoriteConfirmOpen(false);
     const seed = useGameStore.getState().replaySpec?.seed ?? null;
@@ -157,10 +158,10 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
     } catch {}
   }, []);
 
-  // The session locks (won, a hard limit hit, or a winning auto-complete in
-  // progress) — disable undo/hint and surface the Game Over dialog when a limit
-  // (not a win) ended the game.
-  const locked = won || isOver || autoCompleting;
+  // The session locks (won, a hard limit hit, a winning auto-complete in
+  // progress, or an active move playback) — disable undo/hint and surface the
+  // Game Over dialog when a limit (not a win) ended the game.
+  const locked = won || isOver || autoCompleting || playbackActive;
 
   // A short press is left to the native click handler so mouse clicks, touch
   // taps, and keyboard activation all remain one undo. Once the hold delay is
@@ -405,7 +406,7 @@ function ElapsedClock() {
             position: 'relative',
           }}
         >
-          {currentSeed != null && (
+          {currentSeed != null && !playbackActive && (
             <button
               type="button"
               onClick={onFavoriteHudClick}
@@ -454,17 +455,22 @@ function ElapsedClock() {
             <span style={hudLabelStyle}>{t('toolbar.score')}</span>
             <span style={hudValueStyle}>{score}</span>
           </div>
-          <ElapsedClock />
+          {!playbackActive && <ElapsedClock />}
           <div style={hudColStyle}>
             <span style={hudLabelStyle}>{t('toolbar.moves')}</span>
             <span style={hudValueStyle}>{moves}</span>
           </div>
-          <div style={hudColStyle}>
-            <span style={{ ...hudLabelStyle, display: 'flex', alignItems: 'center', gap: 4 }}>
-              <CoinsIcon size={14} style={{ color: '#f0b429' }} />{t('toolbar.coins')}
-            </span>
-            <span data-coin-balance style={{ ...hudValueStyle, display: 'inline-block', visibility: profileReady ? 'visible' : 'hidden' }}>{visibleCoins({ coins, flight: coinFlight })}</span>
-          </div>
+          {/* During move playback the clock never ran and no coins were
+              awarded, so both labels hide (moves stays: it reads the live
+              session counter, untouched by the replay). */}
+          {!playbackActive && (
+            <div style={hudColStyle}>
+              <span style={{ ...hudLabelStyle, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <CoinsIcon size={14} style={{ color: '#f0b429' }} />{t('toolbar.coins')}
+              </span>
+              <span data-coin-balance style={{ ...hudValueStyle, display: 'inline-block', visibility: profileReady ? 'visible' : 'hidden' }}>{visibleCoins({ coins, flight: coinFlight })}</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -491,16 +497,19 @@ function ElapsedClock() {
         <Plus size={20} />
       </button>
 
-       <button
-        style={{ ...fab, right: 16 + FAB_WIDTH + FAB_GAP, opacity: locked ? 0.4 : 1 }}
-        aria-label={t('toolbar.hint')}
-        title={t('toolbar.hint')}
-        data-hint-button
-        disabled={locked}
-        onClick={showHints}
-      >
-        <Lightbulb size={20} />
-      </button>
+       {/* Hidden entirely during move playback (not just disabled). */}
+       {!playbackActive && (
+         <button
+           style={{ ...fab, right: 16 + FAB_WIDTH + FAB_GAP, opacity: locked ? 0.4 : 1 }}
+           aria-label={t('toolbar.hint')}
+           title={t('toolbar.hint')}
+           data-hint-button
+           disabled={locked}
+           onClick={showHints}
+         >
+           <Lightbulb size={20} />
+         </button>
+       )}
 
        <button
         style={{ ...fab, right: 16, opacity: locked || !canUndo ? 0.4 : 1, touchAction: 'manipulation' }}

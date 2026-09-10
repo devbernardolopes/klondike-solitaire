@@ -6,11 +6,17 @@
 // outside-click dismiss only this modal and return to the still-open list.
 // Shares the close-button / backdrop / escape chrome of the other modals.
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useModalBackdrop } from './modalBackdrop.js';
 import { useModalEscape } from '../hooks/useModalEscape.js';
+import { useStatsStore } from '../hooks/useStatsStore.js';
+import { useUiStore } from '../hooks/useUiStore.js';
+import { usePlaybackStore } from '../hooks/usePlaybackStore.js';
+import { useToastStore, TOAST_PRIORITY } from '../hooks/useToastStore.js';
+import { fetchMoveLog } from '../repo/gameHistoryRepository.js';
 import { Z } from '../utils/modalStack.js';
+import ConfirmModal from './ConfirmModal.jsx';
 import ModalCloseButton from './ModalCloseButton.jsx';
 import { formatTime } from '../utils/formatTime.js';
 import { formatHistoryDate } from '../utils/formatHistoryDate.js';
@@ -33,6 +39,39 @@ export default function HistoryDetailModal({ entry, open, onClose }) {
     if (!open) return;
     dialogRef.current?.focus();
   }, [open]);
+
+  // The list reads skip move_log (page weight), so fetch this game's
+  // recording when the detail view opens. Pending (unflushed) results
+  // resolve from the local outbox inside fetchMoveLog.
+  const [logState, setLogState] = useState({ status: 'loading', moveLog: null });
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmBlocked, setConfirmBlocked] = useState(false);
+  useEffect(() => {
+    if (!open || !entry) return;
+    let cancelled = false;
+    setLogState({ status: 'loading', moveLog: null });
+    setConfirmOpen(false);
+    if (entry.seed == null || entry.gameId == null) {
+      setLogState({ status: 'missing', moveLog: null });
+      return undefined;
+    }
+    fetchMoveLog(entry.gameId).then(
+      ({ moveLog }) => {
+        if (cancelled) return;
+        setLogState(
+          typeof moveLog === 'string' && moveLog.length > 0
+            ? { status: 'ready', moveLog }
+            : { status: 'missing', moveLog: null },
+        );
+      },
+      () => {
+        if (!cancelled) setLogState({ status: 'missing', moveLog: null });
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [open, entry]);
 
   if (!open || !entry) return null;
 
@@ -75,6 +114,47 @@ export default function HistoryDetailModal({ entry, open, onClose }) {
   };
 
   const kindLabel = eventDealTitle(entry, t);
+
+  const canPlay = entry.seed != null && logState.status === 'ready';
+  const playDisabledReason =
+    logState.status === 'loading'
+      ? t('playback.loading')
+      : entry.seed == null
+        ? t('playback.noSeed')
+        : t('playback.noRecording');
+
+  const onPlaybackClick = () => {
+    // Playback only starts from an idle board. An in-progress game gets an
+    // info-only dialog (no discard path) — the player finishes or abandons
+    // it first via the normal New Game flow.
+    setConfirmBlocked(useStatsStore.getState().isInProgress());
+    setConfirmOpen(true);
+  };
+
+  const onPlaybackConfirm = () => {
+    setConfirmOpen(false);
+    if (confirmBlocked) return;
+    try {
+      usePlaybackStore.getState().start({
+        seed: entry.seed,
+        logText: logState.moveLog,
+        title: kindLabel,
+      });
+    } catch {
+      try {
+        useToastStore.getState().push({
+          name: t('playback.errorTitle'),
+          description: t('playback.errorMessage'),
+          priority: TOAST_PRIORITY.DEFAULT,
+        });
+      } catch {}
+      return;
+    }
+    // Leave the menu stack entirely: closing Settings unmounts History +
+    // this detail view along with it.
+    onClose();
+    useUiStore.getState().setSettingsDialogOpen(false);
+  };
 
   const rows = [
     [t('history.detail.result'), entry.won ? t('history.won') : t('history.lost')],
@@ -125,6 +205,44 @@ export default function HistoryDetailModal({ entry, open, onClose }) {
             </div>
           ))}
         </div>
+        <button
+          type="button"
+          style={{
+            width: '100%',
+            marginTop: 14,
+            padding: '10px 12px',
+            borderRadius: 8,
+            border: '1px solid var(--ui-modal-panel-border)',
+            background: canPlay ? 'var(--ui-modal-panel-fg)' : 'transparent',
+            color: canPlay ? 'var(--ui-modal-panel-bg)' : 'var(--ui-modal-panel-fg)',
+            opacity: canPlay ? 1 : 0.55,
+            fontWeight: 700,
+            fontSize: 14,
+            cursor: canPlay ? 'pointer' : 'default',
+          }}
+          disabled={!canPlay}
+          title={canPlay ? undefined : playDisabledReason}
+          onClick={onPlaybackClick}
+        >
+          {t('playback.button')}
+        </button>
+        {!canPlay && logState.status !== 'loading' && (
+          <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6, textAlign: 'center' }}>
+            {playDisabledReason}
+          </div>
+        )}
+        <ConfirmModal
+          open={confirmOpen}
+          title={confirmBlocked ? t('playback.blockedTitle') : t('playback.confirmTitle')}
+          message={confirmBlocked ? t('playback.blockedMessage') : t('playback.confirmMessage', { title: kindLabel })}
+          confirmText={confirmBlocked ? t('playback.ok') : t('playback.start')}
+          cancelText={t('playback.cancel')}
+          hideCancel={confirmBlocked}
+          onConfirm={onPlaybackConfirm}
+          onCancel={() => setConfirmOpen(false)}
+          zIndex={Z.GRANDCHILD}
+          z={Z.GRANDCHILD}
+        />
       </div>
     </div>
   );

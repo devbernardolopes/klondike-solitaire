@@ -343,6 +343,16 @@ export const useUiStore = create((set, get) => ({
   winDialogOpen: false,
   winSummary: null, // { score, timeMs, moves, newScore, newTime, newMoves }
 
+  // True while a recorded deal is being played back step-by-step
+  // (see hooks/usePlaybackStore.js). While set, the board is a read-only
+  // replay: game inputs lock, the win effect / solver auto-fire / session
+  // persistence stay silent, and no stats/coins/server writes happen.
+  // Cleared by any real deal (runAnimatedDeal) or a reload.
+  playbackActive: false,
+
+  /** Enter/exit move-playback mode (the driver owns cursor/playing state). */
+  setPlaybackActive: (v) => set({ playbackActive: !!v }),
+
   /** Mark a card as the keyboard-selected card. */
   selectCard: (id) => set({ selectedCardId: id }),
 

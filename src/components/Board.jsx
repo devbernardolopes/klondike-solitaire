@@ -30,6 +30,7 @@ import { getCachedEventDetailSync } from '../repo/specialEventsRepository.js';
 import { didWinCompleteEventPage } from '../repo/specialEventsProgress.js';
 import { formatTimeClock } from '../utils/formatTime.js';
 import Pile from './Pile.jsx';
+import PlaybackBar from './PlaybackBar.jsx';
 import { CardFace, cardAriaString } from './CardView.jsx';
 import { computeAvailBudget, computeTableauFan, resolveTableauMins } from '../render/layout/tableauLayout.js';
 
@@ -219,9 +220,10 @@ export default function Board() {
   const getLimits = useStatsStore((s) => s.getLimits);
   const autoCompleting = useGameStore((s) => s.autoCompleting);
   const autoCompletingToWin = useGameStore((s) => s.autoCompletingToWin);
+  const playbackActive = useUiStore((s) => s.playbackActive);
   const won = isWon(state);
   const highlightCard = useSettingsStore((s) => s.highlightCard);
-  const hardBlockBase = won || isOver || autoCompleting;
+  const hardBlockBase = won || isOver || autoCompleting || playbackActive;
   // `anyAnimating` = some card is still in flight (used to block global actions
   // like new-game/undo/auto-complete). `stockWasteBusy` only blocks
   // draw/recycle. Card/pile-level interaction is gated per-card / per-pile by
@@ -243,7 +245,7 @@ export default function Board() {
   // doesn't cause additional re-renders.
   const animatingIds = useUiStore((s) => s.animatingCards);
   const pendingDrawRef = useRef(false);
-  const locked = won || isOver || anyAnimating || autoCompleting;
+  const locked = won || isOver || anyAnimating || autoCompleting || playbackActive;
   const { sensors, onDragStart, onDragMove, onDragEnd, onDragCancel, activeRun } =
     useDragEngine();
 
@@ -257,7 +259,10 @@ export default function Board() {
   // Win-state cascade: fire once on the false → true transition of isWon.
   const wasWon = useRef(false);
   useEffect(() => {
-    if (won && !wasWon.current) {
+    // Move playback may land on (or pass through) a solved board — that must
+    // never fire the win cascade, coins, or recordWin. Playback ends by user
+    // action (new game / reload), never by winning.
+    if (won && !wasWon.current && !useUiStore.getState().playbackActive) {
       clearSelection();
       playWinCascade();
       playSfx('winFanfare');
@@ -454,6 +459,9 @@ export default function Board() {
   // necessarily on the user's double-click.
   useEffect(() => {
     if (won) return;
+    // Never auto-complete a playback board: every step is already scripted,
+    // and autoComplete would write stats + session + move history.
+    if (useUiStore.getState().playbackActive) return;
     if (useGameStore.getState().autoCompleting) return;
     if (useSettingsStore.getState().autoComplete === false) return;
     // Skip the transient pre-deal state: its tableau is empty (vacuously
@@ -495,6 +503,9 @@ export default function Board() {
         // all other gameplay shortcuts remain locked until a fresh deal.
         if (anyAnimating || autoCompleting) return;
         const isNewGameShortcut = e.key === 'n' || e.key === 'N';
+        // Playback locks every gameplay shortcut; starting a new game (which
+        // exits playback) stays available.
+        if (useUiStore.getState().playbackActive && !isNewGameShortcut) return;
         if (isOver && !isNewGameShortcut) return;
         if (isNewGameShortcut) {
            clearSelection();
@@ -548,19 +559,18 @@ export default function Board() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [won, isOver, anyAnimating, autoCompleting, stockWasteBusy, drawFromStock, recycleStock, undo, autoComplete, dealNewGame, showHints, clearSelection, setAnnounce]);
+  }, [won, isOver, anyAnimating, autoCompleting, playbackActive, stockWasteBusy, drawFromStock, recycleStock, undo, autoComplete, dealNewGame, showHints, clearSelection, setAnnounce]);
 
   useEffect(() => {
     if (stockWasteBusy || !pendingDrawRef.current) return;
-    pendingDrawRef.current = false;
-    if (won || isOver) return;
+    if (won || isOver || playbackActive) return;
     const current = useGameStore.getState().state;
     if (current.stock.length > 0) drawFromStock();
     else if (current.waste.length > 0) recycleStock();
-  }, [stockWasteBusy, won, isOver, drawFromStock, recycleStock]);
+  }, [stockWasteBusy, won, isOver, playbackActive, drawFromStock, recycleStock]);
 
   const onStockClick = () => {
-    if (won || isOver) return;
+    if (won || isOver || playbackActive) return;
     if (stockWasteBusy) {
       pendingDrawRef.current = true;
       return;
@@ -609,7 +619,7 @@ export default function Board() {
     // Record the tap for any non-card spot, so two quick empty-spot taps
     // anywhere on the board seed/fire the double-tap.
     lastTap.current = tap;
-    if (won || isOver || autoCompleting) return;
+    if (won || isOver || autoCompleting || playbackActive) return;
     if (prev && now - prev.t < DOUBLE_TAP_MS) {
       lastTap.current = null;
       autoComplete();
@@ -695,6 +705,14 @@ export default function Board() {
       {autoCompletingToWin && !won && (
         <div className="auto-complete-banner" role="status" aria-live="polite">
           {t('board.autocomplete')}
+        </div>
+      )}
+      {/* Centered "Playback" banner shown for the whole duration of a move
+          playback, mirroring the Game Over overlay above (pointer-events are
+          left to the class default so the board stays visible beneath). */}
+      {playbackActive && (
+        <div className="auto-complete-banner" role="status" aria-live="polite">
+          {t('playback.banner')}
         </div>
       )}
       {/* Centered "No hints available" banner shown when the user invokes the
@@ -811,6 +829,8 @@ export default function Board() {
         {activeRun ? <RunPreview cards={activeRun} metrics={metrics} /> : null}
       </DragOverlay>
     </DndContext>
+      {/* Move-playback transport controls, just above the toolbar line. */}
+      <PlaybackBar />
     </div>
   );
 }

@@ -119,6 +119,10 @@ function clearSession() {
  */
 export function initSessionPersistence() {
   const handler = () => {
+    // Move playback rewrites the board on every step but must never persist:
+    // the saved row keeps describing the real (pre-playback) session, so a
+    // reload exits playback by restoring it.
+    if (useUiStore.getState().playbackActive) return;
     if (useStatsStore.getState().endTime !== null) {
       clearSession();
     } else {

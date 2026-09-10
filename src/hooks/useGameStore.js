@@ -65,6 +65,18 @@ function captureFlip(type, animIds) {
   return enqueueFlip(type, rects);
 }
 
+// True while a recorded deal is being played back (see
+// hooks/usePlaybackStore.js). Playback writes boards directly via
+// showPlaybackState; every real game action bails out while set so a replay
+// can never mutate stats, telemetry, or history.
+function isPlayback() {
+  try {
+    return useUiStore.getState().playbackActive === true;
+  } catch {
+    return false;
+  }
+}
+
 // Evaluate whether the current position is a genuine dead end and show/hide the
 // "No More Moves" modal accordingly. Called after every state mutation so the
 // modal is reliable regardless of which action reached the position.
@@ -167,6 +179,15 @@ function preDealFromDeck(deck, seed) {
 // replayGame, and the initial app-load deal) so the deal animation is identical
 // regardless of mode.
 function runAnimatedDeal(get, set, { seed, order, deck, kind, date, eventDealId, eventDealNumber, eventId, eventTitle } = {}) {
+  // Any real deal exits move-playback mode: the Play loop notices the
+  // cleared flag on its next tick (single-threaded, so a pending tick
+  // either applied before this deal or stops without applying).
+  if (useUiStore.getState().playbackActive) {
+    useUiStore.getState().setPlaybackActive(false);
+    try {
+      useUiStore.getState().clearAllTransitions();
+    } catch {}
+  }
   const usedDeck = deck ? deck.slice() : order ? order.slice() : shuffle(buildStandardDeck(), seed);
   const preDeal = preDealFromDeck(usedDeck, seed);
   // Replay preserves the originating game kind (date for Daily, deal id +
@@ -796,6 +817,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
    */
   drawFromStock: () => {
     useUiStore.getState().dismissNoHintsBanner();
+    if (isPlayback()) return;
     const { state } = get();
     if (isWon(state) || useStatsStore.getState().isOver) return;
     if (get().autoCompleting) return;
@@ -825,6 +847,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
    */
   recycleStock: () => {
     useUiStore.getState().dismissNoHintsBanner();
+    if (isPlayback()) return;
     const { state } = get();
     if (isWon(state) || useStatsStore.getState().isOver) return;
     if (get().autoCompleting) return;
@@ -864,6 +887,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
   moveCard: (from, to, cardId, opts = {}) => {
     useUiStore.getState().dismissNoHintsBanner();
     cancelAutoComplete(set);
+    if (isPlayback()) return false;
     const { state } = get();
     if (isWon(state) || useStatsStore.getState().isOver) return false;
     if (get().autoCompleting) return false;
@@ -968,6 +992,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
   undo: () => {
     useUiStore.getState().dismissNoHintsBanner();
     cancelAutoComplete(set);
+    if (isPlayback()) return null;
     useUiStore.getState().setNoMovesDialogOpen(false);
     const { state } = get();
     if (get().autoCompleting) return null;
@@ -1050,6 +1075,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
    */
   autoMove: (from, cardId) => {
     useUiStore.getState().dismissNoHintsBanner();
+    if (isPlayback()) return false;
     const { state, autoMoveState } = get();
     if (isWon(state) || useStatsStore.getState().isOver) return false;
     if (get().autoCompleting) return false;
@@ -1103,6 +1129,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
   autoComplete: (force = false, opts = {}) => {
     useUiStore.getState().dismissNoHintsBanner();
     useUiStore.getState().clearHints();
+    if (isPlayback()) return false;
     if (autoCompleteTimer !== null) return false;
     if (isWon(get().state) || useStatsStore.getState().isOver) return false;
     // User-initiated auto-complete is blocked while an animation is in flight
@@ -1145,6 +1172,26 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
   canUndo: () => !get().autoCompleting && get().state.moveHistory.length > 0,
 
   /**
+   * Write a playback board directly (move-playback driver only). Bypasses
+   * every game action so no stats, telemetry, session saves, or history
+   * entries are produced. Animated steps reuse the 'move' Flip pipeline;
+   * jumps apply instantly.
+   *
+   * @param {import('../core/GameState.js').GameState} next
+   * @param {string[]} [animIds]
+   * @param {string[]} [destLocs]
+   */
+  showPlaybackState: (next, animIds = [], destLocs = []) => {
+    if (!animIds || animIds.length === 0) {
+      set({ state: next });
+      return;
+    }
+    const tid = captureFlip('move', animIds);
+    useUiStore.getState().beginTransition(tid, animIds, destLocs);
+    set({ state: next, lastActionMeta: { type: 'move' } });
+  },
+
+  /**
    * Hint affordance: surface the currently-visible legal moves. Toggles — if
    * hints are already shown, calling again clears them. Computes the hints from
    * the live core state and pushes them to the UI store for highlighting, plus
@@ -1152,6 +1199,7 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
    * exists ("N moves available" / "No moves available right now").
    */
   showHints: () => {
+    if (isPlayback()) return;
     if (get().autoCompleting) return;
     useStatsStore.getState().markHintUsed();
     const ui = useUiStore.getState();
