@@ -588,5 +588,30 @@
         "coinReward": 200
       }
     ]
+  },
+  {
+    "id": "world-tetris-day-2026",
+    "title": "World Tetris Day 2026",
+    "description": "World Tetris Day celebrates Tetris, the iconic falling-block puzzle game created by Alexey Pajitnov, and its enduring influence on video games and popular culture.",
+    "startsAt": "2026-06-06T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "world-tetris-day-2026/page1.jpg",
+        "coinReward": 50
+      },
+      {
+        "gridSize": 3,
+        "imagePath": "world-tetris-day-2026/page2.jpg",
+        "coinReward": 100
+      },
+      {
+        "gridSize": 4,
+        "imagePath": "world-tetris-day-2026/page3.jpg",
+        "coinReward": 200
+      }
+    ]
   }
 ]
