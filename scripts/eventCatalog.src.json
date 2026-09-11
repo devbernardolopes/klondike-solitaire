@@ -538,5 +538,30 @@
         "coinReward": 200
       }
     ]
+  },
+  {
+    "id": "international-puzzle-day-2026",
+    "title": "International Puzzle Day 2026",
+    "description": "International Puzzle Day celebrates puzzles of every kind, encouraging curiosity, logical thinking, creativity, problem-solving, and the simple pleasure of discovering how pieces fit together.",
+    "startsAt": "2026-01-29T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "international-puzzle-day-2026/page1.jpg",
+        "coinReward": 50
+      },
+      {
+        "gridSize": 3,
+        "imagePath": "international-puzzle-day-2026/page2.jpg",
+        "coinReward": 100
+      },
+      {
+        "gridSize": 4,
+        "imagePath": "international-puzzle-day-2026/page3.jpg",
+        "coinReward": 200
+      }
+    ]
   }
 ]

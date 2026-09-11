@@ -1,5 +1,5 @@
 -- ============================================================
--- Catalog dump — generated 2026-09-11T17:37:50.504Z
+-- Catalog dump — generated 2026-09-11T18:54:39.678Z
 -- Source of truth for scripts/i18n-sync.mjs. Do not edit by hand.
 -- Re-run `npm run catalog:dump` after any dashboard edits.
 -- Idempotent: safe to paste into Supabase SQL editor and re-run.
@@ -13,6 +13,7 @@ INSERT INTO public.special_events (id, title, description) VALUES
   ('festivus-2025', 'Festivus 2025', 'Festivus is the secular, anti-commercial holiday popularized by the television series Seinfeld, featuring the aluminum Festivus pole, the airing of grievances, and feats of strength, observed on 23 December.'),
   ('guy-fawkes-night-2026', 'Guy Fawkes Night 2026', 'Guy Fawkes Night is a British tradition observed with bonfires, fireworks, and gatherings on 5 November, commemorating the failed Gunpowder Plot of 1605.'),
   ('independence-day-2026', 'Independence Day', 'Independence Day commemorates the adoption of the Declaration of Independence with fireworks, patriotic displays, family gatherings, and celebrations of American freedom and history.'),
+  ('international-puzzle-day-2026', 'International Puzzle Day 2026', 'International Puzzle Day celebrates puzzles of every kind, encouraging curiosity, logical thinking, creativity, problem-solving, and the simple pleasure of discovering how pieces fit together.'),
   ('japanese-cherry-blossom-2026', 'Japanese Cherry Blossom Season 2026', 'The Japanese Cherry Blossom Season, known as Sakura, celebrates the fleeting beauty of blooming cherry trees with hanami gatherings, picnics under the blossoms, and traditional spring festivities across Japan.'),
   ('la-tomatina-2026', 'La Tomatina', 'La Tomatina is the famous Spanish tomato-throwing festival held in Buñol, where participants engage in a massive, joyful food fight that fills the streets with red pulp and laughter.'),
   ('las-fallas-2026', 'Las Fallas 2026', 'Las Fallas is Valencia''s spectacular spring festival, celebrated with enormous satirical sculptures, fireworks, marching bands, traditional costumes, street festivities, and the dramatic burning of the fallas.'),
