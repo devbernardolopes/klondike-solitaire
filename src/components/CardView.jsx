@@ -147,6 +147,7 @@ function CardViewBase({ card, from, zIndex = 0, hidden = false, onAutoMove, hard
   const hoverLiftOn = useSettingsStore((s) => s.hoverLift);
   const isDragging = useUiStore((s) => s.isDragging);
   const fullLock = useUiStore((s) => s.fullLock);
+  const playbackActive = useUiStore((s) => s.playbackActive);
   const wobbleEnabled = shouldWobble({
     cardEffects,
     wobble: wobbleOn,
@@ -161,6 +162,7 @@ function CardViewBase({ card, from, zIndex = 0, hidden = false, onAutoMove, hard
     isHidden: hidden,
     won,
     fullLock,
+    playbackActive,
     reducedMotion: isReducedMotion(),
   });
   useIdleWobble(wobbleRef, wobbleEnabled, card.id);

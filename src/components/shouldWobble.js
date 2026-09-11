@@ -23,6 +23,7 @@
  * @param {boolean} [args.isHidden] hidden behind DragOverlay / filtered from pile
  * @param {boolean} [args.won] board already won (cascade owns transforms)
  * @param {boolean} [args.fullLock] win cascade / deal reset lock
+ * @param {boolean} [args.playbackActive] move playback in progress (replay stays still)
  * @param {boolean} [args.reducedMotion] prefers-reduced-motion or OS reduce flag
  * @returns {boolean} true ⇔ the card may idle-wobble right now
  */
@@ -40,11 +41,12 @@ export function shouldWobble({
   isHidden = false,
   won = false,
   fullLock = false,
+  playbackActive = false,
   reducedMotion = false,
 }) {
   if (!cardEffects || !wobble) return false;
   if (!faceUp || !isTableau) return false;
-  if (reducedMotion || won || fullLock || isHidden) return false;
+  if (reducedMotion || won || fullLock || isHidden || playbackActive) return false;
   if (isAnimating || isSliding || isShaking || isDragging) return false;
   if (hoverLiftOn && isHovered) return false;
   return true;

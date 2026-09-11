@@ -168,6 +168,19 @@ export default function Board() {
   // tableau column so piles can compress their fan to fit the screen. Re-runs
   // on board resize (and viewport resize) so spacing re-fits and restores.
   useLayoutEffect(() => {
+    // Last committed geometry: measure() skips setMetrics while every value
+    // matches, so a ResizeObserver tick that changed nothing (or only
+    // sub-pixel noise) never re-renders — otherwise observer → setState →
+    // layout → observer can self-sustain.
+    let last = null;
+    const same = (a, b) =>
+      a !== null &&
+      Math.abs(a.cardH - b.cardH) < 0.5 &&
+      Math.abs(a.fanUp - b.fanUp) < 0.5 &&
+      Math.abs(a.fanDown - b.fanDown) < 0.5 &&
+      Math.abs(a.fanDownMin - b.fanDownMin) < 0.5 &&
+      Math.abs(a.fanUpEmergencyMin - b.fanUpEmergencyMin) < 0.5 &&
+      Math.abs(a.avail - b.avail) < 0.5;
     const measure = () => {
       const board = boardRef.current;
       if (!board) return;
@@ -192,7 +205,10 @@ export default function Board() {
       });
       // Budget: constants owned by TABLEAU_LAYOUT.budget (see tableauLayout.js).
       const avail = computeAvailBudget({ boardH: board.clientHeight, cardH, gap, pad, frame, boardFrame });
-      setMetrics({ cardH, fanUp, fanDown, fanDownMin, fanUpEmergencyMin, avail });
+      const next = { cardH, fanUp, fanDown, fanDownMin, fanUpEmergencyMin, avail };
+      if (same(last, next)) return;
+      last = next;
+      setMetrics(next);
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -654,7 +670,14 @@ export default function Board() {
     </div>
   );
 
+  // The measured board node (ref=boardRef, watched by the ResizeObserver
+  // below) must contain ONLY the piles grid: anything else mounted in-flow
+  // inside it (e.g. the playback transport bar) feeds its own height back
+  // into board.clientHeight → avail → pile heights → observer, which is a
+  // self-sustaining growth loop. PlaybackBar therefore renders as a sibling
+  // AFTER this div (still visually just above the toolbar line).
   return (
+    <>
     <div
       ref={boardRef}
       onPointerUp={handleBoardPointerUp}
@@ -829,8 +852,10 @@ export default function Board() {
         {activeRun ? <RunPreview cards={activeRun} metrics={metrics} /> : null}
       </DragOverlay>
     </DndContext>
-      {/* Move-playback transport controls, just above the toolbar line. */}
-      <PlaybackBar />
     </div>
+      {/* Move-playback transport controls, just above the toolbar line.
+          Sibling of (never inside) the measured board node — see above. */}
+      <PlaybackBar />
+    </>
   );
 }

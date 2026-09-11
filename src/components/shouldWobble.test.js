@@ -13,6 +13,10 @@ test('shouldWobble: resting face-up tableau card wobbles', () => {
   assert.equal(shouldWobble({ ...base }), true);
 });
 
+test('shouldWobble: still during move playback', () => {
+  assert.equal(shouldWobble({ ...base, playbackActive: true }), false);
+});
+
 test('shouldWobble: master toggles gate the effect', () => {
   assert.equal(shouldWobble({ ...base, cardEffects: false }), false);
   assert.equal(shouldWobble({ ...base, wobble: false }), false);

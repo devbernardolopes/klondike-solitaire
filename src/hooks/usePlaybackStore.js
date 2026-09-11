@@ -114,9 +114,14 @@ export const usePlaybackStore = create((set, get) => {
       const states = buildPlaybackStates(deal({ seed }), lines);
       clearPlayTimer();
       playRunId += 1;
+      // Flag FIRST, board second: the session subscriber, win effect, and
+      // solver auto-fire all read the flag synchronously on the board write,
+      // so writing the board first would leak one session save (and in theory
+      // one solver evaluation) onto the playback board. Same-tick sets batch
+      // into a single render.
+      useUiStore.getState().setPlaybackActive(true);
       useGameStore.getState().showPlaybackState(states[0], [], []);
       set({ states, cursor: 0, playing: false, speed: 1, title });
-      useUiStore.getState().setPlaybackActive(true);
       try {
         useUiStore.getState().setAnnounce(i18n.t('playback.started'));
       } catch {}
