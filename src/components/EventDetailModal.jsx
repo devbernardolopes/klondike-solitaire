@@ -91,9 +91,12 @@ export default function EventDetailModal() {
   const activeEventDealId = useUiStore((s) => s.currentEventDealId);
   // No glow once the deal reached an end state: a win pins endTime
   // (stopTimer), a hard limit sets isOver (freeze). A dealt-but-unstarted
-  // deal still glows — it hasn't ended.
+  // deal still glows — it hasn't ended. Never glows during move playback:
+  // the live refs are frozen by design (so a reload restores the real
+  // game), and the replayed board is not the dealt deal.
   const sessionLive = useStatsStore((s) => s.endTime === null && !s.isOver);
-  const activeDealId = sessionLive && activeGameKind === 'event' && activeEventId === eventId
+  const playbackActive = useUiStore((s) => s.playbackActive);
+  const activeDealId = sessionLive && !playbackActive && activeGameKind === 'event' && activeEventId === eventId
     ? activeEventDealId
     : null;
 
