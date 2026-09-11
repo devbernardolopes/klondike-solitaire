@@ -32,6 +32,7 @@ import { didWinCompleteEventPage } from '../repo/specialEventsProgress.js';
 import { formatTimeClock } from '../utils/formatTime.js';
 import Pile from './Pile.jsx';
 import PlaybackBar from './PlaybackBar.jsx';
+import { flushPendingStockDraw } from './pendingStockDraw.js';
 import { CardFace, cardAriaString } from './CardView.jsx';
 import { computeAvailBudget, computeTableauFan, resolveTableauMins } from '../render/layout/tableauLayout.js';
 
@@ -262,6 +263,12 @@ export default function Board() {
   // doesn't cause additional re-renders.
   const animatingIds = useUiStore((s) => s.animatingCards);
   const pendingDrawRef = useRef(false);
+  // A queued stock tap must never leak into a fresh deal: a draw queued on the
+  // old game (while busy) would otherwise fire on the new game's stock the
+  // moment the lock releases.
+  useEffect(() => {
+    pendingDrawRef.current = false;
+  }, [state.seed]);
   const locked = won || isOver || anyAnimating || autoCompleting || playbackActive;
   const { sensors, onDragStart, onDragMove, onDragEnd, onDragCancel, activeRun } =
     useDragEngine();
@@ -589,8 +596,7 @@ export default function Board() {
   }, [won, isOver, anyAnimating, autoCompleting, playbackActive, stockWasteBusy, drawFromStock, recycleStock, undo, autoComplete, dealNewGame, showHints, clearSelection, setAnnounce]);
 
   useEffect(() => {
-    if (stockWasteBusy || !pendingDrawRef.current) return;
-    if (won || isOver || playbackActive) return;
+    if (!flushPendingStockDraw(pendingDrawRef, { stockWasteBusy, blocked: won || isOver || playbackActive })) return;
     const current = useGameStore.getState().state;
     if (current.stock.length > 0) drawFromStock();
     else if (current.waste.length > 0) recycleStock();
