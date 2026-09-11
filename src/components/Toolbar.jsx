@@ -10,6 +10,7 @@ import { useUiStore, isAnyModalOpen, whenTransitionDone } from '../hooks/useUiSt
 import { Z } from '../utils/modalStack.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
+import { usePlaybackStore } from '../hooks/usePlaybackStore.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
 import { isWon } from '../core/winDetection.js';
 import NewGameModal from './NewGameModal.jsx';
@@ -128,11 +129,17 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const coinFlight = useUiStore((s) => s.coinFlight);
   const profileReady = useAuthStore((s) => s.profileReady);
   const anyModalOpen = useUiStore(isAnyModalOpen);
-  const newGameNeedsAttention = !anyModalOpen && !autoCompleting && (won || isOver);
+  // A replayed win sets `won` from the board — never glow the New Game
+  // button for it. Playback ends by user action, not by winning.
+  const newGameNeedsAttention = !anyModalOpen && !autoCompleting && !playbackActive && (won || isOver);
 
   // Game session stats (moves / score) + live elapsed time for the HUD.
   const moves = useStatsStore((s) => s.moves);
   const score = useStatsStore((s) => s.score);
+  // During playback the moves counter is untouched (always 0), so the moves
+  // slot shows the replay position instead, in the identical value style.
+  const playbackCursor = usePlaybackStore((s) => s.cursor);
+  const playbackTotal = usePlaybackStore((s) => s.states.length);
 
   // HUD favorite toggle: reflects whether the currently-dealt game is
   // favorited. Toggling on favorites immediately; toggling off asks for
@@ -458,7 +465,9 @@ function ElapsedClock() {
           {!playbackActive && <ElapsedClock />}
           <div style={hudColStyle}>
             <span style={hudLabelStyle}>{t('toolbar.moves')}</span>
-            <span style={hudValueStyle}>{moves}</span>
+            <span style={hudValueStyle} aria-live={playbackActive ? 'polite' : undefined}>
+              {playbackActive ? `${playbackCursor} / ${Math.max(0, playbackTotal - 1)}` : moves}
+            </span>
           </div>
           {/* During move playback the clock never ran and no coins were
               awarded, so both labels hide (moves stays: it reads the live

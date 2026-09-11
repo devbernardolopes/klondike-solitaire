@@ -90,8 +90,11 @@ export const usePlaybackStore = create((set, get) => {
     cursor: 0,
     playing: false,
     speed: 1,
-    // Human label for the bar (deal title); the driver never reads it.
+    // Identity of the replayed deal for labels (HUD footer + Advanced modal
+    // show these while playbackActive instead of the live game). `title` is
+    // the full localized deal label (e.g. "Autumn Cup, Deal 4 (seed)").
     title: null,
+    seed: null,
 
     /** Number of steps (states - 1). */
     totalSteps: () => Math.max(0, get().states.length - 1),
@@ -121,7 +124,7 @@ export const usePlaybackStore = create((set, get) => {
       // into a single render.
       useUiStore.getState().setPlaybackActive(true);
       useGameStore.getState().showPlaybackState(states[0], [], []);
-      set({ states, cursor: 0, playing: false, speed: 1, title });
+      set({ states, cursor: 0, playing: false, speed: 1, title, seed });
       try {
         useUiStore.getState().setAnnounce(i18n.t('playback.started'));
       } catch {}
@@ -131,7 +134,7 @@ export const usePlaybackStore = create((set, get) => {
     stop: () => {
       clearPlayTimer();
       playRunId += 1;
-      set({ playing: false, states: [], cursor: 0, title: null });
+      set({ playing: false, states: [], cursor: 0, title: null, seed: null });
       useUiStore.getState().setPlaybackActive(false);
     },
 

@@ -9,6 +9,7 @@ import { useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../hooks/useGameStore.js';
 import { useUiStore } from '../hooks/useUiStore.js';
+import { usePlaybackStore } from '../hooks/usePlaybackStore.js';
 import { getCachedEventDetailSync } from '../repo/specialEventsRepository.js';
 
 export const SEED_LABEL_DOUBLE_MS = 300;
@@ -52,6 +53,12 @@ export default function GameModeLabel({ variant = 'modal' }) {
   const currentEventDealNumber = useUiStore((s) => s.currentEventDealNumber);
   const currentEventId = useUiStore((s) => s.currentEventId);
   const currentEventTitle = useUiStore((s) => s.currentEventTitle);
+  // During move playback the live deal refs are stale by design (playback
+  // never touches replaySpec/currentGameKind so a reload restores the real
+  // game). Show the replayed deal's identity instead — same component feeds
+  // the HUD footer and the Advanced modal, so one branch fixes both.
+  const playbackActive = useUiStore((s) => s.playbackActive);
+  const playbackTitle = usePlaybackStore((s) => s.title);
 
   const lastLabelTap = useRef(null);
   const onLabelActivate = useCallback((e) => {
@@ -71,7 +78,7 @@ export default function GameModeLabel({ variant = 'modal' }) {
     }
   }, []);
 
-  if (!currentGameKind) return <span aria-hidden="true">{'\u00A0'}</span>;
+  if (!currentGameKind && !(playbackActive && playbackTitle)) return <span aria-hidden="true">{'\u00A0'}</span>;
 
   // Event deals are labeled with the event's own name ("Autumn Cup, Deal 4
   // (seed)"). The title rides the deal itself (setCurrentEventMeta); restored
@@ -122,7 +129,9 @@ export default function GameModeLabel({ variant = 'modal' }) {
             }
       }
     >
-      {currentGameKind === 'daily'
+      {playbackActive && playbackTitle
+        ? playbackTitle
+        : currentGameKind === 'daily'
         ? t('toolbar.dailyChallenge', { date: currentDailyDate, seed })
         : currentGameKind === 'random'
           ? t('toolbar.random', { seed })

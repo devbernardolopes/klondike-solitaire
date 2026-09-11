@@ -40,7 +40,6 @@ export default function PlaybackBar() {
 
   const atStart = cursor <= 0;
   const atEnd = cursor >= total - 1;
-  const steps = total - 1;
 
   return (
     <div
@@ -113,9 +112,6 @@ export default function PlaybackBar() {
       >
         {`${speed.toFixed(2)}x`}
       </button>
-      <span style={{ fontSize: 13, opacity: 0.8, minWidth: 64, textAlign: 'center' }} aria-live="polite">
-        {`${cursor} / ${steps}`}
-      </span>
     </div>
   );
 }
