@@ -80,7 +80,16 @@ export default function ConfirmModal({
     cursor: 'pointer',
     fontSize: 14,
     fontWeight: 600,
+    overflowWrap: 'anywhere',
   };
+
+  const visibleCount = [
+    quaternaryText && onQuaternary,
+    tertiaryText && onTertiary,
+    !hideCancel,
+    true,
+  ].filter(Boolean).length;
+  const stacked = visibleCount >= 3;
 
   const panel = {
     position: 'relative',
@@ -122,26 +131,30 @@ export default function ConfirmModal({
         )}
         <ModalCloseButton onClick={() => onCloseIconRef.current?.()} />
         <p style={{ margin: '0 0 18px', fontSize: 14, lineHeight: 1.45 }}>{message}</p>
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+        <div style={stacked
+          ? { display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'stretch' }
+          : { display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           {quaternaryText && onQuaternary && (
-            <button type="button" style={btn} onClick={onQuaternary}>
+            <button type="button" style={stacked ? { ...btn, width: '100%' } : btn} onClick={onQuaternary}>
               {quaternaryText}
             </button>
           )}
           {tertiaryText && onTertiary && (
-            <button type="button" style={btn} onClick={onTertiary}>
+            <button type="button" style={stacked ? { ...btn, width: '100%' } : btn} onClick={onTertiary}>
               {tertiaryText}
             </button>
           )}
           {!hideCancel && (
-            <button type="button" style={btn} onClick={onCancel}>
+            <button type="button" style={stacked ? { ...btn, width: '100%' } : btn} onClick={onCancel}>
               {cancelText}
             </button>
           )}
           <button
             type="button"
             ref={confirmRef}
-            style={{ ...btn, background: 'var(--ui-modal-btn-bg-strong)' }}
+            style={stacked
+              ? { ...btn, width: '100%', background: 'var(--ui-modal-btn-bg-strong)' }
+              : { ...btn, background: 'var(--ui-modal-btn-bg-strong)' }}
             onClick={onConfirm}
           >
             {confirmText}
