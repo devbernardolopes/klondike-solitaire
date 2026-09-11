@@ -14,6 +14,8 @@ import {
   canMoveToTableau,
   canMoveToFoundation,
   hasProgressMove,
+  enumerateLegalMoves,
+  revealsHiddenCard,
 } from './rules.js';
 import { isWon } from './winDetection.js';
 
@@ -21,79 +23,53 @@ import { isWon } from './winDetection.js';
  * Canonical signature of a fully-known state. Covers every pile whose contents
  * change under any move we generate (stock, waste, foundations, tableau) so that
  * draw/recycle cycles and reversible tableau shuffles are detected and pruned.
+ * Face-up flags are included: two states with identical id placement but
+ * different reveal status are NOT the same search node.
  * @param {import('./GameState.js').GameState} s
  * @returns {string}
  */
 function signature(s) {
+  const pileSig = (p) => p.map((c) => `${c.id}${c.faceUp ? 'u' : 'd'}`).join(',');
   return (
-    s.stock.map((c) => c.id).join(',') +
+    pileSig(s.stock) +
     '|' +
-    s.waste.map((c) => c.id).join(',') +
+    pileSig(s.waste) +
     '|' +
-    s.foundations.map((p) => p.map((c) => c.id).join(',')).join('|') +
+    s.foundations.map(pileSig).join('|') +
     '|' +
-    s.tableau.map((p) => p.map((c) => c.id).join(',')).join('|')
+    s.tableau.map(pileSig).join('|')
   );
 }
 
 /**
  * Enumerate every legal auto-complete move from a state, ordered foundations-first
- * (so the DFS stays shallow for the common case), then tableau shuffles, then
- * draw/recycle. Move descriptors are in core/moveEngine.js format.
+ * (so the DFS stays shallow for the common case), then waste/tableau shuffles,
+ * then foundation retreats, then draw/recycle. Move descriptors are in
+ * core/moveEngine.js format.
  * @param {import('./GameState.js').GameState} s
- * @param {{ allowTableau?: boolean, allowDraw?: boolean }} [opts]
+ * @param {{ allowTableau?: boolean, allowDraw?: boolean, allowFoundationRetreat?: boolean }} [opts]
  *   - allowTableau (default true): when false, tableau→tableau relocations are
  *     excluded. Used by auto-complete, which must never shuffle cards between
  *     columns (the only legal moves become foundations + stock draw/recycle).
  *   - allowDraw (default true): when false, draw/recycle stock moves are
  *     excluded. Used by the auto-trigger gate, which must prove a win without
  *     needing to recycle the waste back into the stock.
+ *   - allowFoundationRetreat (default true): when false, foundation→tableau
+ *     retreats are excluded. Forced off whenever allowTableau is false so the
+ *     auto-complete hard-lock (no column shuffles, foundation-only finish)
+ *     keeps its guarantee.
  * @returns {Array<object>}
  */
 function enumerateMoves(s, opts = {}) {
-  const moves = [];
-
-  // (a) Foundation moves: waste top + face-up tableau tops. Always generated —
-  // these are always progress and the backbone of a clean auto-complete.
-  const candidates = [];
-  if (s.waste.length > 0) {
-    candidates.push({ from: 'waste', card: s.waste[s.waste.length - 1] });
-  }
-  s.tableau.forEach((pile, i) => {
-    if (pile.length > 0 && pile[pile.length - 1].faceUp) {
-      candidates.push({ from: `tableau:${i}`, card: pile[pile.length - 1] });
-    }
+  const allowTableau = opts.allowTableau !== false;
+  const moves = enumerateLegalMoves(s, {
+    includeFoundation: true,
+    includeWasteToTableau: allowTableau,
+    includeTableau: allowTableau,
+    includeFoundationRetreats: allowTableau && opts.allowFoundationRetreat !== false,
   });
-  for (const { from, card } of candidates) {
-    for (let i = 0; i < s.foundations.length; i++) {
-      if (canMoveToFoundation(card, s.foundations[i])) {
-        moves.push({ type: 'moveCards', from, to: `foundation:${i}`, cardIds: [card.id] });
-      }
-    }
-  }
 
-  // (b) Tableau-to-tableau runs (used to unblock foundation moves). Excluded by
-  // the auto-complete hard-lock: the user forbids any column-to-column shuffle.
-  if (opts.allowTableau !== false) {
-    for (let a = 0; a < s.tableau.length; a++) {
-      const pile = s.tableau[a];
-      for (const card of pile) {
-        if (!card.faceUp) continue;
-        const run = getTableauRun(pile, card.id);
-        if (!run) continue;
-        const cardIds = run.map((c) => c.id).reverse();
-        for (let b = 0; b < s.tableau.length; b++) {
-          if (b === a) continue;
-          if (!canMoveToTableau(run[0], s.tableau[b])) continue;
-          // Skip a pointless move of an entire pile onto an empty column.
-          if (s.tableau[b].length === 0 && pile.length === run.length) continue;
-          moves.push({ type: 'moveCards', from: `tableau:${a}`, to: `tableau:${b}`, cardIds });
-        }
-      }
-    }
-  }
-
-  // (c) Stock cycling — models drawing through and recycling the waste.
+  // Stock cycling — models drawing through and recycling the waste.
   if (opts.allowDraw !== false) {
     if (s.stock.length > 0) {
       moves.push({ type: 'draw' });
@@ -124,11 +100,11 @@ export const SOLVER_TIMEOUT = '__solver_timeout__';
  *    answer is unknown).
  *
  * @param {import('./GameState.js').GameState} state
- * @param {{ maxNodes?: number, maxMs?: number, allowTableau?: boolean, allowDraw?: boolean }} [opts]
+ * @param {{ maxNodes?: number, maxMs?: number, allowTableau?: boolean, allowDraw?: boolean, allowFoundationRetreat?: boolean }} [opts]
  * @returns {Array<object>|null|typeof SOLVER_TIMEOUT} move descriptors, null, or timeout
  */
 export function findWinningSequence(state, opts = {}) {
-  const maxNodes = opts.maxNodes ?? 150000;
+  const maxNodes = opts.maxNodes ?? 200000;
   const maxMs = opts.maxMs ?? 1500;
   const start = Date.now();
   const visited = new Set();
@@ -136,24 +112,31 @@ export function findWinningSequence(state, opts = {}) {
   let nodes = 0;
   let aborted = false;
 
-  function search(s) {
+  function search(s, depth) {
     if (isWon(s)) return true;
     if (nodes++ > maxNodes || Date.now() - start > maxMs) {
       aborted = true;
       return false;
     }
+    // Bound pathological recursion: retreats + shuffles can chain into
+    // thousands-deep paths that overflow the call stack long before the node
+    // budget binds. Production solves run on drained boards (at most 52 cards
+    // out), where any genuine winning line is far shorter than this cap, so
+    // cutting here only prunes churn, never a real win. Mirrors the depth cap
+    // in findReachableMove below.
+    if (depth > 256) return false;
     const sig = signature(s);
     if (visited.has(sig)) return false;
     visited.add(sig);
     for (const move of enumerateMoves(s, opts)) {
       path.push(move);
-      if (search(applyMove(s, move))) return true;
+      if (search(applyMove(s, move), depth + 1)) return true;
       path.pop();
     }
     return false;
   }
 
-  return search(state) ? path.slice() : aborted ? SOLVER_TIMEOUT : null;
+  return search(state, 0) ? path.slice() : aborted ? SOLVER_TIMEOUT : null;
 }
 
 /**
@@ -307,85 +290,24 @@ export function compressWinningSequence(seq, startState) {
 }
 
 /**
- * Comprehensive legal moves for the "no moves remaining" detector. Mirrors the
- * win solver's `enumerateMoves` but (a) also generates waste->tableau
- * relocations (e.g. a red 8 from the waste onto a black 9) and (b) skips the
- * pointless "move an entire pile onto an empty column" shuffle, which uncovers
- * nothing and never advances a foundation — counting it would make a genuinely
- * stuck position (where the only moves are King-shuffles of whole piles) look
- * alive. Draw/recycle are kept so a buried waste card can be cycled into play.
+ * Comprehensive legal moves for the "no moves remaining" detector. Shared with
+ * the win prover via rules.enumerateLegalMoves: foundation plays, waste->tableau
+ * relocations, tableau->tableau runs, and foundation->tableau retreats (which
+ * can unlock buried cards, e.g. retreating a foundation card to expose a run it
+ * was blocking). Skips the pointless "move an entire pile onto an empty column"
+ * shuffle and retreats onto empty columns, which uncover nothing and never
+ * advance a foundation. Draw/recycle are kept so a buried waste card can be
+ * cycled into play.
  */
 function enumerateDeadEndMoves(s) {
-  const moves = [];
-
-  // (a) Foundation moves: waste top + face-up tableau tops.
-  const candidates = [];
-  if (s.waste.length > 0) {
-    candidates.push({ from: 'waste', card: s.waste[s.waste.length - 1] });
-  }
-  s.tableau.forEach((pile, i) => {
-    if (pile.length > 0 && pile[pile.length - 1].faceUp) {
-      candidates.push({ from: `tableau:${i}`, card: pile[pile.length - 1] });
-    }
+  const moves = enumerateLegalMoves(s, {
+    includeFoundation: true,
+    includeWasteToTableau: true,
+    includeTableau: true,
+    includeFoundationRetreats: true,
   });
-  for (const { from, card } of candidates) {
-    for (let i = 0; i < s.foundations.length; i++) {
-      if (canMoveToFoundation(card, s.foundations[i])) {
-        moves.push({ type: 'moveCards', from, to: `foundation:${i}`, cardIds: [card.id] });
-      }
-    }
-  }
 
-  // (b) Waste -> tableau relocations (free the waste / build a run).
-  if (s.waste.length > 0) {
-    const card = s.waste[s.waste.length - 1];
-    for (let i = 0; i < s.tableau.length; i++) {
-      if (canMoveToTableau(card, s.tableau[i])) {
-        moves.push({ type: 'moveCards', from: 'waste', to: `tableau:${i}`, cardIds: [card.id] });
-      }
-    }
-  }
-
-  // (c) Tableau -> tableau runs.
-  for (let a = 0; a < s.tableau.length; a++) {
-    const pile = s.tableau[a];
-    for (const card of pile) {
-      if (!card.faceUp) continue;
-      const run = getTableauRun(pile, card.id);
-      if (!run) continue;
-      const cardIds = run.map((c) => c.id).reverse();
-      for (let b = 0; b < s.tableau.length; b++) {
-        if (b === a) continue;
-        if (!canMoveToTableau(run[0], s.tableau[b])) continue;
-        // Skip a pointless move of an entire pile onto an empty column.
-        if (s.tableau[b].length === 0 && pile.length === run.length) continue;
-        moves.push({ type: 'moveCards', from: `tableau:${a}`, to: `tableau:${b}`, cardIds });
-      }
-    }
-  }
-
-  // (c2) Foundation -> tableau retreats. A card on top of a foundation is a
-  // legal move back onto the tableau in standard Klondike, and doing so can
-  // unlock buried cards (e.g. retreating a foundation card to expose a run it
-  // was blocking). The dead-end reachability search must consider these or it
-  // will falsely flag a player as stuck when their only out is such a retreat.
-  // We skip retreats onto an EMPTY column: a foundation card has no card beneath
-  // it, so placing it on an empty column frees nothing and never enables a
-  // foundation play or a face-down uncover — it only explodes the search space
-  // (every King-topped foundation could be dropped on each of the 7 empty
-  // columns) without ever contributing to a genuine rescue.
-  for (let i = 0; i < s.foundations.length; i++) {
-    const fPile = s.foundations[i];
-    if (fPile.length === 0) continue;
-    const card = fPile[fPile.length - 1];
-    for (let j = 0; j < s.tableau.length; j++) {
-      if (s.tableau[j].length === 0) continue;
-      if (!canMoveToTableau(card, s.tableau[j])) continue;
-      moves.push({ type: 'moveCards', from: `foundation:${i}`, to: `tableau:${j}`, cardIds: [card.id] });
-    }
-  }
-
-  // (d) Stock cycling — models drawing through and recycling the waste.
+  // Stock cycling — models drawing through and recycling the waste.
   if (s.stock.length > 0) {
     moves.push({ type: 'draw' });
   } else if (s.waste.length > 0) {
@@ -468,9 +390,7 @@ function hasProgressMoveWithLoan(s, loan) {
       if (!card.faceUp) continue;
       const run = getTableauRun(pile, card.id);
       if (!run) continue;
-      const idx = pile.findIndex((c) => c.id === run[0].id);
-      const uncovers = idx > 0 && !pile[idx - 1].faceUp;
-      if (!uncovers) continue;
+      if (!revealsHiddenCard(pile, run[0].id)) continue;
       for (let b = 0; b < s.tableau.length; b++) {
         if (b === i) continue;
         if (canMoveToTableau(run[0], s.tableau[b])) return true;
@@ -551,9 +471,13 @@ export function hasGenuineProgress(state, loan = new Set()) {
  *   - a progress move is available right now, OR
  *   - the current waste top can be moved to a tableau pile or foundation.
  * The search explores all transitions (foundation, waste->tableau,
- * tableau->tableau, draw/recycle), using non-meaningful moves only as
- * transitions, so a relocation that *leads to* a later meaningful move keeps the
- * position alive.
+ * tableau->tableau, foundation retreats, draw/recycle), using non-meaningful
+ * moves only as transitions, so a relocation that *leads to* a later meaningful
+ * move keeps the position alive.
+ *
+ * @deprecated Production no longer calls this: the "No More Moves" modal proves
+ * unwinnability with `findWinningSequence` (which now also models foundation
+ * retreats). Kept for regression tests that pin reachable-vs-winnable cases.
  *
  * Returns:
  *  - `true`  if a meaningful move is reachable,
@@ -569,7 +493,7 @@ export function hasGenuineProgress(state, loan = new Set()) {
  * @returns {boolean|typeof SOLVER_TIMEOUT}
  */
 export function findReachableMove(state, opts = {}) {
-  const maxNodes = opts.maxNodes ?? 150000;
+  const maxNodes = opts.maxNodes ?? 200000;
   const maxMs = opts.maxMs ?? 1500;
   const seedLoan = opts.loan ?? new Set();
   const start = Date.now();
@@ -730,7 +654,7 @@ export function isDrainedFoundationDeadEnd(state) {
   // immediate, deterministic result instead of waiting on the async worker.
   // Only a definitive `null` (no winning line reachable) is a dead end; a
   // sequence (a win is reachable) or SOLVER_TIMEOUT (unknown) is not.
-  const r = findWinningSequence(state, { maxNodes: 200000, maxMs: 1500 });
+  const r = findWinningSequence(state, { maxNodes: 260000, maxMs: 1500 });
   if (r === SOLVER_TIMEOUT) return null;
   return r === null;
 }

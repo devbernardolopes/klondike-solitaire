@@ -373,3 +373,83 @@ test('findHints does not surface foundation->tableau rescues during normal play'
     'no foundation-origin hint should be added when genuine progress exists'
   );
 });
+
+test('findHints with includeRescue adds nothing when visible progress exists', () => {
+  // Same progressing board, but rescue explicitly requested: the visible
+  // Ace->foundation play is progress, so no rescue may be appended.
+  const st = createEmptyGameState();
+  const f = (s, r) => createCard(s, r, { faceUp: true });
+  st.waste = [f('hearts', 1)];
+  st.foundations = [[], [], [], []];
+  const hints = findHints(st, { includeRescue: true, loan: new Set() });
+  assert.ok(hints.length > 0, 'expected the Ace->foundation hint');
+  assert.ok(
+    !hints.some((h) => h.rescue),
+    'no rescue hint may be added when visible progress exists'
+  );
+});
+
+// Board whose ONLY out is a foundation->tableau retreat: 7d sits on the
+// diamonds foundation and can retreat onto the black 8c; only then can the
+// 6s move off its pile and uncover a face-down card (genuine progress). At
+// the root there is no visible progress move at all.
+function buildRetreatRescueBoard() {
+  const st = createEmptyGameState();
+  const f = (s, r) => createCard(s, r, { faceUp: true });
+  const d = (s, r) => createCard(s, r, { faceUp: false });
+  st.stock = [];
+  st.waste = [];
+  st.foundations = [
+    [f('spades', 1), f('spades', 2), f('spades', 3)],
+    [f('clubs', 1), f('clubs', 2)],
+    [f('diamonds', 1), f('diamonds', 2), f('diamonds', 3), f('diamonds', 4), f('diamonds', 5), f('diamonds', 6), f('diamonds', 7)],
+    [],
+  ];
+  st.tableau = [
+    [d('hearts', 9), f('spades', 6)],
+    [f('clubs', 8)],
+    [],
+    [],
+    [],
+    [],
+    [],
+  ];
+  return st;
+}
+
+test('findHints with includeRescue surfaces the 7d retreat that unsticks the board', () => {
+  const st = buildRetreatRescueBoard();
+  // Default (no rescue): no visible move at all.
+  assert.deepEqual(findHints(st), []);
+  const sevenId = st.foundations[2][st.foundations[2].length - 1].id;
+  const hints = findHints(st, { includeRescue: true, loan: new Set() });
+  assert.equal(hints.length, 1, `expected exactly the rescue hint, got ${JSON.stringify(hints)}`);
+  assert.equal(hints[0].from, 'foundation:2');
+  assert.equal(hints[0].to, 'tableau:1');
+  assert.equal(hints[0].cardId, sevenId);
+  assert.equal(hints[0].rescue, true);
+});
+
+test('findHints with includeRescue stays empty when no retreat leads to progress', () => {
+  // The retreat-only board from the earlier test: its single retreat (3s onto
+  // 4h) leads nowhere, so even with rescue requested there is nothing to show.
+  const st = createEmptyGameState();
+  const f = (s, r) => createCard(s, r, { faceUp: true });
+  const d = (s, r) => createCard(s, r, { faceUp: false });
+  st.foundations = [
+    [f('hearts', 1)],
+    [f('spades', 1), f('spades', 2), f('spades', 3)],
+    [],
+    [],
+  ];
+  st.tableau = [
+    [f('hearts', 4)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+    [d('clubs', 2)],
+  ];
+  assert.deepEqual(findHints(st, { includeRescue: true, loan: new Set() }), []);
+});

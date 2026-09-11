@@ -2,7 +2,7 @@
 // Web Worker that runs the (potentially expensive) win-proving search off the
 // main thread so the UI never freezes. It only imports the pure core solver.
 
-import { findWinningSequence, findReachableMove } from './solver.js';
+import { findWinningSequence, findReachableMove, SOLVER_TIMEOUT } from './solver.js';
 
 self.onmessage = (e) => {
   const { id, state, opts } = e.data || {};
@@ -16,7 +16,9 @@ self.onmessage = (e) => {
         : findWinningSequence(state, opts || {});
     }
   } catch {
-    seq = null;
+    // An exception means unknown, never a dead end: report a timeout so the
+    // caller treats the position as inconclusive instead of stuck.
+    seq = SOLVER_TIMEOUT;
   }
   self.postMessage({ id, seq });
 };

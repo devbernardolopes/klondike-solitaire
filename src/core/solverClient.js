@@ -12,7 +12,7 @@
 // Node (where `Worker`/`import.meta.url` workers don't exist), which keeps the
 // core unit-testable in isolation.
 
-import { findWinningSequence, findReachableMove } from './solver.js';
+import { findWinningSequence, findReachableMove, SOLVER_TIMEOUT } from './solver.js';
 
 let worker = null;
 let workerBroken = false;
@@ -48,11 +48,11 @@ function ensureWorker() {
   };
   worker.onerror = () => {
     // If the worker dies (e.g. its chunk failed to load), fail every pending
-    // job gracefully (treated as "no win") and mark the worker broken so future
-    // calls skip it and run on the main thread instead.
+    // job as UNKNOWN (timeout sentinel, never a dead end) and mark the worker
+    // broken so future calls skip it and run on the main thread instead.
     workerBroken = true;
     worker = null;
-    for (const resolve of pending.values()) resolve(null);
+    for (const resolve of pending.values()) resolve(SOLVER_TIMEOUT);
     pending.clear();
   };
   return worker;

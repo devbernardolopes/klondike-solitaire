@@ -26,9 +26,11 @@ import { shouldRenderPileHoverOverlay } from './pileHoverOverlay.js';
  * @param {{ cardH:number, fanUp:number, fanDown:number, fanDownMin:number, fanUpEmergencyMin:number, avail:number }|null} [props.metrics] measured geometry for adaptive tableau spacing
  * @param {string[]} [props.sourceCardIds] list of card ids in this pile that are the source of a move hint (computed in Board)
  * @param {boolean} [props.isHintTarget] whether this pile is a destination of at least one move hint (computed in Board)
+ * @param {string[]} [props.rescueSourceIds] subset of sourceCardIds that are foundation-retreat rescues (distinct styling)
+ * @param {boolean} [props.isRescueTarget] whether this pile is the destination of a rescue hint (computed in Board)
  * @param {Set<string>} [props.animatingIds] set of card ids currently in flight (passed from Board to filter moving cards from the pile's resting render)
  */
-export default function Pile({ loc, cards, fanned = false, onClick, label, hiddenIds, onAutoMove, metrics, sourceCardIds, isHintTarget, animatingIds, won = false, hardBlockBase = false, highlightCard = true }) {
+export default function Pile({ loc, cards, fanned = false, onClick, label, hiddenIds, onAutoMove, metrics, sourceCardIds, isHintTarget, rescueSourceIds, isRescueTarget, animatingIds, won = false, hardBlockBase = false, highlightCard = true }) {
   const { t } = useTranslation();
   const { setNodeRef, isOver } = useDroppable({ id: loc, data: { loc } });
   const selectedCardId = useUiStore((s) => s.selectedCardId);
@@ -129,6 +131,7 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
   // extends to the top of the column — that nesting correctly shows multiple
   // distinct "from" moves starting at different levels.)
   const sourceCardIdsLocal = sourceCardIds || [];
+  const rescueIds = new Set(rescueSourceIds || []);
 
   const targetStartIdx = cards.length > 0 ? cards.length - 1 : 0;
   const targetTop = topForIndex(targetStartIdx);
@@ -274,10 +277,12 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
           : fanned
             ? `calc(${Math.max(cards.length - 1 - idx, 0)} * var(--tableau-fan) + var(--card-height))`
             : cardHVal;
+        const isRescue = rescueIds.has(cid);
         return (
           <div
             key={cid}
-            className="hint-source"
+            className={isRescue ? 'hint-source hint-source-rescue' : 'hint-source'}
+            data-rescue={isRescue ? 'true' : undefined}
             aria-hidden="true"
             style={{
               position: 'absolute',
@@ -294,7 +299,8 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
       })}
       {isHintTarget && (
         <div
-          className="hint-target"
+          className={isRescueTarget ? 'hint-target hint-target-rescue' : 'hint-target'}
+          data-rescue={isRescueTarget ? 'true' : undefined}
           aria-hidden="true"
           style={{
             position: 'absolute',

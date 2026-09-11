@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createCard } from './Card.js';
 import { createEmptyGameState } from './GameState.js';
-import { findWinningSequence, findReachableMove, hasDeadEndMove, getAutoFireSolveOptions, isDrainedFoundationDeadEnd, isDeadEndCandidate, SOLVER_TIMEOUT, compressWinningSequence } from './solver.js';
+import { findWinningSequence, findReachableMove, hasDeadEndMove, getAutoFireSolveOptions, isDrainedFoundationDeadEnd, isDeadEndCandidate, SOLVER_TIMEOUT, compressWinningSequence, findRescueMove, reconstructLoan, hasGenuineProgress } from './solver.js';
 import { applyMove } from './moveEngine.js';
 import { isWon } from './winDetection.js';
 import { findFoundationMove, isAllTableauFaceUp, hasAnyValidMove, wouldGreedyComplete } from './rules.js';
@@ -1076,5 +1076,79 @@ test('wouldGreedyComplete: false when finishing would require drawing from the s
   s.tableau = [[], [], [], [], [], [c('hearts', 12, 'h12', false), c('hearts', 11, 'h11')], []];
   s.stock = [c('hearts', 13, 'h13', false)];
   assert.equal(wouldGreedyComplete(s), false, 'a board needing a stock draw must NOT report completion');
+});
+
+// Board whose ONLY out is a foundation->tableau retreat: 7d sits on the
+// diamonds foundation and can retreat onto the black 8c; only then can the 6s
+// move off its pile and uncover a face-down card (genuine progress). At the
+// root there is no visible progress move at all, so the cheap pre-filter is
+// blind — the rescue machinery must see it.
+function buildRetreatRescueBoard() {
+  const c = (suit, rank, id, faceUp = true) => createCard(suit, rank, { faceUp, id });
+  const s = createEmptyGameState();
+  s.stock = [];
+  s.waste = [];
+  s.foundations[0] = [c('spades', 1, 'As'), c('spades', 2, '2s'), c('spades', 3, '3s')];
+  s.foundations[1] = [c('clubs', 1, 'Ac'), c('clubs', 2, '2c')];
+  s.foundations[2] = [
+    c('diamonds', 1, 'Ad'), c('diamonds', 2, '2d'), c('diamonds', 3, '3d'),
+    c('diamonds', 4, '4d'), c('diamonds', 5, '5d'), c('diamonds', 6, '6d'),
+    c('diamonds', 7, '7d'),
+  ];
+  s.foundations[3] = [];
+  s.tableau = [
+    [c('hearts', 9, 'hidden', false), c('spades', 6, '6s')],
+    [c('clubs', 8, '8c')],
+    [],
+    [],
+    [],
+    [],
+    [],
+  ];
+  return s;
+}
+
+test('rescue: hasGenuineProgress is false at the root, true after the 7d retreat', () => {
+  const s = buildRetreatRescueBoard();
+  assert.equal(hasDeadEndMove(s), false, 'cheap pre-filter must be blind at the root');
+  assert.equal(hasGenuineProgress(s), false, 'no genuine progress at the root');
+  const sevenId = s.foundations[2][s.foundations[2].length - 1].id;
+  const after = applyMove(s, { type: 'moveCards', from: 'foundation:2', to: 'tableau:1', cardIds: [sevenId] });
+  assert.equal(hasGenuineProgress(after, new Set([sevenId])), true, '6s can uncover after the retreat');
+});
+
+test('rescue: findRescueMove returns the 7d->8c retreat', () => {
+  const s = buildRetreatRescueBoard();
+  const sevenId = s.foundations[2][s.foundations[2].length - 1].id;
+  const rescue = findRescueMove(s, new Set());
+  assert.ok(rescue, 'expected a rescue move');
+  assert.equal(rescue.from, 'foundation:2');
+  assert.equal(rescue.to, 'tableau:1');
+  assert.equal(rescue.cardId, sevenId);
+});
+
+test('rescue: reconstructLoan tracks foundation retreats and returns', () => {
+  const s = buildRetreatRescueBoard();
+  assert.equal(reconstructLoan(s.moveHistory).size, 0, 'no loans before any retreat');
+  const sevenId = s.foundations[2][s.foundations[2].length - 1].id;
+  const afterRetreat = applyMove(s, { type: 'moveCards', from: 'foundation:2', to: 'tableau:1', cardIds: [sevenId] });
+  assert.ok(reconstructLoan(afterRetreat.moveHistory).has(sevenId), 'retreated card is on loan');
+  // A no-op return (loaned card climbs back) must NOT count as progress.
+  const back = applyMove(afterRetreat, { type: 'moveCards', from: 'tableau:1', to: 'foundation:2', cardIds: [sevenId] });
+  assert.equal(reconstructLoan(back.moveHistory).size, 0, 'returned card is no longer on loan');
+  assert.equal(hasGenuineProgress(back, reconstructLoan(back.moveHistory)), false, 'foundation->tableau->foundation cycle is not progress');
+});
+
+test('win prover hard-lock (allowTableau:false) still excludes foundation retreats', () => {
+  const s = buildRetreatRescueBoard();
+  // The position is genuinely unwinnable to a full win (most cards are not in
+  // play), so both the default and the hard-locked solve report null — the
+  // point being the hard-lock terminates cleanly on a retreat-only board
+  // instead of wandering through forbidden retreats (which would surface as a
+  // timeout rather than a conclusive null).
+  const locked = findWinningSequence(s, { allowTableau: false, allowDraw: false, maxNodes: 10000, maxMs: 500 });
+  assert.equal(locked, null, 'hard-locked solve must not use retreats');
+  const open = findWinningSequence(s, { maxNodes: 10000, maxMs: 500 });
+  assert.equal(open, null, 'unwinnable position stays null with retreats modeled');
 });
 

@@ -205,6 +205,17 @@
   animation: hintPulse 1.2s ease-in-out infinite;
 }
 
+/* Rescue hints (foundation-retreat to unstick the board): same shapes as normal
+   hints but dashed + violet so a retreat is never mistaken for regular play. */
+.hint-source-rescue {
+  outline-style: dashed;
+  outline-color: #c084fc;
+}
+
+.hint-target-rescue {
+  box-shadow: 0 0 0 2px #c084fc, 0 0 14px #c084fc;
+}
+
 @keyframes hintPulse {
   0%,
   100% {

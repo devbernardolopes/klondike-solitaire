@@ -10,7 +10,7 @@ import { formatMove, formatUndo } from '../core/moveLog.js';
 import { canMoveToTableau, canMoveToFoundation, getTableauRun, getAutoMoveTargets, findFoundationMove, wouldGreedyComplete, DEST_ORDER } from '../core/rules.js';
 import { isWon } from '../core/winDetection.js';
 import { solveAsync, cancelAllSolves, STALE } from '../core/solverClient.js';
-import { SOLVER_TIMEOUT, hasDeadEndMove, compressWinningSequence, isDrainedFoundationDeadEnd, isDeadEndCandidate } from '../core/solver.js';
+import { SOLVER_TIMEOUT, hasDeadEndMove, compressWinningSequence, isDrainedFoundationDeadEnd, isDeadEndCandidate, reconstructLoan } from '../core/solver.js';
 import { findHints } from '../core/hints.js';
 import { buildStandardDeck, shuffle } from '../core/Deck.js';
 import { createEmptyGameState } from '../core/GameState.js';
@@ -136,7 +136,7 @@ function evaluateDeadEnd(get, set, state) {
     return;
   }
   const captured = state; // each action mints a fresh state object
-  const { promise } = solveAsync(state, { maxNodes: 500000, maxMs: 4000, goal: 'win' });
+  const { promise } = solveAsync(state, { maxNodes: 650000, maxMs: 4000, goal: 'win' });
   promise.then((seq) => {
     if (seq === STALE) return;
     if (get().state !== captured) return; // state moved on; ignore stale result
@@ -1212,7 +1212,12 @@ export const useGameStore = create(subscribeWithSelector((set, get) => ({
       ui.setAnnounce(i18n.t('board.hintsCleared'));
       return;
     }
-    const hints = findHints(get().state);
+    const state = get().state;
+    // Rescue-aware hints: visible moves first, plus at most one flagged
+    // foundation→tableau rescue when no visible progress move exists. The loan
+    // set (cards already retreated off a foundation) is reconstructed from
+    // history so multi-step rescues chain and no-op returns stay suppressed.
+    const hints = findHints(state, { includeRescue: true, loan: reconstructLoan(state.moveHistory) });
     if (hints.length === 0) {
       // The current visible board has no moves the hint system recognizes —
       // show the transient "No hints available" banner (it self-dismisses after

@@ -11,7 +11,8 @@
 // buried stock/waste cards reachable after cycling) — this matches the player's
 // mental model of "available moves" and the "No moves remaining" detector.
 
-import { getAutoMoveTargets, canMoveToTableau } from './rules.js';
+import { getAutoMoveTargets, canMoveToTableau, pileIndexByCardId, revealsHiddenCard } from './rules.js';
+import { findRescueMove } from './solver.js';
 
 // --- Ace-focus hint helpers ---------------------------------------------------
 // An Ace on a foundation is always correct progress; when any movable Ace can move
@@ -82,10 +83,20 @@ function chooseAce(state, candidates) {
  * — for a waste pile it is the top card, and for a tableau column it is the top
  * of the run being moved (which may be a *buried* card, not the column top). This
  * is what lets the UI anchor the "from" highlight to the actual run.
+ *
+ * A foundation→tableau "rescue" (a card retreated off a foundation to unlock
+ * buried cards) is appended with `rescue: true` only when `opts.includeRescue`
+ * is set AND the visible list contains no progress move (no foundation play and
+ * no uncovering relocation) — so normal play is never polluted, but a board
+ * whose only out is a retreat still gets a hint. Pass `opts.loan` (the set of
+ * card ids currently retreated from a foundation, see `reconstructLoan`) so
+ * multi-step rescues chain and no-op returns are suppressed.
+ *
  * @param {import('./GameState.js').GameState} state
- * @returns {Array<{from:string, to:string, cardId:string}>}
+ * @param {{ includeRescue?: boolean, loan?: Set<string> }} [opts]
+ * @returns {Array<{from:string, to:string, cardId:string, rescue?:boolean}>}
  */
-export function findHints(state) {
+export function findHints(state, opts = {}) {
   const hints = [];
   const seen = new Set();
   const add = (from, to, cardId) => {
@@ -158,9 +169,11 @@ export function findHints(state) {
         // normal re-stack). A mid-column run moved onto another non-empty column
         // that reveals nothing new and frees nothing is a pure lateral shuffle —
         // advisory-only and never required, so omit it from the hints.
+        // Uncover uses the shared rules definition (the card exposed at the top
+        // of the source is face-down).
         if (to.startsWith('tableau')) {
-          const idx = pile.indexOf(card);
-          const revealsHidden = idx > 0 && !pile[idx - 1].faceUp;
+          const idx = pileIndexByCardId(pile, card.id);
+          const revealsHidden = revealsHiddenCard(pile, card.id);
           const emptiesSource = idx === 0;
           const isColumnTop = card.id === pile[pile.length - 1].id;
           if (!revealsHidden && !emptiesSource && !isColumnTop) continue;
@@ -169,14 +182,13 @@ export function findHints(state) {
         // tableau column when doing so reveals no face-down card in its source
         // column — such a relocation is meaningless for solving the game. A King
         // move that flips a hidden card underneath is still a useful hint.
+        // Uncover uses the shared rules definition (immediate predecessor).
         if (
           card.rank === 13 &&
           from.startsWith('tableau') &&
           isEmptyTableau(to)
         ) {
-          const idx = pile.indexOf(card);
-          const revealsHidden = pile.slice(0, idx).some((c) => !c.faceUp);
-          if (!revealsHidden) continue;
+          if (!revealsHiddenCard(pile, card.id)) continue;
         }
         // Record the actual grabbable card (top of its run) — for a tableau
         // this may be a buried card, not the column's top. The UI uses cardId to
@@ -185,6 +197,30 @@ export function findHints(state) {
       }
     }
   });
+
+  // Rescue fallback: when the visible list has no progress move (no foundation
+  // play and no uncovering relocation), a foundation→tableau retreat may be the
+  // only out. Surface at most one, flagged so the UI can style it distinctly.
+  if (opts.includeRescue) {
+    let hasProgress = false;
+    for (const h of hints) {
+      if (h.to.startsWith('foundation')) {
+        hasProgress = true;
+        break;
+      }
+      if (h.to.startsWith('tableau') && h.from.startsWith('tableau')) {
+        const pile = state.tableau[Number(h.from.split(':')[1])];
+        if (pile && revealsHiddenCard(pile, h.cardId)) {
+          hasProgress = true;
+          break;
+        }
+      }
+    }
+    if (!hasProgress) {
+      const rescue = findRescueMove(state, opts.loan ?? new Set());
+      if (rescue) hints.push({ ...rescue, rescue: true });
+    }
+  }
 
   return hints;
 }

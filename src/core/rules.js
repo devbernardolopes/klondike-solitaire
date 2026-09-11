@@ -82,6 +82,33 @@ export function getTableauRun(pile, cardId) {
 }
 
 /**
+ * Index of a card inside a pile by id. Uses id comparison (not object
+ * identity) so cloned card objects still resolve.
+ *
+ * @param {Array<{id:string}>} pile  bottom→top
+ * @param {string} cardId
+ * @returns {number} index or -1
+ */
+export function pileIndexByCardId(pile, cardId) {
+  return pile.findIndex((c) => c.id === cardId);
+}
+
+/**
+ * Does moving the run headed by `cardId` off `pile` uncover a face-down card?
+ * True when the run is not the whole pile and the card that would become the
+ * new top of the source is face-down. This is the single shared definition of
+ * "uncovering" used by the progress detector and the hint filters.
+ *
+ * @param {Array<{id:string, faceUp:boolean}>} pile  bottom→top
+ * @param {string} cardId  head of the run being moved
+ * @returns {boolean}
+ */
+export function revealsHiddenCard(pile, cardId) {
+  const idx = pileIndexByCardId(pile, cardId);
+  return idx > 0 && !pile[idx - 1].faceUp;
+}
+
+/**
  * Ordered list of valid destination locators for a one-click/tap auto-move of a
  * card (plus the run beneath it, for tableau sources). Order follows DEST_ORDER
  * (foundations first, then tableaus); the source slot is excluded.
@@ -240,11 +267,9 @@ export function hasProgressMove(state) {
       if (!card.faceUp) continue;
       const run = getTableauRun(pile, card.id);
       if (!run) continue;
-      const idx = pile.findIndex((c) => c.id === run[0].id);
-      // A flip happens when the run isn't the whole pile and the card now
+      // Shared uncover definition: the run isn't the whole pile and the card
       // exposed at the top of the source was face-down.
-      const uncovers = idx > 0 && !pile[idx - 1].faceUp;
-      if (!uncovers) continue;
+      if (!revealsHiddenCard(pile, run[0].id)) continue;
       // Confirm there is somewhere to legally drop the run.
       for (let b = 0; b < state.tableau.length; b++) {
         if (b === i) continue;
@@ -319,9 +344,104 @@ export function wouldGreedyComplete(state) {
  * implementations use — exhaustive Klondike solvability checking is
  * prohibitively expensive to run live.
  *
+ * @deprecated Production no longer uses this: the dead-end detector gates on
+ * `hasDeadEndMove` (progress-aware) and proves unwinnability with
+ * `findWinningSequence`. Kept for regression tests that pin the distinction
+ * between "any visible move" and "progress".
+ *
  * @param {import('./GameState.js').GameState} state
  * @returns {boolean}
  */
+/**
+ * Shared legal-move enumerator for the solvers and detectors. Returns moves in
+ * core/moveEngine.js format (`moveCards` cardIds are top-first, i.e. reversed
+ * from the bottom→top run order). Foundations-first, then waste relocations,
+ * then tableau runs, then foundation retreats — so DFS stays shallow on the
+ * common foundation-progress case.
+ *
+ * @param {import('./GameState.js').GameState} s
+ * @param {{ includeFoundation?: boolean, includeWasteToTableau?: boolean, includeTableau?: boolean, includeFoundationRetreats?: boolean, skipWholePileToEmpty?: boolean, skipRetreatToEmpty?: boolean }} [opts]
+ * @returns {Array<object>} moveCards descriptors (draw/recycle NOT included)
+ */
+export function enumerateLegalMoves(s, opts = {}) {
+  const {
+    includeFoundation = true,
+    includeWasteToTableau = true,
+    includeTableau = true,
+    includeFoundationRetreats = false,
+    skipWholePileToEmpty = true,
+    skipRetreatToEmpty = true,
+  } = opts;
+  const moves = [];
+
+  // (a) Foundation moves: waste top + face-up tableau tops.
+  if (includeFoundation) {
+    const candidates = [];
+    if (s.waste.length > 0) {
+      candidates.push({ from: 'waste', card: s.waste[s.waste.length - 1] });
+    }
+    s.tableau.forEach((pile, i) => {
+      if (pile.length > 0 && pile[pile.length - 1].faceUp) {
+        candidates.push({ from: `tableau:${i}`, card: pile[pile.length - 1] });
+      }
+    });
+    for (const { from, card } of candidates) {
+      for (let i = 0; i < s.foundations.length; i++) {
+        if (canMoveToFoundation(card, s.foundations[i])) {
+          moves.push({ type: 'moveCards', from, to: `foundation:${i}`, cardIds: [card.id] });
+        }
+      }
+    }
+  }
+
+  // (b) Waste -> tableau relocations.
+  if (includeWasteToTableau && s.waste.length > 0) {
+    const card = s.waste[s.waste.length - 1];
+    for (let i = 0; i < s.tableau.length; i++) {
+      if (canMoveToTableau(card, s.tableau[i])) {
+        moves.push({ type: 'moveCards', from: 'waste', to: `tableau:${i}`, cardIds: [card.id] });
+      }
+    }
+  }
+
+  // (c) Tableau -> tableau runs.
+  if (includeTableau) {
+    for (let a = 0; a < s.tableau.length; a++) {
+      const pile = s.tableau[a];
+      for (const card of pile) {
+        if (!card.faceUp) continue;
+        const run = getTableauRun(pile, card.id);
+        if (!run) continue;
+        const cardIds = run.map((c) => c.id).reverse();
+        for (let b = 0; b < s.tableau.length; b++) {
+          if (b === a) continue;
+          if (!canMoveToTableau(run[0], s.tableau[b])) continue;
+          if (skipWholePileToEmpty && s.tableau[b].length === 0 && pile.length === run.length) continue;
+          moves.push({ type: 'moveCards', from: `tableau:${a}`, to: `tableau:${b}`, cardIds });
+        }
+      }
+    }
+  }
+
+  // (d) Foundation -> tableau retreats. Only onto non-empty columns by default:
+  // a retreated card frees nothing on an empty column and only explodes the
+  // search space.
+  if (includeFoundationRetreats) {
+    for (let i = 0; i < s.foundations.length; i++) {
+      const fPile = s.foundations[i];
+      if (fPile.length === 0) continue;
+      const card = fPile[fPile.length - 1];
+      for (let j = 0; j < s.tableau.length; j++) {
+        if (skipRetreatToEmpty && s.tableau[j].length === 0) continue;
+        if (!canMoveToTableau(card, s.tableau[j])) continue;
+        moves.push({ type: 'moveCards', from: `foundation:${i}`, to: `tableau:${j}`, cardIds: [card.id] });
+      }
+    }
+  }
+
+  return moves;
+}
+
 export function hasAnyValidMove(state) {
   if (state.waste.length > 0) {
     const top = state.waste[state.waste.length - 1];
