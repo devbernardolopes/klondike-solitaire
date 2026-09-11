@@ -205,7 +205,7 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
       }}
       data-loc={loc}
     >
-      {fanned && cards.length === 0 && (
+      {fanned && (
         <div
           aria-hidden="true"
           style={{
@@ -213,10 +213,7 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
             left: 0,
             top: 0,
             width: 'var(--card-width)',
-            height:
-              visualPileHeight != null
-                ? `${visualPileHeight}px`
-                : `calc(var(--card-height) + ${Math.max(effectiveLenForVisual - 1, 0)} * var(--tableau-fan))`,
+            height: metrics && metrics.cardH ? `${metrics.cardH}px` : 'var(--card-height)',
             borderRadius: 'var(--card-radius)',
             border: 'var(--pile-empty-border, 1px solid rgba(255,255,255,0.18))',
             background: 'var(--pile-empty-bg, rgba(0,0,0,0.12))',
