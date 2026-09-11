@@ -42,30 +42,34 @@ export default function HistoryDetailModal({ entry, open, onClose }) {
 
   // The list reads skip move_log (page weight), so fetch this game's
   // recording when the detail view opens. Pending (unflushed) results
-  // resolve from the local outbox inside fetchMoveLog.
-  const [logState, setLogState] = useState({ status: 'loading', moveLog: null });
+  // resolve from the local outbox inside fetchMoveLog. The button is
+  // optimistically enabled while the fetch is in flight (status 'unknown')
+  // so it never flashes disabled→enabled; the fetch only ever downgrades to
+  // 'missing'. The confirm path awaits the same promise, closing the race
+  // where the user taps Playback before the fetch lands.
+  const [logState, setLogState] = useState({ status: 'unknown', moveLog: null });
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmBlocked, setConfirmBlocked] = useState(false);
+  const logPromiseRef = useRef(null);
   useEffect(() => {
     if (!open || !entry) return;
     let cancelled = false;
-    setLogState({ status: 'loading', moveLog: null });
+    setLogState({ status: 'unknown', moveLog: null });
     setConfirmOpen(false);
     if (entry.seed == null || entry.gameId == null) {
+      logPromiseRef.current = Promise.resolve(null);
       setLogState({ status: 'missing', moveLog: null });
       return undefined;
     }
-    fetchMoveLog(entry.gameId).then(
+    logPromiseRef.current = fetchMoveLog(entry.gameId).then(
       ({ moveLog }) => {
-        if (cancelled) return;
-        setLogState(
-          typeof moveLog === 'string' && moveLog.length > 0
-            ? { status: 'ready', moveLog }
-            : { status: 'missing', moveLog: null },
-        );
+        const log = typeof moveLog === 'string' && moveLog.length > 0 ? moveLog : null;
+        if (!cancelled) setLogState(log ? { status: 'ready', moveLog: log } : { status: 'missing', moveLog: null });
+        return log;
       },
       () => {
         if (!cancelled) setLogState({ status: 'missing', moveLog: null });
+        return null;
       },
     );
     return () => {
@@ -115,9 +119,9 @@ export default function HistoryDetailModal({ entry, open, onClose }) {
 
   const kindLabel = eventDealTitle(entry, t);
 
-  const canPlay = entry.seed != null && logState.status === 'ready';
+  const canPlay = entry.seed != null && logState.status !== 'missing';
   const playDisabledReason =
-    logState.status === 'loading'
+    logState.status === 'unknown'
       ? t('playback.loading')
       : entry.seed == null
         ? t('playback.noSeed')
@@ -131,23 +135,42 @@ export default function HistoryDetailModal({ entry, open, onClose }) {
     setConfirmOpen(true);
   };
 
-  const onPlaybackConfirm = () => {
+  const showPlaybackError = () => {
+    try {
+      useToastStore.getState().push({
+        name: t('playback.errorTitle'),
+        description: t('playback.errorMessage'),
+        priority: TOAST_PRIORITY.DEFAULT,
+      });
+    } catch {}
+  };
+
+  const onPlaybackConfirm = async () => {
     setConfirmOpen(false);
     if (confirmBlocked) return;
+    // The recording may still be in flight when the user confirms quickly —
+    // await it rather than trusting the optimistic button state.
+    let moveLog = logState.moveLog;
+    if (moveLog == null) {
+      try {
+        moveLog = await logPromiseRef.current;
+      } catch {
+        moveLog = null;
+      }
+    }
+    if (moveLog == null) {
+      showPlaybackError();
+      setLogState({ status: 'missing', moveLog: null });
+      return;
+    }
     try {
       usePlaybackStore.getState().start({
         seed: entry.seed,
-        logText: logState.moveLog,
+        logText: moveLog,
         title: kindLabel,
       });
     } catch {
-      try {
-        useToastStore.getState().push({
-          name: t('playback.errorTitle'),
-          description: t('playback.errorMessage'),
-          priority: TOAST_PRIORITY.DEFAULT,
-        });
-      } catch {}
+      showPlaybackError();
       return;
     }
     // Leave the menu stack entirely: closing Settings unmounts History +
@@ -226,7 +249,7 @@ export default function HistoryDetailModal({ entry, open, onClose }) {
         >
           {t('playback.button')}
         </button>
-        {!canPlay && logState.status !== 'loading' && (
+        {!canPlay && logState.status !== 'unknown' && (
           <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6, textAlign: 'center' }}>
             {playDisabledReason}
           </div>

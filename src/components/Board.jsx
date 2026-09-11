@@ -5,6 +5,7 @@
 import { DndContext, DragOverlay } from '@dnd-kit/core';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useGameStore } from '../hooks/useGameStore.js';
+import { usePlaybackStore } from '../hooks/usePlaybackStore.js';
 import { useDragEngine } from '../hooks/useDragEngine.js';
 import { useUiStore, isAnyModalOpen } from '../hooks/useUiStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
@@ -517,11 +518,21 @@ export default function Board() {
        if (isAnyModalOpen(useUiStore.getState())) return;
         // New game is the one recovery action allowed after a hard game-over;
         // all other gameplay shortcuts remain locked until a fresh deal.
-        if (anyAnimating || autoCompleting) return;
         const isNewGameShortcut = e.key === 'n' || e.key === 'N';
+        const pb = useUiStore.getState().playbackActive;
+        if (pb && isNewGameShortcut) {
+          // Replay tweens are disposable and the deal path drops their locks,
+          // so stop the driver first and fall through to the normal new-game
+          // branch instead of letting anyAnimating veto the keypress.
+          try {
+            usePlaybackStore.getState().stop();
+          } catch {}
+        } else if (anyAnimating || autoCompleting) {
+          return;
+        }
         // Playback locks every gameplay shortcut; starting a new game (which
         // exits playback) stays available.
-        if (useUiStore.getState().playbackActive && !isNewGameShortcut) return;
+        if (pb && !isNewGameShortcut) return;
         if (isOver && !isNewGameShortcut) return;
         if (isNewGameShortcut) {
            clearSelection();

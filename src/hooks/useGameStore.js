@@ -466,12 +466,16 @@ function cancelAutoComplete(set) {
 // A new deal replaces the whole board (runAnimatedDeal sets a fresh pre-deal
 // instantly), so when the outgoing game is already finished (won or over) no
 // in-flight card animation is worth preserving — and a stranded transition
-// lock must never veto the deal. Call before the animating/sliding guard in
-// every deal entry point. Deliberately scoped to finished games: mid-game the
-// guard stays strict so a deal can't corrupt a live animation.
+// lock must never veto the deal. Same for move playback: replay tweens are
+// disposable by definition, and the replayed board is neither won nor over in
+// the stats sense, so without this branch any in-flight/stranded playback
+// transition would silently veto the new deal. Call before the
+// animating/sliding guard in every deal entry point. Deliberately scoped to
+// finished games + playback: mid-game the guard stays strict so a deal can't
+// corrupt a live animation.
 function dropStaleDealLocks(get) {
   try {
-    if (isWon(get().state) || useStatsStore.getState().isOver) {
+    if (isWon(get().state) || useStatsStore.getState().isOver || useUiStore.getState().playbackActive) {
       try { cancelAllDrawSlides(); } catch {}
       useUiStore.getState().clearAllTransitions();
     }
