@@ -321,6 +321,10 @@
       "up-helly-aa-2026": {
         "title": "Up Helly Aa 2026",
         "description": "Up Helly Aa is Shetland's spectacular Viking-themed fire festival, featuring torchlit processions, elaborate Viking costumes, music, and the ceremonial burning of a replica Viking longship."
+      },
+      "guy-fawkes-night-2026": {
+        "title": "Guy Fawkes Night 2026",
+        "description": "Guy Fawkes Night is a British tradition observed with bonfires, fireworks, and gatherings on 5 November, commemorating the failed Gunpowder Plot of 1605."
       }
     },
     "storeItems": {

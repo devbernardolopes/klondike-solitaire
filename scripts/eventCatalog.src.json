@@ -488,5 +488,30 @@
         "coinReward": 500
       }
     ]
+  },
+  {
+    "id": "guy-fawkes-night-2026",
+    "title": "Guy Fawkes Night 2026",
+    "description": "Guy Fawkes Night is a British tradition observed with bonfires, fireworks, and gatherings on 5 November, commemorating the failed Gunpowder Plot of 1605.",
+    "startsAt": "2026-11-05T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "guy-fawkes-night-2026/page1.jpg",
+        "coinReward": 50
+      },
+      {
+        "gridSize": 3,
+        "imagePath": "guy-fawkes-night-2026/page2.jpg",
+        "coinReward": 100
+      },
+      {
+        "gridSize": 4,
+        "imagePath": "guy-fawkes-night-2026/page3.jpg",
+        "coinReward": 200
+      }
+    ]
   }
 ]

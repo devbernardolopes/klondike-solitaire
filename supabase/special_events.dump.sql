@@ -1,5 +1,5 @@
 -- ============================================================
--- Catalog dump — generated 2026-09-10T23:05:58.232Z
+-- Catalog dump — generated 2026-09-11T03:24:20.772Z
 -- Source of truth for scripts/i18n-sync.mjs. Do not edit by hand.
 -- Re-run `npm run catalog:dump` after any dashboard edits.
 -- Idempotent: safe to paste into Supabase SQL editor and re-run.
@@ -11,6 +11,7 @@ INSERT INTO public.special_events (id, title, description) VALUES
   ('dragon-boat-festival-2026', 'Dragon Boat Festival 2026', 'The Dragon Boat Festival commemorates the poet Qu Yuan with competitive dragon boat races, sticky rice dumplings (zongzi), and traditional rituals across China and East Asian communities.'),
   ('festival-of-san-fermin-2026', 'Festival of San Fermín 2026', 'The Festival of San Fermín in Pamplona, Spain, features the famous running of the bulls, traditional processions, and festive gatherings from 6 to 14 July.'),
   ('festivus-2025', 'Festivus 2025', 'Festivus is the secular, anti-commercial holiday popularized by the television series Seinfeld, featuring the aluminum Festivus pole, the airing of grievances, and feats of strength, observed on 23 December.'),
+  ('guy-fawkes-night-2026', 'Guy Fawkes Night 2026', 'Guy Fawkes Night is a British tradition observed with bonfires, fireworks, and gatherings on 5 November, commemorating the failed Gunpowder Plot of 1605.'),
   ('independence-day-2026', 'Independence Day', 'Independence Day commemorates the adoption of the Declaration of Independence with fireworks, patriotic displays, family gatherings, and celebrations of American freedom and history.'),
   ('japanese-cherry-blossom-2026', 'Japanese Cherry Blossom Season 2026', 'The Japanese Cherry Blossom Season, known as Sakura, celebrates the fleeting beauty of blooming cherry trees with hanami gatherings, picnics under the blossoms, and traditional spring festivities across Japan.'),
   ('la-tomatina-2026', 'La Tomatina', 'La Tomatina is the famous Spanish tomato-throwing festival held in Buñol, where participants engage in a massive, joyful food fight that fills the streets with red pulp and laughter.'),
