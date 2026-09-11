@@ -1,7 +1,8 @@
 // scripts/dump-catalog.mjs
 // Reads the three Supabase catalog tables and writes one SQL dump file per
 // table to supabase/. These dumps are the canonical source for
-// scripts/i18n-sync.mjs — the locale `db.*` sections are derived from them.
+// scripts/i18n-sync.mjs — the locale `*.db.json` catalog sections are
+// derived from them.
 //
 // Usage:
 //   SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... node scripts/dump-catalog.mjs

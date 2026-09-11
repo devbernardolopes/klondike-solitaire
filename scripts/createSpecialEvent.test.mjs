@@ -96,10 +96,10 @@ test('buildCatalogEntry omits empty descriptions', () => {
 });
 
 test('updateLocaleDoc writes title-only or title+description entries', () => {
-  const doc = updateLocaleDoc({ db: { specialEvents: {} } }, 'evt', { title: 'Evt', description: '' });
-  assert.deepEqual(doc.db.specialEvents.evt, { title: 'Evt' });
+  const doc = updateLocaleDoc({ specialEvents: {} }, 'evt', { title: 'Evt', description: '' });
+  assert.deepEqual(doc.specialEvents.evt, { title: 'Evt' });
   const doc2 = updateLocaleDoc({}, 'evt', { title: 'Evt', description: 'Desc' });
-  assert.deepEqual(doc2.db.specialEvents.evt, { title: 'Evt', description: 'Desc' });
+  assert.deepEqual(doc2.specialEvents.evt, { title: 'Evt', description: 'Desc' });
 });
 
 test('bumpPatchVersion increments patch and rejects non-semver', () => {

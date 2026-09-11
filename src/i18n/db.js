@@ -1,8 +1,8 @@
 import i18n from './index.js';
 
 export function tDb(namespace, id, field, fallback) {
-  const key = `db.${namespace}.${id}.${field}`;
-  const v = i18n.t(key, { defaultValue: fallback ?? '' });
+  const key = `${namespace}.${id}.${field}`;
+  const v = i18n.t(key, { ns: 'db', defaultValue: fallback ?? '' });
   if (v === key) return fallback ?? '';
   return v;
 }

@@ -6,6 +6,12 @@ import de from './locales/de.json';
 import it from './locales/it.json';
 import es from './locales/es.json';
 import ptBR from './locales/pt-BR.json';
+import enDb from './locales/en.db.json';
+import frDb from './locales/fr.db.json';
+import deDb from './locales/de.db.json';
+import itDb from './locales/it.db.json';
+import esDb from './locales/es.db.json';
+import ptBRDb from './locales/pt-BR.db.json';
 
 export const SUPPORTED = ['en', 'fr', 'de', 'it', 'es', 'pt-BR'];
 export const DEFAULT_LOCALE = 'en';
@@ -36,12 +42,12 @@ export function detectSystemLocale() {
 }
 
 const resources = {
-  en: { translation: en },
-  fr: { translation: fr },
-  de: { translation: de },
-  it: { translation: it },
-  es: { translation: es },
-  'pt-BR': { translation: ptBR },
+  en: { translation: en, db: enDb },
+  fr: { translation: fr, db: frDb },
+  de: { translation: de, db: deDb },
+  it: { translation: it, db: itDb },
+  es: { translation: es, db: esDb },
+  'pt-BR': { translation: ptBR, db: ptBRDb },
 };
 
 let savedLocale = null;
@@ -57,6 +63,9 @@ i18n.use(initReactI18next).init({
   lng: initialLng,
   fallbackLng: DEFAULT_LOCALE,
   supportedLngs: SUPPORTED,
+  ns: ['translation', 'db'],
+  defaultNS: 'translation',
+  fallbackNS: 'translation',
   nonExplicitSupportedLngs: false,
   interpolation: { escapeValue: false },
   react: { useSuspense: false },

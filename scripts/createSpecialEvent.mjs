@@ -210,9 +210,8 @@ function buildCatalogEntry({ id, title, description, startsAt, gameKind, sortOrd
 }
 
 function updateLocaleDoc(doc, eventId, { title, description }) {
-  if (!doc.db || typeof doc.db !== 'object') doc.db = {};
-  if (!doc.db.specialEvents || typeof doc.db.specialEvents !== 'object') doc.db.specialEvents = {};
-  doc.db.specialEvents[eventId] = {
+  if (!doc.specialEvents || typeof doc.specialEvents !== 'object') doc.specialEvents = {};
+  doc.specialEvents[eventId] = {
     title,
     ...(description ? { description } : {}),
   };
@@ -282,7 +281,7 @@ Flags:
 Env (required unless --skip-db or --dry-run):
   SUPABASE_URL (or VITE_SUPABASE_URL), SUPABASE_SERVICE_ROLE_KEY
 
-Sequence: catalog -> solvable seeds (--resume-preserving SQL) -> locales (6x)
+Sequence: catalog -> solvable seeds (--resume-preserving SQL) -> db locales (6x *.db.json)
   -> version bump -> Supabase upserts -> image uploads -> test run.`);
 }
 
@@ -395,7 +394,7 @@ async function main() {
         console.log(`  page ${p.pageNumber}: ${p.gridSize}x${p.gridSize} = ${p.gridSize * p.gridSize} deals, image ${p.imageFile || '(no local file)'} -> ${p.imagePath}, coins ${p.coinReward}`);
       }
       console.log(`  total deals to generate: ${totalDeals}`);
-      console.log(`  would update: catalog, eventSeeds.sql, 6 locales, package.json${opts.skipDb ? '' : ', Supabase tables + event-images bucket'}`);
+      console.log(`  would update: catalog, eventSeeds.sql, 6 db locales, package.json${opts.skipDb ? '' : ', Supabase tables + event-images bucket'}`);
       return;
     }
 
@@ -441,12 +440,12 @@ async function main() {
     }
 
     for (const locale of LOCALES) {
-      const lp = join(ROOT, 'src', 'i18n', 'locales', `${locale}.json`);
+      const lp = join(ROOT, 'src', 'i18n', 'locales', `${locale}.db.json`);
       const doc = loadJsonFile(lp);
       updateLocaleDoc(doc, id, { title, description });
       writeFileSync(lp, JSON.stringify(doc, null, 2) + '\n');
     }
-    console.error(`Locales updated: ${LOCALES.join(', ')}`);
+    console.error(`DB locales updated: ${LOCALES.join(', ')}`);
 
     const pkgPath = join(ROOT, 'package.json');
     const pkg = loadJsonFile(pkgPath);

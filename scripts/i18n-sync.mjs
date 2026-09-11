@@ -1,10 +1,10 @@
 // scripts/i18n-sync.mjs
-// Reconciles src/i18n/locales/*.json `db.*` sections against the Supabase
+// Reconciles src/i18n/locales/*.db.json catalog sections against the Supabase
 // catalog dumps under supabase/*.dump.sql + supabase/achievements_definitions.sql.
 //
-// The dumps are the canonical source of truth; the locale files are a derived
-// artifact. The dumps contain a superset of catalog data — we project just
-// (id, name/title, description) into the locales.
+// The dumps are the canonical source of truth; the `*.db.json` locale files
+// are a derived artifact. The dumps contain a superset of catalog data — we
+// project just (id, name/title, description) into the locales.
 //
 // Two modes:
 //   --check (default): exit non-zero on any drift. Used by CI / pre-commit.
@@ -27,9 +27,10 @@ const LANG_KEYS = ['en', 'fr', 'de', 'it', 'es', 'pt-BR'];
 const EN_KEY = 'en';
 
 // ------------------------------------------------------------
-// Dump sources. Each entry maps a locale `db.<namespace>` tree
-// to a SQL dump file, plus which DB column provides the locale
-// "name" field (title for special_events, name otherwise).
+// Dump sources. Each entry maps a locale `<namespace>` tree inside
+// `*.db.json` (i18next `db` namespace) to a SQL dump file, plus which
+// DB column provides the locale "name" field (title for
+// special_events, name otherwise).
 // ------------------------------------------------------------
 const SOURCES = [
   {
@@ -196,18 +197,28 @@ function unquote(s) {
 }
 
 // ------------------------------------------------------------
-// Locale IO — load all 6, save back, stable key ordering.
+// Locale IO — load all 6 base + db pairs, save back, stable key ordering.
+// Base UI strings live in `<lang>.json`; DB-mirrored catalog strings live
+// in `<lang>.db.json` (i18next `db` namespace, no `db` wrapper key).
 // ------------------------------------------------------------
-function loadLocale(lang) {
+function loadBase(lang) {
   const p = join(LOCALES_DIR, `${lang}.json`);
   return JSON.parse(readFileSync(p, 'utf8'));
 }
 
-function saveLocale(lang, doc) {
+function loadDb(lang) {
+  const p = join(LOCALES_DIR, `${lang}.db.json`);
+  return JSON.parse(readFileSync(p, 'utf8'));
+}
+
+function saveBase(lang, doc) {
   const p = join(LOCALES_DIR, `${lang}.json`);
-  // Stable key ordering: keys within an object sorted, but db.*
-  // entries preserve insertion order of ids (which is alphabetical
-  // because we iterate the dump map).
+  const sorted = sortKeysStable(doc);
+  writeFileSync(p, JSON.stringify(sorted, null, 2) + '\n', 'utf8');
+}
+
+function saveDb(lang, doc) {
+  const p = join(LOCALES_DIR, `${lang}.db.json`);
   const sorted = sortKeysStable(doc);
   writeFileSync(p, JSON.stringify(sorted, null, 2) + '\n', 'utf8');
 }
@@ -228,7 +239,7 @@ function sortKeysStable(v) {
 // never overwrite translator work.
 // ------------------------------------------------------------
 function diff(dbRows, locale, namespace, nameField) {
-  const ns = locale.db?.[namespace] || {};
+  const ns = locale[namespace] || {};
   const issues = { missing: [], stale: [], textMismatch: [] };
   const seen = new Set();
 
@@ -264,10 +275,9 @@ function applyFix(dbRows, locales, namespace, nameField) {
   let dirty = false;
 
   for (const locale of locales) {
-    if (!locale.doc.db) locale.doc.db = {};
-    if (!locale.doc.db[namespace]) locale.doc.db[namespace] = {};
+    if (!locale.dbDoc[namespace]) locale.dbDoc[namespace] = {};
 
-    const ns = locale.doc.db[namespace];
+    const ns = locale.dbDoc[namespace];
     const isEnglish = locale.lang === EN_KEY;
 
     // 1) Add missing entries. English gets the dump text verbatim;
@@ -343,19 +353,29 @@ function main() {
 
   const locales = LANG_KEYS.map((lang) => ({
     lang,
-    doc: loadLocale(lang),
-    __lang: lang,
+    doc: loadBase(lang),
+    dbDoc: loadDb(lang),
   }));
-  // Decorate for diff() without recursion surprises.
-  for (const l of locales) delete l.__lang;
 
-  // Per-namespace parity check.
-  let drift = false;
+  // Legacy guard: `db.*` must not live in the base files anymore — it moved
+  // to `<lang>.db.json`. Report as drift in check mode, strip in fix mode.
+  let legacyDrift = false;
+  for (const locale of locales) {
+    if (locale.doc.db) {
+      legacyDrift = true;
+      if (CHECK) {
+        console.error(`  [${locale.lang}] legacy db.* section still present in ${locale.lang}.json (must live in ${locale.lang}.db.json)`);
+      }
+    }
+  }
+
+  // Per-namespace parity check against the *.db.json docs.
+  let drift = legacyDrift;
   const allIssues = [];
   for (const src of SOURCES) {
     const dbRows = dbByNamespace.get(src.namespace);
     for (const locale of locales) {
-      const issues = diff(dbRows, { ...locale.doc, __lang: locale.lang }, src.namespace, src.nameField);
+      const issues = diff(dbRows, { ...locale.dbDoc, __lang: locale.lang }, src.namespace, src.nameField);
       const total = issues.missing.length + issues.stale.length + issues.textMismatch.length;
       if (total === 0) continue;
       drift = true;
@@ -368,16 +388,16 @@ function main() {
       console.log(`i18n:check OK (${dbByNamespace.get('achievements').size} achievements, ${dbByNamespace.get('storeItems').size} store items, ${dbByNamespace.get('specialEvents').size} special events)`);
       return;
     }
-    console.error('i18n:check FAILED — drift between dump files and locale files:');
+    console.error('i18n:check FAILED — drift between dump files and locale db files:');
     for (const { lang, ns, issues } of allIssues) {
       if (issues.missing.length) {
-        console.error(`  [${lang}] db.${ns} missing: ${issues.missing.length} (e.g. ${issues.missing.slice(0, 3).map((m) => m.id).join(', ')})`);
+        console.error(`  [${lang}] ${ns} missing: ${issues.missing.length} (e.g. ${issues.missing.slice(0, 3).map((m) => m.id).join(', ')})`);
       }
       if (issues.stale.length) {
-        console.error(`  [${lang}] db.${ns} stale: ${issues.stale.length} (e.g. ${issues.stale.slice(0, 3).join(', ')})`);
+        console.error(`  [${lang}] ${ns} stale: ${issues.stale.length} (e.g. ${issues.stale.slice(0, 3).join(', ')})`);
       }
       if (issues.textMismatch.length) {
-        console.error(`  [${lang}] db.${ns} text-mismatch: ${issues.textMismatch.length} (e.g. ${issues.textMismatch.slice(0, 3).map((m) => m.id).join(', ')})`);
+        console.error(`  [${lang}] ${ns} text-mismatch: ${issues.textMismatch.length} (e.g. ${issues.textMismatch.slice(0, 3).map((m) => m.id).join(', ')})`);
       }
     }
     console.error('\nRun `npm run i18n:fix` to converge.');
@@ -391,12 +411,19 @@ function main() {
     const dirty = applyFix(dbRows, locales, src.namespace, src.nameField);
     if (dirty) anyDirty = true;
   }
+  for (const locale of locales) {
+    if (locale.doc.db) {
+      delete locale.doc.db;
+      saveBase(locale.lang, locale.doc);
+      anyDirty = true;
+    }
+  }
   if (!anyDirty) {
     console.log('i18n:fix — already in sync, no changes written.');
     return;
   }
-  for (const locale of locales) saveLocale(locale.lang, locale.doc);
-  console.log(`i18n:fix — wrote ${LANG_KEYS.length} locale files. Re-run \`npm run i18n:check\` to confirm parity.`);
+  for (const locale of locales) saveDb(locale.lang, locale.dbDoc);
+  console.log(`i18n:fix — wrote ${LANG_KEYS.length} locale db files. Re-run \`npm run i18n:check\` to confirm parity.`);
 }
 
 main();

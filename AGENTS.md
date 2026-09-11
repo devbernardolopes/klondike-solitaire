@@ -422,12 +422,13 @@ so persisted aggregates that depend on score (`highestScore`) stay 0-based; the
 
 ## Database ↔ Locale sync
 
-The locale files under `src/i18n/locales/*.json` carry three "DB-mirrored" sections
-(`db.achievements`, `db.storeItems`, `db.specialEvents`) consumed by
-`src/i18n/db.js` — these stay in sync with the Supabase catalog tables
+UI strings live in `src/i18n/locales/*.json` while the three "DB-mirrored" sections
+(`achievements`, `storeItems`, `specialEvents`) live in their own
+`src/i18n/locales/*.db.json` files (i18next `db` namespace, no `db` wrapper key),
+consumed by `src/i18n/db.js` — these stay in sync with the Supabase catalog tables
 (`public.achievements_definitions`, `public.store_items`, `public.special_events`)
 via a small two-script pipeline. The Supabase tables are the source of truth;
-the locale files are a derived artifact.
+the `*.db.json` files are a derived artifact.
 
 - **Canonical row dumps** (committed, offline-friendly, idempotent):
   - `supabase/achievements_definitions.sql`
@@ -444,7 +445,7 @@ the locale files are a derived artifact.
   npm run i18n:fix            # adds missing ids, updates English text, prunes stale ids
   npm run i18n:check          # verify parity (default in CI + pre-commit)
   ```
-  English is the reference (`en.json` always mirrors the dump exactly).
+  English is the reference (`en.db.json` always mirrors the dump exactly).
   Other locales are only auto-seeded where they previously had no translation,
   so translator work in `fr/de/it/es/pt-BR` is never clobbered.
 - **Pre-commit hook** (`husky` → `npm test`) **blocks any commit** that introduces
@@ -455,12 +456,12 @@ the locale files are a derived artifact.
 **Adding/removing a catalog row:**
 1. Edit the row via the Supabase dashboard (or via a new `migration_*.sql`).
 2. `npm run catalog:dump` to refresh the canonical SQL dumps.
-3. `npm run i18n:fix` to update `en.json` (and seed any missing translations).
+3. `npm run i18n:fix` to update `en.db.json` (and seed any missing translations).
 4. Commit the dump + locale changes together.
 
 The new special-event wizard (`scripts/createSpecialEvent.mjs`) keeps writing the
-locale doc inline as it always has; the next `npm run catalog:dump` followed by
-`npm run i18n:check` will validate the result.
+locale doc inline as it always has (now to `*.db.json`); the next
+`npm run catalog:dump` followed by `npm run i18n:check` will validate the result.
 
 ## Run
 
