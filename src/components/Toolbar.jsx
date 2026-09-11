@@ -488,7 +488,7 @@ function ElapsedClock() {
           position: 'fixed',
           left: 16,
           bottom: 68,
-          zIndex: 50,
+          zIndex: 0,
           maxWidth: '60vw',
           pointerEvents: 'auto',
         }}
