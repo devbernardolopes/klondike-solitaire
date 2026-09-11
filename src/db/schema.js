@@ -1,20 +1,7 @@
 // db/schema.js
-// Dexie schema for local persistence: game history, settings, best times.
-// Settings read/write is wired through useSettingsStore; game history is not
-// yet saved on game-over (TODO: wire saveGame() + best-times query).
+// Dexie schema for local persistence: settings, stats, seed history, caches.
 
 import Dexie from 'dexie';
-
-/**
- * @typedef {Object} GameRecord
- * @property {number} [id]          auto-increment primary key
- * @property {number} startedAt     epoch ms
- * @property {number} [finishedAt]  epoch ms (absent if not finished)
- * @property {number} moves         total moves applied
- * @property {boolean} won
- * @property {number} durationMs    elapsed time
- * @property {number} [seed]        deal seed if deterministic
- */
 
 /**
  * @typedef {Object} SettingRecord
@@ -217,14 +204,30 @@ db.version(15).stores({
   favoriteDeals: 'seed',
 });
 
-/**
- * Insert a finished/abandoned game record.
- * @param {Omit<GameRecord, 'id'>} record
- * @returns {Promise<number>} the new row id
- */
-export async function saveGame(record) {
-  return db.games.add(record);
-}
+// v16 drops the dead `games` table: it was write-dead (saveGame() had zero
+// callers) and superseded by Supabase `game_results` + the local `syncQueue`
+// pending rows read via repo/gameHistoryRepository.js. Setting the table to
+// null deletes it on upgrade; other tables unchanged.
+db.version(16).stores({
+  games: null,
+  settings: 'key',
+  stats: 'key',
+  playedSeeds: 'key',
+  dailyResults: 'date',
+  syncQueue: '++id, type, createdAt, dedupeKey',
+  activeSession: 'key',
+  usedRandomSeeds: 'seed',
+  seedCache: 'key',
+  eventProgress: null,
+  eventCatalogCache: 'eventId',
+  eventImageCache: 'imagePath',
+  achievementCatalogCache: 'id',
+  achievementImageCache: 'imagePath',
+  rewardRules: 'key',
+  limitRules: 'key',
+  winSnapshots: 'gameId',
+  favoriteDeals: 'seed',
+});
 
 /**
  * Read a single setting value.

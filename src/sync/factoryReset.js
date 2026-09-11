@@ -99,7 +99,6 @@ export async function wipeLocalUserData() {
   await db.eventCatalogCache.clear();
   await db.eventImageCache.clear();
   await clearAchievementCache();
-  await db.games.clear();
   try {
     clearEventCatalogMemory();
   } catch {}

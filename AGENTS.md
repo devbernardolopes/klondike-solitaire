@@ -1,10 +1,10 @@
 # AGENTS.md — Klondike Solitaire
 
 Live game (no longer a skeleton). Architecture, folder structure, framework-agnostic
-`core/`, and the UI layers that consume it are all present and exercised. Some
-integration edges are still stubbed (audio, scoring, the `games` history table,
-leaderboards backend, and achievements). Supabase is integrated for anonymous auth
-already; leaderboards + achievements are the current build-out phase.
+`core/`, and the UI layers that consume it are all present and exercised. Audio,
+leaderboards, and achievements are fully implemented. Scoring is intentionally
+not implemented (stays 0 by product decision). Supabase is integrated for
+anonymous auth plus leaderboards, achievements, store/coins, and game history.
 
 Locally the project is here: `C:\Dev\klondike-solitaire\klondike-solitaire`.
 
@@ -12,12 +12,12 @@ Locally the project is here: `C:\Dev\klondike-solitaire\klondike-solitaire`.
 
 - Vite + React 18 (JavaScript, **not** TypeScript)
 - Tailwind CSS v4 (`@tailwindcss/vite` plugin)
-- Zustand for state (eight stores — see below)
+- Zustand for state (eleven stores — see below)
 - `@dnd-kit/core` + `@dnd-kit/sortable` for drag-and-drop
-- Dexie.js for local persistence (settings/stats/played-seeds/daily results wired; `games` history table defined, `saveGame()` not yet called)
-- `@supabase/supabase-js` — Supabase client wired for **anonymous auth** (`lib/supabaseClient.js` + `hooks/useAuthStore.js`); intended backend for leaderboards + achievements (not yet used there)
+- Dexie.js for local persistence (settings/stats/played-seeds/daily results, sync outbox, session, seed/event/achievement caches — see Persistence)
+- `@supabase/supabase-js` — Supabase client wired for **anonymous auth** (`lib/supabaseClient.js` + `hooks/useAuthStore.js`); backend for leaderboards (`leaderboard` view + `submit_game_result` RPC), achievements, store/coins, and game history (`game_results`)
 - Supabase schema + migrations live in `supabase/` (version-controlled; never bundled into `dist/`, so not exposed at Vercel). `klondike_supabase_schema.sql` is the base schema; `klondike_supabase_migration_00N.sql` are ordered upgrades; `submit_game_result*.sql` are DB functions. (`.other/` remains git-ignored for non-SQL scratch files.)
-- Howler.js — **stub** (no playback yet; see Stubbed)
+- Web Audio synthesis for SFX (`src/audio/` — `AudioEngine.js` + `playSfx`, no Howler, no audio files; see Implemented)
 - GSAP — **wired** (Flip-based move/flip pipeline, win cascade, shake, foundation particle burst, dev debug panel)
 - `leva` (dev motion debug panel) and `lucide-react` (toolbar icons) as extras
 - `node --test` for unit tests; `husky` git hooks (`prepare` script)
@@ -82,9 +82,12 @@ Modules in `src/core/`:
 - `dailyChallenge.js` — framework-agnostic daily-deal logic: `seedForDate`, `getSupportedRange`,
   calendar/range helpers (`addMonths`, `daysInMonth`, `withinSupported`, `isAfter`, etc.). Seeds are
   bundled in `data/dailyChallenge.json`; dates outside the window return null.
-- `specialEvents.js` — framework-agnostic special-event deals: merges `data/eventCatalog.json`
-  (curated titles/images) with `data/specialEvents.json` (generated seeds) by event id via
-  `listEvents`, `getEvent`, `seedsForEvent`.
+- `achievementTelemetry.js` — framework-agnostic per-game telemetry feeding achievements
+  (`hintUsed`, `undoUsed`, `tableauToTableauMoves`, `foundationMoves`, `recycleCount`, …).
+- `coinRewards.js` — framework-agnostic coin-reward computation (mirrors `coin_reward_rules`).
+- `moveLog.js` / `playback.js` — compact move recording (`move_log` stored alongside
+  `game_results`) and its step-through player.
+- `randomSeed.js` — `randomUnusedSeed()` (Random-Shuffle deals never repeat; see `db/usedRandomSeeds.js`).
 
 ## Deck renderer interface contract
 
@@ -148,16 +151,26 @@ daily result into `db/dailyResults.js`.
 
 ### `src/hooks/useSettingsStore.js` (persisted, Dexie)
 
-`theme`, `deck`, `handedness` ('left'|'right'), `highlightCard` (focus outline), `particles`
-(foundation burst). Loaded async from Dexie on app start (`init()`), written through on change
-(`setTheme`/`setDeck`/`setHandedness`/`setHighlightCard`/`setParticles`). `setDeck` also
-activates the renderer in `deckRegistry`.
+~25 display/motion keys (`theme`, `deck`, `handedness` ('left'|'right'), `highlightCard`,
+`particles`, plus `language`, `interfaceTheme`, `cardBack`, `cardEffects`, `tableTexture`,
+`boardFrame`, motion toggles like `bounce`, `cardShake`, `winCascade`, `coinFly`, … — see
+`DEFAULTS` in code). Loaded async from Dexie on app start (`init()`), written through on
+change, with a `localStorage` (`klondike:*`) first-paint mirror. `setDeck` also activates
+the renderer in `deckRegistry`.
+
+### `src/store/useSoundStore.js` (persisted, Dexie + localStorage)
+
+`enabled` (default true) + `volume` (default 0.75). `init()` loads, `setEnabled`/`setVolume`
+persist and drive `audioEngine`. Consumed by `audio/index.js::playSfx` (early return when
+muted) and `SettingsOptionsModal.jsx` (toggle + slider). Sound is **not** in `useSettingsStore`.
 
 ### `src/hooks/useStatsStore.js` (session, in-memory)
 
-Moves counter, score (currently always 0 — not yet implemented), undos, and a wall-clock-based
+Moves counter, score (always 0 — scoring will not be implemented, per product decision;
+kept as a plumbed-through 0), undos, and a wall-clock-based
 play timer with **focus-loss pause** (hidden tab time is excluded via `pausedAt`/`pausedAccumMs`).
-Enforces hard game-over limits: `MAX_TIME_MS` (30:00) and `MAX_MOVES` (500); reaching either
+Enforces hard game-over limits from `repo/limitRulesRepository.limitsFor(currentGameKind)`
+(`MAX_TIME_MS`/`MAX_MOVES` are offline fallbacks only); reaching either
 calls `freeze(reason)` and locks all interaction. `freeze` also records the loss immediately
 (via `useStatisticsStore.recordLoss`, mirroring `recordWin` at win time and `recordGamePlayed`
 at timer-start time), so the winning streak is reset the moment a limit is hit — Game Over is
@@ -200,7 +213,9 @@ Anonymous session state backed by the shared Supabase client. `init()` establish
 silent anonymous session (`supabase.auth.getSession` → `signInAnonymously`) and subscribes via
 `onAuthStateChange`. Resolves `ready:true` in all cases and never blocks gameplay; a network
 failure sets `authError` and leaves the app fully playable. Exposes `userId`, `isAnonymous`,
-`ready`, `authError`. This is the foundation the leaderboards/achievements phase builds on.
+`ready`, `authError`. Also profile/wallet/ownership (`profileReady`, `displayName`, `coins`,
+`ownedItemIds`, `leaderboardVisible`), Google-link conflict flow, `purchaseItem`, and wipe-on-sign-out.
+Foundation for leaderboards/achievements/store/history.
 
 ### `src/hooks/useUiStore.js` (UI-only, ephemeral)
 
@@ -210,6 +225,21 @@ no-moves, new-game picker, settings, statistics, daily-challenge, help, seed-inp
 state (`isDragging`, `draggingFrom`) used to coordinate dnd-kit with CardView's tap→auto-move.
 Includes `whenTransitionDone(tid)` / transition-completion plumbing used by the auto-complete
 loop to chain steps only after each tween finishes.
+
+### `src/hooks/useAchievementEventsStore.js` (unlock queue, ephemeral)
+
+Out-of-band achievement unlock queue fed from `syncEngine` + `useAuthStore.purchaseItem()`.
+`announce(ids)` / `consume()` / `revision`; drives toasts and the Achievements UI.
+
+### `src/hooks/useToastStore.js` (UI-only, ephemeral)
+
+Single-toast priority queue (`COINS` > `PERSONAL_BEST` > `DEFAULT`, 5s dwell). `toast_config`
+boot fetch.
+
+### `src/hooks/usePlaybackStore.js` (ephemeral)
+
+Step-through player for `game_results.move_log` recordings (`showPlaybackState`); isolated
+from the live game by construction.
 
 ## Drag engine (`src/hooks/useDragEngine.js`)
 
@@ -281,18 +311,29 @@ enforces outside-tap and Escape dismissal **automatically**:
 
 ## Persistence (`src/db/`)
 
-`db/schema.js` defines a Dexie DB `klondike-solitaire` (currently version 4) with:
+`db/schema.js` defines a Dexie DB `klondike-solitaire` (currently version 16) with:
 
-- `games` (`++id, startedAt, finishedAt, won, durationMs`) — `saveGame()` exists but is **not
-  yet called** on game-over.
 - `settings` (`key`) — settings + the daily last-selection key; wired through `useSettingsStore`.
 - `stats` (`key`) — single cumulative-aggregate row; wired through `useStatisticsStore` / `db/stats.js`.
 - `playedSeeds` (`key`) — won Winning-Deal seeds; wired through `useSeedStore` / `db/playedSeeds.js`.
 - `dailyResults` (`date`) — best score/time/moves per completed daily day; wired through
   `db/dailyResults.js`. `dailySelection.js` persists the last-selected day in `settings`.
+- `syncQueue` (`++id, type, createdAt, dedupeKey`) — offline-first outbox flushed by `sync/syncEngine.js`.
+- `activeSession` (`key`) — in-progress game for fast offline restore.
+- `usedRandomSeeds` (`seed`) — dealt Random-Shuffle seeds so deals never repeat.
+- `seedCache` (`key`) — remote seed pools, 24h TTL (Supabase → Dexie → bundled fallback).
+- `eventCatalogCache` / `eventImageCache`, `achievementCatalogCache` / `achievementImageCache` — offline display caches.
+- `rewardRules` / `limitRules` — server rule snapshots (`coin_reward_rules`, `game_limit_rules`).
+- `winSnapshots` (`gameId`) — pre-win rollback snapshots for server-rejected wins.
+- `favoriteDeals` (`seed`) — local mirror of Supabase `favorite_deals`.
 
-Scoring is unimplemented (`useStatsStore.score` is always 0), so persisted aggregates that
-depend on score (`highestScore`) are currently 0-based.
+Game history lives in Supabase `game_results` (+ queued `submit_game_result` ops as pending rows,
+read via `repo/gameHistoryRepository.js`); the old Dexie `games` table / `saveGame()` was
+write-dead and has been removed (v16 sets `games: null`).
+
+Scoring is intentionally not implemented (`useStatsStore.score` stays 0 by product decision),
+so persisted aggregates that depend on score (`highestScore`) stay 0-based; the
+`highest_score` leaderboard tab and score rows are hidden.
 
 ## Data / scripts
 
@@ -301,12 +342,10 @@ depend on score (`highestScore`) are currently 0-based.
   consumed by `core/dailyChallenge.js`.
 - `data/eventCatalog.src.json` — sample catalog demonstrating the new page/grid-aware format;
   consumed by `scripts/generateEventSeeds.mjs`.
-- `data/dailyChallenge.json` (+ `.meta.json`) — bundled daily seeds + anchor/window metadata,
-  consumed by `core/dailyChallenge.js`.
 - `scripts/generateSolvablePool.mjs` — regenerates the solvable pool.
 - `scripts/generateDaily.mjs` — generates the daily-challenge seed bundle.
 - `scripts/generateEventSeeds.mjs` — generates page/grid-aware SQL for special events
-  (Phase-1 Supabase schema, migration 022).
+  (Phase-1 Supabase schema, migration 022 template: `unnest(array[position...])::bigint[]`).
 - `scripts/lib/seedHelpers.mjs` — shared solver plumbing (cyrb53, candidateGen, fillSeeds, solveBatch).
 - `scripts/bump-version.cjs` — version bump helper.
 
@@ -334,12 +373,34 @@ depend on score (`highestScore`) are currently 0-based.
 - Keyboard navigation + screen-reader support (focusable cards, global shortcuts, aria-live).
 - Settings persistence via Dexie (`settings` table) including new toggles.
 - **Supabase client + silent anonymous auth** (`lib/supabaseClient.js`, `hooks/useAuthStore.js`);
-  offline-tolerant, never blocks play.
+  offline-tolerant, never blocks play. Also profile/wallet/ownership, Google-link flow,
+  `purchaseItem`, and wipe-on-sign-out.
+- **Audio (Web Audio synthesis, implemented):** `audio/AudioEngine.js` + `audio/index.js::playSfx`
+  (7 sfx: cardMove/cardLand/foundationLand/invalidShake/stockDraw/deal/winFanfare, osc + filtered
+  noise, no Howler, no audio files). Mute/volume via `store/useSoundStore.js` (Dexie + localStorage,
+  Settings toggle + slider). `api/leaderboard.js` localStorage stub remains but is dead (0 importers).
+- **Leaderboards (Supabase-backed, implemented):** `leaderboard` view + `submit_game_result` RPC
+  (enqueued from `useStatisticsStore.recordWin/recordLoss` via `sync/operations.js`), displayed in
+  `LeaderboardModal.jsx` (Main Menu entry; coins/games_won/best_streak/lowest_time_ms/lowest_moves
+  tabs — `highest_score` hidden by product decision). Opt-out via `set_leaderboard_visible`.
+- **Game history + playback (implemented):** Supabase `game_results` is the authority;
+  `repo/gameHistoryRepository.js` merges server rows with queued `submit_game_result` pending rows
+  (`HistoryModal.jsx` / `HistoryDetailModal.jsx`). `move_log` powers `usePlaybackStore` playback.
+- **Achievements (implemented):** `core/achievementTelemetry.js` (fed from `useStatsStore`),
+  `repo/achievementRepository.js`, `hooks/useAchievementEventsStore.js` unlock queue,
+  `AchievementsModal.jsx` / `AchievementDetailModal.jsx` + toasts, definitions in
+  `supabase/achievements_definitions.sql` synced to locales via `npm run i18n:fix/check`.
+- **Store / coins (implemented):** `profiles.coins`, `coin_reward_rules` snapshot,
+  `core/coinRewards.js`, `StoreModal.jsx`, `purchase_item` RPC.
 - **Daily Challenge**: bundled seeds, calendar UI, persistence of per-day bests + last selection,
-  win flow with "Return to Daily".
-- **Special Events**: page/grid-aware SQL authoring via `scripts/generateEventSeeds.mjs`
-  (migration 022 template: `unnest(array[position...])::bigint[]`), consumes
-  `scripts/eventCatalog.src.json`. SQL INSERTs for `special_events`/`special_event_pages`/`special_event_deals`.
+  win flow with "Return to Daily". Remote pools cached via `repo/seedRepository.js`
+  (Supabase → Dexie `seedCache`, 24h TTL → bundled fallback).
+- **Special Events**: catalog/progress via `repo/specialEventsRepository.js` (+ Dexie
+  `eventCatalogCache`/`eventImageCache`), `SpecialEventsModal` / `EventDetailModal` /
+  `EventDealGrid` / `PostcardViewerModal`. Page/grid-aware SQL authoring via
+  `scripts/generateEventSeeds.mjs` (migration 022 template:
+  `unnest(array[position...])::bigint[]`), consumes `scripts/eventCatalog.src.json`.
+  SQL INSERTs for `special_events`/`special_event_pages`/`special_event_deals`.
 - **Cumulative Statistics** (`stats` table) with win/loss aggregation, streaks, best
   score/time/moves; persisted and shown in `StatisticsModal`.
 - Won-seed tracking (`playedSeeds`) so Winning-Deal seeds aren't repeated once won.
@@ -347,28 +408,16 @@ depend on score (`highestScore`) are currently 0-based.
   (`core/snapshot.js` via Settings).
 - Stats session (moves, undos, focus-paused timer, 30:00 / 500-move game-over limits) and dialogs.
 
-### Stubbed / not yet started (marked with TODO in code)
+### Stubbed / intentionally not implemented
 
-- `audio/soundManager.js` — `play()` logs to console; no Howler playback, no sound files.
-- `useSound.js` — `enabled` always true; no settings-driven mute; mute toggle is a no-op.
-- `api/leaderboard.js` — localStorage mock; **not yet Supabase-backed and not wired to any UI**.
-  Signatures (`submitScore`/`fetchTopScores`) are stable for a later swap-in.
-- `useStatsStore.score` — always 0; scoring not implemented.
-- Dexie `games` table — `saveGame()` defined but not invoked; game history not persisted.
-- **Achievements** — not yet started (no module, no UI). The Supabase auth layer is the intended
-  foundation for storing/querying them.
+- `useStatsStore.score` — always 0; scoring will not be implemented (product decision).
+  Plumbing (`p_score`, `highestScore`, `highest_score` tab, score rows) carries 0 / stays hidden.
+- `api/leaderboard.js` — localStorage mock; dead (0 importers), superseded by the Supabase path above.
 
 ## Where the next pass picks up
 
-1. **Leaderboards** — replace `api/leaderboard.js` localStorage with a real Supabase backend,
-    wire `submitScore` on win (via `useAuthStore.userId`), and add a leaderboard UI.
-2. **Achievements** — design the achievement set + Supabase storage/query, then build the module
-   and UI (currently not started).
-3. Implement scoring (replace the always-0 `useStatsStore.score`); flows into `stats.highestScore`.
-4. Real Howler playback + sound files; settings-driven mute wired through `useSettingsStore`.
-5. Persist finished games via `saveGame()` on game-over (Dexie `games` table).
-6. (Optional) more themes; expand animation polish.
-7. **Special-event seed authoring** — use `scripts/generateEventSeeds.mjs` with
+1. (Optional) more themes; expand animation polish.
+2. **Special-event seed authoring** — use `scripts/generateEventSeeds.mjs` with
    `scripts/eventCatalog.src.json` to produce migration 022 SQL for insertion into Supabase.
 
 ## Database ↔ Locale sync
