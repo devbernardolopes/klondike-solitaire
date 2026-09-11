@@ -69,7 +69,7 @@ export const TABLEAU_LAYOUT = {
   // tableau container (height) and each stacked card wrapper (top) in Pile.jsx.
   // Cheap: one compositor transition per card, auto-cancelled on rapid moves,
   // ~0 JS vs a per-card GSAP tween set that would fight the Flip move pipeline.
-  smooth: { duration: 0.55, ease: 'ease-out' },
+  smooth: { duration: 0.25, ease: 'ease-out' },
 };
 
 /**
