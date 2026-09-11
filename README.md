@@ -38,7 +38,10 @@ All timing/easing lives in the `MOTION` presets in `src/render/animation/motion.
   - Flip shimmer: brief specular light sweep across the card after it lands face-up (`shimmer` setting).
   - Uncover sparkle: star (✦) burst from the card center when a move exposes a face-down tableau card (`uncover` setting).
 - Feedback
-  - Invalid-move shake: short decaying horizontal jitter on the tapped card (`cardShake` setting).
+  - Tap ripple: expanding ring at the pointerdown point on cards, acknowledging the input even when the move is illegal or locked (`tapRipple` setting).
+  - Pickup lift: grabbed cards (whole run) scale up with a deeper shadow while dragged, then settle on release (`pickupLift` setting).
+  - Drop snap: expanding ring at the landing position on legal drops (`dropSnap` setting).
+  - Invalid-move shake: short decaying horizontal jitter on the tapped card plus a red edge flash; the visual throttles per card under spam while the error sound still plays every tap (`cardShake` setting).
   - Drop-target glow: pulsing aura on piles that accept the dragged card.
   - Hover lift: resting premium cards lift slightly under the pointer.
   - Landing bounce: single moved cards pop subtly (scale/shadow) at the moment of landing, then settle (`bounce` setting).

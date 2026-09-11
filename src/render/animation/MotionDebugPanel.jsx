@@ -48,6 +48,8 @@ export function MotionDebugPanel() {
   useControls('shake', {
     duration: { value: MOTION.shake.duration, min: 0.1, max: 1.5, step: 0.01, onChange: (v) => (MOTION.shake.duration = v) },
     distance: { value: MOTION.shake.distance, min: 0, max: 30, step: 1, onChange: (v) => (MOTION.shake.distance = v) },
+    cooldownMs: { value: MOTION.shake.cooldownMs, min: 0, max: 1000, step: 50, onChange: (v) => (MOTION.shake.cooldownMs = v) },
+    flashAlpha: { value: MOTION.shake.flashAlpha, min: 0, max: 1, step: 0.05, onChange: (v) => (MOTION.shake.flashAlpha = v) },
   });
   useControls('uncover', {
     duration: { value: MOTION.uncover.duration, min: 0.1, max: 1, step: 0.01, onChange: (v) => (MOTION.uncover.duration = v) },
@@ -135,6 +137,20 @@ export function MotionDebugPanel() {
   useControls('toast', {
     slideDuration: { value: MOTION.toast.slide.duration, min: 0.05, max: 1, step: 0.01, onChange: (v) => (MOTION.toast.slide.duration = v) },
     fadeDuration: { value: MOTION.toast.fade.duration, min: 0.05, max: 1, step: 0.01, onChange: (v) => (MOTION.toast.fade.duration = v) },
+  });
+  useControls('tapRipple', {
+    duration: { value: MOTION.tapRipple.duration, min: 0.05, max: 1, step: 0.01, onChange: (v) => (MOTION.tapRipple.duration = v) },
+    size: { value: MOTION.tapRipple.size, min: 16, max: 120, step: 1, onChange: (v) => (MOTION.tapRipple.size = v) },
+    alpha: { value: MOTION.tapRipple.alpha, min: 0, max: 1, step: 0.05, onChange: (v) => (MOTION.tapRipple.alpha = v) },
+  });
+  useControls('pickupLift', {
+    scale: { value: MOTION.pickupLift.scale, min: 1, max: 1.15, step: 0.01, onChange: (v) => (MOTION.pickupLift.scale = v) },
+    duration: { value: MOTION.pickupLift.duration, min: 0.05, max: 0.5, step: 0.01, onChange: (v) => (MOTION.pickupLift.duration = v) },
+  });
+  useControls('dropSnap', {
+    duration: { value: MOTION.dropSnap.duration, min: 0.05, max: 1, step: 0.01, onChange: (v) => (MOTION.dropSnap.duration = v) },
+    size: { value: MOTION.dropSnap.size, min: 16, max: 160, step: 1, onChange: (v) => (MOTION.dropSnap.size = v) },
+    alpha: { value: MOTION.dropSnap.alpha, min: 0, max: 1, step: 0.05, onChange: (v) => (MOTION.dropSnap.alpha = v) },
   });
   useControls('modalEnter', {
     duration: { value: MOTION.modalEnter.duration, min: 0.1, max: 1.5, step: 0.01, onChange: (v) => (MOTION.modalEnter.duration = v) },

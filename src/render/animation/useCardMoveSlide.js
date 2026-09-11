@@ -6,6 +6,8 @@ import { useGameStore } from '../../hooks/useGameStore.js';
 import { useUiStore } from '../../hooks/useUiStore.js';
 import { useSettingsStore } from '../../hooks/useSettingsStore.js';
 import { spawnTrailCascade, clearAllGhostTrails } from './ghostTrail.js';
+import { playDropSnap } from './dropSnap.js';
+import { clearLift } from './pickupLift.js';
 import { buildBounceSteps } from './useCardMoveSlideBounce.js';
 import { playSfx } from '../../audio/index.js';
 
@@ -370,9 +372,17 @@ const cardIds = moved.map((el) => el.getAttribute('data-flip-id') || el.getAttri
        return [];
      })();
      const isFoundationLanding = landingLocs.some((l) => typeof l === 'string' && l.startsWith('foundation'));
-     const tl = gsap.timeline({
-       onComplete: () => {
-         completed = true;
+      const tl = gsap.timeline({
+        onComplete: () => {
+          completed = true;
+          try { clearLift(cardIds); } catch {}
+          if (type === 'move' || type === 'auto') {
+            try {
+              const firstId = cardIds[0];
+              const targetRect = firstId ? landingRects.get(firstId) : null;
+              if (targetRect) playDropSnap(targetRect);
+            } catch {}
+          }
           moved.forEach((el) => gsap.set(el, { clearProps: 'x,y,scale,boxShadow,rotationZ' }));
          ghosts.forEach((g) => { try { g.remove(); } catch {} ghostEls.delete(g); });
          movers.forEach(({ wrap, prevZ }) => {

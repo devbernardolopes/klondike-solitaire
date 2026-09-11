@@ -120,7 +120,20 @@ export const MOTION = {
   },
 
   // Invalid-move shake. Sub-steps are fractions of duration; distance is px.
-  shake:    { duration: 0.20, distance: 8 },
+  // cooldownMs throttles the VISUAL only (sfx still plays per tap);
+  // flashAlpha is the red edge-glow opacity on each shake.
+  shake:    { duration: 0.20, distance: 8, cooldownMs: 400, flashAlpha: 0.55 },
+
+  // Tap ripple: expanding ring at the pointerdown point on cards only.
+  // Independent fixed overlay, never touches card transforms.
+  tapRipple: { size: 56, duration: 0.35, ease: 'power2.out', alpha: 0.45, maxConcurrent: 20 },
+
+  // Pickup lift for drag start (whole lifted run). Scale-only on the outer
+  // [data-card] node so it composes with the slide x/y parking transform.
+  pickupLift: { scale: 1.05, duration: 0.12, ease: 'power2.out', boxShadow: '0 12px 28px rgba(0,0,0,0.45), 0 4px 10px rgba(0,0,0,0.30)' },
+
+  // Drop snap: expanding ring at the landing rect center on legal drops.
+  dropSnap: { size: 72, duration: 0.30, ease: 'power2.out', alpha: 0.5, maxConcurrent: 12 },
 
   // Tableau uncover sparkle: star burst when face-down flips face-up via reveal.
   uncover: {

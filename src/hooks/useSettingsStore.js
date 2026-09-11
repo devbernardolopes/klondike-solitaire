@@ -61,6 +61,9 @@ const DEFAULTS = {
   flipOvershoot: false,
   coinFly: true,
   autoComplete: true,
+  tapRipple: true,
+  pickupLift: true,
+  dropSnap: true,
   pinLastEvent: true,
   effectProfile: 'default',
 };
@@ -98,6 +101,9 @@ const LS_KEYS = {
   flipOvershoot: 'klondike:flipOvershoot',
   coinFly: 'klondike:coinFly',
   autoComplete: 'klondike:autoComplete',
+  tapRipple: 'klondike:tapRipple',
+  pickupLift: 'klondike:pickupLift',
+  dropSnap: 'klondike:dropSnap',
   pinLastEvent: 'klondike:pinLastEvent',
   effectProfile: 'klondike:effectProfile',
 };
@@ -168,6 +174,9 @@ export const useSettingsStore = create((set, get) => ({
   flipOvershoot: readLS(LS_KEYS.flipOvershoot, DEFAULTS.flipOvershoot),
   coinFly: readLS(LS_KEYS.coinFly, DEFAULTS.coinFly),
   autoComplete: readLS(LS_KEYS.autoComplete, DEFAULTS.autoComplete),
+  tapRipple: readLS(LS_KEYS.tapRipple, DEFAULTS.tapRipple),
+  pickupLift: readLS(LS_KEYS.pickupLift, DEFAULTS.pickupLift),
+  dropSnap: readLS(LS_KEYS.dropSnap, DEFAULTS.dropSnap),
   pinLastEvent: readLS(LS_KEYS.pinLastEvent, DEFAULTS.pinLastEvent),
   effectProfile: readLS(LS_KEYS.effectProfile, DEFAULTS.effectProfile),
   seenThemeItemIds: new Set(),
@@ -186,7 +195,7 @@ export const useSettingsStore = create((set, get) => ({
       'language', 'theme', 'interfaceTheme', 'deck', 'cardBack', 'handedness',
       'highlightCard', 'particles', 'cardEffects', 'tableTexture', 'boardFrame',
       'bounce', 'ghostEcho', 'ghostTrail', 'shimmer', 'uncover', 'winEnhanced', 'winCascade',
-      'hoverGlow', 'cardShake', 'centisecondsOn', 'hoverLift', 'wobble', 'flipOvershoot', 'coinFly', 'autoComplete', 'pinLastEvent', 'effectProfile', 'seenThemeItemIds', 'seenAchievementIds', 'themeModalTab',
+      'hoverGlow', 'cardShake', 'centisecondsOn', 'hoverLift', 'wobble', 'flipOvershoot', 'coinFly', 'autoComplete', 'tapRipple', 'pickupLift', 'dropSnap', 'pinLastEvent', 'effectProfile', 'seenThemeItemIds', 'seenAchievementIds', 'themeModalTab',
     ];
     const SETTING_DEFAULTS = {
       theme: DEFAULTS.theme,
@@ -214,13 +223,16 @@ export const useSettingsStore = create((set, get) => ({
       flipOvershoot: DEFAULTS.flipOvershoot,
       coinFly: DEFAULTS.coinFly,
       autoComplete: DEFAULTS.autoComplete,
+      tapRipple: DEFAULTS.tapRipple,
+      pickupLift: DEFAULTS.pickupLift,
+      dropSnap: DEFAULTS.dropSnap,
       pinLastEvent: DEFAULTS.pinLastEvent,
       effectProfile: DEFAULTS.effectProfile,
       seenThemeItemIds: [],
       seenAchievementIds: [],
       themeModalTab: 'background',
     };
-    const [language, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostEcho, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, cardShake, centisecondsOn, hoverLift, wobble, flipOvershoot, coinFly, autoComplete, pinLastEvent, effectProfile, seenThemeItemIdsArr, seenAchievementIdsArr, themeModalTab] = await getSettings(SETTING_KEYS, SETTING_DEFAULTS);
+    const [language, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostEcho, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, cardShake, centisecondsOn, hoverLift, wobble, flipOvershoot, coinFly, autoComplete, tapRipple, pickupLift, dropSnap, pinLastEvent, effectProfile, seenThemeItemIdsArr, seenAchievementIdsArr, themeModalTab] = await getSettings(SETTING_KEYS, SETTING_DEFAULTS);
     // Use the LS read for language as a last-resort fallback for the language
     // key (the per-key default above is a static DEFAULT_LOCALE; the LS version
     // may have detected the system locale on a previous session).
@@ -259,6 +271,9 @@ export const useSettingsStore = create((set, get) => ({
         ['flipOvershoot', flipOvershoot],
         ['coinFly', coinFly],
         ['autoComplete', autoComplete],
+        ['tapRipple', tapRipple],
+        ['pickupLift', pickupLift],
+        ['dropSnap', dropSnap],
         ['pinLastEvent', pinLastEvent],
         ['effectProfile', effectProfile],
       ];
@@ -278,7 +293,7 @@ export const useSettingsStore = create((set, get) => ({
       if (i18n.language !== normalizedLang) await i18n.changeLanguage(normalizedLang);
       try { document.documentElement.lang = normalizedLang; } catch {}
     } catch {}
-    set({ language: normalizedLang, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostEcho, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, cardShake, centisecondsOn, hoverLift, wobble, flipOvershoot, coinFly, autoComplete, pinLastEvent, effectProfile: effectProfile ?? DEFAULTS.effectProfile, seenThemeItemIds: seenThemeIds, seenAchievementIds: seenAchievementIds, themeModalTab, loaded: true });
+    set({ language: normalizedLang, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostEcho, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, cardShake, centisecondsOn, hoverLift, wobble, flipOvershoot, coinFly, autoComplete, tapRipple, pickupLift, dropSnap, pinLastEvent, effectProfile: effectProfile ?? DEFAULTS.effectProfile, seenThemeItemIds: seenThemeIds, seenAchievementIds: seenAchievementIds, themeModalTab, loaded: true });
   },
 
   /**
@@ -403,6 +418,9 @@ export const useSettingsStore = create((set, get) => ({
   setFlipOvershoot: (flipOvershoot) => { set({ flipOvershoot }); setSetting('flipOvershoot', flipOvershoot); writeLS(LS_KEYS.flipOvershoot, flipOvershoot); },
   setCoinFly: (coinFly) => { set({ coinFly }); setSetting('coinFly', coinFly); writeLS(LS_KEYS.coinFly, coinFly); },
   setAutoComplete: (autoComplete) => { set({ autoComplete }); setSetting('autoComplete', autoComplete); writeLS(LS_KEYS.autoComplete, autoComplete); },
+  setTapRipple: (tapRipple) => { set({ tapRipple }); setSetting('tapRipple', tapRipple); writeLS(LS_KEYS.tapRipple, tapRipple); },
+  setPickupLift: (pickupLift) => { set({ pickupLift }); setSetting('pickupLift', pickupLift); writeLS(LS_KEYS.pickupLift, pickupLift); },
+  setDropSnap: (dropSnap) => { set({ dropSnap }); setSetting('dropSnap', dropSnap); writeLS(LS_KEYS.dropSnap, dropSnap); },
   setPinLastEvent: (pinLastEvent) => { set({ pinLastEvent }); setSetting('pinLastEvent', pinLastEvent); writeLS(LS_KEYS.pinLastEvent, pinLastEvent); },
   setEffectProfile: (effectProfile) => { set({ effectProfile }); setSetting('effectProfile', effectProfile); writeLS(LS_KEYS.effectProfile, effectProfile); },
 

@@ -1,5 +1,7 @@
 import { gsap } from './gsapSetup.js';
 import { MOTION } from './motion.js';
+import { shouldPlayShakeVisual, markShakeVisual } from './shakeThrottle.js';
+export { clearShakeThrottle } from './shakeThrottle.js';
 import { useUiStore } from '../../hooks/useUiStore.js';
 import { useSettingsStore } from '../../hooks/useSettingsStore.js';
 import { killWobble } from './useIdleWobble.js';
@@ -35,6 +37,8 @@ export function playCardShake(node) {
   if (gsap.isTweening(node)) return;
   const cardId = node.getAttribute('data-card');
   if (!cardId) return;
+  if (!shouldPlayShakeVisual(cardId)) return;
+  markShakeVisual(cardId);
   // Gated by the user setting. When disabled we early-out BEFORE the
   // `addShaking` lock + `gsap.timeline(...)` allocation, so a spam-tapper
   // who has shakes off pays nothing for invalid taps.
@@ -59,9 +63,13 @@ export function playCardShake(node) {
     node.dataset.shaking = 'on';
   } catch {}
   const { duration, distance } = MOTION.shake;
+  const flashAlpha = MOTION.shake?.flashAlpha ?? 0.55;
+  try {
+    gsap.set(node, { boxShadow: `0 0 0 2px rgba(255,80,80,${flashAlpha}), 0 0 14px rgba(255,80,80,${flashAlpha})` });
+  } catch {}
   const tl = gsap.timeline({
     onComplete: () => {
-      gsap.set(node, { clearProps: 'transform' });
+      gsap.set(node, { clearProps: 'transform,boxShadow' });
       try {
         delete node.dataset.shaking;
       } catch {}

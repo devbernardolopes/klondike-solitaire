@@ -3,6 +3,7 @@ import { useDraggable } from '@dnd-kit/core';
 import { useTranslation } from 'react-i18next';
 import { useCardFaceFlip } from '../render/animation/useCardFaceFlip.js';
 import { playCardShake } from '../render/animation/playCardShake.js';
+import { playTapRipple } from '../render/animation/tapRipple.js';
 import { useIdleWobble, killWobble } from '../render/animation/useIdleWobble.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
@@ -175,8 +176,7 @@ function CardViewBase({ card, from, zIndex = 0, hidden = false, onAutoMove, hard
 
   const handlePointerDown = (e) => {
     if (e.button !== 0) return;
-    // Synchronous wobble kill: the drag / auto-move owns the card from this
-    // instant, a full React commit before `isDragging` flips `enabled` off.
+    try { playTapRipple({ x: e.clientX, y: e.clientY }); } catch {}
     killWobble(card.id);
     listeners?.onPointerDown?.(e);
     downPos.current = { x: e.clientX, y: e.clientY };
@@ -231,6 +231,10 @@ function CardViewBase({ card, from, zIndex = 0, hidden = false, onAutoMove, hard
       e.preventDefault();
       clearSelection();
       killWobble(card.id);
+      try {
+        const r = e.currentTarget?.getBoundingClientRect?.();
+        if (r) playTapRipple({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+      } catch {}
       if (isAnimating) return;
       if (isSliding || isShaking) {
         const ok = onAutoMove(from, card.id);
