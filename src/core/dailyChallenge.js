@@ -165,3 +165,38 @@ export function ymKey(y, m) {
 export function toDateStr(y, m, d) {
   return fmtYMD(y, m, d);
 }
+
+/**
+ * Next unsolved daily for the post-win selector, staying in the won day's
+ * calendar month (the month is the daily equivalent of an event page): scan
+ * forward (increasing day number) from the won day, then wrap around to the
+ * 1st and keep seeking. Returns null when the month has no other unsolved
+ * playable day (fully solved, or the won day is unknown) — callers then leave
+ * the selector on the just-won day. Never crosses months, so the calendar can
+ * never change pages by itself. Mirrors `findNextUnsolvedDealOnPage`.
+ * @param {string} wonDateStr  YYYY-MM-DD just won
+ * @param {Set<string>|string[]} solvedDates  completed YYYY-MM-DD days
+ * @param {string|null} todayStr  authoritative YYYY-MM-DD "today" (future days skipped)
+ * @param {Record<string,number>|null} [seedsMap]  optional seed map; defaults to bundled
+ * @returns {string|null} the next unsolved playable YYYY-MM-DD, or null
+ */
+export function findNextUnsolvedDailyInMonth(wonDateStr, solvedDates, todayStr, seedsMap = null) {
+  if (!wonDateStr) return null;
+  const parts = String(wonDateStr).split('-').map(Number);
+  if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) return null;
+  const [y, m, d] = parts;
+  if (!withinSupported(wonDateStr)) return null;
+  const dim = daysInMonth(y, m);
+  if (!(d >= 1 && d <= dim)) return null;
+  const solved = solvedDates instanceof Set ? solvedDates : new Set(solvedDates || []);
+  for (let k = 1; k < dim; k++) {
+    const dd = ((d - 1 + k) % dim) + 1;
+    const ds = toDateStr(y, m, dd);
+    if (!withinSupported(ds)) continue;
+    if (todayStr && isAfter(ds, todayStr)) continue;
+    if (seedForDate(ds, seedsMap) == null) continue;
+    if (solved.has(ds)) continue;
+    return ds;
+  }
+  return null;
+}

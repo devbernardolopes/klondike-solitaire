@@ -17,8 +17,7 @@ import { useGameStore } from '../hooks/useGameStore.js';
 import { useModalBackdrop } from './modalBackdrop.js';
 import { useModalEnter } from '../render/animation/useModalEnter.js';
 import { MOTION } from '../render/animation/motion.js';
-import { dateToUTC, toDateStr, withinSupported, isAfter } from '../core/dailyChallenge.js';
-import { utcToYMD, getCachedServerNow, getFallbackUTC } from '../utils/serverTime.js';
+import { withinSupported } from '../core/dailyChallenge.js';
 import { formatTime } from '../utils/formatTime.js';
 
 // Color used for a value that is a new record (distinct from normal text).
@@ -190,21 +189,11 @@ export default function WinModal() {
   };
   const onReturnDaily = () => {
     closeWinDialog();
-    // Land the calendar one day ahead of the day just won (whenever such a day
-    // is still within the supported window AND already available — i.e. not in
-    // the future relative to today), so the player is invited to play the next
-    // daily. When the won day is the last available one there is no playable
-    // next day, so we leave the initial date unset and the modal keeps the
-    // selector on the day just played. Cleared by the modal once consumed.
-    if (dailyDate) {
-      const adv = utcToYMD(dateToUTC(dailyDate) + 86400000);
-      const nextDay = toDateStr(adv.y, adv.m, adv.d);
-      const nowMs = getCachedServerNow() != null ? getCachedServerNow() : getFallbackUTC();
-      const { y, m, d } = utcToYMD(nowMs);
-      const todayStr = toDateStr(y, m, d);
-      if (withinSupported(nextDay) && !isAfter(nextDay, todayStr)) {
-        useUiStore.getState().setDailyChallengeInitialDate(nextDay);
-      }
+    // Pin the calendar to the won day's month; the Daily modal's post-win
+    // effect advances the selector within that month (same rules as the
+    // Special Events auto-advance). Cleared by the modal once consumed.
+    if (dailyDate && withinSupported(dailyDate)) {
+      useUiStore.getState().setDailyChallengeInitialDate(dailyDate);
     }
     // The Win modal is already dismissed here, so returning to the Daily
     // Challenge leaves no modal behind when this one is closed.

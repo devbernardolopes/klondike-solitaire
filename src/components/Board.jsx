@@ -12,7 +12,7 @@ import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
 import { useSeedStore } from '../hooks/useSeedStore.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
-import { saveDailyResult } from '../db/dailyResults.js';
+import { getDailyResult, saveDailyResult } from '../db/dailyResults.js';
 import { useCardMoveSlide } from '../render/animation/useCardMoveSlide.js';
 import { useStockDrawSlide } from '../render/animation/useStockDrawSlide.js';
 import { useFoundationParticles } from '../render/animation/useFoundationParticles.js';
@@ -314,9 +314,22 @@ export default function Board() {
       const effectiveEventDealId = uiState.currentEventDealId ?? replaySpec?.eventDealId ?? null;
       const effectiveEventId = uiState.currentEventId ?? replaySpec?.eventId ?? null;
       const effectiveEventTitle = uiState.currentEventTitle ?? replaySpec?.eventTitle ?? null;
+      // Daily replay check needs a Dexie read, so the win-summary tail runs
+      // async (cascade/sfx/timer above already fired synchronously; the Win
+      // modal lands a few ms later, imperceptible under the cascade).
+      (async () => {
       // Replay detection for the post-win deal selector: read BEFORE recordWin
       // patches the cache below, so "already solved" means this win replays a
       // deal solved at least once (selector then stays in place).
+      // Daily replay detection (mirrors eventDealReplayed below): a win on an
+      // already-completed day is a replay — the Daily selector then stays put.
+      // Read BEFORE saveDailyResult below folds this win in.
+      let dailyReplayed = false;
+      if (gameKind === 'daily' && dailyDate) {
+        try {
+          dailyReplayed = !!(await getDailyResult(dailyDate));
+        } catch {}
+      }
       const wonEventDetail = gameKind === 'event' && effectiveEventId ? getCachedEventDetailSync(effectiveEventId) : null;
       const eventDealReplayed = wonEventDetail
         ? (wonEventDetail.pages || []).some((p) => (p.deals || []).some((d) => d.id === effectiveEventDealId && d.solved))
@@ -342,6 +355,7 @@ export default function Board() {
         bestMoves: prev.lowestMoves,
         bestUndos: prev.lowestUndos,
         dailyDate: gameKind === 'daily' ? dailyDate : null,
+        dailyReplayed: gameKind === 'daily' ? dailyReplayed : false,
         eventDealId: gameKind === 'event' ? effectiveEventDealId : null,
         eventId: gameKind === 'event' ? effectiveEventId : null,
         eventTitle: gameKind === 'event' ? effectiveEventTitle : null,
@@ -459,6 +473,7 @@ export default function Board() {
       // old fire-and-forget fetchEventDetail here raced the detail modal's
       // own fetch and could clobber the optimistic solved flag with stale
       // server truth, so it was removed.
+      })();
     }
     wasWon.current = won;
   }, [won]);

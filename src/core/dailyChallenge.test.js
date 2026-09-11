@@ -14,6 +14,7 @@ import {
   daysInMonth,
   toDateStr,
   dateToUTC,
+  findNextUnsolvedDailyInMonth,
 } from './dailyChallenge.js';
 
 test('getSupportedRange covers the full bundled window (anchor + windowYears)', () => {
@@ -66,4 +67,82 @@ test('toDateStr zero-pads year/month/day', () => {
 
 test('dateToUTC matches Date.UTC', () => {
   assert.equal(dateToUTC('2026-03-15'), Date.UTC(2026, 2, 15));
+});
+
+test('findNextUnsolvedDailyInMonth advances forward within the same month', () => {
+  assert.equal(
+    findNextUnsolvedDailyInMonth('2026-03-10', new Set(['2026-03-10']), '2026-03-31'),
+    '2026-03-11',
+  );
+});
+
+test('findNextUnsolvedDailyInMonth skips solved days', () => {
+  assert.equal(
+    findNextUnsolvedDailyInMonth(
+      '2026-03-10',
+      new Set(['2026-03-10', '2026-03-11', '2026-03-12']),
+      '2026-03-31',
+    ),
+    '2026-03-13',
+  );
+});
+
+test('findNextUnsolvedDailyInMonth wraps to the start of the month', () => {
+  const solved = new Set();
+  for (let d = 10; d <= 31; d++) solved.add(toDateStr(2026, 3, d));
+  assert.equal(
+    findNextUnsolvedDailyInMonth('2026-03-15', solved, '2026-03-31'),
+    '2026-03-01',
+  );
+});
+
+test('findNextUnsolvedDailyInMonth wraps past solved days at the start', () => {
+  const solved = new Set(['2026-03-20']);
+  for (let d = 21; d <= 31; d++) solved.add(toDateStr(2026, 3, d));
+  solved.add('2026-03-01');
+  solved.add('2026-03-02');
+  assert.equal(
+    findNextUnsolvedDailyInMonth('2026-03-20', solved, '2026-03-31'),
+    '2026-03-03',
+  );
+});
+
+test('findNextUnsolvedDailyInMonth returns null when the month is fully solved', () => {
+  const solved = new Set();
+  for (let d = 1; d <= 31; d++) solved.add(toDateStr(2026, 3, d));
+  assert.equal(
+    findNextUnsolvedDailyInMonth('2026-03-15', solved, '2026-03-31'),
+    null,
+  );
+});
+
+test('findNextUnsolvedDailyInMonth never crosses into another month', () => {
+  // Only the won day solved: the next day is in-month, never April.
+  assert.equal(
+    findNextUnsolvedDailyInMonth('2026-03-31', new Set(['2026-03-31']), '2026-04-30'),
+    '2026-03-01',
+  );
+});
+
+test('findNextUnsolvedDailyInMonth wraps to past unsolved days', () => {
+  assert.equal(
+    findNextUnsolvedDailyInMonth('2026-03-10', new Set(['2026-03-10']), '2026-03-10'),
+    '2026-03-01',
+  );
+});
+
+test('findNextUnsolvedDailyInMonth returns null when nothing else is playable', () => {
+  const solved = new Set();
+  for (let d = 1; d <= 10; d++) solved.add(toDateStr(2026, 3, d));
+  assert.equal(
+    findNextUnsolvedDailyInMonth('2026-03-10', solved, '2026-03-10'),
+    null,
+  );
+});
+
+test('findNextUnsolvedDailyInMonth returns null for unknown/invalid input', () => {
+  assert.equal(findNextUnsolvedDailyInMonth(null, new Set(), '2026-03-31'), null);
+  assert.equal(findNextUnsolvedDailyInMonth('2026-03-15', new Set(['2026-03-15']), '2026-03-31').length, 10);
+  assert.equal(findNextUnsolvedDailyInMonth('not-a-date', new Set(), '2026-03-31'), null);
+  assert.equal(findNextUnsolvedDailyInMonth('2025-12-31', new Set(), '2026-03-31'), null);
 });

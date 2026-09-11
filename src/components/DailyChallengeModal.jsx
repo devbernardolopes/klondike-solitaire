@@ -30,6 +30,7 @@ import {
   toDateStr,
   dateToUTC,
   seedForDate,
+  findNextUnsolvedDailyInMonth,
 } from '../core/dailyChallenge.js';
 import { utcToYMD, getFallbackUTC, getCachedServerNow, refreshServerNowWithRetry } from '../utils/serverTime.js';
 import { loadAllDailyResults } from '../db/dailyResults.js';
@@ -96,6 +97,10 @@ export default function DailyChallengeModal() {
   const { t } = useTranslation();
   const open = useUiStore((s) => s.dailyChallengeDialogOpen);
   const dealDaily = useGameStore((s) => s.dealDaily);
+  const justWonDailyDate = useUiStore((s) => s.winSummary?.dailyDate ?? null);
+  // True when the just-won daily was already solved before this win (a
+  // replay) — the selector then stays on it instead of advancing.
+  const justWonDailyReplayed = useUiStore((s) => s.winSummary?.dailyReplayed ?? false);
 
   const MONTH_NAMES = (() => {
     const v = t('dailyChallenge.months', { returnObjects: true });
@@ -123,6 +128,11 @@ export default function DailyChallengeModal() {
   const selectedRef = useRef(null);
   const todayRef = useRef(fallbackDate);
   const initialRef = useRef({ today: null, selected: null, usedPreferred: false });
+  // One-shot guard so the post-win auto-advance applies exactly once per won
+  // day. winSummary.dailyDate is never cleared (the Win modal relies on it),
+  // so without this every reopen would re-apply the advance and clobber a
+  // manual replay selection. Mirrors EventDetailModal.jsx's advancedForWonRef.
+  const advancedForWonRef = useRef(null);
   // Horizontal-swipe gesture state. Mirrors EventDetailModal.jsx. Vertical
   // wheel navigation is handled by a separate native listener (see below).
   const SWIPE_THRESHOLD_RATIO = 0.2;
@@ -171,6 +181,11 @@ export default function DailyChallengeModal() {
   const [viewM, setViewM] = useState(() => utcToYMD(getFallbackUTC()).m);
   const [selected, setSelected] = useState(null);
   const [results, setResults] = useState({});
+  // True once the open-time results load has resolved. The post-win advance
+  // waits for this so a still-loading (empty) map can't masquerade as "no
+  // solves" and misroute the selector; the one-shot guard is only consumed
+  // against loaded results.
+  const [resultsReady, setResultsReady] = useState(false);
 
   // Dismiss returns to the New Game picker only when opened from it (not from
   // the Win modal, which already closed before opening this one). A day the
@@ -205,6 +220,7 @@ export default function DailyChallengeModal() {
     const todayStr = toDateStr(y, m, d);
     applyToday(todayStr);
     setResults({}); // clear stale completion marks; refilled by async load below
+    setResultsReady(false);
 
     // A preferred initial date (e.g. advanced to the next day after a daily win)
     // takes precedence and is consumed immediately. It was already validated as
@@ -267,6 +283,7 @@ export default function DailyChallengeModal() {
       const map = {};
       rows.forEach((r) => { map[r.date] = r; });
       setResults(map);
+      setResultsReady(true);
       if (
         !userPicked.current &&
         !initialRef.current.usedPreferred &&
@@ -344,6 +361,7 @@ export default function DailyChallengeModal() {
           const map = {};
           rows.forEach((r) => { map[r.date] = r; });
           setResults(map);
+          setResultsReady(true);
         } catch {}
       })
       .catch((e) => console.error('Daily Challenge profile pull failed', e));
@@ -361,6 +379,7 @@ export default function DailyChallengeModal() {
         const map = {};
         (rows || []).forEach((r) => { map[r.date] = r; });
         setResults(map);
+        setResultsReady(true);
       })
       .catch(() => {});
   };
@@ -394,6 +413,35 @@ export default function DailyChallengeModal() {
       }
     };
   }, [open]);
+
+  // Post-win auto-advance: exactly once per won day, staying in the won day's
+  // month (same-month forward scan with wrap-around; never another month, so
+  // the calendar can never change pages by itself), and never when replaying
+  // an already-solved day. Solved selections are legitimate replay targets,
+  // so a fully-solved month simply leaves the selector on the just-won day.
+  // Mirrors EventDetailModal.jsx's post-win effect + findNextUnsolvedDealOnPage.
+  useEffect(() => {
+    if (!open || !resultsReady) return;
+    const wonDate = justWonDailyDate;
+    if (!wonDate || !withinSupported(wonDate)) return;
+    const wonKey = `daily:${wonDate}`;
+    if (advancedForWonRef.current === wonKey) return;
+    advancedForWonRef.current = wonKey;
+    // Belt-and-suspenders replay check: the win-time flag (Board) plus the
+    // persisted wins count (a replay's row has wins > 1 once folded).
+    const row = results[wonDate];
+    if (justWonDailyReplayed === true || (row && (row.wins ?? 0) > 1)) return;
+    const solved = new Set(Object.keys(results || {}));
+    solved.add(wonDate); // optimistic cover: the just-won fold may still be flushing
+    const target = findNextUnsolvedDailyInMonth(wonDate, solved, todayRef.current ?? today);
+    if (!target) return;
+    applySelected(target);
+    userPicked.current = true;
+    // Persist the advanced day so it survives a hard reload, matching the
+    // open-time preferred-date persistence above.
+    saveLastDailySelection(target);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, results, resultsReady, today, justWonDailyDate, justWonDailyReplayed]);
 
   // trackTransform follows the same translateX(calc(-idx*100% + dragPx))
   // pattern as EventDetailModal.jsx, shifted by the -100% resting base so
