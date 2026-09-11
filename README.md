@@ -21,6 +21,42 @@ A framework-agnostic implementation of Klondike solitaire with real game rules, 
 - Settings and persistence: Dexie-backed preferences with localStorage first-paint mirror (`src/db/schema.js`); six locales (en/fr/de/it/es/pt-BR) with DB-mirrored catalog sync (`npm run i18n:check`).
 - Offline-first: remains fully playable without network or Supabase access; unauthenticated mode degrades to local-only play (`src/lib/supabaseClient.js`).
 
+## Visual Effects
+
+All timing/easing lives in the `MOTION` presets in `src/render/animation/motion.js` (single source of truth, tuned live via the dev-only `MotionDebugPanel.jsx`). Most effects are gated by `cardEffects` and `prefers-reduced-motion`, with individual settings toggles noted below.
+
+- Movement
+  - Card move: every relocation except stock→waste draw glides diagonally from old to new position; multi-card runs land as a rigid block (`useCardMoveSlide.js`).
+  - Auto-complete move: same slide path as a manual move but with its own snappier preset for solver/auto-play sequences.
+  - Undo move: same glide path as a manual move, tuned to feel quicker.
+  - Recycle: waste pile glides back to stock as a block.
+  - Stock draw: card flips face-up in place at the stock, then slides horizontally to the waste (`useStockDrawSlide.js`).
+  - Initial deal: cards fan out one after another with a stagger.
+  - Auto-complete pacing: sequences steps in overlap mode (next card launches shortly after the previous starts) rather than waiting for each landing.
+- Card state
+  - Face flip: 3D `rotateY` flip between face-down and face-up, with a subtle overshoot pop (`flipOvershoot` setting).
+  - Flip shimmer: brief specular light sweep across the card after it lands face-up (`shimmer` setting).
+  - Uncover sparkle: star (✦) burst from the card center when a move exposes a face-down tableau card (`uncover` setting).
+- Feedback
+  - Invalid-move shake: short decaying horizontal jitter on the tapped card (`cardShake` setting).
+  - Drop-target glow: pulsing aura on piles that accept the dragged card.
+  - Hover lift: resting premium cards lift slightly under the pointer.
+  - Landing bounce: single moved cards pop subtly (scale/shadow) at the moment of landing, then settle (`bounce` setting).
+  - Idle wobble: resting face-up tableau cards rock gently with a random phase per card; cancelled synchronously on grab/shake/slide (`wobble` setting).
+- Motion trails
+  - Ghost echo: a fading, shrinking clone left at the card's origin on move/auto/undo (`ghostEcho` setting).
+  - Ghost trail: fading clone segments along the travel path — a staggered cascade after tap/auto moves, plus a continuous wake behind an active drag (`ghostTrail` setting).
+- Win celebration
+  - Win cascade: foundation cards peel off King-first and fall with spin (`winCascade` setting).
+  - Enhanced cascade: two-phase win fall — short upward lift, then longer tumbling fall.
+  - Confetti: colored-dot shower over the board on win (`winEnhanced` setting).
+  - Foundation burst: suit-glyph explosion outward from a foundation pile on each arrival (`particles` setting).
+  - Coin flight: gold coins arc one by one from the Win modal to the toolbar balance, ticking the displayed balance up per landing (`coinFly` setting).
+- Interface
+  - Toast: achievement/result banner slides in from off-screen, then fades on dismiss/timeout.
+  - Modal entrance: dialog panel scales up from near-zero with a slight overshoot pop; dismissal is gated until it lands.
+  - Board frame: reserved preset for a wooden-frame reveal (currently the frame is a static CSS texture).
+
 ## Game Modes
 
 The project includes three types of game deals, each with solver-verified winning combinations:
