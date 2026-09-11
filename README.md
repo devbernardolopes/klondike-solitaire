@@ -2,6 +2,25 @@
 
 A framework-agnostic implementation of Klondike solitaire with real game rules, drag-and-drop UI, and comprehensive gameplay features.
 
+## Features
+
+- Favorites: save the current deal by seed and replay it later via Main Menu > Favorites (`src/hooks/useFavoritesStore.js`, `src/components/FavoritesModal.jsx`).
+- History: per-game record (result, moves, time, kind, seed) from Supabase `game_results` plus pending outbox rows (`src/components/HistoryModal.jsx`, `src/components/HistoryDetailModal.jsx`, `src/repo/gameHistoryRepository.js`).
+- Playback: step through a recorded game from its `move_log` (`src/hooks/usePlaybackStore.js`, `src/components/PlaybackBar.jsx`).
+- Device synchronization: offline-first outbox (`src/db/syncQueue.js`, `src/sync/syncEngine.js`) flushes results, favorites, and session; active session restores across reloads (`src/db/activeSession.js`); factory reset propagates across devices (`src/sync/factoryReset.js`).
+- Leaderboard: Supabase `leaderboard` view with coins, wins, streak, time, and moves tabs; opt-out supported (`src/components/LeaderboardModal.jsx`, `submit_game_result` RPC).
+- Themes and decks: Classic and Dark themes; sprite and procedural card renderers (`src/render/deck/`); left/right handedness layout; card highlight and particle toggles (`src/hooks/useSettingsStore.js`).
+- Achievements: telemetry-driven unlocks with catalog cache, detail views, and toasts (`src/core/achievementTelemetry.js`, `src/components/AchievementsModal.jsx`, `src/hooks/useAchievementEventsStore.js`).
+- Store and coins: coin balance, reward rules, and item purchase via `purchase_item` (`src/components/StoreModal.jsx`, `src/core/coinRewards.js`).
+- Input: mouse drag (`@dnd-kit`, multi-card runs), tap/click auto-move, keyboard shortcuts and focusable cards, touch support (`src/hooks/useDragEngine.js`, `src/components/Board.jsx`).
+- Statistics: cumulative games, wins, streaks, best time/moves/undos (`src/components/StatisticsModal.jsx`, `src/hooks/useStatisticsStore.js`).
+- Game assistance: hints (`src/core/hints.js`), undo/redo, auto-complete via Web Worker solver (`src/core/solverClient.js`), board snapshot export (`src/core/snapshot.js`).
+- Audio: synthesized Web Audio SFX with no audio files, plus mute and volume controls (`src/audio/AudioEngine.js`, `src/audio/index.js`, `src/store/useSoundStore.js`).
+- Animation: GSAP-based Flip pipeline for card movements, win cascade, and foundation particle burst (`src/render/animation/`).
+- Daily Challenge and Special Events: dated and event-based curated deals with calendar/grid UI and offline seed cache (`src/components/DailyChallengeModal.jsx`, `src/components/SpecialEventsModal.jsx`, `src/repo/seedRepository.js`).
+- Settings and persistence: Dexie-backed preferences with localStorage first-paint mirror (`src/db/schema.js`); six locales (en/fr/de/it/es/pt-BR) with DB-mirrored catalog sync (`npm run i18n:check`).
+- Offline-first: remains fully playable without network or Supabase access; unauthenticated mode degrades to local-only play (`src/lib/supabaseClient.js`).
+
 ## Game Modes
 
 The project includes three types of game deals, each with solver-verified winning combinations:
@@ -135,11 +154,3 @@ npm test         # Core unit tests (Node)
 - Card renderers (Sprite and Procedural)
 - Animation pipelines
 - Theme system (Classic + Dark)
-
-## Technical Highlights
-
-- **Solver**: Pure JS implementation with Web Worker integration for off-main-thread solving
-- **Animation**: GSAP-based Flip pipeline for smooth card movements
-- **Persistence**: Dexie.js for local storage, Supabase for cloud sync
-- **Accessibility**: Keyboard navigation, screen reader support, ARIA live regions
-- **Offline-first**: Graceful degradation without network or Supabase access
