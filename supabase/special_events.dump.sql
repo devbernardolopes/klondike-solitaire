@@ -1,5 +1,5 @@
 -- ============================================================
--- Catalog dump — generated 2026-09-11T21:34:09.385Z
+-- Catalog dump — generated 2026-09-11T23:34:27.769Z
 -- Source of truth for scripts/i18n-sync.mjs. Do not edit by hand.
 -- Re-run `npm run catalog:dump` after any dashboard edits.
 -- Idempotent: safe to paste into Supabase SQL editor and re-run.
@@ -19,6 +19,7 @@ INSERT INTO public.special_events (id, title, description) VALUES
   ('la-tomatina-2026', 'La Tomatina', 'La Tomatina is the famous Spanish tomato-throwing festival held in Buñol, where participants engage in a massive, joyful food fight that fills the streets with red pulp and laughter.'),
   ('las-fallas-2026', 'Las Fallas 2026', 'Las Fallas is Valencia''s spectacular spring festival, celebrated with enormous satirical sculptures, fireworks, marching bands, traditional costumes, street festivities, and the dramatic burning of the fallas.'),
   ('onam-2026', 'Onam 2026', 'Onam is the major harvest festival of Kerala, marked by intricate floral rangoli (pookalam), traditional boat races, elaborate feasts, and cultural performances that welcome the legendary King Mahabali.'),
+  ('pac-man-anniversary-2026', 'PAC-MAN Anniversary 2026', 'The PAC-MAN Anniversary celebrates the enduring arcade icon introduced in Japan in 1980, honoring its maze-chasing gameplay, memorable characters, distinctive visual style, and lasting influence on video game culture.'),
   ('songkran-2026', 'Songkran 2026', 'Songkran is Thailand''s traditional New Year festival, famous for joyful water celebrations, temple visits, traditional rituals, family gatherings, and vibrant street festivities.'),
   ('st-patricks-day-2026', 'St. Patrick''s Day', 'St. Patrick''s Day commemorates Ireland''s patron saint with parades, green attire, traditional music, and festive gatherings that celebrate Irish heritage and culture worldwide.'),
   ('swedish-midsommar-2026', 'Swedish Midsommar 2026', 'Swedish Midsommar 2026 marks the traditional Midsummer celebration with maypoles, floral crowns, outdoor dances, and gatherings under the long Nordic summer light around the solstice.'),
