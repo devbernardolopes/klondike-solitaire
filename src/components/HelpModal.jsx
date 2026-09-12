@@ -75,7 +75,7 @@ export default function HelpModal({ open, onClose }) {
     borderRadius: 'var(--ui-modal-panel-radius)',
     boxShadow: '0 8px 28px rgba(0,0,0,0.45)',
     padding: '20px 22px',
-    width: 'min(90vw, 380px)',
+    width: 'min(90vw, 420px)',
     maxWidth: '100%',
     maxHeight: '85vh',
     display: 'flex',
