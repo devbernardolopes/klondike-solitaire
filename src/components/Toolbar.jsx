@@ -352,14 +352,14 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
 
 const hudLabelStyle = {
   color: '#fff',
-  fontSize: 16,
+  fontSize: 14,
   fontWeight: 700,
   userSelect: 'none',
 };
 
 const hudValueStyle = {
   color: '#fff',
-  fontSize: 22,
+  fontSize: 18,
   fontWeight: 700,
   userSelect: 'none',
   fontVariantNumeric: 'tabular-nums',
@@ -475,7 +475,7 @@ function ElapsedClock() {
           {!playbackActive && (
             <div style={hudColStyle}>
               <span style={{ ...hudLabelStyle, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <CoinsIcon size={14} style={{ color: '#f0b429' }} />{t('toolbar.coins')}
+                <CoinsIcon size={12} style={{ color: '#f0b429' }} />{t('toolbar.coins')}
               </span>
               <span data-coin-balance style={{ ...hudValueStyle, display: 'inline-block', visibility: profileReady ? 'visible' : 'hidden' }}>{visibleCoins({ coins, flight: coinFlight })}</span>
             </div>
