@@ -638,5 +638,30 @@
         "coinReward": 200
       }
     ]
+  },
+  {
+    "id": "international-chess-day-2026",
+    "title": "International Chess Day 2026",
+    "description": "International Chess Day celebrates chess as a global game that connects people across countries and generations, honoring its rich history, strategic depth, and cultural importance.",
+    "startsAt": "2026-07-20T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "international-chess-day-2026/page1.jpg",
+        "coinReward": 50
+      },
+      {
+        "gridSize": 3,
+        "imagePath": "international-chess-day-2026/page2.jpg",
+        "coinReward": 100
+      },
+      {
+        "gridSize": 4,
+        "imagePath": "international-chess-day-2026/page3.jpg",
+        "coinReward": 200
+      }
+    ]
   }
 ]

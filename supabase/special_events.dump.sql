@@ -1,5 +1,5 @@
 -- ============================================================
--- Catalog dump — generated 2026-09-11T23:34:27.769Z
+-- Catalog dump — generated 2026-09-12T17:56:47.634Z
 -- Source of truth for scripts/i18n-sync.mjs. Do not edit by hand.
 -- Re-run `npm run catalog:dump` after any dashboard edits.
 -- Idempotent: safe to paste into Supabase SQL editor and re-run.
@@ -13,6 +13,7 @@ INSERT INTO public.special_events (id, title, description) VALUES
   ('festivus-2025', 'Festivus 2025', 'Festivus is the secular, anti-commercial holiday popularized by the television series Seinfeld, featuring the aluminum Festivus pole, the airing of grievances, and feats of strength, observed on 23 December.'),
   ('guy-fawkes-night-2026', 'Guy Fawkes Night 2026', 'Guy Fawkes Night is a British tradition observed with bonfires, fireworks, and gatherings on 5 November, commemorating the failed Gunpowder Plot of 1605.'),
   ('independence-day-2026', 'Independence Day', 'Independence Day commemorates the adoption of the Declaration of Independence with fireworks, patriotic displays, family gatherings, and celebrations of American freedom and history.'),
+  ('international-chess-day-2026', 'International Chess Day 2026', 'International Chess Day celebrates chess as a global game that connects people across countries and generations, honoring its rich history, strategic depth, and cultural importance.'),
   ('international-puzzle-day-2026', 'International Puzzle Day 2026', 'International Puzzle Day celebrates puzzles of every kind, encouraging curiosity, logical thinking, creativity, problem-solving, and the simple pleasure of discovering how pieces fit together.'),
   ('international-video-game-day-2026', 'International Video Game Day 2026', 'International Video Game Day celebrates video games as a form of entertainment, technology, art, competition, and popular culture, bringing players together across generations and platforms.'),
   ('japanese-cherry-blossom-2026', 'Japanese Cherry Blossom Season 2026', 'The Japanese Cherry Blossom Season, known as Sakura, celebrates the fleeting beauty of blooming cherry trees with hanami gatherings, picnics under the blossoms, and traditional spring festivities across Japan.'),
