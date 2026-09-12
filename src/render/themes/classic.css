@@ -120,8 +120,8 @@
     0 12px 32px rgba(0,0,0,0.5),
     0 2px 8px rgba(0,0,0,0.4);
   border: 1px solid rgba(0,0,0,0.45);
-  max-width: calc(7 * var(--card-width) + 6 * clamp(6px, 1.2vw, 14px) + clamp(20px, 3.2vw, 36px));
-  width: min(98vw, calc(7 * var(--card-width) + 6 * clamp(6px, 1.2vw, 14px) + 36px));
+  max-width: calc(7 * var(--card-width) + 6 * clamp(4px, 0.6vw, 14px) + clamp(20px, 3.2vw, 36px));
+  width: min(98vw, calc(7 * var(--card-width) + 6 * clamp(4px, 0.6vw, 14px) + 36px));
   position: relative;
 }
 
