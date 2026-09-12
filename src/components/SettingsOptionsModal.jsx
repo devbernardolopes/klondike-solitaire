@@ -69,6 +69,9 @@ export default function SettingsOptionsModal({
   const hoverLift = useSettingsStore((s) => s.hoverLift);
   const wobble = useSettingsStore((s) => s.wobble);
   const flipOvershoot = useSettingsStore((s) => s.flipOvershoot);
+  const tapRipple = useSettingsStore((s) => s.tapRipple);
+  const pickupLift = useSettingsStore((s) => s.pickupLift);
+  const dropSnap = useSettingsStore((s) => s.dropSnap);
   const effectProfile = useSettingsStore((s) => s.effectProfile);
   const osReducesMotion = useReducedMotion();
   const hoverCapable = useHoverCapable();
@@ -94,6 +97,9 @@ export default function SettingsOptionsModal({
     uncover: !!uncover,
     ghostEcho: !!ghostEcho,
     wobble: !!wobble,
+    tapRipple: !!tapRipple,
+    pickupLift: !!pickupLift,
+    dropSnap: !!dropSnap,
     winCascade: !!winCascade,
     boardFrame: !!boardFrame,
   };
@@ -126,6 +132,9 @@ export default function SettingsOptionsModal({
     s.setGhostEcho(snap.ghostEcho);
     s.setGhostTrail(snap.ghostTrail);
     s.setWobble(snap.wobble);
+    s.setTapRipple(snap.tapRipple);
+    s.setPickupLift(snap.pickupLift);
+    s.setDropSnap(snap.dropSnap);
     s.setWinCascade(snap.winCascade);
     s.setWinEnhanced(snap.winEnhanced);
     s.setTableTexture(snap.tableTexture);
@@ -510,6 +519,45 @@ export default function SettingsOptionsModal({
             checked={!!wobble}
             onChange={(v) => useSettingsStore.getState().setWobble(v)}
             label={t('settings.wobblyCards.desc')}
+            disabled={!cardEffects || osReducesMotion}
+          />
+        </div>
+
+        <div style={{ ...field, marginLeft: 16, opacity: (!cardEffects || osReducesMotion) ? 0.5 : 1, marginBottom: 20 }}>
+          <span style={{ fontSize: 14, fontWeight: 600 }}>
+            {t('settings.tapRipple')}
+            {osReducesMotion && <BlockedInfoButton effect={t('settings.tapRipple')} reason="os" />}
+          </span>
+          <ToggleSwitch
+            checked={!!tapRipple}
+            onChange={(v) => useSettingsStore.getState().setTapRipple(v)}
+            label={t('settings.tapRipple')}
+            disabled={!cardEffects || osReducesMotion}
+          />
+        </div>
+
+        <div style={{ ...field, marginLeft: 16, opacity: (!cardEffects || osReducesMotion) ? 0.5 : 1, marginBottom: 20 }}>
+          <span style={{ fontSize: 14, fontWeight: 600 }}>
+            {t('settings.pickupLift')}
+            {osReducesMotion && <BlockedInfoButton effect={t('settings.pickupLift')} reason="os" />}
+          </span>
+          <ToggleSwitch
+            checked={!!pickupLift}
+            onChange={(v) => useSettingsStore.getState().setPickupLift(v)}
+            label={t('settings.pickupLift')}
+            disabled={!cardEffects || osReducesMotion}
+          />
+        </div>
+
+        <div style={{ ...field, marginLeft: 16, opacity: (!cardEffects || osReducesMotion) ? 0.5 : 1, marginBottom: 20 }}>
+          <span style={{ fontSize: 14, fontWeight: 600 }}>
+            {t('settings.dropSnap')}
+            {osReducesMotion && <BlockedInfoButton effect={t('settings.dropSnap')} reason="os" />}
+          </span>
+          <ToggleSwitch
+            checked={!!dropSnap}
+            onChange={(v) => useSettingsStore.getState().setDropSnap(v)}
+            label={t('settings.dropSnap')}
             disabled={!cardEffects || osReducesMotion}
           />
         </div>

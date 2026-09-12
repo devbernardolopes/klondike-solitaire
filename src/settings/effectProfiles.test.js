@@ -35,14 +35,17 @@ test('default snapshot matches the requested baseline', () => {
     uncover: false,
     ghostEcho: true,
     wobble: false,
+    tapRipple: true,
+    pickupLift: true,
+    dropSnap: true,
     winCascade: false,
     boardFrame: false,
   });
 });
 
-test('calm disables exactly its ten keys against default', () => {
+test('calm disables exactly its thirteen keys against default', () => {
   const { calm } = EFFECT_PROFILES;
-  for (const k of ['particles', 'cardShake', 'coinFly', 'hoverLift', 'cardEffects', 'shimmer', 'hoverGlow', 'ghostTrail', 'winEnhanced', 'tableTexture']) {
+  for (const k of ['particles', 'cardShake', 'coinFly', 'hoverLift', 'cardEffects', 'shimmer', 'hoverGlow', 'ghostTrail', 'tapRipple', 'pickupLift', 'dropSnap', 'winEnhanced', 'tableTexture']) {
     assert.equal(calm[k], false);
   }
   for (const k of EFFECT_PROFILE_KEYS) {
@@ -50,9 +53,9 @@ test('calm disables exactly its ten keys against default', () => {
   }
 });
 
-test('essential disables exactly its five keys against default', () => {
+test('essential disables exactly its eight keys against default', () => {
   const { essential } = EFFECT_PROFILES;
-  for (const k of ['particles', 'coinFly', 'hoverLift', 'hoverGlow', 'winEnhanced']) {
+  for (const k of ['particles', 'coinFly', 'hoverLift', 'hoverGlow', 'tapRipple', 'pickupLift', 'dropSnap', 'winEnhanced']) {
     assert.equal(essential[k], false);
   }
   for (const k of EFFECT_PROFILE_KEYS) {
@@ -60,9 +63,9 @@ test('essential disables exactly its five keys against default', () => {
   }
 });
 
-test('showcase enables exactly its nine keys against default', () => {
+test('showcase enables exactly its twelve keys against default', () => {
   const { showcase } = EFFECT_PROFILES;
-  for (const k of ['highlightCard', 'flipOvershoot', 'bounce', 'uncover', 'ghostEcho', 'ghostTrail', 'wobble', 'winCascade', 'boardFrame']) {
+  for (const k of ['highlightCard', 'flipOvershoot', 'bounce', 'uncover', 'ghostEcho', 'ghostTrail', 'wobble', 'tapRipple', 'pickupLift', 'dropSnap', 'winCascade', 'boardFrame']) {
     assert.equal(showcase[k], true);
   }
   for (const k of EFFECT_PROFILE_KEYS) {
