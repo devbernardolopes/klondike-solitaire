@@ -269,6 +269,8 @@
     "signedInAs": "Conectado como {{name}}",
     "statistics": "Estatísticas",
     "store": "Loja",
+    "storeOffline": "A Loja está disponível apenas online.",
+    "storeOfflineTitle": "Loja indisponível offline",
     "sync.deviceId": "ID de sincronização do dispositivo: {{id}}",
     "sync.failed": "Falha na sincronização: {{error}}",
     "sync.ok": "Sincronização: atualizado",

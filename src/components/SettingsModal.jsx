@@ -20,6 +20,7 @@ import HelpModal from './HelpModal.jsx';
 import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
 import ConfirmModal from './ConfirmModal.jsx';
+import { Info } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient.js';
 import { fetchStoreCatalog } from '../data/storeCatalog.js';
 import { useSettingsStore } from '../hooks/useSettingsStore.js';
@@ -78,6 +79,7 @@ export default function SettingsModal({
   const [historyOpen, setHistoryOpen] = useState(false);
   const [favoritesOpen, setFavoritesOpen] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [storeOfflineInfo, setStoreOfflineInfo] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [nameError, setNameError] = useState(null);
@@ -155,6 +157,7 @@ export default function SettingsModal({
       setAchievementsOpen(false);
       setLeaderboardOpen(false);
       setStoreOpen(false);
+      setStoreOfflineInfo(false);
     }
   }, [open]);
 
@@ -370,18 +373,46 @@ export default function SettingsModal({
             >
               {t('mainMenu.leaderboard')}
             </button>
-            <button
-              type="button"
-              style={{ ...btn, width: '100%', opacity: isOnline ? 1 : 0.5 }}
-              onClick={() => setStoreOpen(true)}
-              disabled={!isOnline}
-              title={isOnline ? undefined : t('mainMenu.storeOffline')}
-            >
-              {t('mainMenu.store')}
-            </button>
-            {!isOnline && (
-              <div style={{ fontSize: 12, opacity: 0.75, marginTop: -6 }}>{t('mainMenu.storeOffline')}</div>
-            )}
+            <div style={{ position: 'relative', width: '100%' }}>
+              <button
+                type="button"
+                style={{ ...btn, width: '100%', opacity: isOnline ? 1 : 0.5 }}
+                onClick={() => setStoreOpen(true)}
+                disabled={!isOnline}
+                title={isOnline ? undefined : t('mainMenu.storeOffline')}
+              >
+                {t('mainMenu.store')}
+              </button>
+              {!isOnline && (
+                <button
+                  type="button"
+                  aria-label={t('mainMenu.storeOfflineTitle')}
+                  title={t('mainMenu.storeOffline')}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setStoreOfflineInfo(true);
+                  }}
+                  style={{
+                    position: 'absolute',
+                    right: 8,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    display: 'inline-grid',
+                    placeItems: 'center',
+                    width: 28,
+                    height: 28,
+                    padding: 0,
+                    border: '1px solid var(--ui-control-border)',
+                    borderRadius: '50%',
+                    background: 'transparent',
+                    color: 'var(--ui-modal-panel-fg)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <Info size={15} aria-hidden="true" />
+                </button>
+              )}
+            </div>
             <button
               type="button"
               style={{ ...btn, width: '100%' }}
@@ -547,6 +578,18 @@ export default function SettingsModal({
         cancelText={t('common.cancel')}
         onConfirm={onConfirmSignOut}
         onCancel={() => setSignOutConfirmOpen(false)}
+      />
+
+      <ConfirmModal
+        open={storeOfflineInfo}
+        title={t('mainMenu.storeOfflineTitle')}
+        message={t('mainMenu.storeOffline')}
+        confirmText={t('common.ok')}
+        hideCancel
+        zIndex={Z.CHILD}
+        z={Z.CHILD}
+        onConfirm={() => setStoreOfflineInfo(false)}
+        onCancel={() => setStoreOfflineInfo(false)}
       />
 
       <AchievementsModal

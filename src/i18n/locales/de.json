@@ -269,6 +269,8 @@
     "signedInAs": "Signed in as {{name}}",
     "statistics": "Statistics",
     "store": "Store",
+    "storeOffline": "Der Store ist nur online verfügbar.",
+    "storeOfflineTitle": "Store offline nicht verfügbar",
     "sync.deviceId": "Device sync ID: {{id}}",
     "sync.failed": "Sync failed: {{error}}",
     "sync.ok": "Sync: up to date",
