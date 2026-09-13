@@ -54,6 +54,21 @@
   }
 }
 
+/* Small portrait phones: size cards from the available width instead of the
+   fixed 48px floor, so the 7 columns absorb all slack and land exactly
+   edge-to-edge at any viewport width (Android display-size settings change
+   the CSS viewport, which used to strand felt margins on both sides while
+   cards stayed glued at minimum size). The gap/padding expressions mirror
+   Board.jsx's grid, so columns + gutters + padding sum to exactly 100vw.
+   Landscape/tablet/desktop keep the 9vw rule above (short landscape
+   viewports must not grow taller cards). --card-height follows
+   proportionally (x1.4), so the canvas art never distorts. */
+@media (max-width: 480px) {
+  .theme-dark {
+    --card-width: clamp(48px, calc((100vw - 6 * clamp(2px, 0.6vw, 14px) - 2 * clamp(4px, 1.4vw, 20px)) / 7), 120px);
+  }
+}
+
 /* Tableau height smoothing kill-switch, see classic.css. */
 @media (prefers-reduced-motion: reduce) {
   [data-loc^="tableau:"],
