@@ -132,7 +132,6 @@ export default function NewGameModal({ open, onReplay, canReplay, onWinningDeal,
             disabled={!canReplay}
             style={{
               ...btn,
-              background: 'var(--ui-modal-btn-bg-strong)',
               textAlign: 'left',
               opacity: canReplay ? 1 : 0.4,
               cursor: canReplay ? 'pointer' : 'not-allowed',
