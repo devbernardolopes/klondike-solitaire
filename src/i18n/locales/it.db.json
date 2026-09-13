@@ -162,6 +162,18 @@
       "description": "Independence Day commemorates the adoption of the Declaration of Independence with fireworks, patriotic displays, family gatherings, and celebrations of American freedom and history.",
       "title": "Independence Day"
     },
+    "international-chess-day-2026": {
+      "description": "International Chess Day celebrates chess as a global game that connects people across countries and generations, honoring its rich history, strategic depth, and cultural importance.",
+      "title": "International Chess Day 2026"
+    },
+    "international-puzzle-day-2026": {
+      "description": "International Puzzle Day celebrates puzzles of every kind, encouraging curiosity, logical thinking, creativity, problem-solving, and the simple pleasure of discovering how pieces fit together.",
+      "title": "International Puzzle Day 2026"
+    },
+    "international-video-game-day-2026": {
+      "description": "International Video Game Day celebrates video games as a form of entertainment, technology, art, competition, and popular culture, bringing players together across generations and platforms.",
+      "title": "International Video Game Day 2026"
+    },
     "japanese-cherry-blossom-2026": {
       "description": "The Japanese Cherry Blossom Season, known as Sakura, celebrates the fleeting beauty of blooming cherry trees with hanami gatherings, picnics under the blossoms, and traditional spring festivities across Japan.",
       "title": "Japanese Cherry Blossom Season 2026"
@@ -177,6 +189,10 @@
     "onam-2026": {
       "description": "Onam is the major harvest festival of Kerala, marked by intricate floral rangoli (pookalam), traditional boat races, elaborate feasts, and cultural performances that welcome the legendary King Mahabali.",
       "title": "Onam 2026"
+    },
+    "pac-man-anniversary-2026": {
+      "description": "The PAC-MAN Anniversary celebrates the enduring arcade icon introduced in Japan in 1980, honoring its maze-chasing gameplay, memorable characters, distinctive visual style, and lasting influence on video game culture.",
+      "title": "PAC-MAN Anniversary 2026"
     },
     "songkran-2026": {
       "description": "Songkran is Thailand's traditional New Year festival, famous for joyful water celebrations, temple visits, traditional rituals, family gatherings, and vibrant street festivities.",
@@ -226,25 +242,9 @@
       "description": "The World Rock Day honors the enduring legacy of rock music, its pioneering artists, and the cultural impact of the genre celebrated around the anniversary of the historic Live Aid concerts.",
       "title": "World Rock Day 2026"
     },
-    "international-puzzle-day-2026": {
-      "title": "International Puzzle Day 2026",
-      "description": "International Puzzle Day celebrates puzzles of every kind, encouraging curiosity, logical thinking, creativity, problem-solving, and the simple pleasure of discovering how pieces fit together."
-    },
-    "international-video-game-day-2026": {
-      "title": "International Video Game Day 2026",
-      "description": "International Video Game Day celebrates video games as a form of entertainment, technology, art, competition, and popular culture, bringing players together across generations and platforms."
-    },
     "world-tetris-day-2026": {
-      "title": "World Tetris Day 2026",
-      "description": "World Tetris Day celebrates Tetris, the iconic falling-block puzzle game created by Alexey Pajitnov, and its enduring influence on video games and popular culture."
-    },
-    "pac-man-anniversary-2026": {
-      "title": "PAC-MAN Anniversary 2026",
-      "description": "The PAC-MAN Anniversary celebrates the enduring arcade icon introduced in Japan in 1980, honoring its maze-chasing gameplay, memorable characters, distinctive visual style, and lasting influence on video game culture."
-    },
-    "international-chess-day-2026": {
-      "title": "International Chess Day 2026",
-      "description": "International Chess Day celebrates chess as a global game that connects people across countries and generations, honoring its rich history, strategic depth, and cultural importance."
+      "description": "World Tetris Day celebrates Tetris, the iconic falling-block puzzle game created by Alexey Pajitnov, and its enduring influence on video games and popular culture.",
+      "title": "World Tetris Day 2026"
     }
   },
   "storeItems": {

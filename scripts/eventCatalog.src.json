@@ -663,5 +663,30 @@
         "coinReward": 200
       }
     ]
+  },
+  {
+    "id": "world-ufo-day-2026",
+    "title": "World UFO Day 2026",
+    "description": "World UFO Day is an annual observance dedicated to the mystery of unidentified flying objects, encouraging curiosity about unexplained aerial phenomena and the possibility of life beyond Earth.",
+    "startsAt": "2026-07-02T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "world-ufo-day-2026/page1.jpg",
+        "coinReward": 50
+      },
+      {
+        "gridSize": 3,
+        "imagePath": "world-ufo-day-2026/page2.jpg",
+        "coinReward": 100
+      },
+      {
+        "gridSize": 4,
+        "imagePath": "world-ufo-day-2026/page3.jpg",
+        "coinReward": 200
+      }
+    ]
   }
 ]
