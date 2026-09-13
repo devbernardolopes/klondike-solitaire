@@ -226,6 +226,19 @@
   }
 }
 
+/* Keyboard-only pile focus indicator. The Pile container suppresses the
+   browser-native focus outline inline (see Pile.jsx), so mouse/touch clicks
+   and programmatic focus (e.g. the Z/X click emulation) never paint a ring.
+   This :focus-visible rule restores a subtle static glow for keyboard (Tab)
+   focus only — :focus-visible does not match mouse or script-driven focus —
+   so keyboard-only players can still orient on piles (Enter on a focused pile
+   moves the selected card there). `!important` beats the container's inline
+   box-shadow; static (no animation) echoing the drop-target pileGlow
+   language, deliberately subtler than any game-state highlight. */
+[data-pile]:focus-visible {
+  box-shadow: 0 0 0 2px rgba(52, 214, 255, 0.55), 0 0 12px rgba(52, 214, 255, 0.35) !important;
+}
+
 /* Auto-complete banner: a centered horizontal label shown while the game is
    auto-moving everything to the foundations. Fades in on mount (the banner is
    only rendered while auto-complete is running) and is removed from the DOM the

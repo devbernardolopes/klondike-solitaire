@@ -203,6 +203,15 @@ export default function Pile({ loc, cards, fanned = false, onClick, label, hidde
         background: fanned ? 'transparent' : 'var(--pile-empty-bg, rgba(0,0,0,0.12))',
         boxShadow: fanned ? 'none' : 'var(--pile-empty-shadow, none)',
         cursor: onClick && !locked ? 'pointer' : 'default',
+        // Suppress the browser-native focus outline: without this, every
+        // mouse/touch click (or programmatic focus, e.g. the Z/X click
+        // emulation) paints a white ring around the pile — including empty
+        // piles/foundations. Keyboard (Tab) focus keeps its own subtle
+        // indicator via the `[data-pile]:focus-visible` rule in the board
+        // themes (classic.css / dark.css), which :focus-visible limits to
+        // keyboard-driven focus. Parity with CardView and the modals, which
+        // all suppress the native ring the same way.
+        outline: 'none',
         outlineOffset: 2,
         transition: smoothHeight,
       }}
