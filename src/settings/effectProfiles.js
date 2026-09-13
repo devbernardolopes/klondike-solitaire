@@ -2,7 +2,7 @@
 // Named effect presets for the Settings "Effect Profile" dropdown. Each
 // profile is a full snapshot of the 18 effect keys it manages; Default is the
 // baseline and the others are expressed as diffs on top of it. Profiles never
-// touch handedness, sound, volume, centiseconds, or auto-complete — those
+// touch handedness, sound, volume, centiseconds, auto-complete, or zxClick — those
 // stay exactly as the user left them.
 //
 // The module is UI-free (plain data + pure helpers) so it stays unit-testable

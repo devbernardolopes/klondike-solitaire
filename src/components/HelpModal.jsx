@@ -107,6 +107,7 @@ export default function HelpModal({ open, onClose }) {
     { keys: 'U', action: t('help.keys.undo') },
     { keys: 'A', action: t('help.keys.autoComplete') },
     { keys: 'H', action: t('help.keys.hints') },
+    { keys: 'Z / X', action: t('help.keys.zxClick') },
     { keys: 'Enter / Space', action: t('help.keys.autoMove') },
   ];
 

@@ -65,6 +65,7 @@ export default function SettingsOptionsModal({
   const setSoundVolume = useSoundStore((s) => s.setVolume);
   const coinFly = useSettingsStore((s) => s.coinFly);
   const autoComplete = useSettingsStore((s) => s.autoComplete);
+  const zxClick = useSettingsStore((s) => s.zxClick);
   const centisecondsOn = useSettingsStore((s) => s.centisecondsOn);
   const hoverLift = useSettingsStore((s) => s.hoverLift);
   const wobble = useSettingsStore((s) => s.wobble);
@@ -359,6 +360,15 @@ export default function SettingsOptionsModal({
             checked={!!autoComplete}
             onChange={(v) => useSettingsStore.getState().setAutoComplete(v)}
             label={t('settings.autoComplete.desc')}
+          />
+        </div>
+
+        <div style={{ ...field, marginBottom: 20 }}>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>{t('settings.zxClick')}</label>
+          <ToggleSwitch
+            checked={!!zxClick}
+            onChange={(v) => useSettingsStore.getState().setZxClick(v)}
+            label={t('settings.zxClick.desc')}
           />
         </div>
 

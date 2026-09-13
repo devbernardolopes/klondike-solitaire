@@ -178,6 +178,7 @@
     "keys.hints": "Show hints",
     "keys.newGame": "New game",
     "keys.undo": "Undo",
+    "keys.zxClick": "Z = left-click, X = double-click at the cursor (when enabled in Settings)",
     "mouse.autoComplete": "Double-click / double-tap any empty board space (not on a card) to auto-complete to the foundations",
     "mouse.autoMove": "Single-click / tap a face-up card to auto-move it (foundations first)",
     "mouse.dragDrop": "Drag & drop cards to move them; grabbing a face-up tableau card lifts the whole valid run",
@@ -403,7 +404,9 @@
     "winCelebration": "Win Celebration",
     "winCelebration.desc": "Falling Cards on Win",
     "wobblyCards": "Wobbly Cards",
-    "wobblyCards.desc": "Subtle idle sway for resting face-up tableau cards"
+    "wobblyCards.desc": "Subtle idle sway for resting face-up tableau cards",
+    "zxClick": "Z/X Click",
+    "zxClick.desc": "Press Z for left-click or X for double-click wherever the cursor is (hold to repeat)"
   },
   "specialEvents": {
     "availableFrom": "Available from {{date}}",

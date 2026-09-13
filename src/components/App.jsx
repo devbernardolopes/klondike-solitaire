@@ -35,6 +35,7 @@ import ToastHost from './ToastHost.jsx';
 import SpecialEventsModal from './SpecialEventsModal.jsx';
 import EventDetailModal from './EventDetailModal.jsx';
 import { useSoundStore } from '../store/useSoundStore.js';
+import { useKeyClick } from '../hooks/useKeyClick.js';
 import { Z } from '../utils/modalStack.js';
 import {
   ensureDeviceId,
@@ -67,6 +68,9 @@ export default function App() {
   const initFavorites = useFavoritesStore((s) => s.init);
   const state = useGameStore((s) => s.state);
   const linkConflict = useAuthStore((s) => s.linkConflict);
+  // Z/X-as-mouse emulation (gated by the Settings toggle). Mounted once here
+  // so it works everywhere — board, toolbar, menus, modals, empty space.
+  useKeyClick();
   const { t } = useTranslation();
   const language = useSettingsStore((s) => s.language);
   useEffect(() => {
