@@ -16,7 +16,7 @@ import {
   setLastPointerForTest,
 } from './keyClick.js';
 
-function stubDom(hitElement) {
+function stubDom(hitElement, { activeElement = null } = {}) {
   const seen = [];
   const el = hitElement || {
     dispatched: seen,
@@ -38,7 +38,7 @@ function stubDom(hitElement) {
     MouseEvent: globalThis.MouseEvent,
     window: globalThis.window,
   };
-  globalThis.document = { elementFromPoint: () => el };
+  globalThis.document = { elementFromPoint: () => el, activeElement };
   globalThis.PointerEvent = FakeEvent;
   globalThis.MouseEvent = FakeEvent;
   globalThis.window = {};
@@ -158,5 +158,70 @@ test('fire functions no-op when nothing is under the cursor', () => {
     if (prevDocument === undefined) delete globalThis.document;
     else globalThis.document = prevDocument;
     setLastPointerForTest(null, null);
+  }
+});
+
+// A focusable hit-test target (e.g. a pile container) recording focus() calls.
+function focusableStub({ tabIndex = '0', disabled = false } = {}) {
+  const focusCalls = [];
+  const dispatched = [];
+  const el = {
+    dispatched,
+    dispatchEvent(e) {
+      dispatched.push({ type: e.type, detail: e.detail });
+      return true;
+    },
+    closest: () => el,
+    hasAttribute: (name) => name === 'disabled' && disabled,
+    getAttribute: (name) => (name === 'tabindex' ? tabIndex : null),
+    focus(...args) {
+      focusCalls.push(args);
+    },
+  };
+  return { el, focusCalls };
+}
+
+test('emulated clicks focus without :focus-visible indication', () => {
+  const { el, focusCalls } = focusableStub();
+  const dom = stubDom(el);
+  try {
+    setLastPointerForTest(100, 200);
+    assert.equal(fireSingleClickAtCursor(), true);
+    // Focus still moves (continuity for Enter/Space, card selection), but must
+    // opt out of the visible ring: the Z/X keypress puts the browser in
+    // keyboard modality, where a bare focus() would match `:focus-visible`
+    // and repaint the pile indicator on every emulated click.
+    assert.deepEqual(focusCalls, [[{ preventScroll: true, focusVisible: false }]]);
+  } finally {
+    dom.restore();
+  }
+});
+
+test('emulated clicks skip focus for locked (tabindex -1) targets', () => {
+  const { el, focusCalls } = focusableStub({ tabIndex: '-1' });
+  const dom = stubDom(el);
+  try {
+    setLastPointerForTest(100, 200);
+    assert.equal(fireSingleClickAtCursor(), true);
+    assert.equal(focusCalls.length, 0);
+    // The click sequence itself still fires.
+    assert.deepEqual(
+      dom.seen.map((e) => e.type),
+      ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'],
+    );
+  } finally {
+    dom.restore();
+  }
+});
+
+test('emulated clicks skip focus when the target is already focused', () => {
+  const { el, focusCalls } = focusableStub();
+  const dom = stubDom(el, { activeElement: el });
+  try {
+    setLastPointerForTest(100, 200);
+    assert.equal(fireSingleClickAtCursor(), true);
+    assert.equal(focusCalls.length, 0);
+  } finally {
+    dom.restore();
   }
 });

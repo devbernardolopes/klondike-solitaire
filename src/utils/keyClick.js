@@ -142,7 +142,17 @@ function mimicClickFocus(el) {
       // it when it is not already focused to avoid yanking focus to locked cards.
       return;
     }
-    if (node !== document.activeElement) node.focus({ preventScroll: true });
+    if (node !== document.activeElement) {
+      // `focusVisible: false` opts out of `:focus-visible` styling. Without
+      // it, this programmatic focus would match `:focus-visible` whenever the
+      // browser is in keyboard modality — which it always is here, since a
+      // Z/X keypress got us here — painting the keyboard-focus indicator
+      // (e.g. the `[data-pile]:focus-visible` glow) on every emulated click.
+      // A real mouse click never produces a `:focus-visible` ring, so opting
+      // out keeps the emulation faithful. Unsupported browsers ignore the
+      // unknown option and fall back to heuristic behavior (no throw).
+      node.focus({ preventScroll: true, focusVisible: false });
+    }
   } catch {}
 }
 
