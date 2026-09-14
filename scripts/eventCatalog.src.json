@@ -738,5 +738,30 @@
         "coinReward": 200
       }
     ]
+  },
+  {
+    "id": "pi-day-2026",
+    "title": "Pi Day 2026",
+    "description": "Pi Day celebrates the mathematical constant π, the ratio of a circle's circumference to its diameter, bringing together mathematics, science, education, geometry, and the playful tradition of enjoying pie.",
+    "startsAt": "2026-03-14T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "pi-day-2026/page1.jpg",
+        "coinReward": 50
+      },
+      {
+        "gridSize": 3,
+        "imagePath": "pi-day-2026/page2.jpg",
+        "coinReward": 100
+      },
+      {
+        "gridSize": 4,
+        "imagePath": "pi-day-2026/page3.jpg",
+        "coinReward": 200
+      }
+    ]
   }
 ]
