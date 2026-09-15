@@ -507,6 +507,7 @@
     "noMoves.cancel": "Desfazer Último Movimento",
     "noMoves.confirm": "Novo Jogo",
     "noMoves.dailyConfirm": "Voltar ao Desafio Diário",
+    "noMoves.eventConfirm": "Voltar ao Evento Especial",
     "noMoves.message": "Parece não haver mais movimentos válidos. Você pode continuar para reciclar o estoque, desfazer o último movimento, repetir exatamente esta partida ou iniciar um novo jogo.",
     "noMoves.quaternary": "Continuar",
     "noMoves.tertiary": "Repetir esta Partida",

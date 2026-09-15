@@ -43,7 +43,9 @@ import {
   initSessionPersistence,
 } from '../sync/sessionPersistence.js';
 import { prefetch as prefetchSeeds } from '../repo/seedRepository.js';
-import { hydrateEventCachesFromDexie } from '../repo/specialEventsRepository.js';
+import { getCachedEventDetailSync, hydrateEventCachesFromDexie } from '../repo/specialEventsRepository.js';
+import { saveLastViewedPage } from '../db/eventSelection.js';
+import { withinSupported } from '../core/dailyChallenge.js';
 import { isInterfaceTheme } from '../render/themes/interfaceThemes.js';
 import { hydrateAchievementCache } from '../repo/achievementRepository.js';
 import { hydrateRewardRules, refreshRewardRules } from '../repo/rewardRulesRepository.js';
@@ -255,14 +257,64 @@ export default function App() {
     () => setNoMovesDialogOpen(false),
     [setNoMovesDialogOpen],
   );
+  // Shared "return to origin" navigation used by both the "No More Moves" and
+  // "Game Over" dialogs. Reads the current game kind from the ui store so the
+  // calendar / event detail land exactly where the interrupted deal came from.
+  // Opens the Daily Challenge calendar pinned to the current deal's exact date
+  // (WITHOUT advancing the day — advancing only happens on a win, via the Win
+  // modal). Falls back to the modal's own last-selection/today logic when the
+  // date is missing or outside the supported window.
+  const openDailyForCurrentGame = useCallback(() => {
+    const ui = useUiStore.getState();
+    const date = ui.currentDailyDate;
+    if (date && withinSupported(date)) ui.setDailyChallengeInitialDate(date);
+    ui.setDailyChallengeOrigin('newgame');
+    ui.setDailyChallengeDialogOpen(true);
+  }, []);
+  // Opens the Special Events list + the current deal's event detail, pinned to
+  // the deal's exact page. The pin goes through saveLastViewedPage, whose
+  // in-memory cache write lands synchronously before EventDetailModal's
+  // open-time layout effect reads it. If the page can't be resolved (e.g.
+  // uncached detail), the modal's own last-viewed/heuristic positioning still
+  // applies — in practice that is the played page anyway.
+  const openEventForCurrentGame = useCallback(() => {
+    const ui = useUiStore.getState();
+    const eventId = ui.currentEventId;
+    const dealId = ui.currentEventDealId;
+    if (eventId != null && dealId != null) {
+      try {
+        const detail = getCachedEventDetailSync(eventId);
+        const page = detail?.pages?.find((p) => (p.deals || []).some((d) => d.id === dealId))?.pageNumber;
+        if (Number.isInteger(page)) saveLastViewedPage(eventId, page).catch(() => {});
+      } catch {}
+    }
+    ui.setSpecialEventsOrigin('newgame');
+    ui.setSpecialEventsOpen(true);
+    if (eventId != null) ui.setEventDetailOpen(eventId);
+  }, []);
   // When a daily challenge reaches a dead end, the primary button returns to the
   // Daily Challenge calendar WITHOUT advancing the day (advancing only happens
   // on a win, via the Win modal).
   const onNoMovesReturnDaily = useCallback(() => {
     setNoMovesDialogOpen(false);
-    useUiStore.getState().setDailyChallengeOrigin('newgame');
-    useUiStore.getState().setDailyChallengeDialogOpen(true);
-  }, [setNoMovesDialogOpen]);
+    openDailyForCurrentGame();
+  }, [setNoMovesDialogOpen, openDailyForCurrentGame]);
+  // When a special event deal reaches a dead end, the primary button returns to
+  // the same event detail modal on the deal's exact page.
+  const onNoMovesReturnEvent = useCallback(() => {
+    setNoMovesDialogOpen(false);
+    openEventForCurrentGame();
+  }, [setNoMovesDialogOpen, openEventForCurrentGame]);
+  // Game Over (hard time/move limit) uses the same treatment: event/daily deals
+  // return to their origin surface instead of just dismissing. Starting a fresh
+  // deal from there resets the frozen stats (every deal action calls
+  // resetStats), so the lock never strands the player.
+  const onGameOverConfirm = useCallback(() => {
+    const kind = useUiStore.getState().currentGameKind;
+    setGameOverDialogOpen(false);
+    if (kind === 'daily') openDailyForCurrentGame();
+    else if (kind === 'event') openEventForCurrentGame();
+  }, [setGameOverDialogOpen, openDailyForCurrentGame, openEventForCurrentGame]);
   const onConfirmNewGame = useCallback(() => {
     setConfirmNewGameDialogOpen(false);
     const action = useUiStore.getState().pendingStartDeal;
@@ -348,13 +400,13 @@ export default function App() {
         dismissable={false}
         title={t('toolbar.noMoves.title')}
         message={t('toolbar.noMoves.message')}
-        confirmText={currentGameKind === 'daily' ? t('toolbar.noMoves.dailyConfirm') : t('toolbar.noMoves.confirm')}
+        confirmText={currentGameKind === 'daily' ? t('toolbar.noMoves.dailyConfirm') : currentGameKind === 'event' ? t('toolbar.noMoves.eventConfirm') : t('toolbar.noMoves.confirm')}
         cancelText={t('toolbar.noMoves.cancel')}
         tertiaryText={t('toolbar.noMoves.tertiary')}
         onTertiary={onNoMovesReplay}
         quaternaryText={t('toolbar.noMoves.quaternary')}
         onQuaternary={onNoMovesKeepGoing}
-        onConfirm={currentGameKind === 'daily' ? onNoMovesReturnDaily : onNoMovesConfirm}
+        onConfirm={currentGameKind === 'daily' ? onNoMovesReturnDaily : currentGameKind === 'event' ? onNoMovesReturnEvent : onNoMovesConfirm}
         onCancel={onNoMovesCancel}
         onCloseIcon={onNoMovesKeepGoing}
       />
@@ -366,10 +418,10 @@ export default function App() {
             ? t('toolbar.gameOver.moves', { count: getLimits().maxMoves })
             : t('toolbar.gameOver.time', { time: formatTimeClock(getLimits().maxTimeMs, { centiseconds: false }) })
         }
-        confirmText={t('common.ok')}
+        confirmText={currentGameKind === 'daily' ? t('toolbar.noMoves.dailyConfirm') : currentGameKind === 'event' ? t('toolbar.noMoves.eventConfirm') : t('common.ok')}
         hideCancel
         dismissable={false}
-        onConfirm={closeGameOver}
+        onConfirm={onGameOverConfirm}
         onCancel={closeGameOver}
         onCloseIcon={closeGameOver}
       />

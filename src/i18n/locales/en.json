@@ -510,6 +510,7 @@
     "noMoves.cancel": "Undo Last Move",
     "noMoves.confirm": "New Game",
     "noMoves.dailyConfirm": "Return to Daily Challenge",
+    "noMoves.eventConfirm": "Return to Special Event",
     "noMoves.message": "There don't seem to be any more valid moves. You can keep going to recycle the stock, undo your last move, replay this exact deal, or start a new game.",
     "noMoves.quaternary": "Keep Going",
     "noMoves.tertiary": "Replay this Game",
