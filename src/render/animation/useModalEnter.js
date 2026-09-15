@@ -6,7 +6,7 @@
 // until the animation completes. Any future modal opts in by calling this hook
 // and gating its own dismiss with the returned `entering`.
 
-import { useLayoutEffect, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { gsap } from './gsapSetup.js';
 import { MOTION } from './motion.js';
 
@@ -45,11 +45,14 @@ export function playModalEnter(panelEl, { onComplete } = {}) {
  * @param {object} props
  * @param {React.RefObject<HTMLElement>} props.panelRef  ref to the panel element
  * @param {boolean} props.open  whether the modal is currently open
- * @param {() => void} [props.onEnterDone]  fired when the entrance finishes
+ * @param {() => void} [props.onEnterDone]  fired when the entrance finishes,
+ *   deferred one frame past the entering→false commit so the DOM (e.g.
+ *   aria-hidden) is settled before the callback focuses anything
  * @returns {boolean} `entering` — true while the entrance animation runs
  */
 export function useModalEnter({ panelRef, open, onEnterDone } = {}) {
   const [entering, setEntering] = useState(false);
+  const rafRef = useRef(null);
 
   useLayoutEffect(() => {
     if (!open) return undefined;
@@ -59,12 +62,27 @@ export function useModalEnter({ panelRef, open, onEnterDone } = {}) {
     playModalEnter(el, {
       onComplete: () => {
         setEntering(false);
-        onEnterDone?.();
+        // Defer one frame so React commits aria-hidden="false" (and paints)
+        // before onEnterDone focuses the panel: focusing synchronously here
+        // lands inside the still-hidden subtree and trips Chrome's
+        // "Blocked aria-hidden on an element because its descendant retained
+        // focus" warning on every win. The ~16ms delay is imperceptible.
+        rafRef.current = requestAnimationFrame(() => {
+          rafRef.current = null;
+          onEnterDone?.();
+        });
       },
     });
     // No cleanup that kills the tween: if the modal closes mid-entrance the
     // component unmounts and the leftover inline transform is discarded with it.
-    return undefined;
+    // The deferred callback IS cancelled, so a mid-entrance unmount can't fire
+    // a stale onEnterDone after the panel is gone.
+    return () => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
