@@ -20,7 +20,7 @@ const LS_KEY_ENABLED = 'klondike:soundEnabled';
 const LS_KEY_VOLUME = 'klondike:soundVolume';
 
 const DEFAULTS = {
-  enabled: true,
+  enabled: false,
   volume: 0.75,
 };
 

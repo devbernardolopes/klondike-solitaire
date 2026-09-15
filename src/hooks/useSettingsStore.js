@@ -61,7 +61,7 @@ const DEFAULTS = {
   flipOvershoot: false,
   coinFly: true,
   autoComplete: true,
-  zxClick: false,
+  zxClick: true,
   tapRipple: true,
   pickupLift: true,
   dropSnap: true,

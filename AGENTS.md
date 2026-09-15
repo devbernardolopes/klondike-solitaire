@@ -160,7 +160,7 @@ the renderer in `deckRegistry`.
 
 ### `src/store/useSoundStore.js` (persisted, Dexie + localStorage)
 
-`enabled` (default true) + `volume` (default 0.75). `init()` loads, `setEnabled`/`setVolume`
+`enabled` (default false) + `volume` (default 0.75). `init()` loads, `setEnabled`/`setVolume`
 persist and drive `audioEngine`. Consumed by `audio/index.js::playSfx` (early return when
 muted) and `SettingsOptionsModal.jsx` (toggle + slider). Sound is **not** in `useSettingsStore`.
 
