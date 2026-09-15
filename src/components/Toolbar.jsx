@@ -20,6 +20,7 @@ import SettingsModal from './SettingsModal.jsx';
 import SeedInputModal from './SeedInputModal.jsx';
 import DailyChallengeModal from './DailyChallengeModal.jsx';
 import { formatTimeClock } from '../utils/formatTime.js';
+import { formatCoinsFull, formatCoinsShort } from '../utils/formatCoins.js';
 import { visibleCoins } from './coinFlyDisplay.js';
 
 const UNDO_HOLD_DELAY_MS = 400;
@@ -101,7 +102,7 @@ function useElapsed() {
  * @param {(v: boolean) => void} props.onParticlesChange
  */
 export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, handedness, onHandednessChange, highlightCard, onHighlightCardChange, particles, onParticlesChange, bootstrapReady }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const dealNewGame = useGameStore((s) => s.dealNewGame);
   const dealWithSeed = useGameStore((s) => s.dealWithSeed);
   const replayGame = useGameStore((s) => s.replayGame);
@@ -128,6 +129,12 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   const coins = useAuthStore((s) => s.coins);
   const coinFlight = useUiStore((s) => s.coinFlight);
   const profileReady = useAuthStore((s) => s.profileReady);
+  // Hybrid coin display: exact grouped digits below the threshold, compact
+  // K/M above. The full exact value survives in `title` + `aria-label`.
+  const coinLocale = i18n?.language || 'en';
+  const coinBalance = visibleCoins({ coins, flight: coinFlight });
+  const coinsShort = formatCoinsShort(coinBalance, coinLocale);
+  const coinsFull = formatCoinsFull(coinBalance, coinLocale);
   const anyModalOpen = useUiStore(isAnyModalOpen);
   // A replayed win sets `won` from the board — never glow the New Game
   // button for it. Playback ends by user action, not by winning.
@@ -332,21 +339,29 @@ export default function Toolbar({ theme, onThemeChange, deck, onDeckChange, hand
   };
 
   // Floating action-button styling shared by the bottom-corner controls.
+  // Fixed 44x44 (WCAG/Apple HIG minimum touch target) with border-box so the
+  // border is inside the 44px, not added on top of it.
   const fab = {
     ...btn,
     position: 'fixed',
-    bottom: 16,
+    bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
     zIndex: 50,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 10,
+    padding: 0,
+    width: 44,
+    height: 44,
+    minWidth: 44,
+    minHeight: 44,
+    boxSizing: 'border-box',
+    touchAction: 'manipulation',
   };
 
   // Bottom-left cluster: [New Game] only (Main Menu lives top-right).
-  // Each is fixed-bottom and ~40px wide with a 12px gap (FAB_GAP), matching the
+  // Each is fixed-bottom and 44px wide with a 12px gap (FAB_GAP), matching the
   // Hint/Undo spacing on the bottom-right.
-  const FAB_WIDTH = 40;
+  const FAB_WIDTH = 44;
   const FAB_GAP = 12;
   const fabLeft = (slot) => 16 + slot * (FAB_WIDTH + FAB_GAP);
 
@@ -428,10 +443,19 @@ function ElapsedClock() {
                 pointerEvents: 'auto',
                 background: 'none',
                 border: 'none',
-                padding: 8,
+                padding: 0,
+                width: 44,
+                height: 44,
+                minWidth: 44,
+                minHeight: 44,
+                boxSizing: 'border-box',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 cursor: 'pointer',
                 color: isCurrentFavorite ? '#e5484d' : '#fff',
                 opacity: isCurrentFavorite ? 1 : 0.85,
+                touchAction: 'manipulation',
               }}
             >
               <Heart size={22} fill={isCurrentFavorite ? '#e5484d' : 'none'} aria-hidden="true" />
@@ -450,10 +474,19 @@ function ElapsedClock() {
               pointerEvents: 'auto',
               background: 'none',
               border: 'none',
-              padding: 8,
+              padding: 0,
+              width: 44,
+              height: 44,
+              minWidth: 44,
+              minHeight: 44,
+              boxSizing: 'border-box',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               cursor: 'pointer',
               color: '#fff',
               opacity: 0.85,
+              touchAction: 'manipulation',
             }}
           >
             <Menu size={22} aria-hidden="true" />
@@ -477,7 +510,12 @@ function ElapsedClock() {
               <span style={{ ...hudLabelStyle, display: 'flex', alignItems: 'center', gap: 4 }}>
                 <CoinsIcon size={12} style={{ color: '#f0b429' }} />{t('toolbar.coins')}
               </span>
-              <span data-coin-balance style={{ ...hudValueStyle, display: 'inline-block', visibility: profileReady ? 'visible' : 'hidden' }}>{visibleCoins({ coins, flight: coinFlight })}</span>
+              <span
+                data-coin-balance
+                title={coinsFull}
+                aria-label={`${t('toolbar.coins')}: ${coinsFull}`}
+                style={{ ...hudValueStyle, display: 'inline-block', whiteSpace: 'nowrap', visibility: profileReady ? 'visible' : 'hidden' }}
+              >{coinsShort}</span>
             </div>
           )}
         </div>
