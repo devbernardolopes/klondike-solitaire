@@ -36,7 +36,7 @@ Solo-dev, fast-paced project. Every commit pushed to GitHub auto-deploys to Verc
 Every deployment is manually tested on both devices below, always signed in with the
 same Supabase Google/OAuth account (not Brave sync):
 
-- Device A (desktop): Samsung Odyssey notebook, 1920x1080, Windows 10, Brave browser.
+- Device A (desktop): Samsung Odyssey notebook, 1920x1080, Omarchy (Arch-based Linux distro), Brave browser.
 - Device B (mobile): Samsung Galaxy A03 in portrait mode, 360x800, Android 13, Brave browser.
 
 Implications for agents: verify responsive layout at both 1920px desktop and 360px

@@ -69,6 +69,11 @@ export function lockSnapshot() {
 }
 
 export function warnDealBlocked(action) {
+  // Player-facing noise guard: spam-clicking (double-tap auto-complete,
+  // rapid deals) trips the animation-lock guard constantly during normal
+  // play, and a dropped-while-animating action needs no player attention.
+  // Keep the signal (plus window.__klondikeLocks below) for devs only.
+  if (!viteEnv.DEV) return;
   console.warn(`Deal blocked (${action}): animation locks still held`, lockSnapshot());
 }
 
