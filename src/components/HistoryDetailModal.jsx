@@ -44,6 +44,11 @@ export default function HistoryDetailModal({ entry, open, onClose, onExitToGame 
 
   useModalEscape({ open, onClose, id: 'history-detail', z: Z.GRANDCHILD });
 
+  // Store subscription for the re-deal action. Must stay above the
+  // `!open || !entry` early return below (Rules of Hooks — the component is
+  // always mounted by HistoryModal, even while closed).
+  const dealFavorite = useGameStore((s) => s.dealFavorite);
+
   useEffect(() => {
     if (!open) return;
     dialogRef.current?.focus();
@@ -162,7 +167,6 @@ export default function HistoryDetailModal({ entry, open, onClose, onExitToGame 
 
   const kindLabel = eventDealTitle(entry, t);
   const exitToGame = onExitToGame ?? onClose;
-  const dealFavorite = useGameStore((s) => s.dealFavorite);
 
   // Tapping the seed value copies it; the toast (announced via ToastHost's
   // live region) is the confirmation — no inline label needed.
