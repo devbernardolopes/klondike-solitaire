@@ -92,17 +92,12 @@
     "reset": "Redefinir"
   },
   "dailyChallenge": {
-    "bestMoves": "Melhores Movimentos: {{value}}",
-    "bestResult": "Melhor Resultado",
-    "bestScore": "Melhor Pontuação: {{value}}",
-    "bestTime": "Melhor Tempo: {{value}}",
-    "completedTimes": "Concluído {{count}} vez(es)",
-    "completedTimes_one": "Concluído {{count}} vez",
-    "completedTimes_other": "Concluído {{count}} vezes",
+    "best": "Melhor",
     "dayAria": "Dia {{d}}",
     "dayCompleted": " (concluído)",
     "dayToday": " (hoje)",
     "goToToday": "Ir para hoje",
+    "last": "Última",
     "month": "Mês",
     "months": [
       "Janeiro",
@@ -121,8 +116,10 @@
     "nextMonth": "Próximo mês",
     "play": "Jogar",
     "prevMonth": "Mês anterior",
-    "seed": "Seed: {{seed}}",
-    "selectDay": "Selecione um dia para ver o melhor resultado.",
+    "resultTitle": "Desafio Diário: {{date}}",
+    "selectDay": "Selecione um dia para ver seus resultados.",
+    "time": "Tempo",
+    "moves": "Movimentos",
     "title": "Desafio Diário",
     "year": "Ano"
   },
@@ -524,8 +521,8 @@
   "winModal": {
     "best": "Melhor",
     "current": "Atual",
-    "dailyBanner": "Desafio Diário: {{date}} (Seed {{seed}})",
-    "eventBanner": "Evento Especial: {{title}} (Seed {{seed}})",
+    "dailyBanner": "Desafio Diário: {{date}}",
+    "eventBanner": "Evento Especial: {{title}}",
     "eventFallbackTitle": "Evento Especial",
     "moves": "Movimentos",
     "newGame": "Novo Jogo",

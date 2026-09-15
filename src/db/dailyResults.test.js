@@ -43,3 +43,19 @@ test('mergeDailyResults unions disjoint date sets', () => {
   const merged = mergeDailyResults([row('2026-09-08')], [row('2026-09-09')]);
   assert.deepEqual(merged.map((r) => r.date).sort(), ['2026-09-08', '2026-09-09']);
 });
+
+test('mergeDailyResults preserves a locally-witnessed last win', () => {
+  const server = row('2026-09-09');
+  const local = row('2026-09-09', { lastTimeMs: 70000, lastMoves: 110 });
+  const [merged] = mergeDailyResults([server], [local]);
+  assert.equal(merged.lastTimeMs, 70000);
+  assert.equal(merged.lastMoves, 110);
+});
+
+test('mergeDailyResults never backfills last-win fields from the server', () => {
+  const server = row('2026-09-09', { lastTimeMs: 5000, lastMoves: 5 });
+  const local = row('2026-09-09');
+  const [merged] = mergeDailyResults([server], [local]);
+  assert.ok(!('lastTimeMs' in merged));
+  assert.ok(!('lastMoves' in merged));
+});

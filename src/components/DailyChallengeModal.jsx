@@ -5,8 +5,7 @@
 // the "Play" button. A side panel shows the selected day's best result.
 //
 // "Today" is sourced from a public time API (utils/serverTime) and never from
-// the device clock. The deal seed for each day is pre-generated and bundled
-// (core/dailyChallenge.seedForDate).
+// the device clock. A side panel shows the selected day's last/best results.
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,7 +28,6 @@ import {
   daysInMonth,
   toDateStr,
   dateToUTC,
-  seedForDate,
   findNextUnsolvedDailyInMonth,
 } from '../core/dailyChallenge.js';
 import { utcToYMD, getFallbackUTC, getCachedServerNow, refreshServerNowWithRetry } from '../utils/serverTime.js';
@@ -775,30 +773,75 @@ export default function DailyChallengeModal() {
   // Side panel for the day currently shown in a given slot. For the prev /
   // next slots, the day isn't in `selected` (a date from another month) so
   // they render the empty-state copy. The current slot uses the live
-  // `selected` exactly as before.
+  // `selected` exactly as before. Layout mirrors WinModal.jsx's
+  // HeaderRow/StatRow grid (label | Last | Best) with Time and Moves rows;
+  // there are no new-record badges here (this is history, not a fresh win),
+  // and the deal seed is intentionally not shown.
   const renderSidePanel = (slotY, slotM) => {
     let dateStr = null;
     if (slotY === viewY && slotM === viewM) dateStr = selected;
     if (!dateStr) {
       return (
         <div style={{ flex: '1 1 220px', minWidth: 200, borderLeft: '1px solid var(--ui-modal-panel-border)', paddingLeft: 16 }}>
-          <h3 style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 700 }}>{t('dailyChallenge.bestResult')}</h3>
           <div style={{ color: 'var(--ui-modal-panel-fg)', opacity: 0.75 }}>{t('dailyChallenge.selectDay')}</div>
         </div>
       );
     }
     const result = results[dateStr];
+    const cell = (value) => (
+      <span style={{ fontSize: 16, fontWeight: 700, textAlign: 'right' }}>{value}</span>
+    );
     return (
       <div style={{ flex: '1 1 220px', minWidth: 200, borderLeft: '1px solid var(--ui-modal-panel-border)', paddingLeft: 16 }}>
-        <h3 style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 700 }}>{t('dailyChallenge.bestResult')}</h3>
+        <h3 style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 700 }}>
+          {t('dailyChallenge.resultTitle', { date: dateStr })}
+        </h3>
         <div style={{ fontSize: 13, lineHeight: 1.6 }}>
-          <div style={{ marginBottom: 8, fontWeight: 600 }}>{dateStr}</div>
-          <div>{t('dailyChallenge.seed', { seed: result ? result.seed : seedForDate(dateStr) })}</div>
-          <div style={{ display: 'none' }}>{t('dailyChallenge.bestScore', { value: result ? result.bestScore : 0 })}</div>
-          <div>{t('dailyChallenge.bestTime', { value: result ? formatTime(result.bestTimeMs) : formatTime(0) })}</div>
-          <div>{t('dailyChallenge.bestMoves', { value: result ? result.bestMoves : 0 })}</div>
-          <div style={{ opacity: 0.7 }}>
-            {t('dailyChallenge.completedTimes', { count: result ? result.wins : 0 })}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr 1fr',
+              gap: 8,
+              paddingBottom: 4,
+              marginBottom: 2,
+              borderBottom: '2px solid var(--ui-modal-panel-border)',
+            }}
+          >
+            <span />
+            <span style={{ textAlign: 'right', fontSize: 11, fontWeight: 700, opacity: 0.7 }}>
+              {t('dailyChallenge.last')}
+            </span>
+            <span style={{ textAlign: 'right', fontSize: 11, fontWeight: 700, opacity: 0.7 }}>
+              {t('dailyChallenge.best')}
+            </span>
+          </div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr 1fr',
+              alignItems: 'baseline',
+              gap: 8,
+              padding: '8px 0',
+              borderBottom: '1px solid var(--ui-modal-panel-border)',
+            }}
+          >
+            <span style={{ fontSize: 13, fontWeight: 600 }}>{t('dailyChallenge.time')}</span>
+            {cell(result?.lastTimeMs == null ? '—' : formatTime(result.lastTimeMs))}
+            {cell(result?.bestTimeMs == null ? '—' : formatTime(result.bestTimeMs))}
+          </div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr 1fr',
+              alignItems: 'baseline',
+              gap: 8,
+              padding: '8px 0',
+              borderBottom: '1px solid var(--ui-modal-panel-border)',
+            }}
+          >
+            <span style={{ fontSize: 13, fontWeight: 600 }}>{t('dailyChallenge.moves')}</span>
+            {cell(result?.lastMoves == null ? '—' : String(result.lastMoves))}
+            {cell(result?.bestMoves == null ? '—' : String(result.bestMoves))}
           </div>
         </div>
       </div>

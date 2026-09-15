@@ -92,17 +92,12 @@
     "reset": "Reset"
   },
   "dailyChallenge": {
-    "bestMoves": "Best Moves: {{value}}",
-    "bestResult": "Best Result",
-    "bestScore": "Best Score: {{value}}",
-    "bestTime": "Best Time: {{value}}",
-    "completedTimes": "Completed {{count}} time(s)",
-    "completedTimes_one": "Completed {{count}} time",
-    "completedTimes_other": "Completed {{count}} times",
+    "best": "Best",
     "dayAria": "Day {{d}}",
     "dayCompleted": " (completed)",
     "dayToday": " (today)",
     "goToToday": "Go to today",
+    "last": "Last",
     "month": "Month",
     "months": [
       "January",
@@ -121,8 +116,10 @@
     "nextMonth": "Next month",
     "play": "Play",
     "prevMonth": "Previous month",
-    "seed": "Seed: {{seed}}",
-    "selectDay": "Select a day to see its best result.",
+    "resultTitle": "Daily Challenge: {{date}}",
+    "selectDay": "Select a day to see its results.",
+    "time": "Time",
+    "moves": "Moves",
     "title": "Daily Challenge",
     "year": "Year"
   },
@@ -527,8 +524,8 @@
   "winModal": {
     "best": "Best",
     "current": "Current",
-    "dailyBanner": "Daily Challenge: {{date}} (seed {{seed}})",
-    "eventBanner": "Special Event: {{title}} (seed {{seed}})",
+    "dailyBanner": "Daily Challenge: {{date}}",
+    "eventBanner": "Special Event: {{title}}",
     "eventFallbackTitle": "Special Event",
     "moves": "Moves",
     "newGame": "New Game",

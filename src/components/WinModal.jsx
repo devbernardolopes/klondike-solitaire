@@ -177,7 +177,7 @@ export default function WinModal() {
 
   if (!winDialogOpen || !summary) return null;
 
-  const { score, timeMs, moves, newScore, newTime, newMoves, bestScore, bestTimeMs, bestMoves, dailyDate, eventDealId, eventId, eventTitle, seed } = summary;
+  const { score, timeMs, moves, newScore, newTime, newMoves, bestScore, bestTimeMs, bestMoves, dailyDate, eventDealId, eventId, eventTitle } = summary;
 
   const onNewGame = () => {
     closeWinDialog();
@@ -342,7 +342,7 @@ export default function WinModal() {
                opacity: 0.85,
              }}
            >
-              {t('winModal.dailyBanner', { date: dailyDate, seed })}
+              {t('winModal.dailyBanner', { date: dailyDate })}
            </div>
          )}
 
@@ -357,7 +357,7 @@ export default function WinModal() {
                opacity: 0.85,
              }}
            >
-             {t('winModal.eventBanner', { title: eventTitle || t('winModal.eventFallbackTitle'), seed })}
+              {t('winModal.eventBanner', { title: eventTitle || t('winModal.eventFallbackTitle') })}
            </div>
          )}
 

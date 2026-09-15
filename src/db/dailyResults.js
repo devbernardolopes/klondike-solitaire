@@ -14,6 +14,10 @@ import { db } from './schema.js';
  * @property {number} bestTimeMs  fastest winning time in ms
  * @property {number} bestMoves   fewest moves in a win
  * @property {number} wins        how many times the day was completed
+ * @property {number} [lastTimeMs]  most recent winning time in ms (local-only;
+ *   the server daily_results row carries bests + wins only, so Last is shown
+ *   from this device's history and reads "—" until the day is (re)played here)
+ * @property {number} [lastMoves]   most recent winning move count (local-only)
  */
 
 /** All completed daily results. @returns {Promise<DailyResult[]>} */
@@ -34,7 +38,8 @@ export async function deleteDailyResult(date) {
 
 /**
  * Record (or fold into) a completed daily result. Best score is maximized;
- * best time/moves are minimized. Returns the updated row.
+ * best time/moves are minimized; last time/moves always reflect this win.
+ * Returns the updated row.
  * @param {string} date  YYYY-MM-DD
  * @param {{seed:number, score:number, timeMs:number, moves:number}} result
  * @returns {Promise<DailyResult>}
@@ -50,6 +55,8 @@ export async function saveDailyResult(date, { seed, score, timeMs, moves }) {
       bestTimeMs: timeMs,
       bestMoves: moves,
       wins: 1,
+      lastTimeMs: timeMs,
+      lastMoves: moves,
     };
   } else {
     next = {
@@ -59,6 +66,8 @@ export async function saveDailyResult(date, { seed, score, timeMs, moves }) {
       bestTimeMs: existing.bestTimeMs == null ? timeMs : Math.min(existing.bestTimeMs, timeMs),
       bestMoves: existing.bestMoves == null ? moves : Math.min(existing.bestMoves, moves),
       wins: (existing.wins || 0) + 1,
+      lastTimeMs: timeMs,
+      lastMoves: moves,
     };
   }
   await db.dailyResults.put(next);
@@ -76,6 +85,8 @@ export async function saveDailyResult(date, { seed, score, timeMs, moves }) {
  * hide a locally-witnessed win. Server rows always survive (cross-device
  * truth). Dates present on both sides fold bests the same way the server
  * upsert does (score max, time/moves min, wins max, seed prefer local).
+ * Last-win fields are local-only (the server row has no such columns), so
+ * the local values always survive the merge.
  * Explicit server rejections don't go through here: applyRejectedWin already
  * deletes/restores the Dexie row, so a rejected win is simply absent locally.
  * @param {Array<DailyResult>} serverRows
@@ -94,7 +105,7 @@ export function mergeDailyResults(serverRows, localRows) {
       merged.set(local.date, { ...local });
       continue;
     }
-    merged.set(local.date, {
+    const mergedRow = {
       ...server,
       seed: local.seed ?? server.seed,
       bestScore: Math.max(server.bestScore ?? 0, local.bestScore ?? 0),
@@ -105,7 +116,16 @@ export function mergeDailyResults(serverRows, localRows) {
         ? local.bestMoves
         : local.bestMoves == null ? server.bestMoves : Math.min(server.bestMoves, local.bestMoves),
       wins: Math.max(server.wins || 0, local.wins || 0),
-    });
+    };
+    // Local-only: the server never sends last-win fields, so a locally
+    // witnessed last win must survive the pull; without one the keys stay
+    // absent (never backfilled from the server, and any stale server value
+    // is dropped rather than shown as this device's last win).
+    if (local.lastTimeMs != null) mergedRow.lastTimeMs = local.lastTimeMs;
+    else delete mergedRow.lastTimeMs;
+    if (local.lastMoves != null) mergedRow.lastMoves = local.lastMoves;
+    else delete mergedRow.lastMoves;
+    merged.set(local.date, mergedRow);
   }
   return Array.from(merged.values());
 }
