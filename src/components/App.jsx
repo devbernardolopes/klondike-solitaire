@@ -240,16 +240,37 @@ export default function App() {
   const closeNoMoves = useCallback(() => setNoMovesDialogOpen(false), [setNoMovesDialogOpen]);
   const closeGameOver = useCallback(() => setGameOverDialogOpen(false), [setGameOverDialogOpen]);
   const onNoMovesConfirm = useCallback(() => {
-    setNoMovesDialogOpen(false);
-    dealNewGame(lastNewGameMode);
+    const action = () => {
+      setNoMovesDialogOpen(false);
+      dealNewGame(lastNewGameMode);
+    };
+    // Same gate as every other replacement-deal path: an in-progress game is
+    // stashed behind the "discard current game?" confirmation (which records
+    // a loss on confirm). The No-Moves dialog stays open beneath the confirm
+    // (GRANDCHILD over BASE), so cancel returns to it intact.
+    if (useStatsStore.getState().isInProgress()) {
+      useUiStore.getState().setPendingStartDeal(action);
+      useUiStore.getState().setConfirmNewGameDialogOpen(true);
+    } else {
+      action();
+    }
   }, [setNoMovesDialogOpen, dealNewGame, lastNewGameMode]);
   const onNoMovesCancel = useCallback(() => {
     setNoMovesDialogOpen(false);
     undo();
   }, [setNoMovesDialogOpen, undo]);
   const onNoMovesReplay = useCallback(() => {
-    setNoMovesDialogOpen(false);
-    replayGame();
+    const action = () => {
+      setNoMovesDialogOpen(false);
+      replayGame();
+    };
+    // Same in-progress gate as onNoMovesConfirm above.
+    if (useStatsStore.getState().isInProgress()) {
+      useUiStore.getState().setPendingStartDeal(action);
+      useUiStore.getState().setConfirmNewGameDialogOpen(true);
+    } else {
+      action();
+    }
   }, [setNoMovesDialogOpen, replayGame]);
   // "Keep Going" just closes the dialog without undoing, leaving the board so
   // the user can recycle the stock (or make another move) if they choose to.
