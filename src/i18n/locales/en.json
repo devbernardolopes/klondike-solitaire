@@ -187,6 +187,7 @@
     "title": "Help"
   },
   "history": {
+    "dailyDeal": "Daily Challenge, {{date}}",
     "detail.date": "Played",
     "detail.duration": "Duration",
     "detail.foundationBackMoves": "Foundation to tableau",

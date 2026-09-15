@@ -14,6 +14,7 @@
 
 import { supabase } from '../lib/supabaseClient.js';
 import { listQueuedOps } from '../db/syncQueue.js';
+import { getDailyMap } from './seedRepository.js';
 
 export const HISTORY_PAGE_SIZE = 25;
 
@@ -58,6 +59,7 @@ export function queuedOpToHistoryEntry(op) {
     undos: p.p_undos ?? 0,
     seed: p.p_seed ?? null,
     gameKind: p.p_game_kind ?? null,
+    dailyDate: p.p_daily_date ?? null,
     hintUsed: Boolean(p.p_hint_used),
     undoUsed: Boolean(p.p_undo_used),
     tableauToTableauMoves: p.p_tableau_to_tableau_moves ?? 0,
@@ -92,6 +94,10 @@ export function serverRowToHistoryEntry(row) {
     undos: row.undos ?? 0,
     seed: row.seed ?? null,
     gameKind: row.game_kind ?? null,
+    // game_results has no daily_date column, so server rows always land with
+    // dailyDate null here; resolveDailyDates fills it from the daily seed map
+    // (daily seeds are globally unique across modes) for daily-kind entries.
+    dailyDate: null,
     hintUsed: Boolean(row.hint_used),
     undoUsed: Boolean(row.undo_used),
     tableauToTableauMoves: row.tableau_to_tableau_moves ?? 0,
@@ -185,6 +191,40 @@ export async function resolveEventTitles(entries) {
       }
     }
     return seedToEvent;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Resolve daily-challenge dates for daily-kind entries by seed, batched.
+ * game_results carries no daily_date column, so flushed server rows arrive
+ * with dailyDate null; the daily seed map ({ date: seed }, memory-cached with
+ * Dexie/bundled offline fallback in seedRepository) is inverted once per call
+ * to fill them. Pending entries already carry p_daily_date and are never
+ * overwritten. Mutates the passed entries in place (sets dailyDate) and
+ * returns the seed→date map. Best-effort: any failure leaves dates null
+ * (generic "Daily Challenge" label).
+ * @param {object[]} entries
+ * @param {Record<string, number>|null} [dailyMapOverride]  { date: seed } map;
+ *   when given, the seed-repository fetch is skipped (unit tests, previews)
+ * @returns {Promise<Record<string, string>>} seed→date map
+ */
+export async function resolveDailyDates(entries, dailyMapOverride = null) {
+  const targets = (entries ?? []).filter(
+    (e) => e?.gameKind === 'daily' && e?.seed != null && e?.dailyDate == null,
+  );
+  if (targets.length === 0) return {};
+  try {
+    const dailyMap = dailyMapOverride ?? await getDailyMap();
+    const seedToDate = {};
+    for (const [date, seed] of Object.entries(dailyMap ?? {})) {
+      if (seedToDate[seed] == null) seedToDate[seed] = date;
+    }
+    for (const entry of targets) {
+      entry.dailyDate = seedToDate[entry.seed] ?? null;
+    }
+    return seedToDate;
   } catch {
     return {};
   }

@@ -31,6 +31,7 @@ import {
   fetchHistoryPage,
   listPendingResultOps,
   mergeHistoryEntries,
+  resolveDailyDates,
   resolveEventTitles,
 } from '../repo/gameHistoryRepository.js';
 
@@ -203,6 +204,7 @@ export default function HistoryModal({ open, onClose }) {
       if (cancelledRef.current) return;
       const merged = mergeHistoryEntries(page.entries, pendingOps);
       await resolveEventTitles(merged);
+      await resolveDailyDates(merged);
       if (cancelledRef.current) return;
       setEntries(merged);
       setNextCursor(page.nextCursor);
@@ -216,6 +218,7 @@ export default function HistoryModal({ open, onClose }) {
       if (cancelledRef.current) return;
       const merged = mergeHistoryEntries([], pendingOps);
       await resolveEventTitles(merged);
+      await resolveDailyDates(merged);
       if (cancelledRef.current) return;
       setEntries(merged);
       setOffline(merged.length === 0);
@@ -267,6 +270,7 @@ export default function HistoryModal({ open, onClose }) {
       ]);
       const withTitles = [...page.entries];
       await resolveEventTitles(withTitles);
+      await resolveDailyDates(withTitles);
       setEntries((prev) => {
         const seen = new Set(prev.map((e) => e.key));
         return [...prev, ...withTitles.filter((e) => !seen.has(e.key))];

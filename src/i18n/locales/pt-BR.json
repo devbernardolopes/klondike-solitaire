@@ -186,6 +186,7 @@
     "title": "Ajuda"
   },
   "history": {
+    "dailyDeal": "Desafio Diário, {{date}}",
     "detail.date": "Jogada em",
     "detail.duration": "Duração",
     "detail.foundationBackMoves": "Base para Tableau",

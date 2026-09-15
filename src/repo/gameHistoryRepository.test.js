@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   queuedOpToHistoryEntry,
+  resolveDailyDates,
   serverRowToHistoryEntry,
   mergeHistoryEntries,
 } from './gameHistoryRepository.js';
@@ -79,6 +80,23 @@ test('queuedOpToHistoryEntry maps a loss payload with full win-parity context', 
   assert.equal(entry.pending, true);
 });
 
+test('queuedOpToHistoryEntry maps p_daily_date to dailyDate', () => {
+  const dated = queuedOpToHistoryEntry({
+    id: 12,
+    type: 'submit_game_result',
+    payload: { p_won: true, p_game_kind: 'daily', p_seed: 777, p_daily_date: '2026-02-01', p_game_id: 'd-1' },
+    createdAt: 1700000000000,
+  });
+  assert.equal(dated.dailyDate, '2026-02-01');
+  const undated = queuedOpToHistoryEntry({
+    id: 13,
+    type: 'submit_game_result',
+    payload: { p_won: true, p_game_kind: 'winning', p_seed: 1, p_game_id: 'w-1' },
+    createdAt: 1700000000000,
+  });
+  assert.equal(undated.dailyDate, null);
+});
+
 test('serverRowToHistoryEntry maps a game_results row', () => {
   const entry = serverRowToHistoryEntry({
     id: 'row-uuid',
@@ -107,6 +125,37 @@ test('serverRowToHistoryEntry maps a game_results row', () => {
   assert.equal(entry.gameKind, 'event');
   assert.deepEqual(entry.aceIdsToFoundation, ['a', 'b']);
   assert.equal(entry.createdAt, '2026-01-01T00:00:00Z');
+});
+
+test('serverRowToHistoryEntry defaults dailyDate to null (resolved later by seed)', () => {
+  const entry = serverRowToHistoryEntry({
+    id: 'r', game_id: 'g', won: true, moves: 1, duration_ms: 1,
+    seed: 777, game_kind: 'daily', created_at: '2026-01-01T00:00:00Z',
+  });
+  assert.equal(entry.dailyDate, null);
+});
+
+test('resolveDailyDates fills dates from the seed map without touching the rest', async () => {
+  const map = { '2026-08-08': 777, '2026-08-09': 778 };
+  const entries = [
+    { gameKind: 'daily', seed: 777, dailyDate: null },
+    { gameKind: 'daily', seed: 999, dailyDate: null },
+    { gameKind: 'daily', seed: 778, dailyDate: '2026-01-01' },
+    { gameKind: 'winning', seed: 777, dailyDate: null },
+    { gameKind: 'daily', seed: null, dailyDate: null },
+  ];
+  const seedToDate = await resolveDailyDates(entries, map);
+  assert.equal(entries[0].dailyDate, '2026-08-08');
+  assert.equal(entries[1].dailyDate, null);
+  assert.equal(entries[2].dailyDate, '2026-01-01');
+  assert.equal(entries[3].dailyDate, null);
+  assert.equal(entries[4].dailyDate, null);
+  assert.equal(seedToDate[777], '2026-08-08');
+});
+
+test('resolveDailyDates is a no-op for empty inputs', async () => {
+  assert.deepEqual(await resolveDailyDates([], { '2026-08-08': 777 }), {});
+  assert.deepEqual(await resolveDailyDates(null), {});
 });
 
 test('serverRowToHistoryEntry defaults non-array ace ids to []', () => {
