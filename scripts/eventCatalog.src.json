@@ -763,5 +763,30 @@
         "coinReward": 200
       }
     ]
+  },
+  {
+    "id": "international-coffee-day-2026",
+    "title": "International Coffee Day 2026",
+    "description": "International Coffee Day celebrates coffee and the people who grow, harvest, roast, prepare, and enjoy it, highlighting the beverage's cultural importance and its journey from farm to cup.",
+    "startsAt": "2026-10-01T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "international-coffee-day-2026/page1.jpg",
+        "coinReward": 50
+      },
+      {
+        "gridSize": 3,
+        "imagePath": "international-coffee-day-2026/page2.jpg",
+        "coinReward": 100
+      },
+      {
+        "gridSize": 4,
+        "imagePath": "international-coffee-day-2026/page3.jpg",
+        "coinReward": 200
+      }
+    ]
   }
 ]
