@@ -813,5 +813,30 @@
         "coinReward": 200
       }
     ]
+  },
+  {
+    "id": "timkat-2026",
+    "title": "Timkat 2026",
+    "description": "Timkat is the Ethiopian Orthodox celebration of Epiphany, commemorating the baptism of Jesus with colorful processions, sacred ceremonies, traditional music, prayer, and large gatherings of worshippers.",
+    "startsAt": "2026-01-19T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "timkat-2026/page1.jpg",
+        "coinReward": 50
+      },
+      {
+        "gridSize": 3,
+        "imagePath": "timkat-2026/page2.jpg",
+        "coinReward": 100
+      },
+      {
+        "gridSize": 4,
+        "imagePath": "timkat-2026/page3.jpg",
+        "coinReward": 200
+      }
+    ]
   }
 ]
