@@ -1,9 +1,9 @@
 // components/GameModeLabel.jsx
 // Shared game-mode deal label (e.g. "Autumn Cup, Deal 4 (123444555)").
-// Rendered in the Advanced modal and mirrored on the main game screen footer.
-// Show rule and double-click/tap rule are identical in both places by design:
-// visible whenever `currentGameKind` is set (nbsp placeholder otherwise), and a
-// double-click / double-tap (pointer-based, so touch works) opens Seed Input.
+// Rendered in the Advanced modal (interactive: double-click/tap opens Seed
+// Input) and mirrored on the main game screen (static text, `interactive`
+// false). Show rule is identical in both places by design: visible whenever
+// `currentGameKind` is set (nbsp placeholder otherwise).
 
 import { useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -43,8 +43,10 @@ export function resolveEventDealNumber(eventId, dealId, dealNumber) {
  * @param {object} props
  * @param {'modal'|'hud'} [props.variant] modal keeps inherited dialog colors,
  * hud renders white for felt contrast.
+ * @param {boolean} [props.interactive=true] when false the label is static
+ * text: no role/tabIndex, no double-tap/keyboard Seed-Input shortcut.
  */
-export default function GameModeLabel({ variant = 'modal' }) {
+export default function GameModeLabel({ variant = 'modal', interactive = true }) {
   const { t } = useTranslation();
   const seed = useGameStore((s) => s.state.seed);
   const currentGameKind = useUiStore((s) => s.currentGameKind);
@@ -98,19 +100,19 @@ export default function GameModeLabel({ variant = 'modal' }) {
 
   return (
     <span
-      role="button"
-      tabIndex={0}
-      title={t('toolbar.seedHint')}
-      onDoubleClick={onLabelActivate}
-      onPointerUp={onLabelActivate}
-      onKeyDown={onLabelActivate}
+      role={interactive ? 'button' : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      title={interactive ? t('toolbar.seedHint') : undefined}
+      onDoubleClick={interactive ? onLabelActivate : undefined}
+      onPointerUp={interactive ? onLabelActivate : undefined}
+      onKeyDown={interactive ? onLabelActivate : undefined}
       style={
         variant === 'hud'
           ? {
               fontSize: 12,
               fontWeight: 600,
               userSelect: 'none',
-              cursor: 'pointer',
+              cursor: interactive ? 'pointer' : 'default',
               outline: 'none',
               color: '#fff',
               opacity: 0.85,

@@ -518,20 +518,14 @@ function ElapsedClock() {
               >{coinsShort}</span>
             </div>
           )}
+          {/* Deal label crammed into the gap below the HUD values (above the
+              piles). Absolutely positioned = zero layout impact: no Toolbar /
+              Board resizing, no extra padding or margins. Static text and
+              pointer-transparent, so cards beneath stay fully interactive. */}
+          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, textAlign: 'center', pointerEvents: 'none', zIndex: 1 }}>
+            <GameModeLabel variant="hud" interactive={false} />
+          </div>
         </div>
-      </div>
-
-      <div
-        style={{
-          position: 'fixed',
-          left: 16,
-          bottom: 68,
-          zIndex: 0,
-          maxWidth: '60vw',
-          pointerEvents: 'auto',
-        }}
-      >
-        <GameModeLabel variant="hud" />
       </div>
 
       <button
