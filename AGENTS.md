@@ -435,16 +435,20 @@ the `*.db.json` files are a derived artifact.
   - `supabase/store_items.dump.sql`
   - `supabase/special_events.dump.sql`
 - **Refresh the dumps after any dashboard edit** to a catalog table:
+
   ```bash
   npm run catalog:dump        # writes the three .dump.sql files
   ```
+
   Reads `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` from `.env.local`
   (git-ignored). Both vars are also listed in `.env.example`.
 - **Converge the locale files to the dumps**:
+
   ```bash
   npm run i18n:fix            # adds missing ids, updates English text, prunes stale ids
   npm run i18n:check          # verify parity (default in CI + pre-commit)
   ```
+
   English is the reference (`en.db.json` always mirrors the dump exactly).
   Other locales are only auto-seeded where they previously had no translation,
   so translator work in `fr/de/it/es/pt-BR` is never clobbered.
@@ -454,6 +458,7 @@ the `*.db.json` files are a derived artifact.
   and re-commit.
 
 **Adding/removing a catalog row:**
+
 1. Edit the row via the Supabase dashboard (or via a new `migration_*.sql`).
 2. `npm run catalog:dump` to refresh the canonical SQL dumps.
 3. `npm run i18n:fix` to update `en.db.json` (and seed any missing translations).

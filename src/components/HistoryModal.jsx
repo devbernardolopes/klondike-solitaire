@@ -22,6 +22,7 @@ import { Z } from '../utils/modalStack.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
 import HistoryDetailModal from './HistoryDetailModal.jsx';
 import { useAuthStore } from '../hooks/useAuthStore.js';
+import { useUiStore } from '../hooks/useUiStore.js';
 import { formatTime } from '../utils/formatTime.js';
 import { formatHistoryDate } from '../utils/formatHistoryDate.js';
 import { eventDealTitle } from '../utils/eventDealTitle.js';
@@ -440,6 +441,13 @@ export default function HistoryModal({ open, onClose }) {
         entry={selected}
         open={Boolean(selected)}
         onClose={() => setSelected(null)}
+        onExitToGame={() => {
+          // The re-deal action lands on a bare board: close detail + list +
+          // Settings (mirrors the Favorites modal's play path).
+          setSelected(null);
+          onClose();
+          useUiStore.getState().setSettingsDialogOpen(false);
+        }}
       />
     </>
   );

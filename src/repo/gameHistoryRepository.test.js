@@ -127,6 +127,26 @@ test('serverRowToHistoryEntry maps a game_results row', () => {
   assert.equal(entry.createdAt, '2026-01-01T00:00:00Z');
 });
 
+test('queuedOpToHistoryEntry maps p_event_deal_id to eventDealId', () => {
+  const entry = queuedOpToHistoryEntry({
+    id: 14,
+    type: 'submit_game_result',
+    payload: { p_won: true, p_game_kind: 'event', p_seed: 555, p_event_deal_id: 42, p_game_id: 'e-1' },
+    createdAt: 1700000000000,
+  });
+  assert.equal(entry.eventDealId, 42);
+  assert.equal(entry.eventId, null);
+});
+
+test('serverRowToHistoryEntry defaults event ids to null (resolved later by seed)', () => {
+  const entry = serverRowToHistoryEntry({
+    id: 'r', game_id: 'g', won: true, moves: 1, duration_ms: 1,
+    seed: 555, game_kind: 'event', created_at: '2026-01-01T00:00:00Z',
+  });
+  assert.equal(entry.eventDealId, null);
+  assert.equal(entry.eventId, null);
+});
+
 test('serverRowToHistoryEntry defaults dailyDate to null (resolved later by seed)', () => {
   const entry = serverRowToHistoryEntry({
     id: 'r', game_id: 'g', won: true, moves: 1, duration_ms: 1,

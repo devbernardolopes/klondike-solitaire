@@ -187,6 +187,7 @@
   },
   "history": {
     "dailyDeal": "Desafio Diário, {{date}}",
+    "detail.copySeed": "Copiar seed {{seed}}",
     "detail.date": "Jogada em",
     "detail.duration": "Duração",
     "detail.foundationBackMoves": "Base para Tableau",
@@ -196,6 +197,7 @@
     "detail.moves": "Movimentos",
     "detail.no": "Não",
     "detail.recycles": "Reciclagens do estoque",
+    "detail.replayDeal": "Jogar esta seed",
     "detail.result": "Resultado",
     "detail.score": "Pontuação",
     "detail.seed": "Seed",
@@ -486,7 +488,11 @@
     "newBestTime.desc": "Você bateu seu recorde — {{secs}}s",
     "newBestTime.title": "Novo Melhor Tempo!",
     "pageBonus.desc": "Bônus de página adicionado ao seu saldo.",
-    "pageBonus.title": "+{{count}} Moedas — Página Concluída!"
+    "pageBonus.title": "+{{count}} Moedas — Página Concluída!",
+    "seedCopied.desc": "A seed {{seed}} está na área de transferência.",
+    "seedCopied.title": "Seed copiada!",
+    "seedCopyFailed.desc": "O navegador bloqueou o acesso — copie a seed manualmente.",
+    "seedCopyFailed.title": "Não foi possível copiar a seed"
   },
   "toolbar": {
     "announce.newGame": "Novo jogo: Seed {{seed}}",

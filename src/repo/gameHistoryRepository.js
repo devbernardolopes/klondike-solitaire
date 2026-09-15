@@ -73,6 +73,10 @@ export function queuedOpToHistoryEntry(op) {
     moveLog: typeof p.p_move_log === 'string' ? p.p_move_log : null,
     eventTitle: null,
     eventDealNumber: null,
+    // The outbox payload carries the deal id (but not the event id); the
+    // event id resolves by seed in resolveEventTitles alongside server rows.
+    eventDealId: p.p_event_deal_id ?? null,
+    eventId: null,
     createdAt: new Date(op?.createdAt ?? Date.now()).toISOString(),
     pending: true,
   };
@@ -113,6 +117,11 @@ export function serverRowToHistoryEntry(row) {
     moveLog: typeof row.move_log === 'string' ? row.move_log : null,
     eventTitle: null,
     eventDealNumber: null,
+    // game_results carries no event columns either; both ids resolve by seed
+    // in resolveEventTitles so event entries stay replayable via
+    // dealSpecialEventDeal (with the stale-event fallback when gone).
+    eventDealId: null,
+    eventId: null,
     createdAt: row.created_at,
     pending: false,
   };
@@ -139,12 +148,16 @@ export function mergeHistoryEntries(serverEntries, queuedOps) {
 }
 
 /**
- * Resolve event titles + deal numbers for event-kind entries by seed,
- * batched. Mutates the passed entries in place (sets eventTitle and
- * eventDealNumber) and returns the seed→{title, dealNumber} map.
- * Best-effort: any failure leaves titles/numbers null (generic labels).
+ * Resolve event titles + deal numbers + ids for event-kind entries by seed,
+ * batched. Mutates the passed entries in place (sets eventTitle,
+ * eventDealNumber, eventDealId and eventId) and returns the seed→{title,
+ * dealNumber, dealId, eventId} map. Ids make history event entries replayable
+ * through dealSpecialEventDeal, which live-checks the deal and falls back to
+ * a plain same-seed deal (with a toast) when the event is gone.
+ * Best-effort: any failure leaves titles/numbers/ids null (generic labels,
+ * plain-deal replay).
  * @param {object[]} entries
- * @returns {Promise<Record<string, {title: string|null, dealNumber: number|null}>>}
+ * @returns {Promise<Record<string, {title: string|null, dealNumber: number|null, dealId: number|null, eventId: string|null}>>}
  */
 export async function resolveEventTitles(entries) {
   const seeds = [
@@ -158,7 +171,7 @@ export async function resolveEventTitles(entries) {
   try {
     const { data: deals, error: dealsError } = await supabase
       .from('special_event_deals')
-      .select('seed, page_id, deal_number')
+      .select('id, seed, page_id, deal_number')
       .in('seed', seeds);
     if (dealsError || !deals?.length) return {};
     const pageIds = [...new Set(deals.map((d) => d.page_id))];
@@ -180,7 +193,12 @@ export async function resolveEventTitles(entries) {
       const eventId = pageToEvent.get(deal.page_id);
       const title = eventId != null ? (eventToTitle.get(eventId) ?? null) : null;
       if (seedToEvent[deal.seed] == null) {
-        seedToEvent[deal.seed] = { title, dealNumber: deal.deal_number ?? null };
+        seedToEvent[deal.seed] = {
+          title,
+          dealNumber: deal.deal_number ?? null,
+          dealId: deal.id ?? null,
+          eventId: eventId ?? null,
+        };
       }
     }
     for (const entry of entries) {
@@ -188,6 +206,10 @@ export async function resolveEventTitles(entries) {
         const resolved = seedToEvent[entry.seed];
         entry.eventTitle = resolved?.title ?? null;
         entry.eventDealNumber = resolved?.dealNumber ?? null;
+        // Never overwrite a payload-carried deal id (pending rows); fill the
+        // event id (never in the payload) and backfill a missing deal id.
+        if (entry.eventDealId == null) entry.eventDealId = resolved?.dealId ?? null;
+        if (entry.eventId == null) entry.eventId = resolved?.eventId ?? null;
       }
     }
     return seedToEvent;

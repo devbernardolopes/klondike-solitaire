@@ -187,6 +187,7 @@
   },
   "history": {
     "dailyDeal": "Daily Challenge, {{date}}",
+    "detail.copySeed": "Copy seed {{seed}}",
     "detail.date": "Played",
     "detail.duration": "Duration",
     "detail.foundationBackMoves": "Foundation to tableau",
@@ -196,6 +197,7 @@
     "detail.moves": "Moves",
     "detail.no": "No",
     "detail.recycles": "Stock recycles",
+    "detail.replayDeal": "Deal this seed",
     "detail.result": "Result",
     "detail.score": "Score",
     "detail.seed": "Seed",
@@ -486,7 +488,11 @@
     "newBestTime.desc": "You beat your record — {{secs}}s",
     "newBestTime.title": "New Best Time!",
     "pageBonus.desc": "Page bonus added to your balance.",
-    "pageBonus.title": "+{{count}} Coins — Page Complete!"
+    "pageBonus.title": "+{{count}} Coins — Page Complete!",
+    "seedCopied.desc": "Seed {{seed}} is now on your clipboard.",
+    "seedCopied.title": "Seed copied!",
+    "seedCopyFailed.desc": "Your browser blocked clipboard access — copy the seed manually.",
+    "seedCopyFailed.title": "Couldn't copy the seed"
   },
   "toolbar": {
     "announce.newGame": "New game: seed {{seed}}",

@@ -2,19 +2,26 @@
 // Detail view for a single game-history entry, launched on top of
 // HistoryModal. Shows every field available for the deal: result, kind (or
 // event title), date played, score, moves, duration, undos, seed, and the
-// move breakdown. Stacks above History (Z.GRANDCHILD) so Escape and
-// outside-click dismiss only this modal and return to the still-open list.
-// Shares the close-button / backdrop / escape chrome of the other modals.
+// move breakdown. The seed value is tappable (copies to clipboard with a
+// toast) and a Play button re-deals the exact seed, kind-preserving, through
+// the store's dealFavorite router (daily stays daily, live events stay
+// events, everything else re-deals the identical shuffle). Stacks above
+// History (Z.GRANDCHILD) so Escape and outside-click dismiss only this modal
+// and return to the still-open list. Shares the close-button / backdrop /
+// escape chrome of the other modals.
 
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Copy, Play } from 'lucide-react';
 import { useModalBackdrop } from './modalBackdrop.js';
 import { useModalEscape } from '../hooks/useModalEscape.js';
+import { useGameStore } from '../hooks/useGameStore.js';
 import { useStatsStore } from '../hooks/useStatsStore.js';
 import { useUiStore } from '../hooks/useUiStore.js';
 import { usePlaybackStore } from '../hooks/usePlaybackStore.js';
 import { useToastStore, TOAST_PRIORITY } from '../hooks/useToastStore.js';
 import { fetchMoveLog } from '../repo/gameHistoryRepository.js';
+import { copyText } from '../utils/copyText.js';
 import { Z } from '../utils/modalStack.js';
 import ConfirmModal from './ConfirmModal.jsx';
 import ModalCloseButton from './ModalCloseButton.jsx';
@@ -26,9 +33,11 @@ import { eventDealTitle } from '../utils/eventDealTitle.js';
  * @param {object} props
  * @param {object|null} props.entry  history entry (see gameHistoryRepository.js)
  * @param {boolean} props.open
- * @param {() => void} props.onClose
+ * @param {() => void} props.onClose  close this detail view only
+ * @param {() => void} [props.onExitToGame]  close detail + list + settings
+ *   (used by the re-deal action so the fresh deal lands on a bare board)
  */
-export default function HistoryDetailModal({ entry, open, onClose }) {
+export default function HistoryDetailModal({ entry, open, onClose, onExitToGame }) {
   const { t, i18n } = useTranslation();
   const dialogRef = useRef(null);
   const backdrop = useModalBackdrop(onClose);
@@ -104,6 +113,40 @@ export default function HistoryDetailModal({ entry, open, onClose }) {
   const label = { opacity: 0.75 };
   const value = { fontWeight: 600, textAlign: 'right' };
 
+  // Tappable seed value (copies) + 44px re-deal button, mirroring the
+  // toolbar touch-target minimum.
+  const seedCopyBtn = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    minHeight: 44,
+    padding: '6px 4px',
+    background: 'none',
+    border: 'none',
+    color: 'inherit',
+    font: 'inherit',
+    fontWeight: 600,
+    cursor: 'pointer',
+    touchAction: 'manipulation',
+  };
+  const iconBtn = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 44,
+    height: 44,
+    minWidth: 44,
+    minHeight: 44,
+    boxSizing: 'border-box',
+    padding: 0,
+    borderRadius: 8,
+    border: '1px solid var(--ui-modal-panel-border)',
+    background: 'transparent',
+    color: 'var(--ui-modal-panel-fg)',
+    cursor: 'pointer',
+    touchAction: 'manipulation',
+  };
+
   const formatDateTime = (iso) => {
     const date = formatHistoryDate(iso, i18n.language);
     if (date == null) return '';
@@ -118,6 +161,54 @@ export default function HistoryDetailModal({ entry, open, onClose }) {
   };
 
   const kindLabel = eventDealTitle(entry, t);
+  const exitToGame = onExitToGame ?? onClose;
+  const dealFavorite = useGameStore((s) => s.dealFavorite);
+
+  // Tapping the seed value copies it; the toast (announced via ToastHost's
+  // live region) is the confirmation — no inline label needed.
+  const onCopySeed = async () => {
+    if (entry.seed == null) return;
+    let ok = false;
+    try {
+      ok = await copyText(entry.seed);
+    } catch {
+      ok = false;
+    }
+    try {
+      useToastStore.getState().push(ok
+        ? {
+          name: t('toasts.seedCopied.title', { seed: entry.seed }),
+          description: t('toasts.seedCopied.desc', { seed: entry.seed }),
+          priority: TOAST_PRIORITY.DEFAULT,
+        }
+        : {
+          name: t('toasts.seedCopyFailed.title'),
+          description: t('toasts.seedCopyFailed.desc'),
+          priority: TOAST_PRIORITY.DEFAULT,
+        });
+    } catch {}
+  };
+
+  // Re-deal this exact seed, kind-preserving, through the same router the
+  // Favorites modal uses (daily replays via dealDaily, live events via
+  // dealSpecialEventDeal with its stale-event fallback, everything else as
+  // the identical shuffle of its stored kind). Same gate as every New-Game
+  // entry point: an in-progress game is stashed behind the "discard current
+  // game?" confirmation (which records a loss on confirm).
+  const onReplayDeal = () => {
+    if (entry.seed == null) return;
+    const action = () => {
+      exitToGame();
+      dealFavorite(entry);
+    };
+    if (useStatsStore.getState().isInProgress()) {
+      useUiStore.getState().setPendingStartDeal(action);
+      useUiStore.getState().setConfirmNewGameDialogOpen(true);
+      onClose();
+    } else {
+      action();
+    }
+  };
 
   const canPlay = entry.seed != null && logState.status !== 'missing';
   const playDisabledReason =
@@ -221,12 +312,47 @@ export default function HistoryDetailModal({ entry, open, onClose }) {
         </h2>
         <ModalCloseButton onClick={onClose} />
         <div className="modal-body-scroll" style={{ maxHeight: '60vh' }}>
-          {rows.map(([k, v]) => (
-            <div key={k} style={k === t('history.detail.score') ? { ...row, display: 'none' } : row}>
-              <span style={label}>{k}</span>
-              <span style={value}>{v}</span>
-            </div>
-          ))}
+          {rows.map(([k, v]) => {
+            if (k === t('history.detail.seed')) {
+              return (
+                <div key={k} style={row}>
+                  <span style={label}>{k}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    {entry.seed == null ? (
+                      <span style={value}>{v}</span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={onCopySeed}
+                        title={t('history.detail.copySeed', { seed: entry.seed })}
+                        aria-label={t('history.detail.copySeed', { seed: entry.seed })}
+                        style={seedCopyBtn}
+                      >
+                        <span style={{ fontVariantNumeric: 'tabular-nums' }}>{v}</span>
+                        <Copy size={14} aria-hidden="true" />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={onReplayDeal}
+                      title={t('history.detail.replayDeal')}
+                      aria-label={t('history.detail.replayDeal')}
+                      disabled={entry.seed == null}
+                      style={{ ...iconBtn, opacity: entry.seed == null ? 0.4 : 1, cursor: entry.seed == null ? 'default' : 'pointer' }}
+                    >
+                      <Play size={18} aria-hidden="true" />
+                    </button>
+                  </span>
+                </div>
+              );
+            }
+            return (
+              <div key={k} style={k === t('history.detail.score') ? { ...row, display: 'none' } : row}>
+                <span style={label}>{k}</span>
+                <span style={value}>{v}</span>
+              </div>
+            );
+          })}
         </div>
         <button
           type="button"
