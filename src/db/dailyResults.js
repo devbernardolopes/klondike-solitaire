@@ -14,10 +14,15 @@ import { db } from './schema.js';
  * @property {number} bestTimeMs  fastest winning time in ms
  * @property {number} bestMoves   fewest moves in a win
  * @property {number} wins        how many times the day was completed
- * @property {number} [lastTimeMs]  most recent winning time in ms (local-only;
- *   the server daily_results row carries bests + wins only, so Last is shown
- *   from this device's history and reads "—" until the day is (re)played here)
- * @property {number} [lastMoves]   most recent winning move count (local-only)
+ * @property {number} [lastTimeMs]  most recent winning time in ms (synced:
+ *   stamped by submit_game_result on every daily win — migration 036 — and
+ *   converged across devices by mergeDailyResults, latest lastWonAt wins)
+ * @property {number} [lastMoves]   most recent winning move count (synced,
+ *   always from the same win as lastTimeMs — never mixed across sides)
+ * @property {string} [lastWonAt]   ISO timestamp of the most recent win
+ *   (server now() on flush; local clock on optimistic save). Missing/null
+ *   means "no known last win" (pre-036 row or never replayed) and loses to
+ *   any present timestamp in the merge.
  */
 
 /** All completed daily results. @returns {Promise<DailyResult[]>} */
@@ -46,6 +51,10 @@ export async function deleteDailyResult(date) {
  */
 export async function saveDailyResult(date, { seed, score, timeMs, moves }) {
   const existing = await db.dailyResults.get(date);
+  // Optimistic stamp: the server overwrites lastWonAt with now() on flush,
+  // which is the timestamp other devices converge on. Local clock skew only
+  // matters for offline-vs-offline races before either side flushes.
+  const lastWonAt = new Date().toISOString();
   let next;
   if (!existing) {
     next = {
@@ -57,6 +66,7 @@ export async function saveDailyResult(date, { seed, score, timeMs, moves }) {
       wins: 1,
       lastTimeMs: timeMs,
       lastMoves: moves,
+      lastWonAt,
     };
   } else {
     next = {
@@ -68,6 +78,7 @@ export async function saveDailyResult(date, { seed, score, timeMs, moves }) {
       wins: (existing.wins || 0) + 1,
       lastTimeMs: timeMs,
       lastMoves: moves,
+      lastWonAt,
     };
   }
   await db.dailyResults.put(next);
@@ -85,8 +96,12 @@ export async function saveDailyResult(date, { seed, score, timeMs, moves }) {
  * hide a locally-witnessed win. Server rows always survive (cross-device
  * truth). Dates present on both sides fold bests the same way the server
  * upsert does (score max, time/moves min, wins max, seed prefer local).
- * Last-win fields are local-only (the server row has no such columns), so
- * the local values always survive the merge.
+ * Last-win fields are synced (migration 036 stamps them server-side on every
+ * daily win): the side with the latest lastWonAt wins, atomically (time +
+ * moves + stamp always come from the same win — never mixed across sides).
+ * A missing/null lastWonAt means "no known last win" (pre-036 row or never
+ * replayed) and loses to any present timestamp; when neither side has one
+ * the keys stay absent so the panel reads "—".
  * Explicit server rejections don't go through here: applyRejectedWin already
  * deletes/restores the Dexie row, so a rejected win is simply absent locally.
  * @param {Array<DailyResult>} serverRows
@@ -96,7 +111,15 @@ export async function saveDailyResult(date, { seed, score, timeMs, moves }) {
 export function mergeDailyResults(serverRows, localRows) {
   const merged = new Map();
   for (const r of serverRows || []) {
-    if (r && r.date != null) merged.set(r.date, { ...r });
+    if (!r || r.date == null) continue;
+    const copy = { ...r };
+    // Normalize "no known last win" to absent keys (pre-036 rows arrive with
+    // explicit nulls via the pull mapping); the panel treats both as "—",
+    // but absent keeps the row shape identical to locally-saved ones.
+    if (copy.lastTimeMs == null) delete copy.lastTimeMs;
+    if (copy.lastMoves == null) delete copy.lastMoves;
+    if (copy.lastWonAt == null) delete copy.lastWonAt;
+    merged.set(copy.date, copy);
   }
   for (const local of localRows || []) {
     if (!local || local.date == null) continue;
@@ -117,14 +140,33 @@ export function mergeDailyResults(serverRows, localRows) {
         : local.bestMoves == null ? server.bestMoves : Math.min(server.bestMoves, local.bestMoves),
       wins: Math.max(server.wins || 0, local.wins || 0),
     };
-    // Local-only: the server never sends last-win fields, so a locally
-    // witnessed last win must survive the pull; without one the keys stay
-    // absent (never backfilled from the server, and any stale server value
-    // is dropped rather than shown as this device's last win).
-    if (local.lastTimeMs != null) mergedRow.lastTimeMs = local.lastTimeMs;
-    else delete mergedRow.lastTimeMs;
-    if (local.lastMoves != null) mergedRow.lastMoves = local.lastMoves;
-    else delete mergedRow.lastMoves;
+    // Synced Last (migration 036): latest lastWonAt wins, atomically. Either
+    // side may carry a null/missing stamp (pre-036 row, or a locally saved
+    // row from before this change) — that means "no known last win" and
+    // always loses to a present timestamp. ISO-8601 strings compare
+    // chronologically with plain >/<, so no Date parsing is needed.
+    const serverStamp = server.lastWonAt ?? null;
+    const localStamp = local.lastWonAt ?? null;
+    const winner =
+      serverStamp != null && (localStamp == null || serverStamp > localStamp)
+        ? server
+        : localStamp != null
+          ? local
+          : null;
+    delete mergedRow.lastTimeMs;
+    delete mergedRow.lastMoves;
+    delete mergedRow.lastWonAt;
+    if (winner) {
+      if (winner.lastTimeMs != null) mergedRow.lastTimeMs = winner.lastTimeMs;
+      if (winner.lastMoves != null) mergedRow.lastMoves = winner.lastMoves;
+      if (winner.lastWonAt != null) mergedRow.lastWonAt = winner.lastWonAt;
+    } else {
+      // Legacy rows saved before lastWonAt existed carry a last win without
+      // a stamp; neither side has a timestamp here (server pre-036 too), so
+      // keep the locally-witnessed values rather than blanking them.
+      if (local.lastTimeMs != null) mergedRow.lastTimeMs = local.lastTimeMs;
+      if (local.lastMoves != null) mergedRow.lastMoves = local.lastMoves;
+    }
     merged.set(local.date, mergedRow);
   }
   return Array.from(merged.values());

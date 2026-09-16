@@ -1,3 +1,32 @@
+-- ============================================================
+-- Klondike Solitaire — Supabase migration 036 (daily last-win sync)
+-- Paste into: Supabase Dashboard > SQL Editor > New query > Run
+-- ============================================================
+-- Makes the Daily Challenge side panel's "Last" time/moves cross-device.
+-- Until now daily_results carried bests + wins only, so Last was a
+-- Dexie-local field (see src/db/dailyResults.js) that never left the
+-- device. This adds last_time_ms / last_moves / last_won_at, set to the
+-- just-flushed win by submit_game_result's daily upsert (insert + conflict
+-- update both stamp now()). Clients converge with latest-last_won_at-wins
+-- (see mergeDailyResults), resolved from the existing pullDailyResults
+-- single SELECT — zero extra requests.
+--
+-- Client impact: pullDailyResults selects the three new columns; old
+-- clients simply ignore them (nullable: pre-036 rows stay null = "—").
+-- ============================================================
+
+-- ------------------------------------------------------------
+-- 1. Last-win columns (nullable: pre-036 rows + never-played stay null)
+-- ------------------------------------------------------------
+alter table public.daily_results
+  add column if not exists last_time_ms integer,
+  add column if not exists last_moves integer,
+  add column if not exists last_won_at timestamptz;
+
+-- ------------------------------------------------------------
+-- 2. submit_game_result — same 21-arg signature, daily upsert stamps Last
+-- (canonical mirror: supabase/submit_game_result.sql)
+-- ------------------------------------------------------------
 -- Canonical submit_game_result definition. The schema changes and reset RPC
 -- are applied by klondike_supabase_migration_018.sql. This revision (paired
 -- with migration_022.sql) adds p_event_deal_id: when a win comes from a
@@ -33,11 +62,6 @@
 -- src/core/moveLog.js) stored verbatim on game_results.move_log for the
 -- deferred playback feature. Facts-only like the rest: never judged, never
 -- affects coins/limits/achievements; recorded on wins AND losses.
---
--- Revision paired with migration_036.sql: daily last-win sync. daily_results
--- gains last_time_ms / last_moves / last_won_at, stamped on every daily win
--- (insert + conflict update), so the Daily Challenge "Last" time/moves
--- converge cross-device via the existing pull (latest last_won_at wins).
 
 drop function if exists public.submit_game_result(
   boolean, integer, integer, integer, integer, bigint, text, date, uuid,

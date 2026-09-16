@@ -46,16 +46,61 @@ test('mergeDailyResults unions disjoint date sets', () => {
 
 test('mergeDailyResults preserves a locally-witnessed last win', () => {
   const server = row('2026-09-09');
-  const local = row('2026-09-09', { lastTimeMs: 70000, lastMoves: 110 });
+  const local = row('2026-09-09', { lastTimeMs: 70000, lastMoves: 110, lastWonAt: '2026-09-09T10:00:00.000Z' });
   const [merged] = mergeDailyResults([server], [local]);
   assert.equal(merged.lastTimeMs, 70000);
   assert.equal(merged.lastMoves, 110);
+  assert.equal(merged.lastWonAt, '2026-09-09T10:00:00.000Z');
 });
 
-test('mergeDailyResults never backfills last-win fields from the server', () => {
+test('mergeDailyResults never backfills last-win fields without a timestamp', () => {
   const server = row('2026-09-09', { lastTimeMs: 5000, lastMoves: 5 });
   const local = row('2026-09-09');
   const [merged] = mergeDailyResults([server], [local]);
   assert.ok(!('lastTimeMs' in merged));
   assert.ok(!('lastMoves' in merged));
+  assert.ok(!('lastWonAt' in merged));
+});
+
+test('mergeDailyResults takes the server last win when its stamp is newer', () => {
+  const server = row('2026-09-09', { lastTimeMs: 50000, lastMoves: 90, lastWonAt: '2026-09-09T12:00:00.000Z' });
+  const local = row('2026-09-09', { lastTimeMs: 70000, lastMoves: 110, lastWonAt: '2026-09-09T10:00:00.000Z' });
+  const [merged] = mergeDailyResults([server], [local]);
+  assert.equal(merged.lastTimeMs, 50000);
+  assert.equal(merged.lastMoves, 90);
+  assert.equal(merged.lastWonAt, '2026-09-09T12:00:00.000Z');
+});
+
+test('mergeDailyResults keeps the local last win when its stamp is newer (offline race)', () => {
+  const server = row('2026-09-09', { lastTimeMs: 50000, lastMoves: 90, lastWonAt: '2026-09-09T10:00:00.000Z' });
+  const local = row('2026-09-09', { lastTimeMs: 70000, lastMoves: 110, lastWonAt: '2026-09-09T12:00:00.000Z' });
+  const [merged] = mergeDailyResults([server], [local]);
+  assert.equal(merged.lastTimeMs, 70000);
+  assert.equal(merged.lastMoves, 110);
+  assert.equal(merged.lastWonAt, '2026-09-09T12:00:00.000Z');
+});
+
+test('mergeDailyResults keeps time+moves atomically from the winning side', () => {
+  // A newer stamp must never mix its time with the other side's moves.
+  const server = row('2026-09-09', { lastTimeMs: 50000, lastMoves: 90, lastWonAt: '2026-09-09T12:00:00.000Z' });
+  const local = row('2026-09-09', { lastTimeMs: 70000, lastMoves: 110, lastWonAt: '2026-09-09T10:00:00.000Z' });
+  const [merged] = mergeDailyResults([server], [local]);
+  assert.deepEqual([merged.lastTimeMs, merged.lastMoves], [50000, 90]);
+});
+
+test('mergeDailyResults keeps a legacy local last win without a stamp', () => {
+  const server = row('2026-09-09');
+  const local = row('2026-09-09', { lastTimeMs: 70000, lastMoves: 110 });
+  const [merged] = mergeDailyResults([server], [local]);
+  assert.equal(merged.lastTimeMs, 70000);
+  assert.equal(merged.lastMoves, 110);
+  assert.ok(!('lastWonAt' in merged));
+});
+
+test('mergeDailyResults normalizes null server last fields to absent keys', () => {
+  const server = row('2026-09-09', { lastTimeMs: null, lastMoves: null, lastWonAt: null });
+  const [merged] = mergeDailyResults([server], []);
+  assert.ok(!('lastTimeMs' in merged));
+  assert.ok(!('lastMoves' in merged));
+  assert.ok(!('lastWonAt' in merged));
 });

@@ -33,7 +33,7 @@ import { applyResetMarker } from './factoryReset.js';
 export async function pullDailyResults() {
   const { data: dailyRows, error: dailyError } = await supabase
     .from('daily_results')
-    .select('date, seed, best_score, best_time_ms, best_moves, wins');
+    .select('date, seed, best_score, best_time_ms, best_moves, wins, last_time_ms, last_moves, last_won_at');
   if (dailyError) throw dailyError;
   const mergedDaily = mergeDailyResults(
     (dailyRows || []).map((d) => ({
@@ -43,6 +43,13 @@ export async function pullDailyResults() {
       bestTimeMs: d.best_time_ms,
       bestMoves: d.best_moves,
       wins: d.wins,
+      // Cross-device Last (migration 036): null on pre-036 rows / never-
+      // replayed days — the merge treats missing as "no remote last win".
+      // last_won_at arrives as an ISO string; mergeDailyResults compares it
+      // lexicographically (latest wins) against the local lastWonAt.
+      lastTimeMs: d.last_time_ms,
+      lastMoves: d.last_moves,
+      lastWonAt: d.last_won_at ?? null,
     })),
     await db.dailyResults.toArray(),
   );
