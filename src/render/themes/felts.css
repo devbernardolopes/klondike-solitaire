@@ -99,3 +99,41 @@
   --felt-pattern: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.05) 0 2px, transparent 2px 10px);
   --felt-pattern-size: auto;
 }
+
+/* Phase-2 paid SVG line-art (Store-gated; keep --felt-pattern identical to
+   PATTERNS in backgroundRegistry.js so board and tile previews match). */
+.theme-crimson-deco {
+  --felt-color: #7a1f2b;
+  --felt-color-dark: #4a0f18;
+  --felt-bg: radial-gradient(125% 95% at 50% 32%, #a83242 0%, #7a1f2b 52%, #4a0f18 100%);
+  --felt-vignette: radial-gradient(ellipse at center, transparent 62%, rgba(0, 0, 0, 0.45) 100%);
+  --felt-pattern: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240' viewBox='0 0 240 240' fill='none' stroke='white' stroke-opacity='0.1' stroke-width='1.5'%3E%3Ccircle cx='120' cy='262' r='62'/%3E%3Ccircle cx='120' cy='262' r='102'/%3E%3Ccircle cx='120' cy='262' r='142'/%3E%3Ccircle cx='120' cy='262' r='182'/%3E%3Ccircle cx='120' cy='262' r='222'/%3E%3Cpath d='M120 262L-20 62'/%3E%3Cpath d='M120 262L40 22'/%3E%3Cpath d='M120 262L120 2'/%3E%3Cpath d='M120 262L200 22'/%3E%3Cpath d='M120 262L260 62'/%3E%3C/svg%3E");
+  --felt-pattern-size: 240px 240px;
+}
+
+.theme-emerald-suits {
+  --felt-color: #0e4a32;
+  --felt-color-dark: #08281c;
+  --felt-bg: radial-gradient(120% 90% at 50% 35%, #1e8a5c 0%, #0e4a32 55%, #08281c 100%);
+  --felt-vignette: radial-gradient(ellipse at center, transparent 62%, rgba(0, 0, 0, 0.42) 100%);
+  --felt-pattern: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240' viewBox='0 0 240 240' fill='none' stroke='white' stroke-opacity='0.1' stroke-width='1.5'%3E%3Cpath d='M60 78C42 64 40 48 50 44C55 42 59 46 60 50C61 46 65 42 70 44C80 48 78 64 60 78Z'/%3E%3Cpath d='M180 38L198 62L180 86L162 62Z'/%3E%3Cpath d='M60 158C78 172 80 188 70 192C65 194 61 190 60 186C59 190 55 194 50 192C40 188 42 172 60 158Z'/%3E%3Cpath d='M60 192L60 202M53 202L67 202'/%3E%3Ccircle cx='180' cy='166' r='10'/%3E%3Ccircle cx='170' cy='182' r='10'/%3E%3Ccircle cx='190' cy='182' r='10'/%3E%3Cpath d='M180 190L180 202M173 202L187 202'/%3E%3C/svg%3E");
+  --felt-pattern-size: 240px 240px;
+}
+
+.theme-desert-topo {
+  --felt-color: #d4b896;
+  --felt-color-dark: #8c6a43;
+  --felt-bg: radial-gradient(125% 95% at 50% 30%, #e8d5b5 0%, #c9a87a 45%, #8c6a43 100%);
+  --felt-vignette: radial-gradient(ellipse at center, transparent 65%, rgba(60, 40, 15, 0.28) 100%);
+  --felt-pattern: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240' viewBox='0 0 240 240' fill='none' stroke='%233d2c17' stroke-opacity='0.12' stroke-width='1.5'%3E%3Cpath d='M-10 42C40 22 80 62 130 42C170 27 200 52 250 37'/%3E%3Cpath d='M-10 92C40 72 80 112 130 92C170 77 200 102 250 87'/%3E%3Cpath d='M-10 142C40 122 80 162 130 142C170 127 200 152 250 137'/%3E%3Cpath d='M-10 192C40 172 80 212 130 192C170 177 200 202 250 187'/%3E%3Cpath d='M-10 242C40 222 80 262 130 242C170 227 200 252 250 237'/%3E%3C/svg%3E");
+  --felt-pattern-size: 240px 240px;
+}
+
+.theme-midnight-bauhaus {
+  --felt-color: #0a1020;
+  --felt-color-dark: #050a16;
+  --felt-bg: radial-gradient(130% 100% at 50% 30%, #1a2744 0%, #0a1020 60%, #050a16 100%);
+  --felt-vignette: radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.5) 100%);
+  --felt-pattern: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240' viewBox='0 0 240 240' fill='none' stroke='white' stroke-opacity='0.1' stroke-width='1.5'%3E%3Cpath d='M120 0A120 120 0 0 0 0 120'/%3E%3Cpath d='M90 0A90 90 0 0 0 0 90'/%3E%3Cpath d='M60 0A60 60 0 0 0 0 60'/%3E%3Cpath d='M120 240A60 60 0 0 1 240 240'/%3E%3Cpath d='M150 240A30 30 0 0 1 210 240'/%3E%3Ccircle cx='180' cy='60' r='22'/%3E%3Cpath d='M0 180H60'/%3E%3Cpath d='M180 120V180'/%3E%3C/svg%3E");
+  --felt-pattern-size: 240px 240px;
+}

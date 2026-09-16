@@ -5,6 +5,10 @@
 -- Idempotent: safe to paste into Supabase SQL editor and re-run.
 -- ============================================================
 INSERT INTO public.store_items (id, name, description) VALUES
+  ('bg-crimson-deco', 'Deco Fan', 'Art-deco fan lines on crimson felt.'),
+  ('bg-desert-topo', 'Dune Contours', 'Topographic contour lines on desert felt.'),
+  ('bg-emerald-suits', 'Suit Outlines', 'Minimalist suit line-art on emerald felt.'),
+  ('bg-midnight-bauhaus', 'Bauhaus Arcs', 'Bauhaus arcs on midnight felt.'),
   ('bg-noir', 'Noir', 'Deep black felt.'),
   ('bg-retro-crt', 'Retro CRT', 'Phosphor green tint.'),
   ('card-back-black', 'Black Card Back', 'A black-themed card back.'),

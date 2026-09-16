@@ -62,6 +62,10 @@ const TEXTURE_PRESETS = {
   'midnight-pinstripe': { seed: 6, tint: null, opacity: 0.07, density: 0.4 },
   'forest-dots': { seed: 7, tint: null, opacity: 0.06, density: 0.45 },
   'noir-diagonal': { seed: 8, tint: null, opacity: 0.07, density: 0.4 },
+  'crimson-deco': { seed: 9, tint: null, opacity: 0.08, density: 0.5 },
+  'emerald-suits': { seed: 10, tint: null, opacity: 0.08, density: 0.48 },
+  'desert-topo': { seed: 11, tint: null, opacity: 0.05, density: 0.5 },
+  'midnight-bauhaus': { seed: 12, tint: null, opacity: 0.1, density: 0.42 },
 };
 
 export function getFeltTextureUrl(theme) {

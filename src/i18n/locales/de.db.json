@@ -248,6 +248,22 @@
     }
   },
   "storeItems": {
+    "bg-crimson-deco": {
+      "description": "Art-deco fan lines on crimson felt.",
+      "name": "Deco Fan"
+    },
+    "bg-desert-topo": {
+      "description": "Topographic contour lines on desert felt.",
+      "name": "Dune Contours"
+    },
+    "bg-emerald-suits": {
+      "description": "Minimalist suit line-art on emerald felt.",
+      "name": "Suit Outlines"
+    },
+    "bg-midnight-bauhaus": {
+      "description": "Bauhaus arcs on midnight felt.",
+      "name": "Bauhaus Arcs"
+    },
     "bg-noir": {
       "description": "Deep black felt.",
       "name": "Noir"
