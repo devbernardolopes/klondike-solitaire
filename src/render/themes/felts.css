@@ -60,3 +60,42 @@
   --felt-bg: radial-gradient(125% 95% at 50% 30%, #e8d5b5 0%, #c9a87a 45%, #8c6a43 100%);
   --felt-vignette: radial-gradient(ellipse at center, transparent 65%, rgba(60, 40, 15, 0.28) 100%);
 }
+
+/* Phase-1 free geometric patterns. Each sets --felt-pattern (+ tile size) so
+   App.jsx can layer it over the gradient: pattern , texture , base. Alphas
+   stay subtle by design — see PATTERNS in backgroundRegistry.js. */
+.theme-emerald-checker {
+  --felt-color: #1f7a4d;
+  --felt-color-dark: #14532e;
+  --felt-bg: radial-gradient(120% 90% at 50% 32%, #2a8a5c 0%, #1f7a4d 55%, #14532e 100%);
+  --felt-vignette: radial-gradient(ellipse at center, transparent 62%, rgba(0, 0, 0, 0.42) 100%);
+  --felt-pattern: repeating-conic-gradient(rgba(255, 255, 255, 0.07) 0% 25%, transparent 0% 50%);
+  --felt-pattern-size: 32px 32px;
+}
+
+.theme-midnight-pinstripe {
+  --felt-color: #0d1b2a;
+  --felt-color-dark: #0a1520;
+  --felt-bg: radial-gradient(115% 85% at 50% 30%, #143352 0%, #0d1b2a 58%, #0a1520 100%);
+  --felt-vignette: radial-gradient(ellipse at center, transparent 62%, rgba(0, 0, 0, 0.42) 100%);
+  --felt-pattern: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.07) 0 1px, transparent 1px 12px);
+  --felt-pattern-size: auto;
+}
+
+.theme-forest-dots {
+  --felt-color: #1a3c2a;
+  --felt-color-dark: #122b1e;
+  --felt-bg: radial-gradient(118% 88% at 50% 32%, #2a5a3a 0%, #1a3c2a 55%, #122b1e 100%);
+  --felt-vignette: radial-gradient(ellipse at center, transparent 64%, rgba(0, 0, 0, 0.38) 100%);
+  --felt-pattern: radial-gradient(rgba(255, 255, 255, 0.10) 1.2px, transparent 1.4px);
+  --felt-pattern-size: 18px 18px;
+}
+
+.theme-noir-diagonal {
+  --felt-color: #1a1a1a;
+  --felt-color-dark: #0f0f0f;
+  --felt-bg: radial-gradient(120% 90% at 50% 35%, #2a2a2a 0%, #1a1a1a 55%, #0f0f0f 100%);
+  --felt-vignette: radial-gradient(ellipse at center, transparent 62%, rgba(0, 0, 0, 0.52) 100%);
+  --felt-pattern: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.05) 0 2px, transparent 2px 10px);
+  --felt-pattern-size: auto;
+}

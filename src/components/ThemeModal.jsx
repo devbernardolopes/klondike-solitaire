@@ -20,7 +20,7 @@ import { getDeck, listDecks } from '../render/deck/deckRegistry.js';
 import { getCardBack } from '../render/deck/cardBackRegistry.js';
 import { fetchStoreCatalog } from '../data/storeCatalog.js';
 import { useAuthStore } from '../hooks/useAuthStore.js';
-import { previewBackgroundOf } from '../render/themes/backgroundRegistry.js';
+import { previewBackgroundOf, patternBackgroundOf, patternSizeOf } from '../render/themes/backgroundRegistry.js';
 import { INTERFACE_THEMES, isInterfaceTheme, tilePreviewOf } from '../render/themes/interfaceThemes.js';
 import { OVERHANG_BADGE_LIFT, OVERHANG_BADGE_RIGHT } from './modalBadge.js';
 
@@ -31,7 +31,7 @@ const TABS = [
   { id: 'cardsFace', labelKey: 'theme.tabs.cardsFace' },
 ];
 
-const FREE_BACKGROUNDS = ['classic', 'dark', 'midnight', 'forest', 'desert', 'emerald-depth', 'midnight-velvet', 'crimson-baize', 'desert-mirage'];
+const FREE_BACKGROUNDS = ['classic', 'dark', 'midnight', 'forest', 'desert', 'emerald-depth', 'midnight-velvet', 'crimson-baize', 'desert-mirage', 'emerald-checker', 'midnight-pinstripe', 'forest-dots', 'noir-diagonal'];
 
 // A fixed representative card (Ace of Spades) used so every deck face tile
 // clearly shows that deck's color/background differences.
@@ -261,6 +261,11 @@ export default function ThemeModal({ open, onClose }) {
         {tiles.map((tile) => {
           const selected = tile.asset_ref === theme;
           const isNew = tile.id ? newIds.includes(tile.id) : false;
+          // Layer the programmatic pattern over the gradient preview so the
+          // tile is WYSIWYG with the board (App.jsx 3-layer stack). Falls
+          // back to the plain gradient for non-patterned backgrounds.
+          const preview = previewBackgroundOf(tile.asset_ref) ?? '#1f7a4d';
+          const pattern = patternBackgroundOf(tile.asset_ref);
           return (
             <button
               key={tile.asset_ref}
@@ -290,7 +295,10 @@ export default function ThemeModal({ open, onClose }) {
                   width: '100%',
                   height: '100%',
                   borderRadius: 'var(--card-radius)',
-                  background: previewBackgroundOf(tile.asset_ref) ?? '#1f7a4d',
+                  background: preview,
+                  backgroundImage: pattern ? `${pattern}, ${preview}` : preview,
+                  backgroundSize: pattern ? `${patternSizeOf(tile.asset_ref)}, cover` : 'cover',
+                  backgroundRepeat: 'repeat, no-repeat',
                 }}
               >
                 <span

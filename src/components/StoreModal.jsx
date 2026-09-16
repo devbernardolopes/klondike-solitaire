@@ -21,6 +21,7 @@ import { supabase } from '../lib/supabaseClient.js';
 import { fetchStoreCatalog, isThemeKind } from '../data/storeCatalog.js';
 import { storeItemImageUrl, onStoreItemImageError } from '../utils/storeItemImage.js';
 import { getCardBack } from '../render/deck/cardBackRegistry.js';
+import { previewBackgroundOf, patternBackgroundOf, patternSizeOf } from '../render/themes/backgroundRegistry.js';
 import { translateStoreItem } from '../i18n/db.js';
 
 /**
@@ -150,6 +151,10 @@ export default function StoreModal({ open, onClose }) {
     }
     if (isThemeKind(item.kind)) {
       if (item.kind === 'table_felt') {
+        // Same layering as the Theme modal tile: pattern over gradient
+        // preview, so a future paid patterned felt previews correctly here.
+        const preview = previewBackgroundOf(item.asset_ref) ?? 'var(--felt-color)';
+        const pattern = patternBackgroundOf(item.asset_ref);
         return (
           <span
             aria-hidden="true"
@@ -159,7 +164,10 @@ export default function StoreModal({ open, onClose }) {
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              background: 'var(--felt-color)',
+              background: preview,
+              backgroundImage: pattern ? `${pattern}, ${preview}` : preview,
+              backgroundSize: pattern ? `${patternSizeOf(item.asset_ref)}, cover` : 'cover',
+              backgroundRepeat: 'repeat, no-repeat',
             }}
           >
             <span
