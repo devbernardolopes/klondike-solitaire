@@ -522,7 +522,7 @@ function ElapsedClock() {
               piles). Absolutely positioned = zero layout impact: no Toolbar /
               Board resizing, no extra padding or margins. Static text and
               pointer-transparent, so cards beneath stay fully interactive. */}
-          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, textAlign: 'center', pointerEvents: 'none', zIndex: 1 }}>
+          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, textAlign: 'center', pointerEvents: 'none', zIndex: 1, transform: 'translateY(-4px)' }}>
             <GameModeLabel variant="hud" interactive={false} />
           </div>
         </div>
