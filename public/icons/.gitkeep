@@ -1,8 +1,7 @@
-# Favicon + PWA icon set lives here (served at /icons/*).
-# Expected files (from RealFaviconGenerator):
+# Favicon + PWA icon set (served at /icons/*, generated via RealFaviconGenerator).
 #   favicon.svg
-#   favicon-32x32.png, favicon-16x16.png
+#   favicon-96x96.png
 #   apple-touch-icon.png (180x180, opaque background)
-#   android-chrome-192x192.png, android-chrome-512x512.png
+#   web-app-manifest-192x192.png, web-app-manifest-512x512.png
 #   site.webmanifest
-# favicon.ico stays at public/ root (implicit /favicon.ico requests).
+# favicon.ico lives at public/ root (implicit /favicon.ico requests).
