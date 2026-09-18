@@ -289,9 +289,7 @@ export default function ThemeModal({ open, onClose }) {
               <span
                 className={`theme-${tile.asset_ref}`}
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  display: 'block',
                   width: '100%',
                   height: '100%',
                   borderRadius: 'var(--card-radius)',
@@ -300,20 +298,7 @@ export default function ThemeModal({ open, onClose }) {
                   backgroundSize: pattern ? `${patternSizeOf(tile.asset_ref)}, cover` : 'cover',
                   backgroundRepeat: 'repeat, no-repeat',
                 }}
-              >
-                <span
-                  aria-hidden="true"
-                  style={{
-                    width: '42%',
-                    height: '52%',
-                    borderRadius: 'var(--card-radius)',
-                    background: '#fbfbf7',
-                    border: '1px solid rgba(0,0,0,0.18)',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.35)',
-                    display: 'block',
-                  }}
-                />
-              </span>
+              />
               {isNew && <span style={NEW_BADGE}>{t('common.new')}</span>}
             </button>
           );
