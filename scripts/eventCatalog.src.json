@@ -888,5 +888,30 @@
         "coinReward": 200
       }
     ]
+  },
+  {
+    "id": "hobbit-day-2025",
+    "title": "Hobbit Day 2025",
+    "description": "Hobbit Day celebrates the fictional birthdays of Bilbo and Frodo Baggins, inspired by the beloved hobbits and the peaceful world of J. R. R. Tolkien's Middle-earth.",
+    "startsAt": "2025-09-22T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "hobbit-day-2025/page1.jpg",
+        "coinReward": 50
+      },
+      {
+        "gridSize": 3,
+        "imagePath": "hobbit-day-2025/page2.jpg",
+        "coinReward": 100
+      },
+      {
+        "gridSize": 4,
+        "imagePath": "hobbit-day-2025/page3.jpg",
+        "coinReward": 200
+      }
+    ]
   }
 ]
