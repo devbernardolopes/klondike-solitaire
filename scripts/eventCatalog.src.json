@@ -863,5 +863,30 @@
         "coinReward": 200
       }
     ]
+  },
+  {
+    "id": "nowruz-2026",
+    "title": "Nowruz 2026",
+    "description": "Nowruz is the Persian New Year and a celebration of spring, renewal, family, friendship, and cultural heritage, traditionally marked by the Haft-Seen table, festive gatherings, and seasonal customs.",
+    "startsAt": "2026-03-20T00:00:00Z",
+    "gameKind": "draw-1",
+    "sortOrder": 1,
+    "pages": [
+      {
+        "gridSize": 2,
+        "imagePath": "nowruz-2026/page1.jpg",
+        "coinReward": 50
+      },
+      {
+        "gridSize": 3,
+        "imagePath": "nowruz-2026/page2.jpg",
+        "coinReward": 100
+      },
+      {
+        "gridSize": 4,
+        "imagePath": "nowruz-2026/page3.jpg",
+        "coinReward": 200
+      }
+    ]
   }
 ]
