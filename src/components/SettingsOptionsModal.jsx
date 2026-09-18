@@ -66,6 +66,7 @@ export default function SettingsOptionsModal({
   const coinFly = useSettingsStore((s) => s.coinFly);
   const autoComplete = useSettingsStore((s) => s.autoComplete);
   const zxClick = useSettingsStore((s) => s.zxClick);
+  const toastDuration = useSettingsStore((s) => s.toastDuration);
   const centisecondsOn = useSettingsStore((s) => s.centisecondsOn);
   const hoverLift = useSettingsStore((s) => s.hoverLift);
   const wobble = useSettingsStore((s) => s.wobble);
@@ -370,6 +371,35 @@ export default function SettingsOptionsModal({
             onChange={(v) => useSettingsStore.getState().setZxClick(v)}
             label={t('settings.zxClick.desc')}
           />
+        </div>
+
+        <div style={{ ...field, marginBottom: 20 }}>
+          <label style={{ fontSize: 14, fontWeight: 600 }} htmlFor="toastDurationSlider">
+            {t('settings.toastDuration')}
+          </label>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              id="toastDurationSlider"
+              type="range"
+              min={1}
+              max={5}
+              step={1}
+              value={toastDuration}
+              onChange={(e) => useSettingsStore.getState().setToastDuration(Number(e.target.value))}
+              aria-label={t('settings.toastDuration')}
+              style={{
+                width: 110,
+                accentColor: 'var(--ui-modal-fg, currentColor)',
+                cursor: 'pointer',
+              }}
+            />
+            <span
+              aria-hidden="true"
+              style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums', minWidth: 28, textAlign: 'right' }}
+            >
+              {toastDuration}s
+            </span>
+          </span>
         </div>
 
         <div style={{ ...field, marginBottom: 20 }}>

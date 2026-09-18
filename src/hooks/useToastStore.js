@@ -1,15 +1,20 @@
 // hooks/useToastStore.js
 // Drives the single-toast, priority-queued toast. One toast visible at a
 // time; additional pushes queue and show in priority order (coins first,
-// then personal bests, then everything else). Each toast dwells 5s once it
-// has slid into place, then fades out; the next queued toast (if any) then
-// slides in. The actual slide/fade tweens live in ToastHost.jsx (DOM/GSAP
-// concern); this store owns the phase machine and the 5s dwell timer.
+// then personal bests, then everything else). Each toast dwells for the
+// user-configured duration (Settings → Toast Duration, 1–5s, default 5s)
+// once it has slid into place, then fades out; the next queued toast (if
+// any) then slides in. The actual slide/fade tweens live in ToastHost.jsx
+// (DOM/GSAP concern); this store owns the phase machine and the dwell timer.
 // Queue-front only: a push never preempts the active toast; it is inserted
 // into the waiting queue by priority.
 
 import { create } from 'zustand';
 import { supabase } from '../lib/supabaseClient.js';
+import {
+  TOAST_DURATION_LS_KEY,
+  clampToastDuration,
+} from '../core/toastDuration.js';
 
 const FIVE_SECONDS_MS = 5000;
 
@@ -18,6 +23,23 @@ const FIVE_SECONDS_MS = 5000;
 let dwellTimer = null;
 
 let toastSeq = 0;
+
+/**
+ * Resolve the toast dwell time in ms from the user-configured Toast Duration
+ * setting (seconds, 1–5, default 5). Reads the settings store's localStorage
+ * first-paint mirror (written synchronously on every change) rather than
+ * importing the settings store, so this module stays light and runnable under
+ * plain node --test. Any failure (or corrupt value) falls back to 5s.
+ * @returns {number}
+ */
+function resolveDwellMs() {
+  try {
+    if (typeof localStorage === 'undefined') return FIVE_SECONDS_MS;
+    return clampToastDuration(localStorage.getItem(TOAST_DURATION_LS_KEY)) * 1000;
+  } catch {
+    return FIVE_SECONDS_MS;
+  }
+}
 
 /** Toast display order: coins -> personal bests -> all the rest. */
 export const TOAST_PRIORITY = {
@@ -117,7 +139,8 @@ export const useToastStore = create((set, get) => ({
     set({ phase: 'fading' });
   },
 
-  // Called by ToastHost once the slide-in tween completes: start the 5s dwell.
+  // Called by ToastHost once the slide-in tween completes: start the dwell
+  // timer (user-configured Toast Duration, 1–5s, default 5s).
   markShown: () => {
     if (get().phase !== 'entering') return;
     set({ phase: 'shown' });
@@ -125,7 +148,7 @@ export const useToastStore = create((set, get) => ({
     dwellTimer = setTimeout(() => {
       dwellTimer = null;
       if (get().phase === 'shown') set({ phase: 'fading' });
-    }, FIVE_SECONDS_MS);
+    }, resolveDwellMs());
   },
 
   // Called by ToastHost once the fade-out tween completes: advance the queue.

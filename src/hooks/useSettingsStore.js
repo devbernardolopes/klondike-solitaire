@@ -10,6 +10,11 @@ import { create } from 'zustand';
 import { setActiveDeck } from '../render/deck/deckRegistry.js';
 import { getSetting, getSettings, setSetting } from '../db/schema.js';
 import i18n, { detectSystemLocale, SUPPORTED, DEFAULT_LOCALE } from '../i18n/index.js';
+import {
+  TOAST_DURATION_DEFAULT,
+  TOAST_DURATION_LS_KEY,
+  clampToastDuration,
+} from '../core/toastDuration.js';
 
 // Hard cap on seen-ids sets as a defensive upper bound. The actual sizes are
 // bounded by the achievement catalog (~32) and theme items catalog (~50), so
@@ -66,6 +71,7 @@ const DEFAULTS = {
   pickupLift: true,
   dropSnap: true,
   pinLastEvent: true,
+  toastDuration: TOAST_DURATION_DEFAULT,
   effectProfile: 'default',
 };
 
@@ -107,6 +113,7 @@ const LS_KEYS = {
   pickupLift: 'klondike:pickupLift',
   dropSnap: 'klondike:dropSnap',
   pinLastEvent: 'klondike:pinLastEvent',
+  toastDuration: TOAST_DURATION_LS_KEY,
   effectProfile: 'klondike:effectProfile',
 };
 
@@ -141,6 +148,16 @@ function writeLS(key, value) {
     localStorage.setItem(key, String(value));
   } catch {
     /* storage may be unavailable (private mode); Dexie remains the source of truth */
+  }
+}
+
+function readToastDurationLS() {
+  try {
+    const v = localStorage.getItem(LS_KEYS.toastDuration);
+    if (v == null) return DEFAULTS.toastDuration;
+    return clampToastDuration(v);
+  } catch {
+    return DEFAULTS.toastDuration;
   }
 }
 
@@ -181,6 +198,7 @@ export const useSettingsStore = create((set, get) => ({
   pickupLift: readLS(LS_KEYS.pickupLift, DEFAULTS.pickupLift),
   dropSnap: readLS(LS_KEYS.dropSnap, DEFAULTS.dropSnap),
   pinLastEvent: readLS(LS_KEYS.pinLastEvent, DEFAULTS.pinLastEvent),
+  toastDuration: readToastDurationLS(),
   effectProfile: readLS(LS_KEYS.effectProfile, DEFAULTS.effectProfile),
   seenThemeItemIds: new Set(),
   seenAchievementIds: new Set(),
@@ -198,7 +216,7 @@ export const useSettingsStore = create((set, get) => ({
       'language', 'theme', 'interfaceTheme', 'deck', 'cardBack', 'handedness',
       'highlightCard', 'particles', 'cardEffects', 'tableTexture', 'boardFrame',
       'bounce', 'ghostEcho', 'ghostTrail', 'shimmer', 'uncover', 'winEnhanced', 'winCascade',
-      'hoverGlow', 'cardShake', 'centisecondsOn', 'hoverLift', 'wobble', 'flipOvershoot', 'coinFly', 'autoComplete', 'zxClick', 'tapRipple', 'pickupLift', 'dropSnap', 'pinLastEvent', 'effectProfile', 'seenThemeItemIds', 'seenAchievementIds', 'themeModalTab',
+      'hoverGlow', 'cardShake', 'centisecondsOn', 'hoverLift', 'wobble', 'flipOvershoot', 'coinFly', 'autoComplete', 'zxClick', 'tapRipple', 'pickupLift', 'dropSnap', 'pinLastEvent', 'toastDuration', 'effectProfile', 'seenThemeItemIds', 'seenAchievementIds', 'themeModalTab',
     ];
     const SETTING_DEFAULTS = {
       theme: DEFAULTS.theme,
@@ -231,12 +249,13 @@ export const useSettingsStore = create((set, get) => ({
       pickupLift: DEFAULTS.pickupLift,
       dropSnap: DEFAULTS.dropSnap,
       pinLastEvent: DEFAULTS.pinLastEvent,
+      toastDuration: DEFAULTS.toastDuration,
       effectProfile: DEFAULTS.effectProfile,
       seenThemeItemIds: [],
       seenAchievementIds: [],
       themeModalTab: 'background',
     };
-    const [language, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostEcho, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, cardShake, centisecondsOn, hoverLift, wobble, flipOvershoot, coinFly, autoComplete, zxClick, tapRipple, pickupLift, dropSnap, pinLastEvent, effectProfile, seenThemeItemIdsArr, seenAchievementIdsArr, themeModalTab] = await getSettings(SETTING_KEYS, SETTING_DEFAULTS);
+    const [language, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostEcho, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, cardShake, centisecondsOn, hoverLift, wobble, flipOvershoot, coinFly, autoComplete, zxClick, tapRipple, pickupLift, dropSnap, pinLastEvent, toastDuration, effectProfile, seenThemeItemIdsArr, seenAchievementIdsArr, themeModalTab] = await getSettings(SETTING_KEYS, SETTING_DEFAULTS);
     // Use the LS read for language as a last-resort fallback for the language
     // key (the per-key default above is a static DEFAULT_LOCALE; the LS version
     // may have detected the system locale on a previous session).
@@ -280,6 +299,7 @@ export const useSettingsStore = create((set, get) => ({
         ['pickupLift', pickupLift],
         ['dropSnap', dropSnap],
         ['pinLastEvent', pinLastEvent],
+        ['toastDuration', clampToastDuration(toastDuration)],
         ['effectProfile', effectProfile],
       ];
       // Unconditional write: the in-memory value is the source of truth
@@ -298,7 +318,7 @@ export const useSettingsStore = create((set, get) => ({
       if (i18n.language !== normalizedLang) await i18n.changeLanguage(normalizedLang);
       try { document.documentElement.lang = normalizedLang; } catch {}
     } catch {}
-    set({ language: normalizedLang, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostEcho, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, cardShake, centisecondsOn, hoverLift, wobble, flipOvershoot, coinFly, autoComplete, zxClick, tapRipple, pickupLift, dropSnap, pinLastEvent, effectProfile: effectProfile ?? DEFAULTS.effectProfile, seenThemeItemIds: seenThemeIds, seenAchievementIds: seenAchievementIds, themeModalTab, loaded: true });
+    set({ language: normalizedLang, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostEcho, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, cardShake, centisecondsOn, hoverLift, wobble, flipOvershoot, coinFly, autoComplete, zxClick, tapRipple, pickupLift, dropSnap, pinLastEvent, toastDuration: clampToastDuration(toastDuration), effectProfile: effectProfile ?? DEFAULTS.effectProfile, seenThemeItemIds: seenThemeIds, seenAchievementIds: seenAchievementIds, themeModalTab, loaded: true });
   },
 
   /**
@@ -428,6 +448,12 @@ export const useSettingsStore = create((set, get) => ({
   setPickupLift: (pickupLift) => { set({ pickupLift }); setSetting('pickupLift', pickupLift); writeLS(LS_KEYS.pickupLift, pickupLift); },
   setDropSnap: (dropSnap) => { set({ dropSnap }); setSetting('dropSnap', dropSnap); writeLS(LS_KEYS.dropSnap, dropSnap); },
   setPinLastEvent: (pinLastEvent) => { set({ pinLastEvent }); setSetting('pinLastEvent', pinLastEvent); writeLS(LS_KEYS.pinLastEvent, pinLastEvent); },
+  setToastDuration: (toastDuration) => {
+    const n = clampToastDuration(toastDuration);
+    set({ toastDuration: n });
+    setSetting('toastDuration', n);
+    writeLS(LS_KEYS.toastDuration, n);
+  },
   setEffectProfile: (effectProfile) => { set({ effectProfile }); setSetting('effectProfile', effectProfile); writeLS(LS_KEYS.effectProfile, effectProfile); },
 
   /**

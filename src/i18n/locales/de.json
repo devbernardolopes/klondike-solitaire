@@ -399,6 +399,7 @@
     "tableTexture": "Table Texture",
     "tapRipple": "Tap Ripple",
     "title": "Settings",
+    "toastDuration": "Toast Duration",
     "uncoverSparkle": "Uncover Sparkle",
     "winCelebration": "Win Celebration",
     "winCelebration.desc": "Falling Cards on Win",
