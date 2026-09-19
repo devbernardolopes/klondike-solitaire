@@ -103,7 +103,8 @@ export const useUiStore = create((set, get) => ({
 
   // Session "welcome" banner state. Shown once per page load (and again when
   // the auth identity changes: link/sign-out) as a centered, non-blocking
-  // `no-hints-banner`-styled label naming the restored identity. Same token
+  // label naming the restored identity (rendered on the dedicated
+  // `welcome-banner` layer above everything, including modals). Same token
   // remount contract as the no-hints banner so re-renders never replay the
   // 3s fade — only a genuine new show does.
   welcomeBannerActive: false,

@@ -334,6 +334,32 @@
   }
 }
 
+/* Session "welcome" banner: same centered non-blocking label as the no-hints
+   banner above, but layered over EVERYTHING (deal-animation cards fly at
+   z 2000+, modals sit at z 3000-4000, toasts at 5000). It fires exactly on
+   page load, i.e. underneath the initial stock→tableau deal animation, so
+   anything lower would be buried mid-deal. `pointer-events: none` keeps it
+   from ever intercepting input despite sitting on top. */
+.welcome-banner {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 6000;
+  padding: 12px 28px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: clamp(16px, 2.4vw, 24px);
+  letter-spacing: 0.04em;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  animation: noHintsFade 3s ease-out forwards;
+}
+
 /* Daily Challenge calendar cells. Base styling lives here; the dynamic state
    classes (today / completed / selected / disabled) layer on top. Layout
    (size + centering) is set inline in DailyChallengeModal so it's robust even

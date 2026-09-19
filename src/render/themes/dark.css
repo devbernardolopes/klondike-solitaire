@@ -252,6 +252,30 @@
   }
 }
 
+/* Session "welcome" banner (dark variant). Same contract as classic.css:
+   identical geometry to the no-hints banner but above everything
+   (deal cards 2000+, modals 3000-4000, toasts 5000); `pointer-events: none`
+   so it never intercepts input despite sitting on top. */
+.welcome-banner {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 6000;
+  padding: 12px 28px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: clamp(16px, 2.4vw, 24px);
+  letter-spacing: 0.04em;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  animation: noHintsFade 3s ease-out forwards;
+}
+
 /* Daily Challenge calendar cells (dark variant). See classic.css for notes. */
 .ui-dark .dc-cell {
   display: flex;

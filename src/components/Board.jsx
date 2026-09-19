@@ -793,17 +793,19 @@ export default function Board() {
         </div>
       )}
       {/* Centered session "welcome" banner naming the restored identity
-          (anonymous auto-generated name included). Same non-blocking
-          `no-hints-banner` styling/positioning (`pointer-events: none`), so
-          the board stays fully interactive beneath it. Rendered for up to 3
-          seconds and removed on timeout or on the next user interaction.
-          `key={token}` remounts it only on a genuine new show. The text
-          subscribes to `displayName` live so a name that lands just after
-          `ready` still fills in without a re-show. */}
+          (anonymous auto-generated name included). Same non-blocking label
+          as the no-hints banner but on the dedicated `welcome-banner` layer
+          above everything (deal cards, modals, toasts — see classic.css), so
+          it stays visible through the initial stock→tableau deal animation.
+          `pointer-events: none` keeps the board fully interactive beneath it.
+          Rendered for up to 3 seconds and removed on timeout or on the next
+          user interaction. `key={token}` remounts it only on a genuine new
+          show. The text subscribes to `displayName` live so a name that lands
+          just after `ready` still fills in without a re-show. */}
       {welcomeBannerActive && (
         <div
           key={welcomeBannerToken}
-          className="no-hints-banner"
+          className="welcome-banner"
           role="status"
           aria-live="polite"
         >
