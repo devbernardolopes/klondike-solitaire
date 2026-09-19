@@ -9,7 +9,7 @@ import '../render/themes/felts.css';
 import { applyFeltTexture } from '../render/themes/feltTextures.js';
 // Side-effect imports register the deck renderers with the registry.
 import '../render/deck/ProceduralDeckRenderer.js';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import Toolbar from './Toolbar.jsx';
 import Board from './Board.jsx';
 import WinModal from './WinModal.jsx';
@@ -70,6 +70,16 @@ export default function App() {
   const initFavorites = useFavoritesStore((s) => s.init);
   const state = useGameStore((s) => s.state);
   const linkConflict = useAuthStore((s) => s.linkConflict);
+  // Session "welcome" banner trigger inputs. Keyed on identity only
+  // (userId + isAnonymous), NOT on displayName: the banner text subscribes
+  // to displayName live, so a name that lands just after `ready` fills in
+  // without a re-show — and a later rename never re-fires the banner.
+  const authReady = useAuthStore((s) => s.ready);
+  const authProfileReady = useAuthStore((s) => s.profileReady);
+  const authUserId = useAuthStore((s) => s.userId);
+  const authIsAnonymous = useAuthStore((s) => s.isAnonymous);
+  const showWelcomeBanner = useUiStore((s) => s.showWelcomeBanner);
+  const lastWelcomeKey = useRef(null);
   // Z/X-as-mouse emulation (gated by the Settings toggle). Mounted once here
   // so it works everywhere — board, toolbar, menus, modals, empty space.
   useKeyClick();
@@ -131,6 +141,20 @@ export default function App() {
     };
   }, [init, initStats, initSeeds, initFavorites]);
 
+  // Session "welcome" banner: show once on every page load (once the restored
+  // session + profile are ready) and again whenever the auth identity itself
+  // changes (Google link, link-conflict adopt, sign-out → fresh anonymous).
+  // Keyed on userId/isAnonymous so StrictMode's double-effect and the
+  // profile name landing just after `ready` can't double-fire it (the store
+  // action is itself a no-op while the banner is already up).
+  useEffect(() => {
+    if (!authReady || !authProfileReady) return;
+    const key = `${authUserId ?? 'none'}|${authIsAnonymous ? 'anon' : 'linked'}`;
+    if (lastWelcomeKey.current === key) return;
+    lastWelcomeKey.current = key;
+    showWelcomeBanner();
+  }, [authReady, authProfileReady, authUserId, authIsAnonymous, showWelcomeBanner]);
+
   const tableTexture = useSettingsStore((s) => s.tableTexture);
   const cardEffects = useSettingsStore((s) => s.cardEffects);
   const hoverLift = useSettingsStore((s) => s.hoverLift);
@@ -186,6 +210,8 @@ export default function App() {
   //     of the screen" and also keeps the banner.
   // Everything else (a card tap, undo/redo/draw/recycle/auto-complete, toolbar
   // buttons, modal buttons) dismisses it immediately, even mid 3-second window.
+  // The session "welcome" banner shares the same dismissal path (it is equally
+  // transient and non-blocking).
   useEffect(() => {
     const onPointerDown = (e) => {
       const t = e.target;
@@ -196,6 +222,7 @@ export default function App() {
         (t.closest && t.closest('button,[role="button"]'));
       if (!onInteractive) return;
       useUiStore.getState().dismissNoHintsBanner();
+      useUiStore.getState().dismissWelcomeBanner();
     };
     document.addEventListener('pointerdown', onPointerDown, true);
     return () => document.removeEventListener('pointerdown', onPointerDown, true);

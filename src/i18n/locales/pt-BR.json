@@ -49,7 +49,9 @@
     "newGameDealt": "Nova partida distribuída",
     "noHints": "Nenhuma dica disponível",
     "noMoves": "Nenhum movimento disponível no momento",
+    "playingAs": "Jogando como {{name}}",
     "pressNewGame": "Pressione N ou use Novo Jogo para recomeçar.",
+    "signedInAs": "Conectado como {{name}}",
     "timeLimit": "O limite de tempo de 30:00 foi atingido.",
     "undo": "Desfazer"
   },

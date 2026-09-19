@@ -229,6 +229,10 @@ export default function Board() {
   const clearSelection = useUiStore((s) => s.clearSelection);
   const noHintsBannerActive = useUiStore((s) => s.noHintsBannerActive);
   const noHintsBannerToken = useUiStore((s) => s.noHintsBannerToken);
+  const welcomeBannerActive = useUiStore((s) => s.welcomeBannerActive);
+  const welcomeBannerToken = useUiStore((s) => s.welcomeBannerToken);
+  const welcomeDisplayName = useAuthStore((s) => s.displayName);
+  const welcomeIsAnonymous = useAuthStore((s) => s.isAnonymous);
   const setAnnounce = useUiStore((s) => s.setAnnounce);
   const announce = useUiStore((s) => s.announce);
   const handedness = useSettingsStore((s) => s.handedness);
@@ -786,6 +790,26 @@ export default function Board() {
           aria-live="polite"
         >
           {t('board.noHints')}
+        </div>
+      )}
+      {/* Centered session "welcome" banner naming the restored identity
+          (anonymous auto-generated name included). Same non-blocking
+          `no-hints-banner` styling/positioning (`pointer-events: none`), so
+          the board stays fully interactive beneath it. Rendered for up to 3
+          seconds and removed on timeout or on the next user interaction.
+          `key={token}` remounts it only on a genuine new show. The text
+          subscribes to `displayName` live so a name that lands just after
+          `ready` still fills in without a re-show. */}
+      {welcomeBannerActive && (
+        <div
+          key={welcomeBannerToken}
+          className="no-hints-banner"
+          role="status"
+          aria-live="polite"
+        >
+          {welcomeIsAnonymous
+            ? t('board.playingAs', { name: welcomeDisplayName ?? '…' })
+            : t('board.signedInAs', { name: welcomeDisplayName ?? '…' })}
         </div>
       )}
       {/* Screen-reader live region for keyboard/shortcut feedback. */}

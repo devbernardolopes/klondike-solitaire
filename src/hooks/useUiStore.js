@@ -17,6 +17,9 @@ const transitionDone = new Map();
 // re-render, and so clearing it is independent of store plumbing.
 let noHintsBannerTimer = null;
 
+// Same pattern for the session "welcome" banner (see showWelcomeBanner below).
+let welcomeBannerTimer = null;
+
 /**
  * Resolve when the transition with the given id finishes animating (i.e. when
  * endTransition(tid) is next called). Used by the auto-complete loop to chain
@@ -97,6 +100,14 @@ export const useUiStore = create((set, get) => ({
   // on a genuine new show — never when merely re-rendering mid-display.
   noHintsBannerActive: false,
   noHintsBannerToken: 0,
+
+  // Session "welcome" banner state. Shown once per page load (and again when
+  // the auth identity changes: link/sign-out) as a centered, non-blocking
+  // `no-hints-banner`-styled label naming the restored identity. Same token
+  // remount contract as the no-hints banner so re-renders never replay the
+  // 3s fade — only a genuine new show does.
+  welcomeBannerActive: false,
+  welcomeBannerToken: 0,
 
   // True while a dnd-kit drag is in progress. Used to keep CardView's own
   // tap→auto-move from firing on the same gesture as a drag, which could
@@ -518,6 +529,33 @@ export const useUiStore = create((set, get) => ({
    * outlives the context that produced it.
    */
   dismissNoHintsBanner: () => set({ noHintsBannerActive: false }),
+
+  /**
+   * Show the centered session "welcome" banner naming the current identity.
+   * It stays up for 3 seconds (the CSS fade lands on that timeout) and then
+   * auto-hides. If it is already showing, this is a no-op so a rapid second
+   * trigger (e.g. the profile name landing a beat after `ready`) does NOT
+   * restart/flicker it — the rendered text subscribes to `displayName` live
+   * and fills in without a re-show.
+   */
+  showWelcomeBanner: () =>
+    set((s) => {
+      if (s.welcomeBannerActive) return s;
+      if (welcomeBannerTimer) clearTimeout(welcomeBannerTimer);
+      welcomeBannerTimer = setTimeout(() => {
+        if (useUiStore.getState().welcomeBannerActive) {
+          useUiStore.setState({ welcomeBannerActive: false });
+        }
+      }, 3000);
+      return { welcomeBannerActive: true, welcomeBannerToken: s.welcomeBannerToken + 1 };
+    }),
+
+  /**
+   * Immediately hide the session "welcome" banner. Called on any user
+   * interaction (same pointerdown path that dismisses the no-hints banner)
+   * so it never outlives the context that produced it.
+   */
+  dismissWelcomeBanner: () => set({ welcomeBannerActive: false }),
 
   /** Update the aria-live announcement text. */
   setAnnounce: (text) => set({ announce: text }),

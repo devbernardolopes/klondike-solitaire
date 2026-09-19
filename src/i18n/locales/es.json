@@ -49,7 +49,9 @@
     "newGameDealt": "New game dealt",
     "noHints": "No hints available",
     "noMoves": "No moves available right now",
+    "playingAs": "Playing as {{name}}",
     "pressNewGame": "Press N or use New Game to start again.",
+    "signedInAs": "Signed in as {{name}}",
     "timeLimit": "The 30:00 time limit was reached.",
     "undo": "Undo"
   },
