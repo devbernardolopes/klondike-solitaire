@@ -305,7 +305,17 @@ export default function DailyChallengeModal() {
         !initialRef.current.usedPreferred &&
         selectedRef.current === initialRef.current.today &&
         initialRef.current.selected === initialRef.current.today;
-      if (wasTodayBound) applySelected(todayStr);
+      if (wasTodayBound) {
+        // The open-time "today" was the fallback (or a stale cache) and the
+        // selection is still bound to it: move both to the corrected today.
+        // The viewed month must follow too — otherwise (notably on the very
+        // first open, which paints Jan-2026) the grid would show the wrong
+        // month with the selection off-page while Play stays enabled for it.
+        // jumpTo is a no-op for the selection here (it was just set inside
+        // the target month) and safely resets the slide track mid-swipe.
+        applySelected(todayStr);
+        jumpTo(y, m);
+      }
     });
 
     return () => { cancelled = true; };
