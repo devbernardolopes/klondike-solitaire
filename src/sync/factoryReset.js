@@ -118,6 +118,7 @@ export async function wipeLocalUserData() {
   // Seen badges reference wiped owned items / achievements; prefs stay.
   await setSetting('seenThemeItemIds', []);
   await setSetting('seenAchievementIds', []);
+  await setSetting('unseenStatsNews', []);
   // Last-played event pin is progress, not a display pref — it must not
   // survive the wipe (the toggle itself stays).
   try {
@@ -144,6 +145,9 @@ export async function refreshInMemoryState() {
   useAuthStore.setState({ coins: 0, coinsEarnedTotal: 0, coinsSpentTotal: 0, ownedItemIds: [] });
   try {
     useSettingsStore.getState().clearAchievementsSeen();
+  } catch {}
+  try {
+    useSettingsStore.getState().clearStatsNewsSeen();
   } catch {}
   try {
     useSettingsStore.setState({ seenThemeItemIds: new Set() });

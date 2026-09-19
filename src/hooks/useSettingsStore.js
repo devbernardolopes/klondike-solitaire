@@ -39,6 +39,22 @@ function toCappedSet(arr) {
   return out;
 }
 
+// Statistic rows that can carry a show-once "new" record pill in the
+// Statistics modal. Kept as a module-level allowlist so persisted values can
+// never resurrect an unknown id after a downgrade or a corrupt write.
+export const STATS_NEWS_IDS = ['bestStreak', 'bestTime', 'bestMoves'];
+
+/**
+ * Sanitize a persisted unseen-stats-news value back to a clean array of
+ * known ids (deduped, order-stable per STATS_NEWS_IDS).
+ * @param {*} arr
+ * @returns {string[]}
+ */
+export function sanitizeStatsNewsIds(arr) {
+  if (!Array.isArray(arr)) return [];
+  return STATS_NEWS_IDS.filter((id) => arr.includes(id));
+}
+
 const DEFAULTS = {
   language: DEFAULT_LOCALE,
   theme: 'classic',
@@ -202,6 +218,13 @@ export const useSettingsStore = create((set, get) => ({
   effectProfile: readLS(LS_KEYS.effectProfile, DEFAULTS.effectProfile),
   seenThemeItemIds: new Set(),
   seenAchievementIds: new Set(),
+  // Unseen Statistics "new" record flags, one id per row that can show the
+  // pill: 'bestStreak' | 'bestTime' | 'bestMoves'. Added at win time when the
+  // corresponding record improves (first win counts for all three) and
+  // removed once the Statistics modal has been viewed and closed — the same
+  // show-once contract as the Theme/Achievements "new" badges. Persisted as
+  // a plain array (fixed id set, never grows unboundedly).
+  unseenStatsNews: [],
   themeModalTab: 'interface',
   loaded: false,
 
@@ -216,7 +239,7 @@ export const useSettingsStore = create((set, get) => ({
       'language', 'theme', 'interfaceTheme', 'deck', 'cardBack', 'handedness',
       'highlightCard', 'particles', 'cardEffects', 'tableTexture', 'boardFrame',
       'bounce', 'ghostEcho', 'ghostTrail', 'shimmer', 'uncover', 'winEnhanced', 'winCascade',
-      'hoverGlow', 'cardShake', 'centisecondsOn', 'hoverLift', 'wobble', 'flipOvershoot', 'coinFly', 'autoComplete', 'zxClick', 'tapRipple', 'pickupLift', 'dropSnap', 'pinLastEvent', 'toastDuration', 'effectProfile', 'seenThemeItemIds', 'seenAchievementIds', 'themeModalTab',
+      'hoverGlow', 'cardShake', 'centisecondsOn', 'hoverLift', 'wobble', 'flipOvershoot', 'coinFly', 'autoComplete', 'zxClick', 'tapRipple', 'pickupLift', 'dropSnap', 'pinLastEvent', 'toastDuration', 'effectProfile', 'seenThemeItemIds', 'seenAchievementIds', 'unseenStatsNews', 'themeModalTab',
     ];
     const SETTING_DEFAULTS = {
       theme: DEFAULTS.theme,
@@ -253,9 +276,10 @@ export const useSettingsStore = create((set, get) => ({
       effectProfile: DEFAULTS.effectProfile,
       seenThemeItemIds: [],
       seenAchievementIds: [],
+      unseenStatsNews: [],
       themeModalTab: 'background',
     };
-    const [language, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostEcho, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, cardShake, centisecondsOn, hoverLift, wobble, flipOvershoot, coinFly, autoComplete, zxClick, tapRipple, pickupLift, dropSnap, pinLastEvent, toastDuration, effectProfile, seenThemeItemIdsArr, seenAchievementIdsArr, themeModalTab] = await getSettings(SETTING_KEYS, SETTING_DEFAULTS);
+    const [language, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostEcho, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, cardShake, centisecondsOn, hoverLift, wobble, flipOvershoot, coinFly, autoComplete, zxClick, tapRipple, pickupLift, dropSnap, pinLastEvent, toastDuration, effectProfile, seenThemeItemIdsArr, seenAchievementIdsArr, unseenStatsNewsArr, themeModalTab] = await getSettings(SETTING_KEYS, SETTING_DEFAULTS);
     // Use the LS read for language as a last-resort fallback for the language
     // key (the per-key default above is a static DEFAULT_LOCALE; the LS version
     // may have detected the system locale on a previous session).
@@ -318,7 +342,7 @@ export const useSettingsStore = create((set, get) => ({
       if (i18n.language !== normalizedLang) await i18n.changeLanguage(normalizedLang);
       try { document.documentElement.lang = normalizedLang; } catch {}
     } catch {}
-    set({ language: normalizedLang, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostEcho, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, cardShake, centisecondsOn, hoverLift, wobble, flipOvershoot, coinFly, autoComplete, zxClick, tapRipple, pickupLift, dropSnap, pinLastEvent, toastDuration: clampToastDuration(toastDuration), effectProfile: effectProfile ?? DEFAULTS.effectProfile, seenThemeItemIds: seenThemeIds, seenAchievementIds: seenAchievementIds, themeModalTab, loaded: true });
+    set({ language: normalizedLang, theme, interfaceTheme, deck, cardBack, handedness, highlightCard, particles, cardEffects, tableTexture, boardFrame, bounce, ghostEcho, ghostTrail, shimmer, uncover, winEnhanced, winCascade, hoverGlow, cardShake, centisecondsOn, hoverLift, wobble, flipOvershoot, coinFly, autoComplete, zxClick, tapRipple, pickupLift, dropSnap, pinLastEvent, toastDuration: clampToastDuration(toastDuration), effectProfile: effectProfile ?? DEFAULTS.effectProfile, seenThemeItemIds: seenThemeIds, seenAchievementIds: seenAchievementIds, unseenStatsNews: sanitizeStatsNewsIds(unseenStatsNewsArr), themeModalTab, loaded: true });
   },
 
   /**
@@ -505,5 +529,45 @@ export const useSettingsStore = create((set, get) => ({
   clearAchievementsSeen: () => {
     set({ seenAchievementIds: new Set() });
     setSetting('seenAchievementIds', []);
+  },
+
+  /**
+   * Flag Statistics record rows as unseen-new (shown as a "new" pill until
+   * the Statistics modal has been viewed and closed). Called at win time for
+   * each improved record. Unknown ids are ignored.
+   * @param {string[]} ids  subset of STATS_NEWS_IDS
+   */
+  addUnseenStatsNews: (ids) => {
+    if (!Array.isArray(ids) || ids.length === 0) return;
+    const valid = sanitizeStatsNewsIds(ids);
+    if (valid.length === 0) return;
+    set((s) => {
+      const next = sanitizeStatsNewsIds([...(s.unseenStatsNews || []), ...valid]);
+      if (next.length === (s.unseenStatsNews || []).length && next.every((id, i) => id === s.unseenStatsNews[i])) return s;
+      setSetting('unseenStatsNews', next);
+      return { unseenStatsNews: next };
+    });
+  },
+
+  /**
+   * Mark Statistics "new" pills as seen (hides them until the next record).
+   * Called when the Statistics modal closes.
+   * @param {string[]} ids  subset of STATS_NEWS_IDS
+   */
+  markStatsNewsSeen: (ids) => {
+    if (!Array.isArray(ids) || ids.length === 0) return;
+    set((s) => {
+      const current = s.unseenStatsNews || [];
+      const next = current.filter((id) => !ids.includes(id));
+      if (next.length === current.length) return s;
+      setSetting('unseenStatsNews', next);
+      return { unseenStatsNews: next };
+    });
+  },
+
+  /** Drop all Statistics "new" flags (stats reset / factory reset). */
+  clearStatsNewsSeen: () => {
+    set({ unseenStatsNews: [] });
+    setSetting('unseenStatsNews', []);
   },
 }));

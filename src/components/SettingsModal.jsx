@@ -88,6 +88,10 @@ export default function SettingsModal({
   const nameCheckTimer = useRef(null);
   const seenThemeItemIds = useSettingsStore((s) => s.seenThemeItemIds);
   const seenAchievementIds = useSettingsStore((s) => s.seenAchievementIds);
+  // Show-once Statistics record flags (see StatisticsModal): any unseen flag
+  // badges the Statistics entry until the modal has been viewed and closed.
+  const unseenStatsNews = useSettingsStore((s) => s.unseenStatsNews);
+  const hasNewStats = (unseenStatsNews || []).length > 0;
   const settingsLoaded = useSettingsStore((s) => s.loaded);
   const achievementRevision = useAchievementEventsStore((s) => s.revision);
   const ownedItemIds = useAuthStore((s) => s.ownedItemIds);
@@ -339,10 +343,11 @@ export default function SettingsModal({
             </button>
             <button
               type="button"
-              style={{ ...btn, width: '100%' }}
+              style={{ ...btn, width: '100%', position: 'relative' }}
               onClick={() => setStatsOpen(true)}
             >
               {t('mainMenu.statistics')}
+              {badgeDataReady && hasNewStats && <span style={NEW_BADGE_R}>{t('common.new')}</span>}
             </button>
             <button
               type="button"

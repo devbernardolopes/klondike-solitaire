@@ -304,6 +304,12 @@ export default function Board() {
       const newTime = prev.lowestTimeMs == null || durationMs < prev.lowestTimeMs;
       const newMoves = prev.lowestMoves == null || moves < prev.lowestMoves;
       const newUndos = prev.lowestUndos == null || undos < prev.lowestUndos;
+      // First-ever win: there is no previous record to beat, so the personal-
+      // best toasts stay silent (the Statistics modal still shows its "new"
+      // pills for all three rows — a first record is still worth flagging).
+      const isFirstWin = (prev.totalGamesWon || 0) === 0;
+      const nextStreak = (prev.currentStreak || 0) + 1;
+      const newBestStreak = nextStreak > (prev.bestStreak || 0);
       // The current game's kind + (for daily) date, so the Win modal can show
       // the daily banner and a "Return to Daily Challenge" affordance, and so we
       // can persist the day's best result below.
@@ -367,7 +373,16 @@ export default function Board() {
         seed: gameState.seed,
       };
       useUiStore.getState().setWinDialog(winSummary);
-      const nextStreak = (prev.currentStreak || 0) + 1;
+      // Flag the improved Statistics rows as unseen-new (first win counts
+      // for all three). The pills clear once the Statistics modal has been
+      // viewed and closed (see StatisticsModal).
+      try {
+        const fresh = [];
+        if (newBestStreak) fresh.push('bestStreak');
+        if (newTime) fresh.push('bestTime');
+        if (newMoves) fresh.push('bestMoves');
+        if (fresh.length > 0) useSettingsStore.getState().addUnseenStatsNews(fresh);
+      } catch {}
       // Prospective coin award for the OPTIMISTIC display only (toast, coin
       // flight, pre-sync bump). Computed from the cached reward config with
       // the bundled fallback; the server recomputes authoritatively on flush
@@ -419,14 +434,16 @@ export default function Board() {
           priority: TOAST_PRIORITY.COINS,
         });
       }
-      if (nextStreak > (prev.bestStreak || 0)) {
+      // Personal-best toasts stay silent on the very first win (no previous
+      // record exists to beat); the Statistics "new" pills still flag it.
+      if (!isFirstWin && newBestStreak) {
         useToastStore.getState().push({
           name: t('toasts.newBestStreak.title', {count: nextStreak}),
           description: t('toasts.newBestStreak.desc', {count: nextStreak}),
           priority: TOAST_PRIORITY.PERSONAL_BEST,
         });
       }
-      if (newTime) {
+      if (!isFirstWin && newTime) {
         const secs = (durationMs / 1000).toFixed(1);
         useToastStore.getState().push({
           name: t('toasts.newBestTime.title'),
@@ -434,7 +451,7 @@ export default function Board() {
           priority: TOAST_PRIORITY.PERSONAL_BEST,
         });
       }
-      if (newMoves) {
+      if (!isFirstWin && newMoves) {
         useToastStore.getState().push({
           name: t('toasts.newBestMoves.title'),
           description: t('toasts.newBestMoves.desc', {count: moves}),

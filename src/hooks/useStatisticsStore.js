@@ -13,6 +13,7 @@ import { revertOptimisticSolve } from '../repo/specialEventsRepository.js';
 // Imported lazily (only used inside finalizeGame at call-time) so the circular
 // reference with useStatsStore never resolves during module evaluation.
 import { useStatsStore } from './useStatsStore.js';
+import { useSettingsStore } from './useSettingsStore.js';
 import { enqueue } from '../sync/syncEngine.js';
 import { useAuthStore, WIN_COIN_REWARD } from '../hooks/useAuthStore.js';
 import { db } from '../db/schema.js';
@@ -263,6 +264,9 @@ recordLoss: async () => {
    * @param {{gameId:string|null, payload?:object}} args
    */
   applyRejectedWin: async ({ gameId, payload = {} }) => {
+    // The rejected win already flagged Statistics "new" pills at win time
+    // (see Board.jsx) — but its records never happened, so drop the flags.
+    try { useSettingsStore.getState().clearStatsNewsSeen(); } catch {}
     try {
       const snap = await getWinSnapshot(gameId).catch(() => null);
       if (snap?.prevStats) {

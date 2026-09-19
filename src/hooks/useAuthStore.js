@@ -272,6 +272,11 @@ export const useAuthStore = create((set, get) => ({
       const { useFavoritesStore } = await import('./useFavoritesStore.js');
       useFavoritesStore.getState().reset();
     } catch {}
+    // Wiped stats can't have unseen "new" record pills lingering for them.
+    try {
+      const { useSettingsStore } = await import('./useSettingsStore.js');
+      useSettingsStore.getState().clearStatsNewsSeen();
+    } catch {}
     set({ coins: 0, displayName: null });
     await supabase.auth.signOut();
     await get().init();

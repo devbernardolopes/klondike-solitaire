@@ -7,10 +7,11 @@
 // A Reset button at the bottom clears every cumulative stat; it is gated behind
 // a confirmation dialog so an accidental tap can't wipe history.
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronUp, Coins as CoinsIcon } from 'lucide-react';
 import { useStatisticsStore } from '../hooks/useStatisticsStore.js';
+import { useSettingsStore, STATS_NEWS_IDS } from '../hooks/useSettingsStore.js';
 import ModalCloseButton from './ModalCloseButton.jsx';
 import { useModalEscape } from '../hooks/useModalEscape.js';
 import { Z } from '../utils/modalStack.js';
@@ -41,7 +42,18 @@ export default function StatisticsModal({ open, onClose }) {
   const dialogRef = useRef(null);
   const scrollRef = useRef(null);
   const [scrollMetrics, setScrollMetrics] = useState({ scrollTop: 0, scrollHeight: 0, clientHeight: 0 });
-  const backdrop = useModalBackdrop(onClose);
+  // Show-once "new" record pills: flagged at win time (see Board.jsx), cleared
+  // once this modal has been viewed and closed — any close path counts (X,
+  // backdrop, Escape), mirroring the Theme/Achievements mark-seen-on-view.
+  const unseenStatsNews = useSettingsStore((s) => s.unseenStatsNews);
+  const handleClose = useCallback(() => {
+    try {
+      const shown = (useSettingsStore.getState().unseenStatsNews || []).filter((id) => STATS_NEWS_IDS.includes(id));
+      if (shown.length > 0) useSettingsStore.getState().markStatsNewsSeen(shown);
+    } catch {}
+    onClose();
+  }, [onClose]);
+  const backdrop = useModalBackdrop(handleClose);
 
   const isEmpty =
     stats.totalGamesPlayed === 0 &&
@@ -53,7 +65,7 @@ export default function StatisticsModal({ open, onClose }) {
     stats.totalTimeMsWon === 0 &&
     stats.totalMovesWon === 0;
 
-  useModalEscape({ open, onClose, id: 'stats', z: Z.BASE });
+  useModalEscape({ open, onClose: handleClose, id: 'stats', z: Z.BASE });
 
   useEffect(() => {
     if (!open) return;
@@ -132,6 +144,22 @@ export default function StatisticsModal({ open, onClose }) {
   };
   const labelStyle = { fontSize: 14, fontWeight: 600 };
   const valueStyle = { fontSize: 16, fontWeight: 700, fontVariantNumeric: 'tabular-nums' };
+  // "New record" presentation: the value takes the theme's progress-accent
+  // color (tuned per interface theme for contrast on modal panels) and a
+  // small "new" pill — using the shared badge vars — sits LEFT of the value.
+  const newValueStyle = { ...valueStyle, color: 'var(--ui-badge-progress-bg, #1a7f37)' };
+  const NEW_PILL = {
+    marginRight: 6,
+    fontSize: 12,
+    fontWeight: 700,
+    color: 'var(--ui-badge-new-fg, #fff)',
+    background: 'var(--ui-badge-new-bg, var(--card-text-red, #d12b3b))',
+    borderRadius: 4,
+    padding: '2px 5px',
+  };
+  const hasNewBestStreak = (unseenStatsNews || []).includes('bestStreak');
+  const hasNewBestTime = (unseenStatsNews || []).includes('bestTime');
+  const hasNewBestMoves = (unseenStatsNews || []).includes('bestMoves');
 
   return (
     <>
@@ -155,7 +183,7 @@ export default function StatisticsModal({ open, onClose }) {
       >
         <div style={panel}>
           <h2 style={{ margin: '0 0 14px', fontSize: 18, fontWeight: 700, paddingRight: 36 }}>{t('statistics.title')}</h2>
-          <ModalCloseButton onClick={onClose} />
+          <ModalCloseButton onClick={handleClose} />
 
           <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
           <div ref={scrollRef} className="modal-body-scroll" style={{ height: '100%' }}>
@@ -173,11 +201,17 @@ export default function StatisticsModal({ open, onClose }) {
             </div>
             <div style={row}>
               <span style={labelStyle}>{t('statistics.lowestTime')}</span>
-              <span style={valueStyle}>{stats.lowestTimeMs == null ? t('statistics.na') : formatTime(stats.lowestTimeMs)}</span>
+              <span style={hasNewBestTime ? newValueStyle : valueStyle}>
+                {hasNewBestTime && <span style={NEW_PILL}>{t('common.new')}</span>}
+                {stats.lowestTimeMs == null ? t('statistics.na') : formatTime(stats.lowestTimeMs)}
+              </span>
             </div>
             <div style={row}>
               <span style={labelStyle}>{t('statistics.lowestMoves')}</span>
-              <span style={valueStyle}>{stats.lowestMoves == null ? t('statistics.na') : stats.lowestMoves}</span>
+              <span style={hasNewBestMoves ? newValueStyle : valueStyle}>
+                {hasNewBestMoves && <span style={NEW_PILL}>{t('common.new')}</span>}
+                {stats.lowestMoves == null ? t('statistics.na') : stats.lowestMoves}
+              </span>
             </div>
             <div style={row}>
               <span style={labelStyle}>{t('statistics.avgTime')}</span>
@@ -190,33 +224,14 @@ export default function StatisticsModal({ open, onClose }) {
 
             <div style={{ ...row, borderTop: '1px solid var(--ui-control-border)' }}>
               <span style={labelStyle}>{t('statistics.currentStreak')}</span>
-              <span
-                style={{
-                  ...valueStyle,
-                  color:
-                    stats.currentStreak > 0 && stats.currentStreak >= stats.bestStreak
-                      ? '#1a7f37'
-                      : 'var(--ui-modal-panel-fg)',
-                }}
-              >
-                {stats.currentStreak}
-                {stats.currentStreak > 0 && stats.currentStreak >= stats.bestStreak && (
-                  <span
-                    style={{
-                      marginLeft: 6,
-                      fontSize: 12,
-                      fontWeight: 700,
-                      color: '#e53935',
-                    }}
-                  >
-                    {t('common.new')}
-                  </span>
-                )}
-              </span>
+              <span style={valueStyle}>{stats.currentStreak}</span>
             </div>
             <div style={{ ...row, borderBottom: 'none' }}>
               <span style={labelStyle}>{t('statistics.bestStreak')}</span>
-              <span style={valueStyle}>{stats.bestStreak}</span>
+              <span style={hasNewBestStreak ? newValueStyle : valueStyle}>
+                {hasNewBestStreak && <span style={NEW_PILL}>{t('common.new')}</span>}
+                {stats.bestStreak}
+              </span>
             </div>
 
             <div style={{ ...row, borderTop: '1px solid var(--ui-control-border)' }}>
@@ -277,6 +292,8 @@ export default function StatisticsModal({ open, onClose }) {
           // A won (or hard-limit) game is already over, so it is just reset.
           const inProgress = isGameInProgress();
           reset();
+          // Wiped records can't have unseen "new" pills lingering for them.
+          try { useSettingsStore.getState().clearStatsNewsSeen(); } catch {}
           if (inProgress) useGameStore.getState().replayGame();
         }}
         onCancel={() => setConfirmResetOpen(false)}
